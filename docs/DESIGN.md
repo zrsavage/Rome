@@ -58,3 +58,9 @@ and `applyResult` (levies, XP) so new origins are one entry in `src/origins.js`.
 
 ## Teaching the game
 No tutorial mode. The opening battle (First Blood at the Border) is a small, very winnable fight (30/30 wins even when idle) with contextual hints from `src/coach.js` that fire when relevant: advancing, enemy approaching, flanking arcs, morale, fatigue, waves, finishing. Each appears once and fades.
+
+## Unit control (from NapWorld)
+Adopted: friendly units never shove each other and marching through one is slow going (30% speed, only when actually marching into a
+friend); moving missile units halt to fire when an enemy is in range ahead (Ctrl+right-click overrides); orderly fall back walks
+backward facing the enemy; speed steps down to 0.5x. Not yet adopted: deployment phase with a placement zone, formation hotkeys
+(line, column, square, skirmish), a general who rallies broken units, and a charge key.

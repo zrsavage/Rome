@@ -188,3 +188,5 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 @media (max-width:900px){.wiz{grid-template-columns:1fr}}
 
 .ucard[data-stance=hold] b::after{content:' - hold';color:#7fb3e6;font-weight:normal}
+
+#btn-wave{border-color:var(--gold);color:var(--gold);animation:tuthl 1.2s ease-in-out infinite}

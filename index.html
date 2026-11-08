@@ -34,7 +34,8 @@
       <div id="hud-time"></div>
       <div class="spacer"></div>
       <button id="btn-pause" title="Space">Pause</button>
-      <button class="spd" data-s="1">1x</button><button class="spd" data-s="2">2x</button><button class="spd" data-s="4">4x</button>
+      <button class="spd" data-s="0.5">0.5x</button><button class="spd" data-s="1">1x</button><button class="spd" data-s="2">2x</button><button class="spd" data-s="4">4x</button>
+      <button id="btn-wave" class="hidden" title="Bring the next enemy wave forward (N)">Call next wave (N)</button>
       <button id="btn-retreat" class="danger" title="Withdraw from the field">Sound Retreat</button>
       <button id="btn-help">?</button>
     </div>
@@ -45,7 +46,9 @@
       <b>Controls</b><br>
       Left click / drag: select &middot; Right click: move or attack<br>
       Right drag: draw a battle line &middot; Wheel: zoom &middot; WASD / arrows: pan<br>
-      <b>Space</b> pause &middot; <b>Z X C</b> speed 1x/2x/4x &middot; <b>Q</b> select all<br>
+      <b>Space</b> pause &middot; <b>Z X C</b> speed 1x/2x/4x &middot; <b>- / =</b> slower / faster (down to 0.5x) &middot; <b>Q</b> select all<br>
+      <b>Ctrl + right-click</b> marches without stopping to fight &middot; <b>N</b> call the next enemy wave when the field is clear<br>
+      Friendly units never shove each other: a unit marching through a friend moves at a crawl.<br>
       <b>Ctrl+1-9</b> set control group &middot; <b>1-9</b> recall (double-tap: centre camera)<br>
       <b>H</b> hold position (never leaves) &middot; <b>G</b> defend post (fights nearby enemies, then returns) &middot; <b>T</b> testudo / loose order &middot; <b>R</b> fall back and rest &middot; <b>V</b> range rings &middot; <b>Esc</b> deselect<br>
       Arcs under a unit: <span style="color:#6c6">green front</span>, <span style="color:#dc4">yellow flanks</span>, <span style="color:#e55">red rear</span>.<br>

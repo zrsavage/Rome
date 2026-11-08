@@ -33,6 +33,8 @@ export class BattleUI {
   on(fn) { this.listeners.push(fn); }
   emit(name, data = {}) { for (const fn of this.listeners) fn(name, data); }
   setPause(p) { const was = this.paused; this.paused = p; if (was !== p) this.emit('pause', { paused: p }); $('btn-pause').textContent = p ? 'Resume (Space)' : 'Pause (Space)'; }
+  stepSpeed(d) { const L = [0.5, 1, 2, 4], i = Math.max(0, Math.min(L.length - 1, L.indexOf(this.speed) + d)); this.setSpeed(L[i]); }
+  callWave() { if (this.b && this.b.callNextWave()) { this.showBanner('Next wave called', 800); this.setPause(false); } }
   setSpeed(s) { this.speed = s; this.emit('speed', { speed: s }); document.querySelectorAll('.spd').forEach(b => b.classList.toggle('on', +b.dataset.s === s)); }
   showBanner(t, ms) { const b = $('banner'); b.textContent = t; b.classList.remove('hidden'); clearTimeout(this._bt); this._bt = setTimeout(() => b.classList.add('hidden'), ms); }
 
@@ -66,7 +68,7 @@ export class BattleUI {
   selected() { return [...this.r.selection].map(id => this.b.byId(id)).filter(u => u && u.active && u.side === 'rome'); }
   select(ids, add = false) { if (!add) this.r.selection.clear(); ids.forEach(i => this.r.selection.add(i)); this.refreshBottom(); this.refreshHud(); this.emit('select', { ids }); }
 
-  issueMove(wx, wy, drag) {
+  issueMove(wx, wy, drag, ignore = false) {
     const us = this.selected(); if (!us.length) return;
     const b = this.b;
     let mx = 0, my = 0, fx = 0, fy = 0;
@@ -88,7 +90,7 @@ export class BattleUI {
       let total = us.reduce((a, u) => a + u.w + gap, -gap), off = -total / 2;
       us.forEach(u => { off += u.w / 2; pts.push({ x: wx + px * off, y: wy + py * off }); off += u.w / 2 + gap; });
     }
-    us.forEach((u, i) => b.setMove(u, Math.max(8, Math.min(WORLD.w - 8, pts[i].x)), Math.max(8, Math.min(WORLD.h - 8, pts[i].y)), ang));
+    us.forEach((u, i) => b.setMove(u, Math.max(8, Math.min(WORLD.w - 8, pts[i].x)), Math.max(8, Math.min(WORLD.h - 8, pts[i].y)), ang, ignore));
     this.emit('move', { drag: !!drag, count: us.length });
   }
   issueAttack(target) { const us = this.selected(); us.forEach(u => this.b.setAttack(u, target)); if (us.length) this.emit('attack', { target: target.id, count: us.length }); }
@@ -128,10 +130,10 @@ export class BattleUI {
         this.r.box = null; left = null;
       } else if (e.button === 2 && right) {
         const dl = this.r.dragLine;
-        if (dl) this.issueMove(0, 0, dl);
+        if (dl) this.issueMove(0, 0, dl, e.ctrlKey);
         else {
           const u = this.r.unitAt(this.b, w.x, w.y);
-          if (u && u.side === 'gaul') this.issueAttack(u); else this.issueMove(w.x, w.y, null);
+          if (u && u.side === 'gaul') this.issueAttack(u); else this.issueMove(w.x, w.y, null, e.ctrlKey);
         }
         this.r.dragLine = null; right = null;
       } else if (e.button === 1) this.pd = null;
@@ -144,6 +146,8 @@ export class BattleUI {
     window.addEventListener('keydown', (e) => {
       if (!this.running) return; const k = e.key.toLowerCase();
       if (k === ' ') { e.preventDefault(); this.setPause(!this.paused); return; }
+      if (k === '-' || k === '_') this.stepSpeed(-1); if (k === '=' || k === '+') this.stepSpeed(1);
+      if (k === 'n') this.callWave();
       if (k === 'z') this.setSpeed(1); if (k === 'x') this.setSpeed(2); if (k === 'c') this.setSpeed(4);
       if (k === 'v') { this.r.showRange = !this.r.showRange; this.emit('range', { on: this.r.showRange }); }
       if (/^[1-9]$/.test(k) && !e.altKey) this.controlGroup(+k, e.ctrlKey || e.metaKey);
@@ -157,6 +161,7 @@ export class BattleUI {
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
     $('btn-pause').onclick = () => this.setPause(!this.paused);
+    $('btn-wave').onclick = () => this.callWave();
     document.querySelectorAll('.spd').forEach(b => b.onclick = () => this.setSpeed(+b.dataset.s));
     $('btn-help').onclick = () => $('hud-help').classList.toggle('hidden');
     $('btn-retreat').onclick = async () => {
@@ -197,7 +202,10 @@ export class BattleUI {
       const o = b.objectives[0], att = b.rule ? b.rule.attacker : null;
       objTxt = `   |  ${o.name}: ${o.contested ? 'CONTESTED' : o.owner === 'rome' ? 'Roman' : 'Gallic'}` + (att ? ` - ${att === 'rome' ? 'you hold' : 'enemy holds'} ${Math.floor(b.hold[att])}/${b.rule.holdSecs}s` : '');
     }
-    $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${Math.round(b.activeMen('gaul'))}${objTxt}   ${gs}`;
+    const eta = b.nextWaveEta(), clear = eta !== null && b.activeMen('gaul') === 0;
+    $('btn-wave').classList.toggle('hidden', !clear);
+    const waveTxt = clear ? `   |  Field clear. Next wave in ${mm(Math.max(0, Math.min(eta, 12 - b.clearT)))}` : '';
+    $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${Math.round(b.activeMen('gaul'))}${objTxt}${waveTxt}   ${gs}`;
     document.querySelectorAll('.ucard').forEach(d => {
       const u = b.byId(+d.dataset.id); if (!u) return;
       d.dataset.stance = u.stance; d.classList.toggle('sel', this.r.selection.has(u.id)); d.classList.toggle('gone', !u.present);

@@ -39,7 +39,11 @@ shows on the unit card (`- hold`), on the field (`H` after the count) and in the
 ## Battle length and depth
 
 - Battles are built to run **5-10+ minutes**: slower lethality, softer morale shocks, and enemy armies that arrive in staged
-  **waves** (vanguard, main body, reserve), plus a per-scenario minimum fight time. A competent bot takes 7-10 minutes on Act I.
+  **waves** (vanguard, main body, reserve). If you clear the field, the next wave is called after a 12-second breather, with a visible
+  countdown and a *Call next wave* button, so you never wait on an empty field.
+- **Movement:** friendly units never shove each other; a unit marching through a friend moves at 30% speed. Marching missile units stop
+  to fire when an enemy is in range ahead (Ctrl+right-click overrides). Fall back (R) is an orderly walk backward facing the enemy. A competent bot takes 7-10 minutes on Act I.
+- The opening battle is deliberately short and easy: a hurried player can finish it in about a minute and a half, a careful one in about five.
 - Fatigue builds during long fights; press **R** to pull a tired unit back to rest and re-form.
 
 ## Army management depth
@@ -83,7 +87,9 @@ regenerates `src/mapdata.js`. Battle sites: Genava (Rhone fords), the Arar (Saon
 | Left click / drag | Select unit / box select (`Q` = all) |
 | Right click | Move (or attack if clicking an enemy) |
 | Right drag | Draw a battle line; units spread along it and face away from the drag |
-| `Space`, `Z X C` | Pause, speed 1x/2x/4x (orders allowed while paused) |
+| `Space`, `Z X C`, `-` `=` | Pause, speed 1x/2x/4x, step speed down to 0.5x (orders allowed while paused) |
+| `Ctrl` + right-click | March without stopping to fire or fight |
+| `N` | Call the next enemy wave when the field is clear |
 | `Ctrl+1-9`, `1-9` | Set / recall control group (double-tap centres the camera) |
 | `V` | Toggle range rings for all units |
 | `H` / `G` | **Hold** (never leaves its spot) / **Defend post** (fights nearby enemies, then returns to its post) |

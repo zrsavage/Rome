@@ -19,6 +19,8 @@ export function mulberry32(a) {
 const COMBAT_PACE = 0.25;
 // Missiles are tuned separately from melee so longer fights do not turn archers into decoration.
 const RANGED_PACE = 0.55;
+// Friendly units never shove each other. A moving unit marches through friends at this fraction of its speed.
+const PASS_SPEED = 0.3;
 let UID = 1;
 
 export class Unit {
@@ -74,6 +76,7 @@ export class Battle {
     this.rand = mulberry32(opts.seed ?? (Date.now() & 0xffffff));
     this.t = 0; this.units = []; this.bodies = []; this.fx = []; this.log = [];
     this.result = null; this.endTimer = null; this.pendingOutcome = null;
+    this.clearT = 0; this.fieldClear = false;
     this.retreating = false; this.broken = { rome: false, gaul: false };
     this.reinf = (scn.reinforcements || []).map(r => ({ ...r, done: false }));
     this.floats = [];
@@ -136,7 +139,7 @@ export class Battle {
 
   // ---------- orders ----------
   // Orders never change a unit's stance. A move order sets its new post; an attack ends with the unit holding where it finished.
-  setMove(u, x, y, tf = null) { if (!u.active) return; u.order = { kind: 'move', x, y, tf }; u.post = { x, y }; }
+  setMove(u, x, y, tf = null, ignore = false) { if (!u.active) return; u.order = { kind: 'move', x, y, tf, ignore }; u.post = { x, y }; }
   setAttack(u, tgt) { if (!u.active) return; u.order = { kind: 'attack', targetId: tgt.id }; }
   setHold(u) { if (!u.active) return; u.order = { kind: 'none' }; u.stance = 'hold'; u.post = { x: u.x, y: u.y }; }
   setEngage(u) { if (!u.active) return; u.stance = 'aggressive'; if (u.order.kind === 'none') u.post = { x: u.x, y: u.y }; }
@@ -152,6 +155,7 @@ export class Battle {
     const n = this.nearestEnemy(u); if (!n) return;
     const dx = u.x - n.e.x, dy = u.y - n.e.y, d = Math.hypot(dx, dy) || 1;
     this.setMove(u, clamp(u.x + dx / d * 150, 20, WORLD.w - 20), clamp(u.y + dy / d * 150, 20, WORLD.h - 20), Math.atan2(-dy, -dx));
+    u.order.back = true; u.order.ignore = true;   // an orderly withdrawal: walk backward, keep facing the enemy, no rout
     u.stance = 'hold';
   }
   retreatAll() {
@@ -159,6 +163,16 @@ export class Battle {
     this.retreating = true;
     for (const u of this.units) if (u.side === 'rome' && u.active) u.order = { kind: 'retreat' };
     this.say('The signal to withdraw is sounded!', 'warn');
+  }
+
+  pendingWaves() { return this.reinf.filter(r => !r.done && r.side !== 'rome'); }
+  nextWaveEta() { const p = this.pendingWaves(); return p.length ? Math.max(0, Math.min(...p.map(r => r.at)) - this.t) : null; }
+  // Bring the next enemy wave forward to now (everything due within 8 seconds of it comes with it).
+  callNextWave(auto = false) {
+    const p = this.pendingWaves(); if (!p.length || this.result) return false;
+    const first = Math.min(...p.map(r => r.at));
+    for (const r of p) if (r.at <= first + 8) { r.at = this.t; if (!r.msg) r.msg = auto ? 'More enemies appear on the horizon!' : 'You call the next wave forward.'; }
+    this.clearT = 0; return true;
   }
 
   // ---------- AI ----------
@@ -223,6 +237,12 @@ export class Battle {
         if (r.msg) this.say(r.msg, 'warn');
       }
     }
+    // An empty field never means waiting: the next wave is called after a short breather (or the player can call it now).
+    if (this.pendingWaves().length && this.activeMen('gaul') === 0) {
+      this.clearT += dt;
+      if (!this.fieldClear && this.clearT > 1) { this.fieldClear = true; this.say('The field is clear. More enemies are on their way.', 'info'); }
+      if (this.clearT >= 12) this.callNextWave(true);
+    } else { this.clearT = 0; this.fieldClear = false; }
     this.updateObjectives(dt);
     this.floats = this.floats.filter(f => (f.life -= dt) > 0);
     this._ai = (this._ai || 0) + dt;
@@ -256,15 +276,27 @@ export class Battle {
     if (u.state === 'routing') return this.stepRout(u, dt);
     const engaged = u.contacts.some(e => e.active);
     const pursuit = !engaged && u.contacts.length > 0;
-    let goal = null, speedMul = 1, breakoff = false;
+    let goal = null, speedMul = 1, breakoff = false, backing = false;
 
     if (u.order.kind === 'retreat') goal = { x: u.x, y: H + 90 };
     else if (u.order.kind === 'move') {
-      const dx = u.order.x - u.x, dy = u.order.y - u.y;
-      if (Math.hypot(dx, dy) < 4) {
-        if (u.order.tf != null) this.turnTo(u, u.order.tf, dt);
-        if (u.order.targetId == null || Math.abs(norm(u.order.tf ?? u.f) - u.f) < 0.05) { if (u.order.targetId == null) u.order = { kind: 'none' }; }
-      } else goal = { x: u.order.x, y: u.order.y };
+      const dx = u.order.x - u.x, dy = u.order.y - u.y, dist = Math.hypot(dx, dy);
+      // a marching missile unit stops to fire the moment an enemy is in range ahead (Ctrl+right-click moves ignore this)
+      if (t.cat === 'ranged' && !u.order.ignore && u.ammo > 0 && dist > 4 && !engaged) {
+        const hx = dx / dist, hy = dy / dist;
+        for (const e of this.units) {
+          if (e.side === u.side || !e.active) continue;
+          const ex = e.x - u.x, ey = e.y - u.y, ed = Math.hypot(ex, ey) || 1;
+          if (this.gap(u, e) <= t.range * 0.9 && (ex * hx + ey * hy) / ed > 0.25) { u.order = { kind: 'none' }; u.post = { x: u.x, y: u.y }; break; }
+        }
+      }
+      if (u.order.kind === 'move') {
+        if (dist < 4 || (u.order.back && dist < 6)) {
+          if (u.order.tf != null && !u.order.back) this.turnTo(u, u.order.tf, dt);
+          if (u.order.targetId == null) u.order = { kind: 'none' };
+        } else if (u.order.back) backing = true;
+        else goal = { x: u.order.x, y: u.order.y };
+      }
     } else if (u.order.kind === 'attack') {
       const tg = this.byId(u.order.targetId);
       if (!tg || !tg.present) { u.order = { kind: 'none' }; u.post = { x: u.x, y: u.y }; }
@@ -290,7 +322,10 @@ export class Battle {
       const away = goal && (u.order.kind === 'move' || u.order.kind === 'retreat') && Math.hypot(goal.x - u.x, goal.y - u.y) > 15;
       if (away) breakoff = true; else { goal = null; }
     }
-    if (goal && !(t.cat === 'ranged' && u.order.kind === 'none' && u.shooting)) {
+    if (backing) {
+      this.walkBack(u, dt); u.state = 'moving';
+      if (engaged) breakoff = true;
+    } else if (goal && !(t.cat === 'ranged' && u.order.kind === 'none' && u.shooting)) {
       const moved = this.moveToward(u, goal.x, goal.y, dt, speedMul);
       u.state = 'moving';
       u.dustCd = (u.dustCd || 0) - dt;
@@ -350,6 +385,25 @@ export class Battle {
   turnTo(u, ang, dt) { const diff = norm(ang - u.f), m = u.type.turn * dt; u.f = norm(u.f + clamp(diff, -m, m)); }
   turnToward(u, e, dt, k = 1) { const ang = Math.atan2(e.y - u.y, e.x - u.x); const diff = norm(ang - u.f), m = u.type.turn * (0.7 + u.drill / 200) * dt * k; u.f = norm(u.f + clamp(diff, -m, m)); }
 
+  // Orderly fall back: face the enemy and walk straight backward to the order's point.
+  walkBack(u, dt) {
+    const dx = u.order.x - u.x, dy = u.order.y - u.y, d = Math.hypot(dx, dy) || 1, n = this.nearestEnemy(u);
+    if (n) this.turnToward(u, n.e, dt, 0.8);
+    const sp = this.speedOf(u) * 0.9 * (this.overlapsFriend(u, dx / d, dy / d) ? PASS_SPEED : 1), step = Math.min(d, sp * dt);
+    u.x += dx / d * step; u.y += dy / d * step; u.runT = 0;
+  }
+  // True while a unit is actually marching through a friendly unit: it has pushed well into the friend's footprint and the friend
+  // lies ahead of it (or the two are nearly on top of each other). Units standing shoulder to shoulder do not count.
+  overlapsFriend(u, hx, hy) {
+    for (const f of this.units) {
+      if (f === u || f.side !== u.side || !f.present || f.state === 'routing') continue;
+      if (Math.abs(f.x - u.x) > 130 || Math.abs(f.y - u.y) > 130) continue;
+      const g = this.gap(u, f); if (g > -8) continue;
+      const dx = f.x - u.x, dy = f.y - u.y, d = Math.hypot(dx, dy) || 1;
+      if (d < Math.min(u.w, f.w) * 0.35 || (dx * hx + dy * hy) / d > 0.3) return true;
+    }
+    return false;
+  }
   moveToward(u, tx, ty, dt, speedMul) {
     const dx = tx - u.x, dy = ty - u.y, dist = Math.hypot(dx, dy);
     if (dist < 0.5) return 0;
@@ -358,7 +412,8 @@ export class Battle {
     u.f = norm(u.f + clamp(diff, -m, m));
     const ad = Math.abs(norm(h - u.f));
     const align = ad < 0.6 ? 1 : ad < 1.5 ? 0.4 : 0.12;
-    const sp = this.speedOf(u) * speedMul * align;
+    u.passing = this.overlapsFriend(u, Math.cos(h), Math.sin(h));          // marching through friendly units is slow going
+    const sp = this.speedOf(u) * speedMul * align * (u.passing ? PASS_SPEED : 1);
     const step = Math.min(dist, sp * dt);
     const nx = u.x + Math.cos(h) * step, ny = u.y + Math.sin(h) * step;
     for (const e of this.units) {
@@ -373,19 +428,19 @@ export class Battle {
   }
 
   separate(dt) {
-    const us = this.units.filter(u => u.present && u.state !== 'routing');
+    // Friendly units never shove each other (see PASS_SPEED). Only two idle units sharing the same spot drift slowly apart.
+    const us = this.units.filter(u => u.present && u.state === 'idle' && u.order.kind === 'none' && !u.fighting);
     for (let i = 0; i < us.length; i++) for (let j = i + 1; j < us.length; j++) {
       const a = us[i], b = us[j];
-      if (a.side !== b.side) continue;
-      if (Math.abs(a.x - b.x) > 110 || Math.abs(a.y - b.y) > 110) continue;
+      if (a.side !== b.side || Math.abs(a.x - b.x) > 110 || Math.abs(a.y - b.y) > 110) continue;
       const g = this.gap(a, b);
-      if (g < 0) {
-        const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
-        const push = Math.min(-g / 2, 25 * dt);
+      if (g < -Math.min(a.d, b.d) * 0.5) {
+        const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, push = 6 * dt;
         a.x -= dx / d * push; a.y -= dy / d * push; b.x += dx / d * push; b.y += dy / d * push;
       }
     }
   }
+
 
   // ---------- combat ----------
   atkMult(u) {
@@ -549,12 +604,12 @@ export class Battle {
     const gaulActive = this.activeMen('gaul'), romeActive = this.activeMen('rome');
     const romeInField = this.units.some(u => u.side === 'rome' && u.present);
     const finish = (o, delay) => { this.pendingOutcome = o; this.endTimer = delay; };
-    const early = this.t < (this.scn.minTime || 0);
-    if (this.rule && !early && this.hold[this.rule.attacker] >= this.rule.holdSecs) {
+    const waiting = this.pendingWaves().length > 0;
+    if (this.rule && !(waiting && this.rule.attacker === 'rome') && this.hold[this.rule.attacker] >= this.rule.holdSecs) {
       if (this.rule.attacker === 'rome') { this.say('The objective is taken - the enemy lines collapse!', 'good'); for (const u of this.units) if (u.side === 'gaul' && u.active) u.state = 'routing'; return finish('victory', 4); }
       this.say('The enemy has seized the objective. The convoy is lost!', 'bad'); return finish('defeat', 3);
     }
-    if (!early && gaulActive < this.startGaul * 0.25 && !this.reinf.some(r => !r.done && r.side !== 'rome')) {
+    if (!waiting && gaulActive < this.startGaul * 0.25) {
       for (const u of this.units) if (u.side === 'gaul' && u.active) { u.state = 'routing'; }
       this.say('The Gallic host is broken. Victory!', 'good'); return finish('victory', 4);
     }
