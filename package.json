@@ -1,0 +1,11 @@
+{
+  "name": "rome-legion",
+  "version": "0.1.0",
+  "description": "A real-time-with-pause Roman army campaign game for the browser (vertical slice).",
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 8080",
+    "simtest": "node tools/simtest.mjs"
+  },
+  "license": "UNLICENSED"
+}

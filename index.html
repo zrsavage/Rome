@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legio - A Roman Campaign</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <section id="screen-menu" class="screen active">
+    <div class="menu-box">
+      <h1>LEGIO</h1>
+      <p class="tag">From the Gallic frontier to the gates of Rome</p>
+      <label class="field">Difficulty
+        <select id="diff"></select>
+      </label>
+      <p id="diff-desc" class="muted"></p>
+      <div class="row">
+        <button id="btn-new" class="primary">New Campaign</button>
+        <button id="btn-continue">Continue</button>
+      </div>
+      <p class="muted small">Vertical slice v0.1 - one skirmish, one camp phase.</p>
+    </div>
+  </section>
+
+  <section id="screen-camp" class="screen"></section>
+  <section id="screen-brief" class="screen"></section>
+
+  <section id="screen-battle" class="screen">
+    <canvas id="canvas"></canvas>
+    <div id="hud-top">
+      <div id="hud-title"></div>
+      <div id="hud-time"></div>
+      <div class="spacer"></div>
+      <button id="btn-pause" title="Space">Pause</button>
+      <button class="spd" data-s="1">1x</button><button class="spd" data-s="2">2x</button><button class="spd" data-s="4">4x</button>
+      <button id="btn-retreat" class="danger" title="Withdraw from the field">Sound Retreat</button>
+      <button id="btn-help">?</button>
+    </div>
+    <div id="hud-left"></div>
+    <div id="hud-log"></div>
+    <div id="hud-bottom"></div>
+    <div id="hud-help" class="hidden">
+      <b>Controls</b><br>
+      Left click / drag: select &middot; Right click: move or attack<br>
+      Right drag: draw a battle line &middot; Wheel: zoom &middot; WASD / arrows: pan<br>
+      <b>Space</b> pause &middot; <b>1 2 3</b> speed &middot; <b>Q</b> select all<br>
+      <b>H</b> hold &amp; stop &middot; <b>T</b> testudo / loose order &middot; <b>Esc</b> deselect<br>
+      You can give orders while paused. Hit enemy flanks and rears; rout breaks armies.
+    </div>
+    <div id="banner" class="hidden"></div>
+  </section>
+
+  <section id="screen-result" class="screen"></section>
+  <div id="modal" class="hidden"></div>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
