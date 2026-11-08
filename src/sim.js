@@ -78,7 +78,8 @@ export class Battle {
     // enemy strength modifiers: difficulty + local favour (informants and divided tribes)
     const favMult = this.favour >= 2 ? 0.9 : this.favour <= -2 ? 1.1 : 1;
     this.enemyScale = this.diff.enemyMult * favMult;
-    const rb = this.diff.romeMorale + Math.min(8, this.fortLevel * 2) + (opts.suppliesLow ? -8 : 0);
+    this.recoveryMult = opts.recovery ?? 1;
+    const rb = this.diff.romeMorale + Math.min(8, this.fortLevel * 2) + (opts.suppliesLow ? -8 : 0) + (opts.moraleBonus || 0);
     this.romeBonus = rb;
     for (const s of romeSpecs) this.units.push(new Unit({ ...s, side: 'rome', moraleBonus: rb }));
     for (const e of scn.enemy) this.spawnEnemy(e);
@@ -559,7 +560,7 @@ export class Battle {
       let survivors = u.men;
       if (u.state === 'routing' || (u.state === 'gone' && !u.exited)) survivors = Math.round(u.men * 0.5);
       const casualties = u.startMen - survivors;
-      const recovered = Math.round(Math.max(0, casualties - 0) * (outcome === 'defeat' ? 0.1 : 0.22));
+      const recovered = Math.round(Math.max(0, casualties) * (outcome === 'defeat' ? 0.1 : 0.22) * this.recoveryMult);
       const endMen = Math.min(u.maxMen, survivors + recovered);
       const xpMult = outcome === 'victory' ? 1 : outcome === 'draw' ? 0.75 : 0.5;
       const xpGain = Math.round((rw.xpBase * xpMult + u.kills * 0.3) * (u.state === 'routing' ? 0.6 : 1));

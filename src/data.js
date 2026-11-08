@@ -238,3 +238,22 @@ export const SCENARIOS = [
     ]
   }
 ];
+
+// Opening battle: a short, forgiving skirmish fought before the player ever sees the management screen.
+export const PROLOGUE = {
+  id: 'prologue', act: 'I', theater: 'Gaul', year: '58 BC', name: 'First Blood at the Border', kind: 'skirmish',
+  geo: { lat: 45.52, lon: 4.87, place: 'Vienna (Vienne) on the Rhone', note: 'Border of the Province, Allobroges country' },
+  briefing: 'You have taken command of a legion on the edge of the Province. A raiding band has crossed the Rhone and is plundering farms within sight of your camp. Drive them off. This is a small fight and a chance to learn your army before the real campaign begins.',
+  objective: 'Break the raiders: reduce them below 25%. Select your cohorts, move them forward and attack.',
+  timeLimit: 420, daysToPrepare: 0, deploy: { mode: 'line', cx: 800, cy: 880 },
+  terrain: [{ kind: 'hill', cx: 1220, cy: 700, rx: 170, ry: 90 }, { kind: 'forest', cx: 300, cy: 330, rx: 160, ry: 90 }],
+  enemy: [
+    { type: 'warband', men: 260, x: 650, y: 330, ai: { kind: 'rush', delay: 12 } },
+    { type: 'warband', men: 240, x: 940, y: 300, ai: { kind: 'rush', delay: 20 } },
+    { type: 'warband', men: 200, x: 330, y: 340, ai: { kind: 'ambush', trigger: 230, maxDelay: 90, quiet: true } },
+    { type: 'gaul_skirm', men: 90, x: 790, y: 390, ai: { kind: 'skirm' } },
+    { type: 'gaul_cav', men: 40, x: 1250, y: 260, ai: { kind: 'flank', delay: 40 } }
+  ],
+  reinforcements: [], objectives: [], rule: null,
+  rewards: { gold: 120, supplies: 60, recruits: 30, xpBase: 22, officerXp: 25 }, rewardMult: 1, unlock: []
+};

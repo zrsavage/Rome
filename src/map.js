@@ -1,5 +1,6 @@
 // Campaign map: real geography (Natural Earth coastlines, rivers, lakes; Mercator) with Roman-era places at true lat/lon.
-import { SCENARIOS, DIFFICULTY } from './data.js';
+import { SCENARIOS, DIFFICULTY, PROLOGUE } from './data.js';
+import { describe, picksNames } from './origins.js';
 import { totalMen } from './camp.js';
 import { MAP } from './mapdata.js';
 
@@ -94,7 +95,7 @@ export function renderMap(root, c, api) {
 
   const done = idx >= SCENARIOS.length;
   const army = c.cohorts.map(h => `<li>${esc(h.name)} <span class="muted">- ${h.men}/${h.maxMen}</span></li>`).join('');
-  const hrows = (c.history || []).slice(-6).reverse().map(h => { const s = SCENARIOS.find(x => x.id === h.id); return `<div><span style="color:${OUT[h.outcome]}">${h.outcome.toUpperCase()}</span> - ${esc(s.name)}</div>`; }).join('');
+  const hrows = (c.history || []).slice(-6).reverse().map(h => { const s = [PROLOGUE, ...SCENARIOS].find(x => x.id === h.id); return `<div><span style="color:${OUT[h.outcome]}">${h.outcome.toUpperCase()}</span> - ${esc(s ? s.name : h.id)}</div>`; }).join('');
 
   root.innerHTML = `<div class="camp mapscreen">
     <header><h2>The Road to Rome</h2><div class="res"><span>Denarii <b>${c.gold}</b></span><span>Supplies <b>${c.supplies}</b></span><span>Army <b>${totalMen(c)}</b></span><span>Day <b>${c.day}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
@@ -111,6 +112,7 @@ export function renderMap(root, c, api) {
           <p class="small muted">${esc(scn.objective)}</p>
           <div class="row"><button class="primary" id="m-camp">Make camp (${c.daysLeft} day${c.daysLeft === 1 ? '' : 's'})</button><button id="m-march">March at once</button></div>`}
         <div class="row" style="margin-top:8px"><button id="m-menu">Main menu</button>${(c.history || []).length ? '<button id="m-restore" title="Restore the snapshot saved before the last battle">Undo last battle</button>' : ''}</div></div>
+      <div class="card"><h3>${esc((c.player && c.player.name) || 'Your command')}</h3><div class="small muted">${esc(picksNames(c).join(' - ') || 'Veteran commander')}</div>${describe(c).lines.map(([a, b]) => `<div class="kvl"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}</div>
       <div class="card"><h3>Your army</h3><ul class="armylist">${army}</ul></div>
       <div class="card"><h3>Dispatches</h3><div class="log">${hrows || '<div>No battles fought yet.</div>'}</div></div>
     </div></div>`;

@@ -50,6 +50,7 @@ export class Tutorial {
     this.ui.on(this.listener);
     this.hook = (dt) => this.frame(dt);
     this.ui.frameHooks.push(this.hook);
+    $('tt-exit').style.display = '';
     $('tt-skip').onclick = () => this.next(true);
     $('tt-exit').onclick = () => this.h.onExit();
     $('tutorial').classList.remove('hidden');

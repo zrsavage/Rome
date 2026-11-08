@@ -2,9 +2,12 @@
 import { XP_LEVELS, SCENARIOS, WORLD } from './data.js';
 import { levelFor } from './sim.js';
 
+export const DEFAULT_MODS = { recovery: 1, supplyUse: 1, spoils: 1, forage: 1, levy: 1, morale: 0, xp: 1 };
+export const modsOf = (c) => ({ ...DEFAULT_MODS, ...(c.mods || {}) });
+
 export function newCampaign(difficulty = 'normal') {
   return {
-    version: 1, difficulty, scenario: 0, day: 1, daysLeft: SCENARIOS[0].daysToPrepare,
+    version: 2, difficulty, prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, daysLeft: SCENARIOS[0].daysToPrepare,
     gold: 300, supplies: 160, fort: 0, favour: 0, scouted: false, log: [], over: false,
     cohorts: [
       { id: 1, name: 'I Cohort',   type: 'legionary', men: 400, maxMen: 480, xp: 60, drill: 30, condition: 90, officerId: 1 },
@@ -56,7 +59,7 @@ export function applyResult(c, result, scn) {
   for (const r of result.rows) {
     const h = c.cohorts.find(x => x.id === r.cohortId);
     if (!h) continue;
-    h.men = r.endMen; h.xp += r.xpGain; h.condition = Math.max(35, h.condition - 20);
+    h.men = r.endMen; h.xp += Math.round(r.xpGain * modsOf(c).xp); h.condition = Math.max(35, h.condition - 20);
     if (r.officerId != null) {
       const o = c.officers.find(x => x.id === r.officerId);
       if (o) {
@@ -71,13 +74,14 @@ export function applyResult(c, result, scn) {
   // Provincial levies: every cohort regains a quarter of its missing men, and nothing ever falls below 35% (no soft-locks).
   for (const h of c.cohorts) {
     const before = h.men;
-    h.men = Math.min(h.maxMen, h.men + Math.round((h.maxMen - h.men) * 0.25));
+    h.men = Math.min(h.maxMen, h.men + Math.round((h.maxMen - h.men) * 0.25 * modsOf(c).levy));
     const floor = Math.ceil(h.maxMen * 0.35);
     if (h.men < floor) { notes.push(`${h.name} is reduced to a remnant; the governor sends replacements.`); h.men = floor; }
     if (h.men > before && before > 0) h.xp = Math.round(h.xp * (0.6 + 0.4 * before / h.men));
   }
   c.history = c.history || [];
   c.history.push({ id: scn.id, outcome: result.outcome, day: c.day });
+  if (scn.id === 'prologue') { if (result.outcome !== 'defeat') c.prologueDone = true; return notes; }
   if (result.outcome !== 'defeat') {
     for (const u of scn.unlock || []) {
       const id = Math.max(0, ...c.cohorts.map(h => h.id)) + 1;

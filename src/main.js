@@ -1,10 +1,11 @@
-import { SCENARIOS, DIFFICULTY, UNIT_TYPES } from './data.js';
-import { newCampaign, romeSpecs, applyResult } from './state.js';
+import { SCENARIOS, DIFFICULTY, UNIT_TYPES, PROLOGUE } from './data.js';
+import { romeSpecs, applyResult, modsOf } from './state.js';
+import { ORIGINS, RECOMMENDED, DEFAULT_NAME, buildCampaign, describe } from './origins.js';
 import { Camp, totalMen } from './camp.js';
 import { BattleUI } from './battleui.js';
 import { renderMap } from './map.js';
 import { artSrc, initArt } from './art.js';
-import { ask } from './ui.js';
+import { ask, inform } from './ui.js';
 import { Tutorial } from './tutorial.js';
 import { buildTutorial, buildPractice, PRACTICE_OPTIONS, PRACTICE_DEFAULTS } from './practice.js';
 
@@ -43,12 +44,12 @@ function refreshMenu() {
       d.querySelector('[data-a=del]').onclick = async () => { if (await ask(`Delete the campaign in slot ${n}? This cannot be undone.`, 'Delete', 'Keep')) { store.del(key(n)); store.del(preKey(n)); refreshMenu(); } };
     } else {
       d.innerHTML = `<div><b>Slot ${n}</b><small>Empty</small></div><button class="primary" data-a="new">New Campaign</button>`;
-      d.querySelector('[data-a=new]').onclick = () => { const c2 = newCampaign(diffSel.value); openCampaign(c2, n); save(); };
+      d.querySelector('[data-a=new]').onclick = () => showOrigins(n);
     }
     el.appendChild(d);
   }
 }
-function openCampaign(c, n) { campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; showMap(); }
+function openCampaign(c, n) { campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; if (c.prologueDone === false) showBrief(PROLOGUE); else showMap(); }
 function toMenu() { show('screen-menu'); refreshMenu(); $('tut-hint').classList.toggle('hidden', !!store.get(TUT_KEY)); }
 refreshMenu();
 initArt().then(() => { /* real art, if any, is picked up on the next render */ });
@@ -65,9 +66,10 @@ function showMap() {
 }
 
 // ----- briefing -----
-function showBrief() {
-  const c = campaign, scn = SCENARIOS[c.scenario];
+function showBrief(scnArg) {
+  const c = campaign, scn = scnArg || SCENARIOS[c.scenario];
   if (!scn) return showMap();
+  const opening = scn.id === 'prologue';
   const diff = DIFFICULTY[c.difficulty];
   const favMult = c.favour >= 2 ? 0.9 : c.favour <= -2 ? 1.1 : 1, scale = diff.enemyMult * favMult;
   const groups = {};
@@ -76,15 +78,16 @@ function showBrief() {
   const rnd = (n) => Math.max(0, Math.round(n / 50) * 50);
   const list = Object.entries(groups).map(([t, n]) => c.scouted ? `<li>${UNIT_TYPES[t].name}: <b>${Math.round(n)}</b> men</li>` : `<li>${UNIT_TYPES[t].name}: roughly <b>${rnd(n * 0.75)}-${rnd(n * 1.35)}</b></li>`).join('');
   const rome = totalMen(c);
-  $('screen-brief').innerHTML = `<div class="panel-page"><div class="muted">Act ${scn.act} - ${esc(scn.theater)}, ${esc(scn.year)} - Battle ${c.scenario + 1} of ${SCENARIOS.length}${scn.kind === 'named' ? ' - NAMED BATTLE' : ''}</div>
+  $('screen-brief').innerHTML = `<div class="panel-page"><div class="muted">${opening ? 'Opening battle' : `Act ${scn.act} - ${esc(scn.theater)}, ${esc(scn.year)} - Battle ${c.scenario + 1} of ${SCENARIOS.length}${scn.kind === 'named' ? ' - NAMED BATTLE' : ''}`}</div>
     <h2>${esc(scn.name)}</h2><img class="banner" alt="" src="${artSrc('scenario', scn.id, 800, 240, { scn })}"><p>${esc(scn.briefing)}</p>
     <div class="card"><h3>Objective</h3>${esc(scn.objective)}<br><span class="muted small">Time limit ${Math.round(scn.timeLimit / 60)} minutes. A well-ordered withdrawal (keeping at least ${Math.round((0.45 - 0.05 * c.fort) * 100)}% of your men; fortifications lower this) counts as a draw and earns partial spoils.${scn.rewardMult > 1.4 ? ' Historically a dark day for Rome: survival or victory pays handsomely.' : ''}</span></div>
     <div class="row" style="align-items:flex-start;margin-top:12px"><div class="card" style="flex:1"><h3>Your force (${rome} men)</h3><ul>${c.cohorts.map(h => `<li>${esc(h.name)} - ${h.men}</li>`).join('')}</ul></div>
     <div class="card" style="flex:1"><h3>Enemy${c.scouted ? ' (scouted)' : ' (estimated)'} ~${c.scouted ? Math.round(total) : '?'}</h3><ul>${list}</ul>${c.scouted ? '<div class="muted small">Scouts warn that reinforcements may arrive during the battle.</div>' : '<div class="muted small">Without scouts, expect surprises.</div>'}</div></div>
     <p class="muted small">Goodwill ${c.favour}. Fort ${c.fort}. Supplies ${c.supplies}${c.supplies < totalMen(c) / 60 * 2 ? ' - LOW, morale will suffer' : ''}.</p>
-    <div class="row"><button class="primary" id="go">Deploy</button><button id="back">Back to map</button></div></div>`;
+    ${opening ? '<p class="small" style="color:var(--gold)">After this fight you will see your army management screen, where you spend days between battles.</p>' : ''}
+    <div class="row"><button class="primary" id="go">Deploy</button>${opening ? '<button id="back">Main menu</button>' : '<button id="back">Back to map</button>'}</div></div>`;
   $('go').onclick = () => startBattle(scn);
-  $('back').onclick = () => showMap();
+  $('back').onclick = () => (opening ? toMenu() : showMap());
   show('screen-brief');
 }
 
@@ -92,14 +95,16 @@ function startBattle(scn) {
   const c = campaign;
   store.set(preKey(c.slot), c);
   show('screen-battle');
-  const low = c.supplies < totalMen(c) / 60 * 2;
-  battle.start(scn, romeSpecs(c, scn), { difficulty: c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low }, (res) => showResult(res, scn));
+  const low = c.supplies < totalMen(c) / 60 * 2, m = modsOf(c), opening = scn.id === 'prologue';
+  battle.start(scn, romeSpecs(c, scn), { difficulty: opening && (c.difficulty === 'hard' || c.difficulty === 'legendary') ? 'normal' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale }, (res) => showResult(res, scn));
+  if (opening) showOpeningTips();
 }
 
 // ----- result -----
 function showResult(res, scn) {
   battle.stop();
-  const c = campaign;
+  const c = campaign, opening = scn.id === 'prologue', sm = modsOf(c).spoils;
+  res.spoils = { gold: Math.round(res.spoils.gold * sm), supplies: Math.round(res.spoils.supplies * sm), recruits: Math.round(res.spoils.recruits * sm) };
   const notes = applyResult(c, res, scn);
   c.cohorts.forEach(h => { h.condition = Math.max(35, h.condition); });
   save();
@@ -112,14 +117,56 @@ function showResult(res, scn) {
     <p class="muted small">Enemy dead: about ${res.enemyDead} of ${res.enemyStart}. Wounded men who can march are counted in the 'after' column.</p></div>
     <div class="card" style="margin-top:12px"><h3>Spoils</h3>${o === 'defeat' ? 'None. The enemy keeps the field; you may try again.' : `+${s.gold} denarii, +${s.supplies} supplies, +${s.recruits} fresh recruits`}</div>
     ${notes.length ? `<div class="card" style="margin-top:12px"><h3>Dispatches</h3>${notes.map(n => `<div>${esc(n)}</div>`).join('')}</div>` : ''}
-    <div class="row" style="margin-top:16px"><button class="primary" id="cont">${o !== 'defeat' && !next ? 'Finish Act I' : 'Return to the map'}</button><button id="retry">Retry this battle (undo)</button></div></div>`;
-  $('cont').onclick = () => { camp.msgs = []; camp.note(`After the ${o}, the army makes camp.`); showMap(); };
-  $('retry').onclick = () => { const snap = store.get(preKey(c.slot)); if (snap) { campaign = snap; save(); } showMap(); };
+    <div class="row" style="margin-top:16px"><button class="primary" id="cont">${opening && o !== 'defeat' ? 'Continue to army management' : o !== 'defeat' && !next ? 'Finish Act I' : opening ? 'Try the opening battle again' : 'Return to the map'}</button><button id="retry">Retry this battle (undo)</button></div></div>`;
+  $('cont').onclick = () => { camp.msgs = []; if (opening && o === 'defeat') { const snap = store.get(preKey(c.slot)); if (snap) { campaign = snap; save(); } showBrief(PROLOGUE); return; } camp.note(`After the ${o}, the army makes camp.`); showMap(); if (opening && !c.introShown) { c.introShown = true; save(); showManagementIntro(); } };
+  $('retry').onclick = () => { const snap = store.get(preKey(c.slot)); if (snap) { campaign = snap; save(); } if (opening) showBrief(PROLOGUE); else showMap(); };
   show('screen-result');
 }
 
-// test hooks for automated checks
+// ----- opening battle helpers -----
+function showOpeningTips() {
+  const t = $('tutorial');
+  $('tt-step').textContent = 'Opening battle'; $('tt-title').textContent = 'Quick tips';
+  $('tt-text').innerHTML = 'Press <b>Q</b> to select every unit, then <b>right-click</b> ahead of them to advance. Right-click an enemy to attack it. <b>Space</b> pauses (orders still work). Keep your cohorts together, let your slingers shoot, and watch the blue morale bars. Press <b>?</b> for all controls.';
+  $('tt-prog').style.width = '0%'; $('tt-exit').style.display = 'none'; $('tt-skip').textContent = 'Got it';
+  $('tt-skip').onclick = () => t.classList.add('hidden');
+  t.classList.remove('hidden');
+}
+function showManagementIntro() {
+  inform('Army management', [
+    'This is your <b>campaign map</b>. Each battle is a place on the real map of Gaul; the glowing marker is your next fight.',
+    '<b>Make camp</b> to spend days before the battle: drill your cohorts, forage, fortify, recruit, or deal with local nobles. You only have a few days, so choose carefully.',
+    'Your <b>background</b> (shown on the map screen) affects how fast wounded men recover, how much your army eats, and how much plunder you win.',
+    'Winning or drawing a battle brings spoils, experience and new units. You can always <b>March at once</b> if you are ready.'
+  ], 'Begin the campaign');
+}
 
+// ----- Your Origins (character creation) -----
+function showOrigins(slot) {
+  const picks = { ...RECOMMENDED }; let name = DEFAULT_NAME, diff = diffSel.value;
+  const root = $('screen-origins');
+  const draw = () => {
+    const c = buildCampaign(picks, name, diff), d = describe(c);
+    root.innerHTML = `<div class="origins"><header><h2>Your Origins</h2><div class="muted">Three choices shape your starting position. Not sure? The highlighted picks are a gentle start for a first campaign. You can change nothing later, so read the summary on the right.</div></header>
+      <div class="col">
+        <div class="card"><div class="namerow"><label for="o-name">Your name</label><input id="o-name" maxlength="28" value="${esc(name)}"><label for="o-diff">Difficulty</label><select id="o-diff">${Object.entries(DIFFICULTY).map(([k, v]) => `<option value="${k}" ${k === diff ? 'selected' : ''}>${v.name}</option>`).join('')}</select></div><div class="muted small" style="margin-top:6px">${esc(DIFFICULTY[diff].desc)}</div></div>
+        ${Object.entries(ORIGINS).map(([k, g]) => `<div class="card"><h3>${esc(g.title)}</h3><div class="muted small">${esc(g.blurb)}</div><div class="ocards">${g.options.map(o => `<button class="ocard ${picks[k] === o.id ? 'sel' : ''}" data-k="${k}" data-id="${o.id}">${RECOMMENDED[k] === o.id ? '<span class="rec">Recommended</span>' : ''}<b>${esc(o.name)}</b><span class="t">${esc(o.text)}</span><ul>${o.fx.map(f => `<li>${esc(f)}</li>`).join('')}</ul></button>`).join('')}</div></div>`).join('')}
+      </div>
+      <div class="col"><div class="card"><h3>Your starting position</h3><div class="sumtiles">${d.numbers.map(([a, b]) => `<div><b>${esc(b)}</b><span>${esc(a)}</span></div>`).join('')}</div>${d.lines.map(([a, b]) => `<div class="kvl"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
+        <p class="muted small" style="margin-top:10px">Next you fight a short opening battle, then reach the army management screen.</p>
+        <div class="row" style="margin-top:8px"><button class="primary" id="o-go">Begin</button><button id="o-quick" title="Use the recommended picks">Quick start</button><button id="o-back">Back</button></div></div>
+        <div class="card"><h3>New to the game?</h3><div class="small muted">A two-minute tutorial teaches the controls on a practice field. You can do it first and come back.</div><div class="row" style="margin-top:8px"><button id="o-tut">Do the tutorial first</button></div></div></div></div>`;
+    root.querySelectorAll('.ocard').forEach(b => b.onclick = () => { picks[b.dataset.k] = b.dataset.id; draw(); });
+    root.querySelector('#o-name').oninput = (e) => { name = e.target.value; };
+    root.querySelector('#o-diff').onchange = (e) => { diff = e.target.value; draw(); };
+    const go = (p) => { const c = buildCampaign(p, name, diff); c.slot = slot; campaign = c; save(); store.set(preKey(slot), c); openCampaign(c, slot); };
+    root.querySelector('#o-go').onclick = () => go(picks);
+    root.querySelector('#o-quick').onclick = () => go(RECOMMENDED);
+    root.querySelector('#o-back').onclick = () => toMenu();
+    root.querySelector('#o-tut').onclick = () => startTutorial();
+  };
+  draw(); show('screen-origins');
+}
 
 
 // ===== tutorial =====

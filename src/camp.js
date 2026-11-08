@@ -1,7 +1,7 @@
 // Between-battle camp phase: spend limited days on training, foraging, fortifying, diplomacy, recruiting.
 import { LEVEL_NAMES, SCENARIOS, DIFFICULTY, UNIT_TYPES } from './data.js';
 import { levelFor } from './sim.js';
-import { officerById } from './state.js';
+import { officerById, modsOf } from './state.js';
 import { artSrc } from './art.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -20,7 +20,7 @@ export class Camp {
     const c = this.c;
     for (let i = 0; i < cost; i++) {
       c.daysLeft = Math.max(0, c.daysLeft - 1); c.day++;
-      const food = Math.ceil(totalMen(c) / 60);
+      const food = Math.ceil(totalMen(c) / 60 * modsOf(c).supplyUse);
       if (c.supplies >= food) c.supplies -= food;
       else { c.supplies = 0; c.cohorts.forEach(h => h.condition = Math.max(20, h.condition - 8)); this.note('The army goes hungry. Condition drops.', 'bad'); }
     }
@@ -49,7 +49,7 @@ export class Camp {
   forage(wide) {
     const c = this.c; if (!this.canAct()) return;
     const lg = bestOfficer(c, 'logistics');
-    const got = wide ? 70 + 12 * lg : 35 + 8 * lg;
+    const got = Math.round((wide ? 70 + 12 * lg : 35 + 8 * lg) * modsOf(c).forage);
     c.supplies += got; let extra = '';
     if (wide && Math.random() < 0.35 - 0.03 * lg) {
       const h = c.cohorts[Math.floor(Math.random() * c.cohorts.length)], lost = Math.max(2, Math.round(h.men * (0.03 + Math.random() * 0.05)));
@@ -134,7 +134,7 @@ export class Camp {
     const drillBtns = drillers.map(o => `<button class="act" data-a="drill" data-m="${o.id}" ${act && c.supplies >= 8 ? '' : 'disabled'}>Delegate to ${esc(o.name)}<small>Drill ${o.drill} - steady results</small></button>`).join('');
     this.root.innerHTML = `<div class="camp">
       <header><h2>Camp - ${esc(scn.theater)}, ${esc(scn.year)}</h2>
-        <div class="res"><span>Denarii <b>${c.gold}</b></span><span>Supplies <b>${c.supplies}</b> <span class="muted small">(-${Math.ceil(totalMen(c) / 60)}/day)</span></span>
+        <div class="res"><span>Denarii <b>${c.gold}</b></span><span>Supplies <b>${c.supplies}</b> <span class="muted small">(-${Math.ceil(totalMen(c) / 60 * modsOf(c).supplyUse)}/day)</span></span>
         <span>Fort <b>${c.fort}/3</b></span><span>Goodwill <b>${c.favour > 0 ? '+' : ''}${c.favour}</b></span><span>Days left <b>${c.daysLeft}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
       <div class="col">
         <div class="card"><h3>The Legion</h3><table><tr><th>Unit</th><th>Strength</th><th>Experience</th><th>Drill</th><th>Condition</th></tr>${rows}</table>

@@ -14,3 +14,13 @@ export function ask(message, okLabel = 'Confirm', cancelLabel = 'Cancel') {
     el.querySelector('#c-no').onclick = () => done(false);
   });
 }
+
+// One-button information dialog with a bullet list. Resolves when dismissed.
+export function inform(title, bullets, okLabel = 'Got it') {
+  return new Promise((resolve) => {
+    const el = document.getElementById('confirm');
+    el.classList.remove('hidden');
+    el.innerHTML = `<div class="box" style="text-align:left"><h3 style="color:var(--gold);margin:0 0 8px">${esc(title)}</h3><ul style="margin:0 0 14px;padding-left:20px;line-height:1.5">${bullets.map(b => `<li>${b}</li>`).join('')}</ul><div class="row" style="justify-content:center"><button class="primary" id="c-ok">${esc(okLabel)}</button></div></div>`;
+    el.querySelector('#c-ok').onclick = () => { el.classList.add('hidden'); el.innerHTML = ''; resolve(); };
+  });
+}

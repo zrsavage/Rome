@@ -30,6 +30,14 @@ python3 -m http.server 8080   # then open http://localhost:8080
   flashes, dust trails, destination ghosts with facing arrows, control groups, objective HUD.
 - Officers level up and can die (not on Tiro). Cohorts keep XP, drill and condition across the campaign.
 
+## Starting a campaign
+
+New Campaign opens **Your Origins**, a short character creation in the spirit of Ultimate General: pick your family, early career
+and approach (recommended picks are highlighted; a live summary shows starting denarii, supplies, soldiers, goodwill and
+modifiers for wounded recovery, replacements, food use, spoils, experience, foraging and morale). Then you fight a short
+**opening battle** (First Blood at the Border) and only afterwards reach the campaign map and army management, with a one-time
+explanation of what to do there. Defeat in the opening battle simply lets you try again.
+
 ## Learning the game
 
 - **Tutorial** (main menu): a guided practice battle with 12 steps that react to what you actually do: zoom and pan, select,
@@ -70,6 +78,7 @@ src/map.js       campaign map screen (real geography)
 src/mapdata.js   GENERATED coastlines, rivers, lakes (tools/gen_map.mjs)
 src/tutorial.js  guided tutorial
 src/practice.js  tutorial scenario and practice battle builder
+src/origins.js   character-creation choices, starting modifiers and their descriptions
 src/art.js       art loader with procedural placeholders
 src/main.js      screen flow, briefing, results, saves
 tools/simtest.mjs  headless balance harness: node tools/simtest.mjs [runs] [scenario|all] [difficulty|all]

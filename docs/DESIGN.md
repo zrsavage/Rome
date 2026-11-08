@@ -50,3 +50,8 @@ Historical-defeat scenarios use `rewardMult > 1` so a win or draw pays out a lot
 Battle readability (flank arcs, range rings, floating casualties, control groups, objectives), a headless balance harness,
 and gradual difficulty tiers. Still to borrow: tutorial/practice battle, seasons and supply pressure on the map, generals with
 traits, sound, a single-file build in `dist/`.
+
+## Start of a campaign (new)
+Origins (3 choices with tradeoffs) -> opening battle -> campaign map + army management. Modifiers live in `campaign.mods`
+(`recovery`, `levy`, `supplyUse`, `spoils`, `xp`, `forage`, `morale`) and are read by the sim (recovery, morale), camp (food, foraging)
+and `applyResult` (levies, XP) so new origins are one entry in `src/origins.js`.
