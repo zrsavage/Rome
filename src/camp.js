@@ -4,6 +4,8 @@ import { PERKS, perkById, LEVEL_TRAITS, UPGRADES, MAX_TIER, upgradeCost } from '
 import { levelFor } from './sim.js';
 import { officerById, modsOf, hasPerk, commandLimit, unlockedTypes } from './state.js';
 import { artSrc } from './art.js';
+import { inform } from './ui.js';
+import { BUILDINGS, sceneSvg, advice, unlockedBuildings } from './campscene.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pct = (v, m) => Math.max(0, Math.min(100, v / m * 100));
@@ -11,9 +13,17 @@ export const totalMen = (c) => c.cohorts.reduce((a, h) => a + h.men, 0);
 const bestOfficer = (c, trait) => Math.max(0, ...c.officers.filter(o => o.alive).map(o => o[trait]));
 
 export class Camp {
-  constructor(root, api) { this.root = root; this.api = api; this.sel = 1; this.c = null; this.msgs = []; this.tab = 'days'; }
+  constructor(root, api) { this.root = root; this.api = api; this.sel = 1; this.c = null; this.msgs = []; this.open = null;
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.open && this.root.classList.contains('active') && document.getElementById('modal').classList.contains('hidden') && document.getElementById('confirm').classList.contains('hidden')) { this.open = null; this.render(); } });
+  }
 
-  show(c) { this.c = c; if (!c.cohorts.find(h => h.id === this.sel)) this.sel = c.cohorts[0].id; this.render(); }
+  show(c) {
+    this.c = c; this.open = null; if (!c.cohorts.find(h => h.id === this.sel)) this.sel = c.cohorts[0].id;
+    this.render();
+    // Drip-fed buildings: introduce each new one once, in plain words.
+    const seen = c.seenBuildings = c.seenBuildings || [], fresh = unlockedBuildings(c).filter(b => !seen.includes(b.id));
+    if (fresh.length) { const b = fresh[0]; seen.push(b.id); this.api.save(); inform(`New in camp: the ${b.name}`, b.intro, 'Got it'); }
+  }
   note(msg, kind = '') { this.msgs.unshift({ msg, kind }); this.msgs = this.msgs.slice(0, 30); }
 
   // Spend a day: pay upkeep, advance clock, save.
@@ -148,92 +158,85 @@ export class Camp {
   }
 
   // ----- rendering -----
+  // ---------- rendering: the camp is a place; each building opens one small panel ----------
+  unitList(cols) {
+    const c = this.c, bar = (v, m, cls = '') => `<div class="bar ${cls}"><i style="width:${pct(v, m)}%"></i></div>`, XP = [0, 100, 250, 450, 700, 1000, 1300];
+    const head = { str: 'Strength', exp: 'Experience', drill: 'Drill', cond: 'Condition', gear: 'Equipment' };
+    return `<table><tr><th>Unit</th>${cols.map(k => `<th>${head[k]}</th>`).join('')}</tr>${c.cohorts.map(x => {
+      const o = officerById(c, x.officerId), lv = levelFor(x.xp), u = { armour: 0, weapon: 0, ...(x.upg || {}) };
+      const cell = { str: `<td>${x.men}/${x.maxMen}${bar(x.men, x.maxMen)}</td>`, exp: `<td>${LEVEL_NAMES[lv]}${bar(x.xp - XP[lv], (XP[lv + 1] || 1300) - XP[lv], 'x')}</td>`, drill: `<td>${Math.round(x.drill)}${bar(x.drill, 100, 'm')}</td>`, cond: `<td>${Math.round(x.condition)}%${bar(x.condition, 100)}</td>`, gear: `<td class="small">Armour ${u.armour}/3<br>Weapons ${u.weapon}/3</td>` };
+      return `<tr class="clickable ${x.id === this.sel ? 'sel' : ''}" data-id="${x.id}"><td><div class="cellflex"><img class="uicon" alt="" src="${artSrc('unit', x.type, 68, 68)}"><div>${esc(x.name)}<div class="muted small">${esc(UNIT_TYPES[x.type].name)}${o ? ' - ' + esc(o.name) : ''}</div></div></div></td>${cols.map(k => cell[k]).join('')}</tr>`;
+    }).join('')}</table>`;
+  }
+
+  panelBody(id) {
+    const c = this.c, h = this.selected(), act = this.canAct(), offs = c.officers.filter(o => o.alive), scn = SCENARIOS[Math.min(c.scenario, SCENARIOS.length - 1)];
+    const off = act ? '' : 'disabled', btn = (attrs, label, sub, ok = true) => `<button class="act" ${attrs} ${act && ok ? '' : 'disabled'}>${label}<small>${sub}</small></button>`;
+    const note = act ? '' : '<div class="small" style="color:#ee9a8e;margin-top:8px">No days remain. March to battle.</div>';
+    switch (id) {
+      case 'praetorium': return `<p><b>${esc(scn.name)}</b>${scn.kind === 'named' ? ' <span class="pill">Named battle</span>' : ''}<br><span class="small muted">${esc(scn.geo ? scn.geo.place : '')}</span></p><p class="muted">${esc(scn.briefing)}</p><p class="small">${esc(scn.objective)}</p>
+        <div class="row"><button class="primary" id="march2">March to battle</button><button id="tomap2">Back to the map</button></div>
+        <h4 class="sect">Your army</h4>${this.unitList(['str', 'cond'])}`;
+      case 'training': {
+        const drillers = offs.filter(o => o.drill >= 1), insOpts = '<option value="">- none -</option>' + drillers.map(o => `<option value="${o.id}" ${h.instructorId === o.id ? 'selected' : ''}>${esc(o.name)} (drill ${o.drill})</option>`).join('');
+        return `<p class="muted">1. Pick a cohort. 2. Choose how to drill it. Each drill uses a day and 8 supplies.</p>${this.unitList(['str', 'exp', 'drill'])}
+          <h4 class="sect">Drill ${esc(h.name)}</h4><div class="actions">${btn('data-a="drill" data-m="self"', 'Lead the drill yourself', 'A timing challenge. The best possible result.', c.supplies >= 8)}${drillers.map(o => btn(`data-a="drill" data-m="${o.id}"`, `Let ${esc(o.name)} do it`, `Drill ${o.drill}: a steady result.`, c.supplies >= 8)).join('')}</div>
+          <h4 class="sect">Instructor</h4><div class="row small"><span class="muted">Trains ${esc(h.name)} automatically every day for 2 supplies:</span><select id="instr">${insOpts}</select></div>${note}`;
+      }
+      case 'depot': { const food = Math.ceil(totalMen(c) / 60 * modsOf(c).supplyUse), lg = bestOfficer(c, 'logistics');
+        return `<div class="sumtiles"><div><b>${c.supplies}</b><span>Supplies</span></div><div><b>${food}</b><span>Eaten per day</span></div><div><b>${Math.floor(c.supplies / Math.max(1, food))}</b><span>Days of food</span></div></div>
+          <div class="actions">${btn('data-a="forage" data-m="0"', 'Forage (cautious)', `About +${Math.round((35 + 8 * lg) * modsOf(c).forage)} supplies. Safe.`)}${btn('data-a="forage" data-m="1"', 'Forage (wide)', `About +${Math.round((70 + 12 * lg) * modsOf(c).forage)} supplies. Risk of an ambush.`)}</div>${note}`; }
+      case 'barracks': { const room = commandLimit(c) - c.cohorts.length;
+        const raise = unlockedTypes(c).map(t => { const r = RAISE[t]; return btn(`data-a="raise" data-m="${t}"`, esc(UNIT_TYPES[t].name), `${r.men} men: ${r.gold} denarii, ${r.supplies} supplies (1 day)`, room > 0 && c.gold >= r.gold && c.supplies >= r.supplies); }).join('');
+        return `${this.unitList(['str', 'cond'])}<h4 class="sect">Care for the army</h4><div class="actions">${btn('data-a="rest"', 'Rest the army', '+20 condition for every unit (1 day).')}${btn('data-a="recruit"', `Recruit for ${esc(h.name)}`, '3 denarii per man, up to 40. New men dilute experience.', h.men < h.maxMen && c.gold >= 3)}${btn('data-a="fortify"', `Fortify the camp (${c.fort}/3)`, '10 supplies. Better morale and easier withdrawals.', c.supplies >= 10 && c.fort < 3)}</div>
+          <h4 class="sect">Raise a unit <span class="pill">${c.cohorts.length}/${commandLimit(c)} units</span></h4><div class="small muted">Your command limit grows with every battle you win or draw.${room <= 0 ? ' <b>You are at the limit.</b>' : ''}</div><div class="actions" style="margin-top:6px">${raise}</div>${note}`; }
+      case 'officers': { const pts = offs.reduce((a, o) => a + (o.points || 0), 0);
+        const rows = c.officers.map(o => `<tr class="${o.alive ? '' : 'dead'}"><td><div class="cellflex"><img class="portrait" alt="" src="${artSrc('officer', o.id, 80, 100, { title: o.name, rank: o.rank })}"><div>${esc(o.rank)} ${esc(o.name)}<div class="muted small">${esc(o.bio)}</div></div></div></td><td>L${o.level}</td><td class="small">Tac ${o.tactics}<br>Drl ${o.drill}</td><td class="small">Log ${o.logistics}<br>Dip ${o.diplomacy}</td></tr>`).join('');
+        const assign = `<option value="">- none -</option>` + offs.map(o => `<option value="${o.id}" ${h.officerId === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
+        const unitOpts = c.cohorts.map(x => `<option value="${x.id}" ${x.id === this.sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+        const skills = offs.map(o => { const p = o.points || 0, learned = (o.perks || []).map(i => `<span class="pill" title="${esc(perkById(i).text)}">${esc(perkById(i).name)}</span>`).join(' ');
+          const avail = PERKS.filter(k => !(o.perks || []).includes(k.id) && o[k.trait] >= k.req).map(k => `<button class="act" data-a="learn" data-m="${o.id}:${k.id}" ${p > 0 ? '' : 'disabled'}>${esc(k.name)}<small>${esc(k.text)}</small></button>`).join('');
+          return `<div class="skillrow"><div class="row"><b>${esc(o.name)}</b><span class="pill">${p} skill point${p === 1 ? '' : 's'}</span>${learned}</div>${p > 0 && avail ? `<div class="actions">${avail}</div>` : ''}</div>`; }).join('');
+        return `<table><tr><th>Officer</th><th>Lvl</th><th></th><th></th></tr>${rows}</table><h4 class="sect">Attach an officer to a unit</h4><div class="row small"><select id="assign-unit">${unitOpts}</select><span class="muted">is led by</span><select id="assign">${assign}</select></div>
+          <h4 class="sect">Skills ${pts ? `<span class="pill">${pts} to spend</span>` : ''}</h4><div class="small muted">Each level earns a skill point. Perks need a high enough rating. Attached officers help their own unit; others help the whole army.</div>${skills}`; }
+      case 'forge': { const cat = UNIT_TYPES[h.type].cat, names = UPGRADES[cat], lt = LEVEL_TRAITS[levelFor(h.xp)], u = { armour: 0, weapon: 0, ...(h.upg || {}) };
+        const gear = ['armour', 'weapon'].map(k => { const cost = upgradeCost(h, k), maxed = cost.tier >= MAX_TIER; return btn(`data-a="upgrade" data-m="${k}"`, `${esc(names[k])}: tier ${u[k]}/${MAX_TIER}`, maxed ? 'Fully equipped.' : `Upgrade for ${cost.gold} denarii and ${cost.supplies} supplies (1 day).`, !maxed && c.gold >= cost.gold && c.supplies >= cost.supplies); }).join('');
+        return `<p class="muted">Pick a unit, then upgrade its gear.</p>${this.unitList(['str', 'gear'])}<h4 class="sect">${esc(h.name)}</h4><div class="small muted" style="margin-bottom:6px">${lt ? `Veteran trait: <b style="color:var(--gold)">${esc(lt.name)}</b> - ${esc(lt.text)}` : 'No veteran trait yet. Reach Veteran (level 2) for the first.'}</div><div class="actions">${gear}</div>${note}`; }
+      case 'hospital': { const hosp = c.hospital || 0, cost = 120 * (hosp + 1);
+        return `<div class="sumtiles"><div><b>${hosp}/3</b><span>Hospital level</span></div><div><b>${Math.round(modsOf(c).recovery * 100)}%</b><span>Wounded recovery</span></div></div><p class="muted small">After each battle, a share of your casualties return to the ranks. Higher levels send more of them back.</p>
+          <div class="actions">${btn('data-a="hospital"', `Build level ${Math.min(3, hosp + 1)}`, hosp >= 3 ? 'Fully built.' : `${cost} denarii and 20 supplies (1 day): +12% recovery.`, hosp < 3 && c.gold >= cost && c.supplies >= 20)}</div>${note}`; }
+      case 'hall': { const lg = bestOfficer(c, 'diplomacy');
+        return `<div class="sumtiles"><div><b>${c.favour > 0 ? '+' : ''}${c.favour}</b><span>Goodwill</span></div><div><b>${c.gold}</b><span>Denarii</span></div></div><p class="muted small">Goodwill of +2 or more makes the next enemy 10% smaller; -2 or less makes it 10% larger.</p>
+          <div class="actions">${btn('data-a="tribute" data-m="1"', 'Demand tribute', `About +${Math.round((90 + 15 * lg) * (hasPerk(c, 'tribute') ? 1.3 : 1))} denarii. Goodwill -1.`)}${btn('data-a="tribute" data-m="0"', 'Gifts to the chieftains', '-60 denarii. Goodwill +1.', c.gold >= 60)}${btn('data-a="scout"', c.scouted ? 'Enemy scouted' : 'Send scouts', 'Reveal the enemy forces for the briefing.', !c.scouted)}</div>${note}`; }
+      default: return '';
+    }
+  }
+
   render() {
     const c = this.c, scn = SCENARIOS[Math.min(c.scenario, SCENARIOS.length - 1)], diff = DIFFICULTY[c.difficulty];
-    const h = this.selected(), offs = c.officers.filter(o => o.alive);
-    const drillers = offs.filter(o => o.drill >= 1);
-    const act = this.canAct();
-    const bar = (v, m, cls = '') => `<div class="bar ${cls}"><i style="width:${pct(v, m)}%"></i></div>`;
-    const rows = c.cohorts.map(x => {
-      const o = officerById(c, x.officerId), lv = levelFor(x.xp);
-      return `<tr class="clickable ${x.id === this.sel ? 'sel' : ''}" data-id="${x.id}">
-        <td><div class="cellflex"><img class="uicon" alt="" src="${artSrc('unit', x.type, 68, 68)}"><div>${esc(x.name)}<div class="muted small">${esc(UNIT_TYPES[x.type].name)}${o ? ' - ' + esc(o.name) : ''}</div></div></div></td>
-        <td>${x.men}/${x.maxMen}${bar(x.men, x.maxMen)}</td>
-        <td>${LEVEL_NAMES[lv]}${bar(x.xp - [0, 100, 250, 450, 700, 1000][lv], ([0, 100, 250, 450, 700, 1000, 1300][lv + 1] || 1300) - [0, 100, 250, 450, 700, 1000][lv], 'x')}</td>
-        <td>${Math.round(x.drill)}${bar(x.drill, 100, 'm')}</td><td>${Math.round(x.condition)}%${bar(x.condition, 100)}</td></tr>`;
-    }).join('');
-    const offRows = c.officers.map(o => `<tr class="${o.alive ? '' : 'dead'}"><td><div class="cellflex"><img class="portrait" alt="" src="${artSrc('officer', o.id, 80, 100, { title: o.name, rank: o.rank })}"><div>${esc(o.rank)} ${esc(o.name)}<div class="muted small">${esc(o.bio)}</div></div></div></td>
-      <td>L${o.level}</td><td class="small">Tac ${o.tactics}<br>Drl ${o.drill}</td><td class="small">Log ${o.logistics}<br>Dip ${o.diplomacy}</td></tr>`).join('');
-    const assignOpts = `<option value="">- none -</option>` + offs.map(o => `<option value="${o.id}" ${h.officerId === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
-    const drillBtns = drillers.map(o => `<button class="act" data-a="drill" data-m="${o.id}" ${act && c.supplies >= 8 ? '' : 'disabled'}>Delegate to ${esc(o.name)}<small>Drill ${o.drill} - steady results</small></button>`).join('');
-    // --- management cards ---
-    const cat = UNIT_TYPES[h.type].cat, gnames = UPGRADES[cat], lv = levelFor(h.xp), lt = LEVEL_TRAITS[lv];
-    const upg = { armour: 0, weapon: 0, ...(h.upg || {}) };
-    const gearBtns = ['armour', 'weapon'].map(k => { const cost = upgradeCost(h, k), maxed = cost.tier >= MAX_TIER; return `<button class="act" data-a="upgrade" data-m="${k}" ${!maxed && act && c.gold >= cost.gold && c.supplies >= cost.supplies ? '' : 'disabled'}>${esc(gnames[k])}: tier ${upg[k]}/${MAX_TIER}<small>${maxed ? 'Fully equipped' : `Upgrade for ${cost.gold} denarii, ${cost.supplies} supplies (1 day)`}</small></button>`; }).join('');
-    const insOpts = '<option value="">- none -</option>' + offs.filter(o => o.drill >= 1).map(o => `<option value="${o.id}" ${h.instructorId === o.id ? 'selected' : ''}>${esc(o.name)} (drill ${o.drill})</option>`).join('');
-    const detail = `<div class="detail"><h4>${esc(h.name)}</h4>
-      <div class="row small"><span class="muted">Instructor:</span><select id="instr">${insOpts}</select><span class="muted">trains this unit every day for 2 supplies</span></div>
-      <div class="small muted" style="margin:4px 0">${lt ? `Veteran trait: <b style="color:var(--gold)">${esc(lt.name)}</b> - ${esc(lt.text)}` : 'No veteran trait yet. Reach Veteran (level 2) for the first.'}</div>
-      <div class="actions">${gearBtns}</div></div>`;
-    const skills = offs.map(o => {
-      const pts = o.points || 0, learned = (o.perks || []).map(id => `<span class="pill" title="${esc(perkById(id).text)}">${esc(perkById(id).name)}</span>`).join(' ');
-      const avail = PERKS.filter(p => !(o.perks || []).includes(p.id) && o[p.trait] >= p.req).map(p => `<button class="act" data-a="learn" data-m="${o.id}:${p.id}" ${pts > 0 ? '' : 'disabled'}>${esc(p.name)}<small>${esc(p.text)}</small></button>`).join('');
-      const locked = PERKS.filter(p => !(o.perks || []).includes(p.id) && o[p.trait] < p.req).length;
-      return `<div class="skillrow"><div class="row"><b>${esc(o.name)}</b><span class="pill">${pts} skill point${pts === 1 ? '' : 's'}</span>${learned}</div>${pts > 0 && avail ? `<div class="actions">${avail}</div>` : ''}${locked ? `<div class="small muted">${locked} more skill${locked === 1 ? '' : 's'} need higher ${'ratings'}.</div>` : ''}</div>`;
-    }).join('');
-    const room = commandLimit(c) - c.cohorts.length;
-    const raiseBtns = unlockedTypes(c).map(t => { const r = RAISE[t]; return `<button class="act" data-a="raise" data-m="${t}" ${act && room > 0 && c.gold >= r.gold && c.supplies >= r.supplies ? '' : 'disabled'}>${esc(UNIT_TYPES[t].name)}<small>${r.men} men - ${r.gold} denarii, ${r.supplies} supplies (1 day)</small></button>`; }).join('');
-    const hosp = c.hospital || 0, hcost = 120 * (hosp + 1);
-    const pts = offs.reduce((a, o) => a + (o.points || 0), 0);
-    const tabs = [['days', `Orders (${c.daysLeft} day${c.daysLeft === 1 ? '' : 's'})`], ['legion', 'Legion and equipment'], ['officers', `Officers${pts ? ` (${pts} skill point${pts === 1 ? '' : 's'})` : ''}`], ['raise', `Raise units (${c.cohorts.length}/${commandLimit(c)})`]];
-    this.root.innerHTML = `<div class="camp" data-tab="${this.tab}">
-      <header><h2>Camp - ${esc(scn.theater)}, ${esc(scn.year)}</h2>
-        <div class="res"><span>Denarii <b>${c.gold}</b></span><span>Supplies <b>${c.supplies}</b> <span class="muted small">(-${Math.ceil(totalMen(c) / 60 * modsOf(c).supplyUse)}/day)</span></span>
-        <span>Fort <b>${c.fort}/3</b></span><span>Goodwill <b>${c.favour > 0 ? '+' : ''}${c.favour}</b></span><span>Days left <b>${c.daysLeft}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
-      <div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${this.tab === k ? 'on' : ''}" data-tab-btn="${k}">${esc(l)}</button>`).join('')}<span style="flex:1"></span><button id="march-top" class="primary">March to battle</button><button id="map-top">Map</button></div>
-      <div class="col">
-        <div class="card" data-tab="legion"><h3>The Legion</h3><table><tr><th>Unit</th><th>Strength</th><th>Experience</th><th>Drill</th><th>Condition</th></tr>${rows}</table>
-          <div class="row" style="margin-top:8px"><span class="muted small">Officer for ${esc(h.name)}:</span><select id="assign">${assignOpts}</select></div>${detail}</div>
-        <div class="card" data-tab="raise"><h3>Raise a unit <span class="pill">${c.cohorts.length}/${commandLimit(c)} units</span></h3><div class="small muted">Your command limit grows with every battle you win or draw.${room <= 0 ? ' <b>You are at the limit.</b>' : ''}</div><div class="actions" style="margin-top:8px">${raiseBtns}</div></div>
-        <div class="card" data-tab="officers"><h3>Officers</h3><table><tr><th>Name</th><th>Lvl</th><th></th><th></th></tr>${offRows}</table></div>
-        <div class="card" data-tab="officers"><h3>Officer skills</h3><div class="small muted">Officers earn a skill point each level. Perks need a high enough rating in their trait. Attached officers help their unit in battle; others help the whole army.</div>${skills}</div>
-      </div>
-      <div class="col">
-        <div class="card" data-tab="days"><h3>Orders of the day - ${c.daysLeft} day${c.daysLeft === 1 ? '' : 's'} before the enemy moves</h3>
-          <div class="actions">
-            <div class="grp">Training</div>
-            <button class="act" data-a="drill" data-m="self" ${act && c.supplies >= 8 ? '' : 'disabled'}>Drill ${esc(h.name)} yourself<small>Take part: a timing challenge. Best possible results.</small></button>
-            ${drillBtns}
-            <div class="grp">Supplies and camp</div>
-            <button class="act" data-a="forage" data-m="0" ${act ? '' : 'disabled'}>Forage (cautious)<small>+~${35 + 8 * bestOfficer(c, 'logistics')} supplies, safe</small></button>
-            <button class="act" data-a="forage" data-m="1" ${act ? '' : 'disabled'}>Forage (wide)<small>+~${70 + 12 * bestOfficer(c, 'logistics')} supplies, risk of ambush</small></button>
-            <button class="act" data-a="fortify" ${act && c.supplies >= 10 && c.fort < 3 ? '' : 'disabled'}>Fortify camp<small>10 supplies. Better morale and orderly retreats.</small></button>
-            <button class="act" data-a="rest" ${act ? '' : 'disabled'}>Rest the army<small>+20 condition for every unit</small></button>
-            <div class="grp">Diplomacy</div>
-            <button class="act" data-a="tribute" data-m="1" ${act ? '' : 'disabled'}>Demand tribute<small>+~${90 + 15 * bestOfficer(c, 'diplomacy')} denarii, goodwill -1</small></button>
-            <button class="act" data-a="tribute" data-m="0" ${act && c.gold >= 60 ? '' : 'disabled'}>Gifts to chieftains<small>-60 denarii, goodwill +1</small></button>
-            <div class="grp">Manpower and care</div>
-            <button class="act" data-a="recruit" ${act && h.men < h.maxMen && c.gold >= 3 ? '' : 'disabled'}>Recruit for ${esc(h.name)}<small>3 denarii per man, up to 40. Dilutes experience.</small></button>
-            <button class="act" data-a="hospital" ${act && hosp < 3 && c.gold >= hcost && c.supplies >= 20 ? '' : 'disabled'}>Field hospital (level ${hosp}/3)<small>${hosp >= 3 ? 'Fully built' : `${hcost} denarii, 20 supplies: wounded recover +12% per level`}</small></button>
-            <div class="grp">Intelligence</div>
-            <button class="act" data-a="scout" ${act && !c.scouted ? '' : 'disabled'}>${c.scouted ? 'Enemy scouted' : 'Send scouts'}<small>Reveal exact enemy forces</small></button>
-          </div></div>
-        <div class="card" data-tab="days"><h3>Next battle</h3><p><b>${esc(scn.name)}</b><br><span class="muted">${esc(scn.objective)}</span></p>
-          <div class="row"><button class="primary" id="march">March to battle</button><button id="tomap">Back to map</button></div></div>
-        <div class="card" data-tab="days"><h3>Dispatches</h3><div class="log">${this.msgs.map(m => `<div class="${m.kind}">${esc(m.msg)}</div>`).join('') || '<div>Choose how to spend your days.</div>'}</div></div>
-      </div></div>`;
-    this.root.querySelectorAll('[data-tab-btn]').forEach(b => b.onclick = () => { this.tab = b.dataset.tabBtn; this.render(); });
-    this.root.querySelectorAll('tr.clickable').forEach(tr => tr.onclick = () => { this.sel = +tr.dataset.id; this.render(); });
-    this.root.querySelector('#instr').onchange = (e) => this.setInstructor(e.target.value ? +e.target.value : null);
-    this.root.querySelector('#assign').onchange = (e) => this.assign(e.target.value ? +e.target.value : null);
-    this.root.querySelectorAll('.act').forEach(b => b.onclick = () => {
+    const visited = c.visitedBuildings = c.visitedBuildings || [], adv = advice(c, visited);
+    const meta = this.open === 'praetorium' ? { name: 'Command Tent', sub: 'Your next battle and the march' } : BUILDINGS.find(b => b.id === this.open);
+    const food = Math.ceil(totalMen(c) / 60 * modsOf(c).supplyUse);
+    const res = `<span>Denarii <b>${c.gold}</b></span><span>Supplies <b>${c.supplies}</b> <span class="muted small">(-${food}/day)</span></span><span>Days left <b>${c.daysLeft}</b></span>`;
+    this.root.innerHTML = `<div class="camp2"><header><h2>Camp - ${esc(scn.theater)}, ${esc(scn.year)}</h2><div class="res">${res}<span>Fort <b>${c.fort}/3</b></span><span>Goodwill <b>${c.favour > 0 ? '+' : ''}${c.favour}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
+      <div class="advice">${adv.text}</div>
+      <div class="scenewrap">${sceneSvg(c, { visited, focus: adv.focus })}</div>
+      <div class="campbar"><div class="muted small">${unlockedBuildings(c).length} of ${BUILDINGS.length} buildings built. Win or draw battles to build more.</div><div class="row"><button class="primary" id="march">March to battle</button><button id="tomap">Back to map</button></div></div>
+      ${this.open && meta ? `<div class="overlay" id="ov"><div class="panel" role="dialog" aria-label="${esc(meta.name)}"><div class="phead"><div><h2>${esc(meta.name)}</h2><div class="muted small">${esc(meta.sub)}</div></div><div class="pres">${res}</div><button id="p-close">Back to camp</button></div><div class="pbody">${this.panelBody(this.open)}</div>${this.msgs.length ? `<div class="plog">${this.msgs.slice(0, 3).map(m => `<div class="${m.kind}">${esc(m.msg)}</div>`).join('')}</div>` : ''}</div></div>` : ''}</div>`;
+    const R = this.root, q = (s) => R.querySelector(s);
+    R.querySelectorAll('.bld').forEach(g => { const open = () => { this.open = g.dataset.b; if (!visited.includes(this.open) && this.open !== 'praetorium') { visited.push(this.open); this.api.save(); } this.render(); }; g.onclick = open; g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }; });
+    if (q('#ov')) { q('#ov').onclick = (e) => { if (e.target.id === 'ov') { this.open = null; this.render(); } }; q('#p-close').onclick = () => { this.open = null; this.render(); }; }
+    R.querySelectorAll('tr.clickable').forEach(tr => tr.onclick = () => { this.sel = +tr.dataset.id; this.render(); });
+    if (q('#instr')) q('#instr').onchange = (e) => this.setInstructor(e.target.value ? +e.target.value : null);
+    if (q('#assign')) q('#assign').onchange = (e) => this.assign(e.target.value ? +e.target.value : null);
+    if (q('#assign-unit')) q('#assign-unit').onchange = (e) => { this.sel = +e.target.value; this.render(); };
+    R.querySelectorAll('.act').forEach(b => b.onclick = () => {
       const a = b.dataset.a, m = b.dataset.m;
       if (a === 'drill') this.drill(m); else if (a === 'forage') this.forage(m === '1'); else if (a === 'learn') this.learn(m); else if (a === 'upgrade') this.upgrade(m); else if (a === 'raise') this.raise(m);
       else if (a === 'tribute') this.tribute(m === '1'); else this[a]();
     });
-    this.root.querySelector('#march').onclick = () => this.api.march();
-    this.root.querySelector('#march-top').onclick = () => this.api.march();
-    this.root.querySelector('#map-top').onclick = () => this.api.map();
-    this.root.querySelector('#tomap').onclick = () => this.api.map();
+    q('#march').onclick = () => this.api.march(); q('#tomap').onclick = () => this.api.map();
+    if (q('#march2')) q('#march2').onclick = () => this.api.march(); if (q('#tomap2')) q('#tomap2').onclick = () => this.api.map();
+    const f = adv.focus && !this.open ? R.querySelector(`.bld[data-b="${adv.focus}"]`) : null; if (f) f.focus({ preventScroll: true });
   }
 }

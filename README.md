@@ -60,7 +60,7 @@ shows on the unit card (`- hold`), on the field (`H` after the count) and in the
 
 ## Starting a campaign
 
-The flow is **one question per screen** with a progress indicator, a Back button, and a live summary of your starting position. The camp is split into tabs (Orders, Legion and equipment, Officers, Raise units) so only one area is on screen at a time.
+The flow is **one question per screen** with a progress indicator, a Back button, and a live summary of your starting position. The camp is a drawn Roman fort: each building is one activity and opens one small panel. You start with a single building (the Training Ground, pulsing as the place to begin); every battle won or drawn builds the next (Supply Depot, Barracks, Officers' Tent, Armourer, Field Hospital, Chieftains' Hall). Unbuilt plots show as faint question marks, and each new building is introduced once in plain words.
 
 New Campaign opens **Your Origins**, a short character creation in the spirit of Ultimate General: pick your family, early career
 and approach (recommended picks are highlighted; a live summary shows starting denarii, supplies, soldiers, goodwill and

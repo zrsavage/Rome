@@ -134,7 +134,7 @@ function stopCoach() { if (coach) { coach.stop(); coach = null; } }
 function showManagementIntro() {
   inform('Army management', [
     'This is your <b>campaign map</b>. Each battle is a place on the real map of Gaul; the glowing marker is your next fight.',
-    '<b>Make camp</b> to spend days before the battle: drill your cohorts, forage, fortify, recruit, or deal with local nobles. You only have a few days, so choose carefully.',
+    '<b>Make camp</b> to spend your few days before the battle. Your camp is a drawn fort: each building is one activity. You start with one building and a new one is built after every battle you win or draw.',
     'Your <b>background</b> (shown on the map screen) affects how fast wounded men recover, how much your army eats, and how much plunder you win.',
     'Winning or drawing a battle brings spoils, experience and new units. You can always <b>March at once</b> if you are ready.'
   ], 'Begin the campaign');
