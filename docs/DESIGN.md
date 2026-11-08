@@ -37,7 +37,7 @@ Historical-defeat scenarios use `rewardMult > 1` so a win or draw pays out a lot
 3. Unit roster expansion (hastati/principes/triarii, auxiliaries, archers, onagers/scorpions), unit upgrades/tech.
 4. Battle features: reinforcements, fortifications/siege, weather/time of day, orders queue, better pathing.
 5. Art pass (AI-generated sprites/portraits/map art - check Hugging Face periodically), UI polish.
-6. Audio, tutorial, full difficulty/balance pass, Acts II-V.
+6. Audio, full difficulty/balance pass, Acts II-V.
 
 ## Known limits / TODO
 - Balance is first-pass; a headless harness (`npm run simtest`) exists. Aggressive play with cavalry is currently
@@ -48,10 +48,13 @@ Historical-defeat scenarios use `rewardMult > 1` so a win or draw pays out a lot
 
 ## Lessons taken from NapWorld
 Battle readability (flank arcs, range rings, floating casualties, control groups, objectives), a headless balance harness,
-and gradual difficulty tiers. Still to borrow: tutorial/practice battle, seasons and supply pressure on the map, generals with
+and gradual difficulty tiers. Still to borrow: seasons and supply pressure on the map, generals with
 traits, sound, a single-file build in `dist/`.
 
 ## Start of a campaign (new)
 Origins (3 choices with tradeoffs) -> opening battle -> campaign map + army management. Modifiers live in `campaign.mods`
 (`recovery`, `levy`, `supplyUse`, `spoils`, `xp`, `forage`, `morale`) and are read by the sim (recovery, morale), camp (food, foraging)
 and `applyResult` (levies, XP) so new origins are one entry in `src/origins.js`.
+
+## Teaching the game
+No tutorial mode. The opening battle (First Blood at the Border) is a small, very winnable fight (30/30 wins even when idle) with contextual hints from `src/coach.js` that fire when relevant: advancing, enemy approaching, flanking arcs, morale, fatigue, waves, finishing. Each appears once and fades.

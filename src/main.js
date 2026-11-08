@@ -6,13 +6,13 @@ import { BattleUI } from './battleui.js';
 import { renderMap } from './map.js';
 import { artSrc, initArt } from './art.js';
 import { ask, inform } from './ui.js';
-import { Tutorial } from './tutorial.js';
+import { Coach } from './coach.js';
 import { rewardOptions } from './rewards.js';
-import { buildTutorial, buildPractice, PRACTICE_OPTIONS, PRACTICE_DEFAULTS } from './practice.js';
+import { buildPractice, PRACTICE_OPTIONS, PRACTICE_DEFAULTS } from './practice.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const TUT_KEY = 'legio_tutorial_done', PRAC_KEY = 'legio_practice_v1';
+const PRAC_KEY = 'legio_practice_v1';
 const SLOTS = 3, key = (n) => `legio_slot_${n}_v2`, preKey = (n) => `legio_pre_${n}_v2`;
 let campaign = null;
 
@@ -51,7 +51,7 @@ function refreshMenu() {
   }
 }
 function openCampaign(c, n) { campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; if (c.prologueDone === false) showBrief(PROLOGUE); else showMap(); }
-function toMenu() { show('screen-menu'); refreshMenu(); $('tut-hint').classList.toggle('hidden', !!store.get(TUT_KEY)); }
+function toMenu() { show('screen-menu'); refreshMenu(); }
 refreshMenu();
 initArt().then(() => { /* real art, if any, is picked up on the next render */ });
 
@@ -97,13 +97,13 @@ function startBattle(scn) {
   store.set(preKey(c.slot), c);
   show('screen-battle');
   const low = c.supplies < totalMen(c) / 60 * 2, m = modsOf(c), opening = scn.id === 'prologue';
-  battle.start(scn, romeSpecs(c, scn), { difficulty: opening && (c.difficulty === 'hard' || c.difficulty === 'legendary') ? 'normal' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale }, (res) => showResult(res, scn));
-  if (opening) showOpeningTips();
+  battle.start(scn, romeSpecs(c, scn), { difficulty: opening ? 'easy' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale }, (res) => showResult(res, scn));
+  if (opening) startCoach(); else stopCoach();
 }
 
 // ----- result -----
 function showResult(res, scn) {
-  battle.stop();
+  stopCoach(); battle.stop();
   const c = campaign, opening = scn.id === 'prologue', sm = modsOf(c).spoils;
   res.spoils = { gold: Math.round(res.spoils.gold * sm), supplies: Math.round(res.spoils.supplies * sm), recruits: Math.round(res.spoils.recruits * sm) };
   const notes = applyResult(c, res, scn);
@@ -130,14 +130,9 @@ function showResult(res, scn) {
 }
 
 // ----- opening battle helpers -----
-function showOpeningTips() {
-  const t = $('tutorial');
-  $('tt-step').textContent = 'Opening battle'; $('tt-title').textContent = 'Quick tips';
-  $('tt-text').innerHTML = 'Press <b>Q</b> to select every unit, then <b>right-click</b> ahead of them to advance. Right-click an enemy to attack it. <b>Space</b> pauses (orders still work). Keep your cohorts together, let your slingers shoot, and watch the blue morale bars. Press <b>?</b> for all controls.';
-  $('tt-prog').style.width = '0%'; $('tt-exit').style.display = 'none'; $('tt-skip').textContent = 'Got it';
-  $('tt-skip').onclick = () => t.classList.add('hidden');
-  t.classList.remove('hidden');
-}
+let coach = null;
+function startCoach() { stopCoach(); coach = new Coach(battle); coach.start(); }
+function stopCoach() { if (coach) { coach.stop(); coach = null; } }
 function showManagementIntro() {
   inform('Army management', [
     'This is your <b>campaign map</b>. Each battle is a place on the real map of Gaul; the glowing marker is your next fight.',
@@ -162,7 +157,7 @@ function showOrigins(slot) {
       main = `<div class="card"><p class="q">Who are you?</p><p class="muted">You are a Roman officer taking command of a legion on the edge of the Province. You will answer three short questions about your past. Each one changes how your army starts.</p>
         <div class="namerow" style="margin-top:12px"><label for="o-name">Your name</label><input id="o-name" maxlength="28" value="${esc(name)}"></div>
         <div class="namerow" style="margin-top:10px"><label for="o-diff">Difficulty</label><select id="o-diff">${Object.entries(DIFFICULTY).map(([k, v]) => `<option value="${k}" ${k === diff ? 'selected' : ''}>${v.name}</option>`).join('')}</select></div><div class="muted small" style="margin-top:6px">${esc(DIFFICULTY[diff].desc)} Miles is the intended experience.</div></div>
-        <div class="card"><h3>New to the game?</h3><div class="small muted">A two-minute tutorial teaches the controls on a practice field.</div><div class="row" style="margin-top:8px"><button id="o-tut">Do the tutorial first</button><button id="o-quick" title="Use the recommended answers and skip the questions">Skip the questions (quick start)</button></div></div>`;
+        <div class="card"><p class="muted small">No tutorial needed: your first battle is a small, gentle fight that teaches the basics as you play.</p><div class="row"><button id="o-quick" title="Use the recommended answers and skip the questions">Skip the questions (quick start)</button></div></div>`;
     } else if (step <= keys.length) {
       const k = keys[step - 1], g = ORIGINS[k];
       main = `<div class="card"><p class="q">${esc(g.title)}</p><div class="muted small">${esc(g.blurb)}</div><div class="ocards" style="margin-top:10px">${g.options.map(o => `<button class="ocard ${picks[k] === o.id ? 'sel' : ''}" data-k="${k}" data-id="${o.id}">${RECOMMENDED[k] === o.id ? '<span class="rec">Recommended</span>' : ''}<b>${esc(o.name)}</b><span class="t">${esc(o.text)}</span><ul>${o.fx.map(f => `<li>${esc(f)}</li>`).join('')}</ul></button>`).join('')}</div></div>`;
@@ -180,34 +175,12 @@ function showOrigins(slot) {
     const nm = root.querySelector('#o-name'); if (nm) nm.oninput = (e) => { name = e.target.value; };
     const df = root.querySelector('#o-diff'); if (df) df.onchange = (e) => { diff = e.target.value; draw(); };
     const q = root.querySelector('#o-quick'); if (q) q.onclick = () => go(RECOMMENDED);
-    const t = root.querySelector('#o-tut'); if (t) t.onclick = () => startTutorial();
     root.querySelector('#o-back').onclick = () => { if (step === 0) toMenu(); else { step--; draw(); } };
     root.querySelector('#o-next').onclick = () => { if (last) go(picks); else { step++; draw(); } };
   };
   draw(); show('screen-origins');
 }
 
-
-// ===== tutorial =====
-let tutorial = null;
-function startTutorial() {
-  const { scn, campaign: c } = buildTutorial();
-  show('screen-battle');
-  tutorial = new Tutorial(battle, { onExit: () => { stopTutorial(); battle.stop(); toMenu(); } });
-  battle.start(scn, romeSpecs(c, scn), { difficulty: 'easy', seed: 7 }, (res) => tutorialDone(res));
-  tutorial.start();
-}
-function stopTutorial() { if (tutorial) { tutorial.stop(); tutorial = null; } }
-function tutorialDone(res) {
-  stopTutorial(); battle.stop(); store.set(TUT_KEY, true);
-  const o = res.outcome;
-  $('screen-result').innerHTML = `<div class="panel-page"><img class="banner" alt="" src="${artSrc('outcome', o, 800, 200)}"><div class="big ${o}">${o === 'defeat' ? 'TRY AGAIN' : 'WELL FOUGHT'}</div>
-    <p>${o === 'defeat' ? 'Your line broke in the training ground. Hold the line, use your slingers and hit the flanks, then try again.' : 'You have the basics: orders, battle lines, pause and plan, formations, flanking and morale. Out in Gaul the Gauls will not wait for you.'}</p>
-    <div class="row" style="margin-top:16px"><button class="primary" id="t-menu">Start a campaign</button><button id="t-prac">Practice battle</button><button id="t-again">Replay tutorial</button></div></div>`;
-  $('t-menu').onclick = () => toMenu(); $('t-prac').onclick = () => showPractice(); $('t-again').onclick = () => startTutorial();
-  show('screen-result');
-}
-$('btn-tutorial').onclick = () => startTutorial();
 
 // ===== practice battle =====
 function showPractice() {
@@ -237,6 +210,5 @@ function practiceResult(res, v) {
   show('screen-result');
 }
 $('btn-practice').onclick = () => showPractice();
-$('tut-hint').classList.toggle('hidden', !!store.get(TUT_KEY));
 
-window.__legio = { get campaign() { return campaign; }, battle, show, store, get tutorial() { return tutorial; } };
+window.__legio = { get campaign() { return campaign; }, battle, show, store, get coach() { return coach; } };

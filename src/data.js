@@ -260,18 +260,19 @@ export const SCENARIOS = [
 export const PROLOGUE = {
   id: 'prologue', act: 'I', theater: 'Gaul', year: '58 BC', name: 'First Blood at the Border', kind: 'skirmish',
   geo: { lat: 45.52, lon: 4.87, place: 'Vienna (Vienne) on the Rhone', note: 'Border of the Province, Allobroges country' },
-  briefing: 'You have taken command of a legion on the edge of the Province. A raiding band has crossed the Rhone and is plundering farms within sight of your camp. Drive them off. This is a small fight and a chance to learn your army before the real campaign begins.',
-  objective: 'Break the raiders: reduce them below 25%. Select your cohorts, move them forward and attack.',
-  timeLimit: 420, daysToPrepare: 0, deploy: { mode: 'line', cx: 800, cy: 880 },
+  briefing: 'You have taken command of a legion on the edge of the Province. A small band of raiders has crossed the Rhone and is plundering farms within sight of your camp. Drive them off. This is an easy fight against a weak enemy, and hints will appear as you play to show you how things work.',
+  objective: 'Drive off the raiders: break their warbands. You vastly outnumber them, so take your time and try the controls.',
+  timeLimit: 660, minTime: 300, daysToPrepare: 0, deploy: { mode: 'line', cx: 800, cy: 880 },
   terrain: [{ kind: 'hill', cx: 1220, cy: 700, rx: 170, ry: 90 }, { kind: 'forest', cx: 300, cy: 330, rx: 160, ry: 90 }],
   enemy: [
-    { type: 'warband', men: 260, x: 650, y: 330, ai: { kind: 'rush', delay: 12 } },
-    { type: 'warband', men: 240, x: 940, y: 300, ai: { kind: 'rush', delay: 20 } },
-    { type: 'warband', men: 200, x: 330, y: 340, ai: { kind: 'ambush', trigger: 230, maxDelay: 90, quiet: true } },
-    { type: 'gaul_skirm', men: 90, x: 790, y: 390, ai: { kind: 'skirm' } },
-    { type: 'gaul_cav', men: 40, x: 1250, y: 260, ai: { kind: 'flank', delay: 40 } }
+    { type: 'warband', men: 130, x: 700, y: 300, ai: { kind: 'rush', delay: 30 } },
+    { type: 'warband', men: 110, x: 900, y: 290, ai: { kind: 'rush', delay: 55 } }
   ],
-  reinforcements: [], objectives: [], rule: null,
+  reinforcements: [
+    { at: 120, msg: 'A few more raiders wade across the river!', unit: { type: 'warband', men: 90, x: 780, y: 40, ai: { kind: 'rush', delay: 0 } } },
+    { at: 230, msg: '', unit: { type: 'warband', men: 80, x: 640, y: 40, ai: { kind: 'rush', delay: 0 } } }
+  ],
+  objectives: [], rule: null,
   rewards: { gold: 120, supplies: 60, recruits: 30, xpBase: 22, officerXp: 25 }, rewardMult: 1, unlock: []
 };
 
@@ -281,7 +282,6 @@ export const PROLOGUE = {
 // plan: {keep: share of enemy infantry present at the start, at: [arrival times in seconds]}
 // ---------------------------------------------------------------------------
 const WAVE_PLAN = {
-  prologue: { keep: 0.5, at: [140, 310] },
   ford: { keep: 0.4, at: [190, 400] },
   arar: { keep: 0.4, at: [200, 420] },
   convoy: { keep: 0.4, at: [220, 430] },
@@ -290,8 +290,8 @@ const WAVE_PLAN = {
   bibracte: { keep: 0.35, at: [230, 460, 620] }
 };
 const WAVE_MSGS = ['A fresh Gallic host marches onto the field!', 'The enemy reserve joins the fight!', 'Distant horns: yet another warband closes in!'];
-const MIN_TIME = { prologue: 270, ford: 300, arar: 300, convoy: 300, oppidum: 360, silva: 300, bibracte: 480 };
-const TIME_LIMITS = { prologue: 720, ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500 };
+const MIN_TIME = { ford: 300, arar: 300, convoy: 300, oppidum: 360, silva: 300, bibracte: 480 };
+const TIME_LIMITS = { ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500 };
 for (const scn of [PROLOGUE, ...SCENARIOS]) {
   const plan = WAVE_PLAN[scn.id]; if (!plan) continue;
   scn.timeLimit = TIME_LIMITS[scn.id] || scn.timeLimit; scn.minTime = MIN_TIME[scn.id] || 0;

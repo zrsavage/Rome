@@ -202,7 +202,7 @@ export class Renderer {
     if (!r) return;
     ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.setLineDash([5, 6]); ctx.beginPath(); ctx.arc(u.x, u.y, r, 0, 7); ctx.stroke(); ctx.setLineDash([]);
   }
-  // Pulsing guide rings used by the tutorial.
+  // Pulsing guide rings (used for guidance markers).
   drawMarkers(ctx) {
     if (!this.markers || !this.markers.length) return;
     const t = performance.now() / 1000, z = this.cam.zoom;

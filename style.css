@@ -130,8 +130,8 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 #hud-left .uicon{width:44px;height:44px;float:right;margin:0 0 6px 8px}
 
 /* tutorial */
-#tutorial{position:absolute;left:50%;top:54px;transform:translateX(-50%);width:min(500px,44vw);min-width:300px;background:#241d13f4;border:1px solid var(--gold);border-radius:8px;padding:12px 16px;z-index:5;box-shadow:0 6px 24px #000a}
-#tutorial p{margin:6px 0 4px;line-height:1.45;font-size:14px}
+#coach{position:absolute;left:50%;top:54px;transform:translateX(-50%);width:min(500px,44vw);min-width:300px;background:#241d13f4;border:1px solid var(--gold);border-radius:8px;padding:12px 16px;z-index:5;box-shadow:0 6px 24px #000a}
+#coach p{margin:6px 0 4px;line-height:1.45;font-size:14px}
 .tt-head{display:flex;gap:10px;align-items:baseline}.tt-head span{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}.tt-head b{color:var(--gold);font-size:17px;font-weight:normal;letter-spacing:.04em}
 .tt-bar{height:4px;background:#000a;border-radius:2px;margin-top:8px;overflow:hidden}.tt-bar i{display:block;height:100%;background:var(--gold);transition:width .4s}
 .tut-hl{outline:2px solid var(--gold)!important;outline-offset:2px;animation:tuthl 1.2s ease-in-out infinite}

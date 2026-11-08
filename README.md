@@ -58,10 +58,9 @@ modifiers for wounded recovery, replacements, food use, spoils, experience, fora
 **opening battle** (First Blood at the Border) and only afterwards reach the campaign map and army management, with a one-time
 explanation of what to do there. Defeat in the opening battle simply lets you try again.
 
-## Learning the game
+## Learning the game (no tutorial mode)
 
-- **Tutorial** (main menu): a guided practice battle with 12 steps that react to what you actually do: zoom and pan, select,
-  move, battle lines, pause-and-plan, arcs and range rings, close order, control groups, slingers, holding a charge, and flanking.
+- **No separate tutorial:** the opening battle is a small, easy fight (First Blood at the Border) with contextual hints that appear when they matter: advancing, an enemy approaching, flanks, morale, fatigue, waves.
 - **Practice Battle** (main menu): a sandbox with no rewards or saves. Pick your army (small/medium/large), the enemy force,
   terrain (open, ford, hill, forest), enemy tactics (rush, ambush, mixed) and difficulty.
 
@@ -96,8 +95,8 @@ src/camp.js      camp phase + drill mini-game
 src/state.js     campaign state, deployment, officers, applying results and unlocks
 src/map.js       campaign map screen (real geography)
 src/mapdata.js   GENERATED coastlines, rivers, lakes (tools/gen_map.mjs)
-src/tutorial.js  guided tutorial
-src/practice.js  tutorial scenario and practice battle builder
+src/coach.js     contextual hints for the opening battle
+src/practice.js  practice battle builder
 src/origins.js   character-creation choices, starting modifiers and their descriptions
 src/perks.js     officer perks, veteran traits, equipment tiers
 src/rewards.js   post-battle bonus choices

@@ -1,31 +1,10 @@
-// Tutorial scenario and configurable practice battles. Neither touches the campaign (no rewards, no saves).
+// Configurable practice battles. Nothing here touches the campaign (no rewards, no saves).
 import { newCampaign } from './state.js';
 
 const BASE = { act: 'P', theater: 'Training ground', year: '', kind: 'practice', timeLimit: 900, daysToPrepare: 0, reinforcements: [], objectives: [], rule: null,
   rewards: { gold: 0, supplies: 0, recruits: 0, xpBase: 0, officerXp: 0 }, rewardMult: 0, unlock: [], deploy: { mode: 'line', cx: 800, cy: 880 } };
 
 const mkCohort = (id, name, type, men, maxMen, xp, drill, officerId = null) => ({ id, name, type, men, maxMen, xp, drill, condition: 100, officerId });
-
-// ---------------- tutorial ----------------
-export function buildTutorial() {
-  const c = newCampaign('easy');
-  c.cohorts = [
-    mkCohort(1, 'I Cohort', 'legionary', 420, 480, 120, 40, 1),
-    mkCohort(2, 'II Cohort', 'legionary', 400, 480, 60, 30, 2),
-    mkCohort(3, 'Balearic Slingers', 'slinger', 120, 150, 40, 20),
-    mkCohort(4, 'Equites Turma', 'equites', 50, 60, 40, 25, 4)
-  ];
-  const scn = {
-    ...BASE, id: 'tutorial', name: 'Training Ground', briefing: 'A guided practice battle.', objective: 'Follow the instructions, then break the training host.',
-    terrain: [{ kind: 'hill', cx: 1250, cy: 700, rx: 170, ry: 95 }, { kind: 'forest', cx: 330, cy: 420, rx: 190, ry: 110 }, { kind: 'forest', cx: 1300, cy: 300, rx: 140, ry: 80 }],
-    enemy: [
-      { type: 'warband', men: 120, x: 800, y: 470, ai: { kind: 'idle', tag: 'dummy' } },
-      { type: 'warband', men: 200, x: 620, y: 300, ai: { kind: 'idle', tag: 'A' } },
-      { type: 'warband', men: 170, x: 1000, y: 320, ai: { kind: 'idle', tag: 'B' } }
-    ]
-  };
-  return { scn, campaign: c };
-}
 
 // ---------------- practice battle ----------------
 export const PRACTICE_OPTIONS = {
