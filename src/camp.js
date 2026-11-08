@@ -47,21 +47,22 @@ export class Camp {
   selected() { return this.c.cohorts.find(h => h.id === this.sel); }
 
   // ----- actions -----
+  // Leading the drill yourself gives a reliable good result (a little better if you rose through the ranks).
+  selfQuality() { const p = this.c.player && this.c.player.picks; return p && p.career === 'ranks' ? 0.9 : 0.8; }
   drill(mode) {
     const c = this.c, h = this.selected();
     if (!this.canAct() || c.supplies < 8) return;
     const leader = mode === 'self' ? null : officerById(c, +mode);
-    const run = (quality, who) => {
-      c.supplies -= 8;
-      const attached = officerById(c, h.officerId);
-      const bonus = (1 + (attached ? 0.05 * attached.drill : 0)) * (who !== 'You' && leader && (leader.perks || []).includes('drillmaster') ? 1.25 : 1);
-      const xp = Math.round(24 * (0.6 + quality) * bonus), dr = Math.round(7 * (0.5 + quality) * bonus);
-      h.xp += xp; h.drill = Math.min(100, h.drill + dr); h.condition = Math.max(25, h.condition - 7);
+    const quality = leader ? 0.45 + 0.1 * leader.drill : this.selfQuality();
+    const who = leader ? `${leader.rank} ${leader.name}` : 'You';
+    const attached = officerById(c, h.officerId);
+    const bonus = (1 + (attached ? 0.05 * attached.drill : 0)) * (leader && (leader.perks || []).includes('drillmaster') ? 1.25 : 1);
+    const xp = Math.round(24 * (0.6 + quality) * bonus), dr = Math.round(7 * (0.5 + quality) * bonus);
+    this.drillScene(h, leader, { xp, dr }, () => {
+      c.supplies -= 8; h.xp += xp; h.drill = Math.min(100, h.drill + dr); h.condition = Math.max(25, h.condition - 7);
       this.note(`${who} drilled ${h.name}: +${xp} XP, +${dr} drill.`, 'good');
       this.endDay(); this.render();
-    };
-    if (mode === 'self') this.minigame(h, (q) => run(q, 'You'));
-    else { const o = officerById(c, +mode); run(0.45 + 0.1 * o.drill, `${o.rank} ${o.name}`); }
+    });
   }
   forage(wide) {
     const c = this.c; if (!this.canAct()) return;
@@ -130,82 +131,49 @@ export class Camp {
     h.officerId = oid || null; this.api.save(); this.render();
   }
 
-  // ----- drill: the centurion barks an order, you give the matching command, the century obeys -----
-  minigame(h, done) {
-    const modal = document.getElementById('modal'); modal.classList.remove('hidden');
-    const CMDS = [
-      { id: 'advance', key: '1', latin: 'Procedite!', en: 'Advance!', btn: 'Advance' },
-      { id: 'halt', key: '2', latin: 'State!', en: 'Halt!', btn: 'Halt' },
-      { id: 'testudo', key: '3', latin: 'Testudinem formate!', en: 'Form the testudo!', btn: 'Testudo' },
-      { id: 'left', key: '4', latin: 'Sinistrorsum!', en: 'Wheel left!', btn: 'Wheel left' },
-      { id: 'right', key: '5', latin: 'Dextrorsum!', en: 'Wheel right!', btn: 'Wheel right' }
-    ];
-    const ROUNDS = 8;
-    modal.innerHTML = `<div class="box drill"><h2>Drill: ${esc(h.name)}</h2>
-      <canvas id="dr-cv" width="520" height="190"></canvas>
-      <div id="dr-top"><p class="muted">The centurion shouts an order in Latin. Press the matching command before the time runs out. Your century obeys what you command, so a wrong order makes it ragged.</p>
-        <table class="drlist">${CMDS.map(c => `<tr><td><b>${c.key}</b></td><td>${c.latin}</td><td class="muted">${c.en}</td></tr>`).join('')}</table>
-        <div class="row" style="justify-content:center;margin-top:10px"><button class="primary" id="dr-go">Begin the drill</button><button id="dr-cancel">Cancel</button></div></div>
-      <div id="dr-play" class="hidden"><div id="dr-cmd">&nbsp;</div><div id="dr-en" class="muted">&nbsp;</div><div class="drbar"><i id="dr-t"></i></div>
-        <div class="row" style="justify-content:center;flex-wrap:wrap">${CMDS.map(c => `<button class="drbtn" data-c="${c.id}"><small>${c.key}</small>${c.btn}</button>`).join('')}</div>
-        <div id="dr-msg" class="small">&nbsp;</div><div class="small muted" id="dr-round"></div></div></div>`;
-    const cv = modal.querySelector('#dr-cv'), g = cv.getContext('2d');
-    // the century: 5 ranks x 12 files
-    const dots = []; for (let r = 0; r < 5; r++) for (let f = 0; f < 12; f++) dots.push({ r, f, jx: 0, jy: 0 });
-    const pose = { y: 0, rot: 0, compact: 0, scatter: 0 }; let anim = null, raf = 0, last = performance.now(), flash = 0;
-    const ease = (t) => 1 - (1 - t) * (1 - t);
-    const startAnim = (kind) => { anim = { kind, t: 0, from: { ...pose } }; if (kind === 'wrong') dots.forEach(d => { d.jx = (Math.random() - 0.5) * 38; d.jy = (Math.random() - 0.5) * 30; }); };
-    const draw = (dt) => {
-      if (anim) { anim.t = Math.min(1, anim.t + dt / 0.55); const e = ease(anim.t), f = anim.from;
-        if (anim.kind === 'advance') pose.y = f.y - 34 * e; else if (anim.kind === 'testudo') pose.compact = f.compact + (1 - f.compact) * e;
-        else if (anim.kind === 'left') pose.rot = f.rot - 0.5 * e; else if (anim.kind === 'right') pose.rot = f.rot + 0.5 * e;
-        else if (anim.kind === 'wrong') pose.scatter = e; else if (anim.kind === 'halt') flash = 1 - e;
-        if (anim.t >= 1) anim = null; }
-      // between orders the century eases back to a neutral stance
-      if (!anim) { pose.y *= 0.96; pose.rot *= 0.97; pose.compact *= 0.985; pose.scatter *= 0.9; flash *= 0.9; }
-      g.clearRect(0, 0, 520, 190);
-      g.fillStyle = '#5c5230'; g.fillRect(0, 0, 520, 190); g.fillStyle = '#6b6038'; for (let i = 0; i < 18; i++) g.fillRect(i * 31 % 520, (i * 53) % 190, 22, 3);
+  // ----- a short scene of the drill being run, by you or by the officer you chose (click or press a key to skip) -----
+  drillScene(h, leader, gains, done) {
+    const c = this.c, modal = document.getElementById('modal'); modal.classList.remove('hidden');
+    const who = leader ? `${leader.rank} ${leader.name}` : (c.player && c.player.name) || 'You';
+    const portrait = leader ? artSrc('officer', leader.id, 80, 100, { title: leader.name, rank: leader.rank }) : artSrc('officer', 'player', 80, 100, { title: (c.player && c.player.name) || 'You', rank: 'Legate' });
+    const SEQ = [
+      { t: 0.0, latin: 'Procedite!', en: 'Advance!', kind: 'advance' }, { t: 1.0, latin: 'Sinistrorsum!', en: 'Wheel left!', kind: 'left' },
+      { t: 2.0, latin: 'Testudinem formate!', en: 'Form the testudo!', kind: 'testudo' }, { t: 3.0, latin: 'State!', en: 'Halt!', kind: 'halt' }
+    ], END = 4.0, TOTAL = 5.0;
+    modal.innerHTML = `<div class="box drill" id="sc-box"><div class="cellflex" style="justify-content:center;gap:10px"><img class="portrait" alt="" src="${portrait}"><div style="text-align:left"><h2 style="margin:0">${esc(h.name)} drills</h2><div class="muted small">${leader ? `${esc(who)} runs the drill` : `${esc(who)} leads the drill in person`}</div></div></div>
+      <canvas id="dr-cv" width="520" height="190"></canvas><div id="dr-cmd">&nbsp;</div><div id="dr-en" class="muted">&nbsp;</div>
+      <div class="drbar"><i id="dr-t"></i></div><div class="small muted" id="sc-hint">Click or press any key to skip</div></div>`;
+    const cv = modal.querySelector('#dr-cv'), g = cv.getContext('2d'), bar = modal.querySelector('#dr-t');
+    const dots = []; for (let r = 0; r < 5; r++) for (let f = 0; f < 12; f++) dots.push({ r, f });
+    const pose = { y: 0, rot: 0, compact: 0 }, ease = (t) => 1 - (1 - t) * (1 - t), t0 = performance.now(); let raf = 0, finished = false, flash = 0;
+    const draw = (t) => {
+      // scripted poses, each easing in over 0.6 s from the previous order
+      const step = SEQ.filter(s => t >= s.t).pop(), p = step ? Math.min(1, (t - step.t) / 0.6) : 0, e = ease(p);
+      pose.y = t < 1 ? -34 * (step ? e : 0) : -34; pose.rot = t < 1 ? 0 : t < 2 ? -0.5 * e : -0.5; pose.compact = t < 2 ? 0 : t < 3 ? e : 1; flash = step && step.kind === 'halt' ? 1 - e : 0;
+      if (t >= END) { pose.y *= 0.9; pose.rot *= 0.9; pose.compact *= 0.9; }
+      g.clearRect(0, 0, 520, 190); g.fillStyle = '#5c5230'; g.fillRect(0, 0, 520, 190); g.fillStyle = '#6b6038'; for (let i = 0; i < 18; i++) g.fillRect(i * 31 % 520, (i * 53) % 190, 22, 3);
       g.strokeStyle = 'rgba(255,255,255,.18)'; g.setLineDash([6, 6]); g.beginPath(); g.moveTo(10, 34); g.lineTo(510, 34); g.stroke(); g.setLineDash([]);
-      g.save(); g.translate(260, 112 + pose.y); g.rotate(pose.rot);
+      // the leader stands to the side with a vine staff and a crest
+      g.save(); g.translate(46, 150); g.fillStyle = '#3a2a14'; g.fillRect(9, -22, 3, 40); g.fillStyle = leader ? '#a8322a' : '#e8c36a'; g.beginPath(); g.arc(0, 0, 9, 0, 7); g.fill();
+      g.fillStyle = '#c9a07a'; g.beginPath(); g.arc(0, -9, 5, 0, 7); g.fill(); g.fillStyle = leader ? '#d8d2b0' : '#e8c36a'; g.fillRect(-9, -17, 18, 5); g.restore();
+      g.save(); g.translate(270, 112 + pose.y); g.rotate(pose.rot);
       const sx = 17 - 7 * pose.compact, sy = 17 - 6 * pose.compact;
       if (pose.compact > 0.35) { g.fillStyle = `rgba(232,195,106,${0.16 * pose.compact})`; g.fillRect(-6 * sx - 8, -2.5 * sy - 8, 12 * sx + 16, 5 * sy + 16); g.strokeStyle = `rgba(232,195,106,${0.9 * pose.compact})`; g.lineWidth = 2; g.strokeRect(-6 * sx - 8, -2.5 * sy - 8, 12 * sx + 16, 5 * sy + 16); }
-      for (const d of dots) { const x = (d.f - 5.5) * sx + d.jx * pose.scatter, y = (d.r - 2) * sy + d.jy * pose.scatter;
-        g.fillStyle = pose.compact > 0.5 ? '#d8a03a' : '#b3261e'; g.beginPath(); g.arc(x, y, 4.4, 0, 7); g.fill(); g.fillStyle = '#e8c36a'; g.fillRect(x, y - 1.6, 3.4, 3.2); }
+      for (const d of dots) { const x = (d.f - 5.5) * sx, y = (d.r - 2) * sy; g.fillStyle = pose.compact > 0.5 ? '#d8a03a' : '#b3261e'; g.beginPath(); g.arc(x, y, 4.4, 0, 7); g.fill(); g.fillStyle = '#e8c36a'; g.fillRect(x, y - 1.6, 3.4, 3.2); }
       g.restore();
       if (flash > 0.05) { g.fillStyle = `rgba(255,255,255,${flash * 0.25})`; g.fillRect(0, 0, 520, 190); }
     };
-    const loop = (t) => { const dt = Math.min(0.05, (t - last) / 1000); last = t; draw(dt); raf = requestAnimationFrame(loop); }; raf = requestAnimationFrame(loop);
-
-    let round = 0, score = 0, cur = null, limit = 3.4, elapsed = 0, waiting = false, tick = 0;
-    const msg = modal.querySelector('#dr-msg'), bar = modal.querySelector('#dr-t');
-    const close = (result) => { cancelAnimationFrame(raf); cancelAnimationFrame(tick); window.removeEventListener('keydown', key, true); modal.classList.add('hidden'); modal.innerHTML = ''; if (result != null) done(result); };
-    const next = () => {
-      if (round >= ROUNDS) return finish();
-      round++; cur = CMDS[Math.floor(Math.random() * CMDS.length)]; if (this._lastCmd === cur.id) cur = CMDS[(CMDS.indexOf(cur) + 1 + Math.floor(Math.random() * 3)) % CMDS.length]; this._lastCmd = cur.id;
-      limit = 3.4 - 0.15 * round; elapsed = 0; waiting = true;
-      modal.querySelector('#dr-cmd').textContent = cur.latin; modal.querySelector('#dr-en').innerHTML = round <= 4 ? esc(cur.en) : '&nbsp;';   // the translation is withdrawn after four orders
-      modal.querySelector('#dr-round').textContent = `Order ${round} of ${ROUNDS}`;
-      const t0 = performance.now(); const step = (t) => { elapsed = (t - t0) / 1000; bar.style.width = Math.max(0, 100 - elapsed / limit * 100) + '%'; if (waiting && elapsed >= limit) answer(null); else if (waiting) tick = requestAnimationFrame(step); }; tick = requestAnimationFrame(step);
+    const frame = (now) => {
+      const t = (now - t0) / 1000; if (finished) return;
+      draw(t); bar.style.width = Math.min(100, t / TOTAL * 100) + '%';
+      const step = SEQ.filter(s => t >= s.t).pop(), cmd = modal.querySelector('#dr-cmd'), en = modal.querySelector('#dr-en');
+      if (t < END && step) { cmd.textContent = step.latin; en.textContent = step.en; }
+      else if (t >= END) { cmd.textContent = 'Dismissed.'; cmd.style.fontSize = '22px'; en.textContent = `+${gains.xp} experience, +${gains.dr} drill`; en.style.color = '#9be09b'; }
+      if (t >= TOTAL) return end(); raf = requestAnimationFrame(frame);
     };
-    const answer = (id) => {
-      if (!waiting) return; waiting = false; cancelAnimationFrame(tick);
-      let pts = 0, text, kind = 'wrong';
-      if (id === null) text = 'Too late. The century stands confused.';
-      else if (id !== cur.id) text = 'Wrong command: the ranks break up.';
-      else { const frac = elapsed / limit; pts = frac < 0.5 ? 1 : frac < 0.8 ? 0.75 : 0.5; text = pts === 1 ? 'Crisp!' : pts === 0.75 ? 'Steady.' : 'Slow, but done.'; kind = cur.id; }
-      score += pts; msg.textContent = text; msg.style.color = pts >= 0.75 ? '#9be09b' : pts > 0 ? '#e8c36a' : '#ee9a8e'; startAnim(kind);
-      setTimeout(next, 750);
-    };
-    const finish = () => {
-      const q = score / ROUNDS, label = q > 0.9 ? 'A flawless drill.' : q > 0.65 ? 'A good drill.' : q > 0.4 ? 'Ragged in places.' : 'A shambles.';
-      modal.querySelector('#dr-play').innerHTML = `<div id="dr-cmd" style="font-size:22px">${label}</div><div class="muted">${score.toFixed(1)} of ${ROUNDS} points</div><div class="row" style="justify-content:center;margin-top:12px"><button class="primary" id="dr-done">Dismiss the cohort</button></div>`;
-      modal.querySelector('#dr-done').onclick = () => close(q * 1.15);
-    };
-    const key = (e) => { const c = CMDS.find(x => x.key === e.key); if (c) { e.preventDefault(); e.stopPropagation(); if (waiting) answer(c.id); } else if (e.key === 'Escape') { e.stopPropagation(); if (!waiting && round === 0) close(null); } };
-    window.addEventListener('keydown', key, true);
-    modal.querySelectorAll('.drbtn').forEach(b => b.onclick = () => answer(b.dataset.c));
-    modal.querySelector('#dr-cancel').onclick = () => close(null);
-    modal.querySelector('#dr-go').onclick = () => { modal.querySelector('#dr-top').classList.add('hidden'); modal.querySelector('#dr-play').classList.remove('hidden'); next(); };
+    const end = () => { if (finished) return; finished = true; cancelAnimationFrame(raf); window.removeEventListener('keydown', skip, true); modal.classList.add('hidden'); modal.innerHTML = ''; done(); };
+    const skip = (e) => { e.preventDefault(); e.stopPropagation(); end(); };
+    window.addEventListener('keydown', skip, true); modal.querySelector('#sc-box').onclick = end; raf = requestAnimationFrame(frame);
   }
 
   // ---------- rendering: the camp is a place; each building opens one small panel ----------
@@ -229,8 +197,8 @@ export class Camp {
         <h4 class="sect">Your army</h4>${this.unitList(['str', 'cond'])}`;
       case 'training': {
         const drillers = offs.filter(o => o.drill >= 1), insOpts = '<option value="">- none -</option>' + drillers.map(o => `<option value="${o.id}" ${h.instructorId === o.id ? 'selected' : ''}>${esc(o.name)} (drill ${o.drill})</option>`).join('');
-        return `<p class="muted">1. Pick a cohort. 2. Choose how to drill it. Each drill uses a day and 8 supplies.</p>${this.unitList(['str', 'exp', 'drill'])}
-          <h4 class="sect">Drill ${esc(h.name)}</h4><div class="actions">${btn('data-a="drill" data-m="self"', 'Lead the drill yourself', 'Give eight drill commands in Latin. The best possible result.', c.supplies >= 8)}${drillers.map(o => btn(`data-a="drill" data-m="${o.id}"`, `Let ${esc(o.name)} do it`, `Drill ${o.drill}: a steady result.`, c.supplies >= 8)).join('')}</div>
+        return `<p class="muted">1. Pick a cohort. 2. Choose who runs the drill. Each drill uses a day and 8 supplies.</p>${this.unitList(['str', 'exp', 'drill'])}
+          <h4 class="sect">Drill ${esc(h.name)}</h4><div class="actions">${btn('data-a="drill" data-m="self"', 'Lead the drill yourself', 'You shout the orders. A reliable good result.', c.supplies >= 8)}${drillers.map(o => btn(`data-a="drill" data-m="${o.id}"`, `Let ${esc(o.name)} do it`, `Drill ${o.drill}: ${o.drill >= 4 ? 'an excellent' : o.drill >= 2 ? 'a steady' : 'a modest'} result.`, c.supplies >= 8)).join('')}</div>
           <h4 class="sect">Instructor</h4><div class="row small"><span class="muted">Trains ${esc(h.name)} automatically every day for 2 supplies:</span><select id="instr">${insOpts}</select></div>${note}`;
       }
       case 'depot': { const food = Math.ceil(totalMen(c) / 60 * modsOf(c).supplyUse), lg = bestOfficer(c, 'logistics');
