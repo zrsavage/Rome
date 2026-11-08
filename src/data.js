@@ -87,9 +87,9 @@ export function terrainAt(scn, x, y) {
 // ---------------------------------------------------------------------------
 export const SCENARIOS = [
   {
-    id: 'ford', act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Ford of the Axona', kind: 'skirmish',
-    map: { x: 690, y: 455 },
-    briefing: 'Your legion has crossed into Gaul. A raiding host of local warbands has been shadowing your foragers and now holds the far bank of the Axona. A shallow ford is the only easy crossing. Beat them back, or at least bloody them enough that they leave your column alone.',
+    id: 'ford', act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Fords of the Rhone', kind: 'skirmish',
+    geo: { lat: 46.20, lon: 6.15, place: 'Genava (Geneva)', note: 'Fords of the Rhone, where the Helvetii tried to cross' },
+    briefing: 'The Helvetii mean to cross the Rhone near Genava and march west through the Province. Your legion has cut the bridge and holds the river line. A few shallow fords are the only easy crossings, and warbands are probing them. Beat them back, or bloody them enough that they look for another road.',
     objective: 'Break the Gallic host (reduce it below 25%), or withdraw in good order with at least 45% of your men.',
     timeLimit: 540, daysToPrepare: 4,
     deploy: { mode: 'line', cx: 800, cy: 880 },
@@ -108,8 +108,30 @@ export const SCENARIOS = [
     rewards: { gold: 260, supplies: 120, recruits: 60, xpBase: 30, officerXp: 35 }, rewardMult: 1, unlock: []
   },
   {
+    id: 'arar', act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Crossing of the Arar', kind: 'skirmish',
+    geo: { lat: 45.94, lon: 4.77, place: 'The Arar (Saone) near Trevoux', note: 'Site of the Tigurini crossing is approximate' },
+    briefing: 'The Helvetii are crossing the Arar, and the Tigurini clan is still on your bank, strung out and unready. Strike hard before the rest can return. The river is deep: only the ford and the banks allow easy movement, and the warbands across the water are watching.',
+    objective: 'Destroy the stragglers (reduce the host below 25%), or withdraw with at least 45% of your men.',
+    timeLimit: 480, daysToPrepare: 3,
+    deploy: { mode: 'line', cx: 700, cy: 900 },
+    terrain: [
+      { kind: 'water', x: 0, y: 380, w: 520, h: 100 }, { kind: 'ford', x: 520, y: 380, w: 200, h: 100 }, { kind: 'water', x: 720, y: 380, w: 880, h: 100 },
+      { kind: 'forest', cx: 1250, cy: 760, rx: 200, ry: 110 }, { kind: 'hill', cx: 330, cy: 760, rx: 150, ry: 85 }, { kind: 'forest', cx: 1100, cy: 150, rx: 220, ry: 90 }
+    ],
+    enemy: [
+      { type: 'warband', men: 270, x: 560, y: 560, ai: { kind: 'ambush', trigger: 130, maxDelay: 90, quiet: true } },
+      { type: 'warband', men: 250, x: 760, y: 590, ai: { kind: 'ambush', trigger: 130, maxDelay: 90, quiet: true } },
+      { type: 'warband', men: 240, x: 960, y: 560, ai: { kind: 'ambush', trigger: 130, maxDelay: 95, quiet: true } },
+      { type: 'gaul_skirm', men: 105, x: 650, y: 520, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 60, x: 1100, y: 620, ai: { kind: 'flank', delay: 35 } }
+    ],
+    reinforcements: [{ at: 120, msg: 'Warbands from across the Arar wade back to rescue their kin!', unit: { type: 'gaul_elite', men: 200, x: 620, y: 300, ai: { kind: 'rush', delay: 0 } } }],
+    rewards: { gold: 360, supplies: 160, recruits: 80, xpBase: 44, officerXp: 50 }, rewardMult: 1.1,
+    unlock: [{ type: 'aux_cav', name: 'Allied Gallic Horse', men: 60, maxMen: 70, xp: 20, drill: 15, msg: 'Aeduan cavalry ride in to support Rome.' }]
+  },
+  {
     id: 'convoy', act: 'I', theater: 'Gaul', year: '58 BC', name: "The Foragers' Road", kind: 'skirmish',
-    map: { x: 585, y: 415 },
+    geo: { lat: 46.78, lon: 4.85, place: 'Cabillonum (Chalon-sur-Saone)', note: 'Aeduan country; the road is illustrative' },
     briefing: 'Your supply train is crawling along a forest road when scouts report raiders closing in. The wagons carry the legion\'s grain. Hold the wagons and drive the raiders off, because if the Gauls seize them and hold them, the campaign starves.',
     objective: 'Keep the supply wagons (the gold marker) in Roman hands. If the Gauls hold them for 45 seconds the convoy is lost. Break the raiders to win.',
     timeLimit: 450, daysToPrepare: 3,
@@ -121,19 +143,19 @@ export const SCENARIOS = [
       { kind: 'hill', cx: 800, cy: 330, rx: 140, ry: 80 }, { kind: 'forest', cx: 820, cy: 120, rx: 220, ry: 90 }
     ],
     enemy: [
-      { type: 'warband', men: 275, x: 450, y: 450, ai: { kind: 'raid', obj: 'wagons' } },
-      { type: 'warband', men: 265, x: 1150, y: 430, ai: { kind: 'raid', obj: 'wagons', delay: 8 } },
-      { type: 'gaul_skirm', men: 110, x: 830, y: 330, ai: { kind: 'skirm' } },
-      { type: 'gaul_cav', men: 60, x: 1400, y: 380, ai: { kind: 'raid', obj: 'wagons', delay: 12 } },
-      { type: 'warband', men: 215, x: 300, y: 380, ai: { kind: 'ambush', trigger: 200, maxDelay: 100 } }
+      { type: 'warband', men: 385, x: 450, y: 450, ai: { kind: 'raid', obj: 'wagons' } },
+      { type: 'warband', men: 370, x: 1150, y: 430, ai: { kind: 'raid', obj: 'wagons', delay: 8 } },
+      { type: 'gaul_skirm', men: 155, x: 830, y: 330, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 85, x: 1400, y: 380, ai: { kind: 'raid', obj: 'wagons', delay: 12 } },
+      { type: 'warband', men: 300, x: 300, y: 380, ai: { kind: 'ambush', trigger: 200, maxDelay: 100 } }
     ],
-    reinforcements: [{ at: 100, msg: 'More raiders pour out of the eastern woods!', unit: { type: 'warband', men: 205, x: 1500, y: 420, ai: { kind: 'raid', obj: 'wagons' } } }],
+    reinforcements: [{ at: 100, msg: 'More raiders pour out of the eastern woods!', unit: { type: 'warband', men: 285, x: 1500, y: 420, ai: { kind: 'raid', obj: 'wagons' } } }],
     rewards: { gold: 180, supplies: 260, recruits: 50, xpBase: 34, officerXp: 40 }, rewardMult: 1,
     unlock: [{ type: 'archer', name: 'Cretan Archers', men: 100, maxMen: 130, xp: 25, drill: 20, msg: 'Cretan mercenary archers join your column.' }]
   },
   {
     id: 'oppidum', act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Hill Fort of the Sequani', kind: 'skirmish',
-    map: { x: 655, y: 330 },
+    geo: { lat: 47.24, lon: 6.02, place: 'Vesontio (Besancon)', note: 'Great oppidum of the Sequani on a loop of the Doubs' },
     briefing: 'A local chieftain has fortified a hilltop and refuses to supply your army. The slopes are steep and the defenders are dug in. Soften them with missiles, lure them down, or storm the crest.',
     objective: 'Capture the hill fort summit by holding it for 45 seconds, or break the defenders. Fighting uphill is costly.',
     timeLimit: 600, daysToPrepare: 3,
@@ -157,30 +179,8 @@ export const SCENARIOS = [
     unlock: [{ type: 'legionary', name: 'IV Cohort', men: 360, maxMen: 480, xp: 10, drill: 15, msg: 'Fresh legionaries of the IV Cohort arrive from Cisalpine Gaul.' }]
   },
   {
-    id: 'arar', act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Crossing of the Arar', kind: 'skirmish',
-    map: { x: 545, y: 345 },
-    briefing: 'The Helvetii are crossing the Arar, and the Tigurini clan is still on your bank, strung out and unready. Strike hard before the rest can return. The river is deep: only the ford and the banks allow easy movement, and the warbands across the water are watching.',
-    objective: 'Destroy the stragglers (reduce the host below 25%), or withdraw with at least 45% of your men.',
-    timeLimit: 480, daysToPrepare: 3,
-    deploy: { mode: 'line', cx: 700, cy: 900 },
-    terrain: [
-      { kind: 'water', x: 0, y: 380, w: 520, h: 100 }, { kind: 'ford', x: 520, y: 380, w: 200, h: 100 }, { kind: 'water', x: 720, y: 380, w: 880, h: 100 },
-      { kind: 'forest', cx: 1250, cy: 760, rx: 200, ry: 110 }, { kind: 'hill', cx: 330, cy: 760, rx: 150, ry: 85 }, { kind: 'forest', cx: 1100, cy: 150, rx: 220, ry: 90 }
-    ],
-    enemy: [
-      { type: 'warband', men: 415, x: 560, y: 560, ai: { kind: 'ambush', trigger: 130, maxDelay: 90, quiet: true } },
-      { type: 'warband', men: 385, x: 760, y: 590, ai: { kind: 'ambush', trigger: 130, maxDelay: 90, quiet: true } },
-      { type: 'warband', men: 370, x: 960, y: 560, ai: { kind: 'ambush', trigger: 130, maxDelay: 95, quiet: true } },
-      { type: 'gaul_skirm', men: 160, x: 650, y: 520, ai: { kind: 'skirm' } },
-      { type: 'gaul_cav', men: 90, x: 1100, y: 620, ai: { kind: 'flank', delay: 35 } }
-    ],
-    reinforcements: [{ at: 120, msg: 'Warbands from across the Arar wade back to rescue their kin!', unit: { type: 'gaul_elite', men: 305, x: 620, y: 300, ai: { kind: 'rush', delay: 0 } } }],
-    rewards: { gold: 360, supplies: 160, recruits: 80, xpBase: 44, officerXp: 50 }, rewardMult: 1.1,
-    unlock: [{ type: 'aux_cav', name: 'Allied Gallic Horse', men: 60, maxMen: 70, xp: 20, drill: 15, msg: 'Aeduan cavalry ride in to support Rome.' }]
-  },
-  {
     id: 'silva', act: 'I', theater: 'Gaul', year: '58 BC', name: 'Ambush in the Silva', kind: 'skirmish',
-    map: { x: 440, y: 290 },
+    geo: { lat: 47.15, lon: 4.00, place: 'Forests of the Morvan', note: 'Illustrative ambush site' },
     briefing: 'Dense forest closes around your column. The Gauls know every path; you are caught in a clearing with enemies on both flanks. This is the sort of day that has broken Roman armies before. Hold together, survive until your rearguard arrives, and the spoils of a hard-won escape will be rich.',
     objective: 'Survive until the relief column arrives and the Gauls withdraw: break the host, or hold on until the time runs out with at least 45% of your army.',
     timeLimit: 360, daysToPrepare: 2,
@@ -205,7 +205,7 @@ export const SCENARIOS = [
   },
   {
     id: 'bibracte', act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Battle of Bibracte', kind: 'named',
-    map: { x: 375, y: 385 },
+    geo: { lat: 46.93, lon: 4.03, place: 'Bibracte (Mont Beuvray)', note: 'Oppidum of the Aedui' },
     briefing: 'The Helvetii turn and attack your column near Bibracte. You hold the slope with the legion in triplex acies; the enemy mass on the ridge beyond, thousands strong, with elite retinues in the van. Break their assault with pila and the gladius, and be ready: their allies, the Boii and Tulingi, will fall on your flank and rear when the fight is at its height.',
     objective: 'Break the Helvetii host. Hold the line, keep your reserve fresh, and survive the flank attack. A well-ordered withdrawal still counts as a draw.',
     timeLimit: 780, daysToPrepare: 4,

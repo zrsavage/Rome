@@ -5,9 +5,12 @@ import { BattleUI } from './battleui.js';
 import { renderMap } from './map.js';
 import { artSrc, initArt } from './art.js';
 import { ask } from './ui.js';
+import { Tutorial } from './tutorial.js';
+import { buildTutorial, buildPractice, PRACTICE_OPTIONS, PRACTICE_DEFAULTS } from './practice.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const TUT_KEY = 'legio_tutorial_done', PRAC_KEY = 'legio_practice_v1';
 const SLOTS = 3, key = (n) => `legio_slot_${n}_v2`, preKey = (n) => `legio_pre_${n}_v2`;
 let campaign = null;
 
@@ -46,7 +49,7 @@ function refreshMenu() {
   }
 }
 function openCampaign(c, n) { campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; showMap(); }
-function toMenu() { show('screen-menu'); refreshMenu(); }
+function toMenu() { show('screen-menu'); refreshMenu(); $('tut-hint').classList.toggle('hidden', !!store.get(TUT_KEY)); }
 refreshMenu();
 initArt().then(() => { /* real art, if any, is picked up on the next render */ });
 
@@ -116,4 +119,58 @@ function showResult(res, scn) {
 }
 
 // test hooks for automated checks
-window.__legio = { get campaign() { return campaign; }, battle, show, store };
+
+
+
+// ===== tutorial =====
+let tutorial = null;
+function startTutorial() {
+  const { scn, campaign: c } = buildTutorial();
+  show('screen-battle');
+  tutorial = new Tutorial(battle, { onExit: () => { stopTutorial(); battle.stop(); toMenu(); } });
+  battle.start(scn, romeSpecs(c, scn), { difficulty: 'easy', seed: 7 }, (res) => tutorialDone(res));
+  tutorial.start();
+}
+function stopTutorial() { if (tutorial) { tutorial.stop(); tutorial = null; } }
+function tutorialDone(res) {
+  stopTutorial(); battle.stop(); store.set(TUT_KEY, true);
+  const o = res.outcome;
+  $('screen-result').innerHTML = `<div class="panel-page"><img class="banner" alt="" src="${artSrc('outcome', o, 800, 200)}"><div class="big ${o}">${o === 'defeat' ? 'TRY AGAIN' : 'WELL FOUGHT'}</div>
+    <p>${o === 'defeat' ? 'Your line broke in the training ground. Hold the line, use your slingers and hit the flanks, then try again.' : 'You have the basics: orders, battle lines, pause and plan, formations, flanking and morale. Out in Gaul the Gauls will not wait for you.'}</p>
+    <div class="row" style="margin-top:16px"><button class="primary" id="t-menu">Start a campaign</button><button id="t-prac">Practice battle</button><button id="t-again">Replay tutorial</button></div></div>`;
+  $('t-menu').onclick = () => toMenu(); $('t-prac').onclick = () => showPractice(); $('t-again').onclick = () => startTutorial();
+  show('screen-result');
+}
+$('btn-tutorial').onclick = () => startTutorial();
+
+// ===== practice battle =====
+function showPractice() {
+  const o = { ...PRACTICE_DEFAULTS, ...(store.get(PRAC_KEY) || {}) };
+  const sel = (id, label) => `<label for="${id}">${label}</label><select id="${id}">${Object.entries(PRACTICE_OPTIONS[id.replace('p-', '')]).map(([k, v]) => `<option value="${k}" ${o[id.replace('p-', '')] === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>`;
+  $('screen-practice').innerHTML = `<div class="panel-page"><h2>Practice Battle</h2><p class="muted">A free sandbox. Nothing here touches your campaign: no rewards, no losses, no saves. Try new tactics against any enemy.</p>
+    <div class="pform">${sel('p-army', 'Your army')}${sel('p-enemy', 'Enemy force')}${sel('p-terrain', 'Terrain')}${sel('p-tactics', 'Enemy tactics')}${sel('p-difficulty', 'Difficulty')}</div>
+    <div class="row"><button class="primary" id="p-go">Begin battle</button><button id="p-back">Back</button></div></div>`;
+  $('p-go').onclick = () => { const v = {}; for (const k of Object.keys(PRACTICE_DEFAULTS)) v[k] = $('p-' + k).value; store.set(PRAC_KEY, v); startPractice(v); };
+  $('p-back').onclick = () => toMenu();
+  show('screen-practice');
+}
+function startPractice(v) {
+  const { scn, campaign: c, opts } = buildPractice(v);
+  show('screen-battle');
+  battle.start(scn, romeSpecs(c, scn), { difficulty: opts.difficulty, fort: 0, favour: 0 }, (res) => practiceResult(res, v));
+}
+function practiceResult(res, v) {
+  battle.stop();
+  const o = res.outcome, title = { victory: 'VICTORY', draw: 'DRAW', defeat: 'DEFEAT' }[o];
+  const rows = res.rows.map(r => `<tr><td>${esc(r.name)}</td><td>${r.startMen}</td><td>${r.endMen}</td><td>${r.casualties}</td><td>${r.kills}</td></tr>`).join('');
+  $('screen-result').innerHTML = `<div class="panel-page"><img class="banner" alt="" src="${artSrc('outcome', o, 800, 200)}"><div class="big ${o}">${title}</div>
+    <p class="muted">Practice battle: nothing is saved. Time ${Math.floor(res.time / 60)}:${String(Math.floor(res.time % 60)).padStart(2, '0')}. Enemy dead about ${res.enemyDead} of ${res.enemyStart}.</p>
+    <div class="card"><h3>Your units</h3><table><tr><th>Unit</th><th>Before</th><th>After</th><th>Lost</th><th>Kills</th></tr>${rows}</table></div>
+    <div class="row" style="margin-top:16px"><button class="primary" id="r-again">Fight again</button><button id="r-setup">Change setup</button><button id="r-menu">Main menu</button></div></div>`;
+  $('r-again').onclick = () => startPractice(v); $('r-setup').onclick = () => showPractice(); $('r-menu').onclick = () => toMenu();
+  show('screen-result');
+}
+$('btn-practice').onclick = () => showPractice();
+$('tut-hint').classList.toggle('hidden', !!store.get(TUT_KEY));
+
+window.__legio = { get campaign() { return campaign; }, battle, show, store, get tutorial() { return tutorial; } };

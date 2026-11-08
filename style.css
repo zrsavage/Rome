@@ -92,18 +92,29 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .slot{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin:8px 0}
 .slot small{display:block;color:var(--muted)}
 /* map */
-.mapscreen{grid-template-columns:1.5fr 1fr}
+.mapscreen{grid-template-columns:1.6fr 1fr}
 .mapcard{padding:8px}
-#mapsvg{width:100%;height:auto;display:block;border-radius:4px}
-.land{fill:#7a6844;stroke:#2c2415;stroke-width:3;stroke-linejoin:round}
-.region{fill:#2c2415;opacity:.45;font-size:15px;letter-spacing:.35em;text-anchor:middle;font-family:Georgia,serif}
-.route{stroke:#e8c36a55;stroke-width:3;stroke-dasharray:7 6;fill:none}
-.route.done{stroke:#e8c36acc;stroke-dasharray:none}
+.maptools{margin-bottom:6px;gap:8px}
+.maptools button.on{border-color:var(--gold);color:var(--gold)}
+#mapsvg{width:100%;height:auto;display:block;border-radius:4px;background:#1c3441}
+.sea{fill:#1c3441}
+.land{fill:#76673f;stroke:#2a2112;stroke-linejoin:round}
+.lake{fill:#2d5870;stroke:#1c3441}
+.river{fill:none;stroke:#4f83a3;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
+.grat{stroke:#ffffff;stroke-opacity:.07;stroke-width:1}
+.gl{fill:#d9cba8;opacity:.55;font-family:system-ui,sans-serif}
+.region{fill:#2a2112;opacity:.5;letter-spacing:.3em;font-family:Georgia,serif}
+.tribe{fill:#2a2112;opacity:.62;font-style:italic;font-family:Georgia,serif}
+.rivlab{fill:#a9cfe6;opacity:.8;font-style:italic;font-family:Georgia,serif}
+.city{fill:#f0e4c8;stroke:#14100a;stroke-width:1.2}
+.pl{fill:#f0e4c8;font-family:Georgia,serif;paint-order:stroke;stroke:#1b150b;stroke-width:3px;stroke-linejoin:round}
+.route{stroke:#e8c36a66;stroke-dasharray:8 7;fill:none}
+.route.done{stroke:#e8c36add;stroke-dasharray:none}
 .node{cursor:default}
-.nn{font:bold 11px Georgia,serif;fill:#14100a}
-.nl{font:12px Georgia,serif;fill:#f0e4c8;paint-order:stroke;stroke:#14100a;stroke-width:3px}
-.fl{font:11px Georgia,serif;fill:#d9cba8;opacity:.8;paint-order:stroke;stroke:#14100a;stroke-width:3px;text-anchor:middle}
-.pulse{fill:none;stroke:#e8c36a;stroke-width:2;animation:pulse 1.6s ease-out infinite}
+.nn{font-weight:bold;font-family:Georgia,serif;fill:#14100a}
+.nl{fill:#fff5dc;font-family:Georgia,serif;font-weight:bold;paint-order:stroke;stroke:#14100a;stroke-width:3.5px;stroke-linejoin:round}
+.fl{fill:#e6d9b6;opacity:.9;font-family:Georgia,serif;paint-order:stroke;stroke:#14100a;stroke-width:3px;text-anchor:middle}
+.pulse{fill:none;stroke:#e8c36a;animation:pulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
 @keyframes pulse{0%{opacity:.9;transform:scale(.8)}100%{opacity:0;transform:scale(1.5)}}
 .armylist{margin:0;padding-left:18px;columns:2;font-size:14px}
 @media (max-width:820px){.mapscreen{grid-template-columns:1fr}}
@@ -117,3 +128,16 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .cellflex{display:flex;align-items:center}
 .ucard .uicon{width:26px;height:26px;float:left;margin-right:6px}
 #hud-left .uicon{width:44px;height:44px;float:right;margin:0 0 6px 8px}
+
+/* tutorial */
+#tutorial{position:absolute;left:50%;top:54px;transform:translateX(-50%);width:min(500px,44vw);min-width:300px;background:#241d13f4;border:1px solid var(--gold);border-radius:8px;padding:12px 16px;z-index:5;box-shadow:0 6px 24px #000a}
+#tutorial p{margin:6px 0 4px;line-height:1.45;font-size:14px}
+.tt-head{display:flex;gap:10px;align-items:baseline}.tt-head span{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}.tt-head b{color:var(--gold);font-size:17px;font-weight:normal;letter-spacing:.04em}
+.tt-bar{height:4px;background:#000a;border-radius:2px;margin-top:8px;overflow:hidden}.tt-bar i{display:block;height:100%;background:var(--gold);transition:width .4s}
+.tut-hl{outline:2px solid var(--gold)!important;outline-offset:2px;animation:tuthl 1.2s ease-in-out infinite}
+@keyframes tuthl{50%{outline-color:#fff6}}
+#hud-bottom.tut-hl{outline-offset:-4px}
+/* practice setup */
+.pform{display:grid;grid-template-columns:150px 1fr;gap:10px 14px;align-items:center;margin:16px 0}
+.pform label{color:var(--muted)}
+.pform select{width:100%}

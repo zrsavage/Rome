@@ -11,14 +11,14 @@ export class BattleUI {
   constructor() {
     this.canvas = $('canvas'); this.r = new Renderer(this.canvas);
     this.b = null; this.paused = true; this.speed = 1; this.running = false; this.keys = new Set();
-    this.onEnd = null; this.ended = false; this.logShown = 0; this.groups = {};
+    this.onEnd = null; this.ended = false; this.logShown = 0; this.groups = {}; this.listeners = []; this.frameHooks = [];
     this.bindInput();
     window.addEventListener('resize', () => { if (this.running) this.r.resize(); });
   }
 
   start(scn, specs, opts, onEnd) {
     this.scn = scn; this.b = new Battle(scn, specs, opts); this.onEnd = onEnd; this.ended = false;
-    this.paused = true; this.speed = 1; this.r.selection.clear(); this.logShown = 0; this.running = true; this.groups = {};
+    this.paused = true; this.speed = 1; this.r.selection.clear(); this.logShown = 0; this.running = true; this.groups = {}; this.listeners = []; this.frameHooks = []; this.r.markers = [];
     $('hud-title').textContent = scn.name;
     $('hud-log').innerHTML = '';
     this.r.buildBackground(scn); this.r.fit();
@@ -30,8 +30,10 @@ export class BattleUI {
   }
   stop() { this.running = false; cancelAnimationFrame(this.raf); this.raf = null; }
 
-  setPause(p) { this.paused = p; $('btn-pause').textContent = p ? 'Resume (Space)' : 'Pause (Space)'; }
-  setSpeed(s) { this.speed = s; document.querySelectorAll('.spd').forEach(b => b.classList.toggle('on', +b.dataset.s === s)); }
+  on(fn) { this.listeners.push(fn); }
+  emit(name, data = {}) { for (const fn of this.listeners) fn(name, data); }
+  setPause(p) { const was = this.paused; this.paused = p; if (was !== p) this.emit('pause', { paused: p }); $('btn-pause').textContent = p ? 'Resume (Space)' : 'Pause (Space)'; }
+  setSpeed(s) { this.speed = s; this.emit('speed', { speed: s }); document.querySelectorAll('.spd').forEach(b => b.classList.toggle('on', +b.dataset.s === s)); }
   showBanner(t, ms) { const b = $('banner'); b.textContent = t; b.classList.remove('hidden'); clearTimeout(this._bt); this._bt = setTimeout(() => b.classList.add('hidden'), ms); }
 
   frame(now) {
@@ -43,6 +45,7 @@ export class BattleUI {
       while (this.acc >= 0.05 && n++ < 24) { this.b.update(0.05); this.acc -= 0.05; }
     }
     this.pan(real);
+    for (const f of this.frameHooks) f(real);
     this.r.draw(this.b);
     this.hudT += real;
     if (this.hudT > 0.15) { this.hudT = 0; this.refreshHud(); }
@@ -61,7 +64,7 @@ export class BattleUI {
 
   // ----- selection / orders -----
   selected() { return [...this.r.selection].map(id => this.b.byId(id)).filter(u => u && u.active && u.side === 'rome'); }
-  select(ids, add = false) { if (!add) this.r.selection.clear(); ids.forEach(i => this.r.selection.add(i)); this.refreshBottom(); this.refreshHud(); }
+  select(ids, add = false) { if (!add) this.r.selection.clear(); ids.forEach(i => this.r.selection.add(i)); this.refreshBottom(); this.refreshHud(); this.emit('select', { ids }); }
 
   issueMove(wx, wy, drag) {
     const us = this.selected(); if (!us.length) return;
@@ -86,8 +89,9 @@ export class BattleUI {
       us.forEach(u => { off += u.w / 2; pts.push({ x: wx + px * off, y: wy + py * off }); off += u.w / 2 + gap; });
     }
     us.forEach((u, i) => b.setMove(u, Math.max(8, Math.min(WORLD.w - 8, pts[i].x)), Math.max(8, Math.min(WORLD.h - 8, pts[i].y)), ang));
+    this.emit('move', { drag: !!drag, count: us.length });
   }
-  issueAttack(target) { this.selected().forEach(u => this.b.setAttack(u, target)); }
+  issueAttack(target) { const us = this.selected(); us.forEach(u => this.b.setAttack(u, target)); if (us.length) this.emit('attack', { target: target.id, count: us.length }); }
 
   bindInput() {
     const c = this.canvas; let left = null, right = null;
@@ -141,11 +145,11 @@ export class BattleUI {
       if (!this.running) return; const k = e.key.toLowerCase();
       if (k === ' ') { e.preventDefault(); this.setPause(!this.paused); return; }
       if (k === 'z') this.setSpeed(1); if (k === 'x') this.setSpeed(2); if (k === 'c') this.setSpeed(4);
-      if (k === 'v') { this.r.showRange = !this.r.showRange; }
+      if (k === 'v') { this.r.showRange = !this.r.showRange; this.emit('range', { on: this.r.showRange }); }
       if (/^[1-9]$/.test(k) && !e.altKey) this.controlGroup(+k, e.ctrlKey || e.metaKey);
       if (['a', 'w', 's', 'd', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k) && !e.ctrlKey) this.keys.add(k);
-      if (k === 'h') this.selected().forEach(u => { this.b.setHold(u); });
-      if (k === 't') this.selected().forEach(u => this.b.toggleFormation(u));
+      if (k === 'h') { const hs = this.selected(); hs.forEach(u => { this.b.setHold(u); }); if (hs.length) this.emit('hold', { count: hs.length }); }
+      if (k === 't') { const ts = this.selected(); ts.forEach(u => this.b.toggleFormation(u)); if (ts.length) this.emit('formation', { count: ts.length }); }
       if (k === 'escape') this.select([]);
       if (k === 'q') this.select(this.b.units.filter(u => u.side === 'rome' && u.active).map(u => u.id));
     });
@@ -161,7 +165,7 @@ export class BattleUI {
   }
 
   controlGroup(n, set) {
-    if (set) { this.groups[n] = this.selected().map(u => u.id); this.showBanner(`Group ${n} set`, 700); this.refreshHud(); return; }
+    if (set) { this.groups[n] = this.selected().map(u => u.id); this.showBanner(`Group ${n} set`, 700); this.refreshHud(); this.emit('group-set', { n }); return; }
     const ids = (this.groups[n] || []).filter(id => { const u = this.b.byId(id); return u && u.active; });
     if (!ids.length) return;
     const now = performance.now();

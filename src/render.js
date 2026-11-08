@@ -49,7 +49,7 @@ export class Renderer {
     this.canvas = canvas; this.ctx = canvas.getContext('2d');
     this.cam = { x: WORLD.w / 2, y: WORLD.h / 2, zoom: 1 };
     this.bg = null; this.dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.selection = new Set(); this.box = null; this.hover = null; this.dragLine = null; this.showRange = false;
+    this.selection = new Set(); this.box = null; this.hover = null; this.dragLine = null; this.showRange = false; this.markers = [];
   }
   resize() {
     const r = this.canvas.getBoundingClientRect();
@@ -96,6 +96,7 @@ export class Renderer {
     for (const f of b.fx) if (f.kind !== 'dust') this.drawFx(ctx, f);
     this.drawOrders(ctx, b);
     this.drawFloats(ctx, b);
+    this.drawMarkers(ctx);
     ctx.restore();
     for (const u of order) this.drawLabel(ctx, u);
     if (this.box) { ctx.strokeStyle = '#e8c36a'; ctx.fillStyle = 'rgba(232,195,106,0.12)'; const bx = this.box; ctx.fillRect(bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0); ctx.strokeRect(bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0); }
@@ -200,6 +201,17 @@ export class Renderer {
     if (t.range) r = t.range + ext; else if (t.cat === 'cav') { r = 110 + ext; col = 'rgba(255,170,120,0.35)'; } else if (t.pilum && u.pilumLeft > 0) { r = 30 + ext; col = 'rgba(255,225,150,0.4)'; }
     if (!r) return;
     ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.setLineDash([5, 6]); ctx.beginPath(); ctx.arc(u.x, u.y, r, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+  }
+  // Pulsing guide rings used by the tutorial.
+  drawMarkers(ctx) {
+    if (!this.markers || !this.markers.length) return;
+    const t = performance.now() / 1000, z = this.cam.zoom;
+    for (const m of this.markers) {
+      const p = 1 + 0.18 * Math.sin(t * 4);
+      ctx.strokeStyle = 'rgba(255,215,90,0.95)'; ctx.lineWidth = 3 / Math.max(0.7, z); ctx.beginPath(); ctx.arc(m.x, m.y, (m.r || 34) * p, 0, 7); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,215,90,0.14)'; ctx.fill();
+      if (m.label) { ctx.font = `bold ${Math.max(13, 15 / Math.max(0.7, z))}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillText(m.label, m.x + 1, m.y - (m.r || 34) - 9); ctx.fillStyle = '#ffe9a8'; ctx.fillText(m.label, m.x, m.y - (m.r || 34) - 10); }
+    }
   }
   drawDust(ctx, f) {
     const a = f.life / f.max;

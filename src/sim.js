@@ -70,6 +70,7 @@ export class Battle {
     this.retreating = false; this.broken = { rome: false, gaul: false };
     this.reinf = (scn.reinforcements || []).map(r => ({ ...r, done: false }));
     this.floats = [];
+    this.stats = { flankTime: 0, rearTime: 0, rangedKills: 0, pilum: 0, routs: { rome: 0, gaul: 0 } };
     this.objectives = (scn.objectives || []).map(o => ({ ...o, contested: false, presence: { rome: false, gaul: false } }));
     this.rule = scn.rule || null; this.hold = { rome: 0, gaul: 0 };
     this.fortLevel = opts.fort || 0;
@@ -87,7 +88,7 @@ export class Battle {
 
   spawnEnemy(e) {
     const men = Math.round(e.men * this.enemyScale);
-    this.units.push(new Unit({ side: 'gaul', type: e.type, men, x: e.x, y: e.y, ai: { ...e.ai }, moraleBonus: this.diff.enemyMorale, xp: 40 + (this.diff.enemyMult > 1 ? 60 : 0) }));
+    this.units.push(new Unit({ side: 'gaul', type: e.type, men, x: e.x, y: e.y, ai: { ...e.ai }, stance: e.ai && e.ai.kind === 'idle' ? 'hold' : 'aggressive', moraleBonus: this.diff.enemyMorale, xp: 40 + (this.diff.enemyMult > 1 ? 60 : 0) }));
   }
   say(msg, kind = 'info') { this.log.push({ t: this.t, msg, kind }); }
   sumMen(side) { return this.units.filter(u => u.side === side).reduce((a, u) => a + u.men, 0); }
@@ -378,6 +379,7 @@ export class Battle {
   hit(att, def, n, ranged = false) {
     n = Math.min(n, def.men);
     if (n <= 0) return;
+    if (ranged && att.side === 'rome') this.stats.rangedKills += n;
     def.men -= n; def.casualties += n; att.kills += n; def.flash = 0.22; def.floatAcc = (def.floatAcc || 0) + n;
     let loss = n / def.maxMen * 130 * def.type.fragile * (ranged ? 0.55 : 1);
     if (def.officer) loss *= 1 - 0.04 * (def.officer.tactics || 0);
@@ -416,7 +418,7 @@ export class Battle {
     if (u.pilumLeft > 0 && u.pilumCd <= 0 && u.state !== 'routing') {
       const n = this.nearestEnemy(u, (e) => e.active && e.type.cat !== 'ranged');
       if (n && n.gap > 1 && n.gap <= 30) {
-        u.pilumLeft--; u.pilumCd = 3;
+        u.pilumLeft--; u.pilumCd = 3; if (u.side === 'rome') this.stats.pilum++;
         const ang = this.angleMult(u, n.e);
         const kills = Math.round(u.men * 0.05 * (this.atkMult(u) / COMBAT_PACE) * (1 - n.e.type.def * 0.5) * (n.e.formation === 'close' ? 0.5 : 1));
         this.hit(u, n.e, kills); n.e.moralePending += 4; n.e.disrupted = 6;
@@ -448,6 +450,7 @@ export class Battle {
       const def = e.state === 'routing' ? 0 : this.defOf(e, ang.c === 1);
       u.pending += share * t.atk * dt * am * (1 - def) * routingMult * this.terr(e).def;
       if (ang.c > 1 && e.state !== 'routing') e.morale -= (ang.c === 3 ? 4 : 2) * dt / targets.length;
+      if (u.side === 'rome' && ang.c > 1 && e.state !== 'routing') this.stats[ang.c === 3 ? 'rearTime' : 'flankTime'] += dt / targets.length;
     }
     // allocate the accumulated kills across targets evenly
     while (u.pending >= 1) {
@@ -472,7 +475,7 @@ export class Battle {
     if (u.state !== 'routing') {
       if (!u.contacts.some(e => e.active)) u.morale = Math.min(u.maxMorale, u.morale + (1.6 + (u.officer ? 0.35 * (u.officer.tactics || 0) : 0)) * dt);
       if (u.morale <= Math.max(14, u.maxMorale * 0.22)) {
-        u.state = 'routing'; u.order = { kind: 'none' };
+        u.state = 'routing'; u.order = { kind: 'none' }; this.stats.routs[u.side]++;
         this.say(`${u.name} breaks and flees!`, u.side === 'rome' ? 'bad' : 'good');
         for (const o of this.units) {
           if (!o.active || o === u) continue;
