@@ -44,6 +44,7 @@ export class Unit {
     this.state = 'idle';
     this.order = { kind: 'none' };
     this.stance = spec.stance || 'aggressive';
+    this.post = { x: spec.x, y: spec.y }; this.leash = 130;   // Roman units defend a post: they fight what comes near, then return
     this.formation = 'normal';
     this.ai = spec.ai || null;
     this.contacts = []; this.prevIds = new Set();
@@ -134,9 +135,11 @@ export class Battle {
   }
 
   // ---------- orders ----------
-  setMove(u, x, y, tf = null) { if (!u.active) return; u.order = { kind: 'move', x, y, tf }; u.stance = 'aggressive'; }
-  setAttack(u, tgt) { if (!u.active) return; u.order = { kind: 'attack', targetId: tgt.id }; u.stance = 'aggressive'; }
-  setHold(u) { if (!u.active) return; u.order = { kind: 'none' }; u.stance = 'hold'; }
+  // Orders never change a unit's stance. A move order sets its new post; an attack ends with the unit holding where it finished.
+  setMove(u, x, y, tf = null) { if (!u.active) return; u.order = { kind: 'move', x, y, tf }; u.post = { x, y }; }
+  setAttack(u, tgt) { if (!u.active) return; u.order = { kind: 'attack', targetId: tgt.id }; }
+  setHold(u) { if (!u.active) return; u.order = { kind: 'none' }; u.stance = 'hold'; u.post = { x: u.x, y: u.y }; }
+  setEngage(u) { if (!u.active) return; u.stance = 'aggressive'; if (u.order.kind === 'none') u.post = { x: u.x, y: u.y }; }
   toggleFormation(u) {
     if (!u.active || u.type.cat === 'cav') return;
     u.formation = u.formation === 'close' ? 'normal' : 'close';
@@ -264,17 +267,22 @@ export class Battle {
       } else goal = { x: u.order.x, y: u.order.y };
     } else if (u.order.kind === 'attack') {
       const tg = this.byId(u.order.targetId);
-      if (!tg || !tg.present) u.order = { kind: 'none' };
+      if (!tg || !tg.present) { u.order = { kind: 'none' }; u.post = { x: u.x, y: u.y }; }
       else if (t.cat === 'ranged' && tg.active && this.gap(u, tg) <= t.range * 0.85 && u.ammo > 0) { this.turnToward(u, tg, dt); }
       else goal = { x: tg.x, y: tg.y };
     }
     if (u.order.kind === 'none' && u.stance === 'aggressive' && !engaged) {
       const n = this.nearestEnemy(u, (e) => e.active);
       const aggro = t.cat === 'ranged' ? t.range * 1.25 : 60;
-      if (n && n.gap < aggro) {
+      const leashed = u.side === 'rome' && u.post, lim = u.leash + (t.cat === 'ranged' ? t.range * 0.5 : 0);
+      const inReach = n && n.gap < aggro && (!leashed || Math.hypot(n.e.x - u.post.x, n.e.y - u.post.y) < lim + aggro);
+      if (inReach) {
         if (t.cat === 'ranged' && n.gap <= t.range * 0.85 && u.ammo > 0) this.turnToward(u, n.e, dt);
         else goal = { x: n.e.x, y: n.e.y };
-      } else if (n && n.gap < 150) this.turnToward(u, n.e, dt, 0.5);
+      } else {
+        if (leashed && Math.hypot(u.x - u.post.x, u.y - u.post.y) > 14) goal = { x: u.post.x, y: u.post.y };   // return to the post
+        else if (n && n.gap < 150) this.turnToward(u, n.e, dt, 0.5);
+      }
     }
 
     if (engaged) {
@@ -325,7 +333,9 @@ export class Battle {
     const safe = !n || n.gap > 140;
     if (safe) u.morale += 3 * dt;
     if (u.morale > u.maxMorale * 0.55 && safe && u.x > 0 && u.x < WORLD.w && u.y > 0 && u.y < WORLD.h) {
-      u.state = 'idle'; u.order = { kind: 'none' }; u.stance = 'hold'; u.fatigue = Math.max(u.fatigue, 40);
+      u.state = 'idle'; u.stance = 'hold'; u.fatigue = Math.max(u.fatigue, 40);
+      if (u.side === 'rome') u.order = { kind: 'move', x: u.post.x, y: u.post.y, tf: null };   // rallied units walk back to their post
+      else { u.order = { kind: 'none' }; u.post = { x: u.x, y: u.y }; }
       this.say(`${u.name} rallies!`, u.side === 'rome' ? 'good' : 'info');
       if (u.ai) u.ai.kind = 'rush';
     }
@@ -498,7 +508,7 @@ export class Battle {
         this.say(`${u.name} breaks and flees!`, u.side === 'rome' ? 'bad' : 'good');
         for (const o of this.units) {
           if (!o.active || o === u) continue;
-          if (Math.hypot(o.x - u.x, o.y - u.y) < 220) o.morale += o.side === u.side ? -6 : 3;
+          if (Math.hypot(o.x - u.x, o.y - u.y) < 170) o.morale += o.side === u.side ? -4 : 3;   // a rout shakes its neighbours, but does not guarantee a cascade
         }
       }
     }
@@ -524,7 +534,7 @@ export class Battle {
       const start = side === 'rome' ? this.startRome : this.startGaul;
       if (this.activeMen(side) < start * 0.4) {
         this.broken[side] = true;
-        for (const u of this.units) if (u.side === side && u.active) u.morale -= 7;
+        for (const u of this.units) if (u.side === side && u.active) u.morale -= 5;
         this.say(side === 'rome' ? 'Your army wavers - the line is cracking!' : 'The Gallic host wavers!', side === 'rome' ? 'bad' : 'good');
       }
     }

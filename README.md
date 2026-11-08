@@ -30,6 +30,12 @@ python3 -m http.server 8080   # then open http://localhost:8080
   flashes, dust trails, destination ghosts with facing arrows, control groups, objective HUD.
 - Officers level up and can die (not on Tiro). Cohorts keep XP, drill and condition across the campaign.
 
+## Stances
+
+Orders never change a unit's stance. A move order sets the unit's new **post**. Units on *Defend post* (the default) fight what
+comes near, then walk back to the post; units on *Hold* never leave it. Routed units that rally return to their post. Stance
+shows on the unit card (`- hold`), on the field (`H` after the count) and in the unit panel.
+
 ## Battle length and depth
 
 - Battles are built to run **5-10+ minutes**: slower lethality, softer morale shocks, and enemy armies that arrive in staged
@@ -54,7 +60,7 @@ The flow is **one question per screen** with a progress indicator, a Back button
 
 New Campaign opens **Your Origins**, a short character creation in the spirit of Ultimate General: pick your family, early career
 and approach (recommended picks are highlighted; a live summary shows starting denarii, supplies, soldiers, goodwill and
-modifiers for wounded recovery, replacements, food use, spoils, experience, foraging and morale). Then you fight a short
+modifiers for wounded recovery, replacements, food use, spoils, experience, foraging and morale). Every answer is chosen by you (no quick start, no pre-filled picks), then you fight a short
 **opening battle** (First Blood at the Border) and only afterwards reach the campaign map and army management, with a one-time
 explanation of what to do there. Defeat in the opening battle simply lets you try again.
 
@@ -80,7 +86,8 @@ regenerates `src/mapdata.js`. Battle sites: Genava (Rhone fords), the Arar (Saon
 | `Space`, `Z X C` | Pause, speed 1x/2x/4x (orders allowed while paused) |
 | `Ctrl+1-9`, `1-9` | Set / recall control group (double-tap centres the camera) |
 | `V` | Toggle range rings for all units |
-| `H` / `T` / `R` | Hold position / toggle testudo (loose order for skirmishers) / fall back and rest |
+| `H` / `G` | **Hold** (never leaves its spot) / **Defend post** (fights nearby enemies, then returns to its post) |
+| `T` / `R` | Toggle testudo (loose order for skirmishers) / fall back and rest |
 | WASD, wheel | Pan, zoom |
 
 ## Layout

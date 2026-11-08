@@ -143,7 +143,7 @@ export class Renderer {
     const p = this.toScreen(u.x, u.y - u.w / 2 - 4), z = this.cam.zoom;
     const yy = this.toScreen(u.x, u.y).y - Math.max(u.w, u.d) * z / 2 - 8;
     const rome = u.side === 'rome', fs = Math.max(10, Math.min(14, 11 * z + 3));
-    const text = String(u.men), w = Math.max(30, 24 + text.length * 6);
+    const text = String(u.men) + (u.side === 'rome' && u.stance === 'hold' && u.active ? ' H' : ''), w = Math.max(30, 24 + text.length * 6);
     const x = p.x, y = yy;
     ctx.globalAlpha = u.state === 'routing' ? 0.7 : 1;
     ctx.fillStyle = 'rgba(15,12,8,0.78)'; ctx.fillRect(x - w / 2, y - 13, w, 15);

@@ -1,6 +1,6 @@
 import { SCENARIOS, DIFFICULTY, UNIT_TYPES, PROLOGUE } from './data.js';
 import { romeSpecs, applyResult, modsOf } from './state.js';
-import { ORIGINS, RECOMMENDED, DEFAULT_NAME, buildCampaign, describe } from './origins.js';
+import { ORIGINS, DEFAULT_NAME, buildCampaign, describe } from './origins.js';
 import { Camp, totalMen } from './camp.js';
 import { BattleUI } from './battleui.js';
 import { renderMap } from './map.js';
@@ -60,8 +60,7 @@ function showMap() {
   renderMap($('screen-map'), campaign, {
     camp: () => { camp.show(campaign); show('screen-camp'); },
     march: () => showBrief(),
-    menu: () => toMenu(),
-    undo: async () => { const snap = store.get(preKey(campaign.slot)); if (snap && await ask('Restore the army to how it was before the last battle?', 'Restore', 'Cancel')) { campaign = snap; save(); showMap(); } }
+    menu: () => toMenu()
   });
   show('screen-map');
 }
@@ -119,9 +118,8 @@ function showResult(res, scn) {
     <div class="card" style="margin-top:12px"><h3>Spoils</h3>${o === 'defeat' ? 'None. The enemy keeps the field; you may try again.' : `+${s.gold} denarii, +${s.supplies} supplies, +${s.recruits} fresh recruits`}</div>
     ${picks.length ? `<div class="card" style="margin-top:12px"><h3>Choose a bonus <span class="pill">pick one</span></h3><div class="ocards">${picks.map((p, i) => `<button class="ocard" data-i="${i}"><b>${esc(p.name)}</b><span class="t">${esc(p.text)}</span></button>`).join('')}</div></div>` : ''}
     ${notes.length ? `<div class="card" style="margin-top:12px"><h3>Dispatches</h3>${notes.map(n => `<div>${esc(n)}</div>`).join('')}</div>` : ''}
-    <div class="row" style="margin-top:16px"><button class="primary" id="cont">${opening && o !== 'defeat' ? 'Continue to army management' : o !== 'defeat' && !next ? 'Finish Act I' : opening ? 'Try the opening battle again' : 'Return to the map'}</button><button id="retry">Retry this battle (undo)</button></div></div>`;
+    <div class="row" style="margin-top:16px"><button class="primary" id="cont">${opening && o !== 'defeat' ? 'Continue to army management' : o !== 'defeat' && !next ? 'Finish Act I' : opening ? 'Try the opening battle again' : 'Return to the map'}</button></div></div>`;
   $('cont').onclick = () => { camp.msgs = []; if (opening && o === 'defeat') { const snap = store.get(preKey(c.slot)); if (snap) { campaign = snap; save(); } showBrief(PROLOGUE); return; } camp.note(`After the ${o}, the army makes camp.`); showMap(); if (opening && !c.introShown) { c.introShown = true; save(); showManagementIntro(); } };
-  $('retry').onclick = () => { const snap = store.get(preKey(c.slot)); if (snap) { campaign = snap; save(); } if (opening) showBrief(PROLOGUE); else showMap(); };
   if (picks.length) {
     const cont = $('cont'); cont.disabled = true; cont.title = 'Choose a bonus first';
     document.querySelectorAll('#screen-result .ocard').forEach(b => b.onclick = () => { picks[+b.dataset.i].apply(c); save(); document.querySelectorAll('#screen-result .ocard').forEach(x => { x.disabled = true; x.classList.toggle('sel', x === b); }); cont.disabled = false; cont.title = ''; });
@@ -144,7 +142,7 @@ function showManagementIntro() {
 
 // ----- Your Origins (character creation): one question per screen -----
 function showOrigins(slot) {
-  const keys = Object.keys(ORIGINS), picks = { ...RECOMMENDED }; let name = DEFAULT_NAME, diff = diffSel.value, step = 0;
+  const keys = Object.keys(ORIGINS), picks = {}; let name = DEFAULT_NAME, diff = diffSel.value, step = 0;
   const total = keys.length + 2;               // name, each choice, review
   const root = $('screen-origins');
   const go = (p) => { const c = buildCampaign(p, name, diff); c.slot = slot; campaign = c; save(); store.set(preKey(slot), c); openCampaign(c, slot); };
@@ -157,10 +155,10 @@ function showOrigins(slot) {
       main = `<div class="card"><p class="q">Who are you?</p><p class="muted">You are a Roman officer taking command of a legion on the edge of the Province. You will answer three short questions about your past. Each one changes how your army starts.</p>
         <div class="namerow" style="margin-top:12px"><label for="o-name">Your name</label><input id="o-name" maxlength="28" value="${esc(name)}"></div>
         <div class="namerow" style="margin-top:10px"><label for="o-diff">Difficulty</label><select id="o-diff">${Object.entries(DIFFICULTY).map(([k, v]) => `<option value="${k}" ${k === diff ? 'selected' : ''}>${v.name}</option>`).join('')}</select></div><div class="muted small" style="margin-top:6px">${esc(DIFFICULTY[diff].desc)} Miles is the intended experience.</div></div>
-        <div class="card"><p class="muted small">No tutorial needed: your first battle is a small, gentle fight that teaches the basics as you play.</p><div class="row"><button id="o-quick" title="Use the recommended answers and skip the questions">Skip the questions (quick start)</button></div></div>`;
+        <div class="card"><p class="muted small">There are no shortcuts here. Your first battle is a small, gentle fight that teaches the basics as you play, and every answer you give shapes your army.</p></div>`;
     } else if (step <= keys.length) {
       const k = keys[step - 1], g = ORIGINS[k];
-      main = `<div class="card"><p class="q">${esc(g.title)}</p><div class="muted small">${esc(g.blurb)}</div><div class="ocards" style="margin-top:10px">${g.options.map(o => `<button class="ocard ${picks[k] === o.id ? 'sel' : ''}" data-k="${k}" data-id="${o.id}">${RECOMMENDED[k] === o.id ? '<span class="rec">Recommended</span>' : ''}<b>${esc(o.name)}</b><span class="t">${esc(o.text)}</span><ul>${o.fx.map(f => `<li>${esc(f)}</li>`).join('')}</ul></button>`).join('')}</div></div>`;
+      main = `<div class="card"><p class="q">${esc(g.title)}</p><div class="muted small">${esc(g.blurb)}</div><div class="ocards" style="margin-top:10px">${g.options.map(o => `<button class="ocard ${picks[k] === o.id ? 'sel' : ''}" data-k="${k}" data-id="${o.id}"><b>${esc(o.name)}</b><span class="t">${esc(o.text)}</span><ul>${o.fx.map(f => `<li>${esc(f)}</li>`).join('')}</ul></button>`).join('')}</div></div>`;
     } else {
       main = `<div class="card review"><p class="q">Your story</p><div class="muted small">Check your choices. You cannot change them once the campaign begins.</div>
         ${keys.map((k, i) => { const o = ORIGINS[k].options.find(x => x.id === picks[k]); return `<div class="kvl" style="padding:8px 0"><span>${esc(ORIGINS[k].title)}</span><span><b>${esc(o.name)}</b> <button data-edit="${i + 1}" style="padding:2px 8px;margin-left:8px">Change</button></span></div>`; }).join('')}
@@ -172,9 +170,10 @@ function showOrigins(slot) {
       <div class="col">${step === 0 ? '' : summary}</div></div>`;
     root.querySelectorAll('.ocard').forEach(b2 => b2.onclick = () => { picks[b2.dataset.k] = b2.dataset.id; draw(); });
     root.querySelectorAll('[data-edit]').forEach(b2 => b2.onclick = () => { step = +b2.dataset.edit; draw(); });
-    const nm = root.querySelector('#o-name'); if (nm) nm.oninput = (e) => { name = e.target.value; };
+    const nm = root.querySelector('#o-name'); if (nm) nm.oninput = (e) => { name = e.target.value; root.querySelector('#o-next').disabled = name.trim().length < 2; };
     const df = root.querySelector('#o-diff'); if (df) df.onchange = (e) => { diff = e.target.value; draw(); };
-    const q = root.querySelector('#o-quick'); if (q) q.onclick = () => go(RECOMMENDED);
+    const can = step === 0 ? name.trim().length >= 2 : step <= keys.length ? !!picks[keys[step - 1]] : keys.every(k => picks[k]);
+    const nx = root.querySelector('#o-next'); nx.disabled = !can; nx.title = can ? '' : (step === 0 ? 'Enter a name' : 'Choose an answer to continue');
     root.querySelector('#o-back').onclick = () => { if (step === 0) toMenu(); else { step--; draw(); } };
     root.querySelector('#o-next').onclick = () => { if (last) go(picks); else { step++; draw(); } };
   };

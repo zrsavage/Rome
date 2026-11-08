@@ -160,13 +160,13 @@ export const SCENARIOS = [
       { kind: 'hill', cx: 800, cy: 330, rx: 140, ry: 80 }, { kind: 'forest', cx: 820, cy: 120, rx: 220, ry: 90 }
     ],
     enemy: [
-      { type: 'warband', men: 500, x: 450, y: 450, ai: { kind: 'raid', obj: 'wagons' } },
-      { type: 'warband', men: 480, x: 1150, y: 430, ai: { kind: 'raid', obj: 'wagons', delay: 8 } },
-      { type: 'gaul_skirm', men: 200, x: 830, y: 330, ai: { kind: 'skirm' } },
-      { type: 'gaul_cav', men: 110, x: 1400, y: 380, ai: { kind: 'raid', obj: 'wagons', delay: 12 } },
-      { type: 'warband', men: 390, x: 300, y: 380, ai: { kind: 'ambush', trigger: 200, maxDelay: 100 } }
+      { type: 'warband', men: 400, x: 450, y: 450, ai: { kind: 'raid', obj: 'wagons' } },
+      { type: 'warband', men: 385, x: 1150, y: 430, ai: { kind: 'raid', obj: 'wagons', delay: 8 } },
+      { type: 'gaul_skirm', men: 160, x: 830, y: 330, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 90, x: 1400, y: 380, ai: { kind: 'raid', obj: 'wagons', delay: 12 } },
+      { type: 'warband', men: 310, x: 300, y: 380, ai: { kind: 'ambush', trigger: 200, maxDelay: 100 } }
     ],
-    reinforcements: [{ at: 100, msg: 'More raiders pour out of the eastern woods!', unit: { type: 'warband', men: 370, x: 1500, y: 420, ai: { kind: 'raid', obj: 'wagons' } } }],
+    reinforcements: [{ at: 100, msg: 'More raiders pour out of the eastern woods!', unit: { type: 'warband', men: 295, x: 1500, y: 420, ai: { kind: 'raid', obj: 'wagons' } } }],
     rewards: { gold: 180, supplies: 260, recruits: 50, xpBase: 34, officerXp: 40 }, rewardMult: 1,
     unlock: [{ type: 'archer', name: 'Cretan Archers', men: 100, maxMen: 130, xp: 25, drill: 20, msg: 'Cretan mercenary archers join your column.' }]
   },
@@ -234,19 +234,19 @@ export const SCENARIOS = [
       { kind: 'forest', cx: 160, cy: 470, rx: 180, ry: 140 }, { kind: 'forest', cx: 1460, cy: 480, rx: 150, ry: 130 }, { kind: 'water', x: 0, y: 620, w: 330, h: 50 }
     ],
     enemy: [
-      { type: 'warband', men: 455, x: 520, y: 260, ai: { kind: 'ambush', trigger: 120, maxDelay: 70, quiet: true } },
-      { type: 'warband', men: 455, x: 680, y: 240, ai: { kind: 'ambush', trigger: 120, maxDelay: 60, quiet: true } },
-      { type: 'warband', men: 455, x: 920, y: 240, ai: { kind: 'ambush', trigger: 120, maxDelay: 60, quiet: true } },
-      { type: 'warband', men: 455, x: 1080, y: 260, ai: { kind: 'ambush', trigger: 120, maxDelay: 70, quiet: true } },
-      { type: 'gaul_elite', men: 385, x: 800, y: 290, ai: { kind: 'ambush', trigger: 100, maxDelay: 75, quiet: true } },
-      { type: 'gaul_skirm', men: 195, x: 640, y: 340, ai: { kind: 'skirm' } },
-      { type: 'gaul_skirm', men: 195, x: 960, y: 340, ai: { kind: 'skirm' } },
-      { type: 'gaul_cav', men: 105, x: 1350, y: 330, ai: { kind: 'flank', delay: 60 } }
+      { type: 'warband', men: 350, x: 520, y: 260, ai: { kind: 'ambush', trigger: 120, maxDelay: 70, quiet: true } },
+      { type: 'warband', men: 350, x: 680, y: 240, ai: { kind: 'ambush', trigger: 120, maxDelay: 60, quiet: true } },
+      { type: 'warband', men: 350, x: 920, y: 240, ai: { kind: 'ambush', trigger: 120, maxDelay: 60, quiet: true } },
+      { type: 'warband', men: 350, x: 1080, y: 260, ai: { kind: 'ambush', trigger: 120, maxDelay: 70, quiet: true } },
+      { type: 'gaul_elite', men: 300, x: 800, y: 290, ai: { kind: 'ambush', trigger: 100, maxDelay: 75, quiet: true } },
+      { type: 'gaul_skirm', men: 150, x: 640, y: 340, ai: { kind: 'skirm' } },
+      { type: 'gaul_skirm', men: 150, x: 960, y: 340, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 80, x: 1350, y: 330, ai: { kind: 'flank', delay: 60 } }
     ],
     reinforcements: [
-      { at: 120, msg: 'The Helvetii reserve advances to join the fight!', unit: { type: 'warband', men: 455, x: 800, y: 40, ai: { kind: 'rush', delay: 0 } } },
-      { at: 240, msg: 'The Boii and Tulingi appear on your flank and rear!', unit: { type: 'warband', men: 525, x: 1500, y: 700, ai: { kind: 'rush', delay: 0 } } },
-      { at: 245, msg: '', unit: { type: 'gaul_elite', men: 280, x: 1560, y: 820, ai: { kind: 'rush', delay: 0 } } }
+      { at: 120, msg: 'The Helvetii reserve advances to join the fight!', unit: { type: 'warband', men: 350, x: 800, y: 40, ai: { kind: 'rush', delay: 0 } } },
+      { at: 240, msg: 'The Boii and Tulingi appear on your flank and rear!', unit: { type: 'warband', men: 405, x: 1500, y: 700, ai: { kind: 'rush', delay: 0 } } },
+      { at: 245, msg: '', unit: { type: 'gaul_elite', men: 215, x: 1560, y: 820, ai: { kind: 'rush', delay: 0 } } }
     ],
     rewards: { gold: 700, supplies: 400, recruits: 200, xpBase: 80, officerXp: 90 }, rewardMult: 1,
     unlock: [

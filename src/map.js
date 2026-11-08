@@ -111,7 +111,7 @@ export function renderMap(root, c, api) {
           : `<p><b>${esc(scn.name)}</b>${scn.kind === 'named' ? ' <span class="pill">Named battle</span>' : ''}${scn.rewardMult > 1.4 ? ' <span class="pill">Dangerous - rich spoils</span>' : ''}<br><span class="small muted">${esc(scn.geo.place)} (${scn.geo.lat.toFixed(2)}&deg;N, ${scn.geo.lon.toFixed(2)}&deg;E)</span><br><span class="muted">${esc(scn.briefing)}</span></p>
           <p class="small muted">${esc(scn.objective)}</p>
           <div class="row"><button class="primary" id="m-camp">Make camp (${c.daysLeft} day${c.daysLeft === 1 ? '' : 's'})</button><button id="m-march">March at once</button></div>`}
-        <div class="row" style="margin-top:8px"><button id="m-menu">Main menu</button>${(c.history || []).length ? '<button id="m-restore" title="Restore the snapshot saved before the last battle">Undo last battle</button>' : ''}</div></div>
+        <div class="row" style="margin-top:8px"><button id="m-menu">Main menu</button></div></div>
       <div class="card"><h3>${esc((c.player && c.player.name) || 'Your command')}</h3><div class="small muted">${esc(picksNames(c).join(' - ') || 'Veteran commander')}</div>${describe(c).lines.map(([a, b]) => `<div class="kvl"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}</div>
       <div class="card"><h3>Your army</h3><ul class="armylist">${army}</ul></div>
       <div class="card"><h3>Dispatches</h3><div class="log">${hrows || '<div>No battles fought yet.</div>'}</div></div>
@@ -120,7 +120,6 @@ export function renderMap(root, c, api) {
   if (q('#m-camp')) q('#m-camp').onclick = () => api.camp();
   if (q('#m-march')) q('#m-march').onclick = () => api.march();
   q('#m-menu').onclick = () => api.menu();
-  if (q('#m-restore')) q('#m-restore').onclick = () => api.undo();
   q('#v-act').onclick = () => { view = 'act'; renderMap(root, c, api); };
   q('#v-all').onclick = () => { view = 'all'; renderMap(root, c, api); };
 }

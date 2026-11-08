@@ -186,3 +186,5 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .wiz .nav{display:flex;justify-content:space-between;gap:10px;margin-top:4px}
 .wiz .review .kvl b{color:var(--ink)}
 @media (max-width:900px){.wiz{grid-template-columns:1fr}}
+
+.ucard[data-stance=hold] b::after{content:' - hold';color:#7fb3e6;font-weight:normal}

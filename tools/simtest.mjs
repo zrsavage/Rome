@@ -19,7 +19,7 @@ function campaignAt(i, difficulty) {
   return c;
 }
 
-function play(strategy, i, difficulty, seed) {
+export function play(strategy, i, difficulty, seed) {
   const scn = SCENARIOS[i], c = campaignAt(i, difficulty);
   const b = new Battle(scn, romeSpecs(c, scn), { difficulty, seed, fort: c.fort });
   const rome = b.units.filter(u => u.side === 'rome');
@@ -35,7 +35,7 @@ function play(strategy, i, difficulty, seed) {
     if (strategy === 'hold' && b.t < 0.2) rome.forEach(u => { if (u.type.cat === 'inf') u.stance = 'hold'; });
     if (strategy === 'retreat' && b.t > 60) b.retreatAll();
     if (strategy === 'tactician') {
-      if (b.t < 0.2) rome.forEach(u => { if (u.type.cat !== 'cav') u.stance = 'hold'; });
+      // default stance is 'defend post' (engage nearby enemies, then return); no blanket hold
       if (b.t < 0.2 && b.rule && b.rule.attacker === 'gaul') { const o = b.objectives[0]; rome.filter(u => u.type.cat === 'inf').forEach((u, i, a) => b.setMove(u, o.x + (i - (a.length - 1) / 2) * 70, o.y + 30, -Math.PI / 2)); }
       if (Math.abs(b.t % 2) < dt) {
         const engagedEnemies = new Set(); rome.forEach(u => { if (u.active && u.type.cat === 'inf') u.contacts.forEach(e => { if (e.active) engagedEnemies.add(e); }); });
@@ -47,8 +47,10 @@ function play(strategy, i, difficulty, seed) {
             if (u.contacts.some(e => e.active)) continue;
             if (u.fatigue > 65 && (!n || n.gap > 60)) { b.fallBack(u); continue; }
             const guard = b.rule && b.rule.attacker === 'gaul' ? b.objectives[0] : null;   // defending: stay near the objective
-            if (guard && u.order.kind === 'none') u.stance = 'hold';
-            if (n && n.gap < 140 && (!tgt || !tgt.active) && (!guard || Math.hypot(n.e.x - guard.x, n.e.y - guard.y) < 230)) b.setAttack(u, n.e);
+            const threatened = guard && b.units.some(e => e.side === 'gaul' && e.active && Math.hypot(e.x - guard.x, e.y - guard.y) < 260);
+            const keeper = guard && u === rome.find(x => x.type.cat === 'inf');           // one cohort always stays on the wagons
+            const reach = !guard ? 140 : (keeper || threatened) ? 140 : 1e9;              // others hunt stragglers once the wagons are safe
+            if (n && n.gap < reach && (!tgt || !tgt.active) && (!guard || !keeper || Math.hypot(n.e.x - guard.x, n.e.y - guard.y) < 230)) b.setAttack(u, n.e);
             else if (!n || n.gap > 200) { if (u.order.kind === 'attack') u.order = { kind: 'none' }; }
           } else if (u.type.cat === 'cav') {
             const tgt = u.order.kind === 'attack' ? b.byId(u.order.targetId) : null;
@@ -61,18 +63,22 @@ function play(strategy, i, difficulty, seed) {
       }
     }
     b.update(dt);
+    if (process.env.TRACE && Math.abs(b.t % 30) < dt / 2) console.log('   t' + String(Math.round(b.t)).padStart(4), 'R', rome.filter(u => u.present).map(u => u.name.slice(0, 3) + u.men + (u.state === 'routing' ? 'R' : u.fighting ? 'f' : u.state[0])).join(' '), '| G', b.units.filter(u => u.side === 'gaul' && u.present).map(u => u.typeKey[0] + u.men + (u.state === 'routing' ? 'R' : u.fighting ? 'f' : u.state[0])).join(' '));
   }
+  if (process.env.DEBUG) b.result._log = b.log.filter(l => !/hurls|rallies|crashes/.test(l.msg)).slice(-2).map(l => l.msg).join(' / ') + ` [rome ${Math.round(b.activeMen('rome'))} gaul ${Math.round(b.activeMen('gaul'))} hold ${JSON.stringify(b.hold)}]`;
   return b.result;
 }
 
+const MAIN = process.argv[1] && process.argv[1].endsWith('simtest.mjs');
 const strategies = (process.env.STRATS || 'tactician,charge,hold,retreat').split(',');
-for (const i of SEL) {
+for (const i of MAIN ? SEL : []) {
   console.log(`\n== ${i + 1}. ${SCENARIOS[i].name} ==`);
   for (const diff of DIFFS) for (const strat of strategies) {
     const tally = { victory: 0, draw: 0, defeat: 0 }; let time = 0, loss = 0, kill = 0;
     for (let n = 0; n < RUNS; n++) {
       const r = play(strat, i, diff, 1000 + n);
       if (!r) { console.log('NO RESULT', diff, strat, n); continue; }
+      if (process.env.DEBUG) console.log('   ', r.outcome, Math.round(r.time) + 's', r._log);
       tally[r.outcome]++; time += r.time; loss += r.rows.reduce((a, x) => a + x.casualties, 0); kill += r.enemyDead;
     }
     console.log(`${diff.padEnd(9)} ${strat.padEnd(9)} W${String(tally.victory).padStart(3)} D${String(tally.draw).padStart(3)} L${String(tally.defeat).padStart(3)}  avg ${(time / RUNS).toFixed(0)}s  lost ${(loss / RUNS).toFixed(0)}  killed ${(kill / RUNS).toFixed(0)}`);

@@ -148,7 +148,8 @@ export class BattleUI {
       if (k === 'v') { this.r.showRange = !this.r.showRange; this.emit('range', { on: this.r.showRange }); }
       if (/^[1-9]$/.test(k) && !e.altKey) this.controlGroup(+k, e.ctrlKey || e.metaKey);
       if (['a', 'w', 's', 'd', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k) && !e.ctrlKey) this.keys.add(k);
-      if (k === 'h') { const hs = this.selected(); hs.forEach(u => { this.b.setHold(u); }); if (hs.length) this.emit('hold', { count: hs.length }); }
+      if (k === 'h') { const hs = this.selected(); hs.forEach(u => { this.b.setHold(u); }); if (hs.length) { this.emit('hold', { count: hs.length }); this.showBanner('Hold position', 600); } }
+      if (k === 'g') { const gs = this.selected(); gs.forEach(u => this.b.setEngage(u)); if (gs.length) { this.emit('engage', { count: gs.length }); this.showBanner('Defend post', 600); } }
       if (k === 't') { const ts = this.selected(); ts.forEach(u => this.b.toggleFormation(u)); if (ts.length) this.emit('formation', { count: ts.length }); }
       if (k === 'r') { const rs = this.selected(); rs.forEach(u => this.b.fallBack(u)); if (rs.length) this.emit('fallback', { count: rs.length }); }
       if (k === 'escape') this.select([]);
@@ -199,7 +200,7 @@ export class BattleUI {
     $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${Math.round(b.activeMen('gaul'))}${objTxt}   ${gs}`;
     document.querySelectorAll('.ucard').forEach(d => {
       const u = b.byId(+d.dataset.id); if (!u) return;
-      d.classList.toggle('sel', this.r.selection.has(u.id)); d.classList.toggle('gone', !u.present);
+      d.dataset.stance = u.stance; d.classList.toggle('sel', this.r.selection.has(u.id)); d.classList.toggle('gone', !u.present);
       d.querySelector('.x i').style.width = Math.max(0, u.men / u.maxMen * 100) + '%';
       d.querySelector('.m i').style.width = Math.max(0, Math.min(100, u.morale / u.maxMorale * 100)) + '%';
       d.title = `${u.men} men` + (u.state === 'routing' ? ' (routing)' : u.state === 'gone' ? ' (withdrawn)' : '');
@@ -222,7 +223,7 @@ export class BattleUI {
     L.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 88, 88)}"><h3>${u.name}</h3><div class="muted">${t.blurb}</div>` +
       kv('Men', `${u.men} / ${u.maxMen}`) + kv('Morale', `${Math.round(u.morale)} / ${Math.round(u.maxMorale)}`) + kv('Fatigue', Math.round(u.fatigue) + '%') +
       kv('Experience', lvl) + kv('Drill', Math.round(u.drill)) +
-      (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics})` : 'none') + kv('Stance', u.stance === 'hold' ? 'Hold' : 'Aggressive') + kv('Formation', u.formation === 'close' ? 'Close order' : 'Normal') : '') +
+      (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics})` : 'none') + kv('Stance', u.stance === 'hold' ? 'Hold (never leaves)' : 'Defend post') + kv('Formation', u.formation === 'close' ? 'Close order' : 'Normal') : '') +
       (t.pilum ? kv('Pila volleys', u.pilumLeft) : '') + (t.range ? kv('Ammo', Math.max(0, Math.round(u.ammo / t.ammo * 100)) + '%') : '') +
       kv('State', u.state);
   }
