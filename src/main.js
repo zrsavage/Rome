@@ -2,87 +2,115 @@ import { SCENARIOS, DIFFICULTY, UNIT_TYPES } from './data.js';
 import { newCampaign, romeSpecs, applyResult } from './state.js';
 import { Camp, totalMen } from './camp.js';
 import { BattleUI } from './battleui.js';
+import { renderMap } from './map.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const SAVE = 'legio_save_v1', PRE = 'legio_pre_v1';
+const SLOTS = 3, key = (n) => `legio_slot_${n}_v2`, preKey = (n) => `legio_pre_${n}_v2`;
 let campaign = null;
 
 function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id)); }
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } }
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } },
+  del(k) { try { localStorage.removeItem(k); } catch { /* ignore */ } }
 };
-const save = () => store.set(SAVE, campaign);
+const save = () => { if (campaign) store.set(key(campaign.slot), campaign); };
 
-const camp = new Camp($('screen-camp'), {
-  save, menu: () => { show('screen-menu'); refreshMenu(); },
-  march: () => showBrief()
-});
+const camp = new Camp($('screen-camp'), { save, map: () => showMap(), march: () => showBrief() });
 const battle = new BattleUI();
 
-// ----- menu -----
+// ----- menu with save slots -----
 const diffSel = $('diff');
 diffSel.innerHTML = Object.entries(DIFFICULTY).map(([k, d]) => `<option value="${k}" ${k === 'normal' ? 'selected' : ''}>${d.name}</option>`).join('');
 const diffDesc = () => { $('diff-desc').textContent = DIFFICULTY[diffSel.value].desc; };
 diffSel.onchange = diffDesc; diffDesc();
-function refreshMenu() { $('btn-continue').disabled = !store.get(SAVE); }
-$('btn-new').onclick = () => { campaign = newCampaign(diffSel.value); save(); camp.msgs = []; camp.sel = 1; camp.show(campaign); show('screen-camp'); };
-$('btn-continue').onclick = () => { campaign = store.get(SAVE); if (!campaign) return; camp.show(campaign); show('screen-camp'); };
+
+function refreshMenu() {
+  const el = $('slots'); el.innerHTML = '';
+  for (let n = 1; n <= SLOTS; n++) {
+    const c = store.get(key(n)), d = document.createElement('div'); d.className = 'slot';
+    if (c) {
+      const scn = SCENARIOS[c.scenario];
+      d.innerHTML = `<div><b>Slot ${n}</b> - ${esc(DIFFICULTY[c.difficulty].name)}<small>${scn ? `Battle ${c.scenario + 1}/${SCENARIOS.length}: ${esc(scn.name)}` : 'Act I complete'} - ${totalMen(c)} men - day ${c.day}</small></div>
+        <div class="row"><button class="primary" data-a="load">Continue</button><button data-a="del">Delete</button></div>`;
+      d.querySelector('[data-a=load]').onclick = () => openCampaign(c, n);
+      d.querySelector('[data-a=del]').onclick = () => { if (confirm(`Delete the campaign in slot ${n}?`)) { store.del(key(n)); store.del(preKey(n)); refreshMenu(); } };
+    } else {
+      d.innerHTML = `<div><b>Slot ${n}</b><small>Empty</small></div><button class="primary" data-a="new">New Campaign</button>`;
+      d.querySelector('[data-a=new]').onclick = () => { const c2 = newCampaign(diffSel.value); openCampaign(c2, n); save(); };
+    }
+    el.appendChild(d);
+  }
+}
+function openCampaign(c, n) { campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; showMap(); }
+function toMenu() { show('screen-menu'); refreshMenu(); }
 refreshMenu();
+
+// ----- map -----
+function showMap() {
+  renderMap($('screen-map'), campaign, {
+    camp: () => { camp.show(campaign); show('screen-camp'); },
+    march: () => showBrief(),
+    menu: () => toMenu(),
+    undo: () => { const snap = store.get(preKey(campaign.slot)); if (snap && confirm('Restore the army to how it was before the last battle?')) { campaign = snap; save(); showMap(); } }
+  });
+  show('screen-map');
+}
 
 // ----- briefing -----
 function showBrief() {
-  const c = campaign, scn = SCENARIOS[c.scenario % SCENARIOS.length], diff = DIFFICULTY[c.difficulty];
+  const c = campaign, scn = SCENARIOS[c.scenario];
+  if (!scn) return showMap();
+  const diff = DIFFICULTY[c.difficulty];
   const favMult = c.favour >= 2 ? 0.9 : c.favour <= -2 ? 1.1 : 1, scale = diff.enemyMult * favMult;
   const groups = {};
-  scn.enemy.forEach(e => { groups[e.type] = (groups[e.type] || 0) + e.men * scale; });
+  [...scn.enemy, ...scn.reinforcements.filter(r => r.side !== 'rome').map(r => r.unit)].forEach(e => { groups[e.type] = (groups[e.type] || 0) + e.men * scale; });
   const total = Object.values(groups).reduce((a, b) => a + b, 0);
-  const list = Object.entries(groups).map(([t, n]) => c.scouted ? `<li>${UNIT_TYPES[t].name}: <b>${Math.round(n)}</b> men</li>` : `<li>${UNIT_TYPES[t].name}: roughly <b>${Math.round(n / 25) * 25 - 25}-${Math.round(n / 25) * 25 + 50}</b></li>`).join('');
+  const rnd = (n) => Math.max(0, Math.round(n / 50) * 50);
+  const list = Object.entries(groups).map(([t, n]) => c.scouted ? `<li>${UNIT_TYPES[t].name}: <b>${Math.round(n)}</b> men</li>` : `<li>${UNIT_TYPES[t].name}: roughly <b>${rnd(n * 0.75)}-${rnd(n * 1.35)}</b></li>`).join('');
   const rome = totalMen(c);
-  $('screen-brief').innerHTML = `<div class="panel-page"><div class="muted">Act ${scn.act} - ${esc(scn.theater)}, ${esc(scn.year)}</div>
+  $('screen-brief').innerHTML = `<div class="panel-page"><div class="muted">Act ${scn.act} - ${esc(scn.theater)}, ${esc(scn.year)} - Battle ${c.scenario + 1} of ${SCENARIOS.length}${scn.kind === 'named' ? ' - NAMED BATTLE' : ''}</div>
     <h2>${esc(scn.name)}</h2><p>${esc(scn.briefing)}</p>
-    <div class="card"><h3>Objective</h3>${esc(scn.objective)}<br><span class="muted small">A time limit of ${Math.round(scn.timeLimit / 60)} minutes applies. A well-ordered withdrawal still counts as a draw and earns partial spoils.</span></div>
+    <div class="card"><h3>Objective</h3>${esc(scn.objective)}<br><span class="muted small">Time limit ${Math.round(scn.timeLimit / 60)} minutes. A well-ordered withdrawal (keeping at least ${Math.round((0.45 - 0.05 * c.fort) * 100)}% of your men; fortifications lower this) counts as a draw and earns partial spoils.${scn.rewardMult > 1.4 ? ' Historically a dark day for Rome: survival or victory pays handsomely.' : ''}</span></div>
     <div class="row" style="align-items:flex-start;margin-top:12px"><div class="card" style="flex:1"><h3>Your force (${rome} men)</h3><ul>${c.cohorts.map(h => `<li>${esc(h.name)} - ${h.men}</li>`).join('')}</ul></div>
-    <div class="card" style="flex:1"><h3>Enemy${c.scouted ? ' (scouted)' : ' (estimated)'} ~${c.scouted ? Math.round(total) : '?'}</h3><ul>${list}</ul>${c.scouted ? '<div class="muted small">Scouts warn of possible reinforcements from the forest.</div>' : '<div class="muted small">Without scouts, expect surprises.</div>'}</div></div>
+    <div class="card" style="flex:1"><h3>Enemy${c.scouted ? ' (scouted)' : ' (estimated)'} ~${c.scouted ? Math.round(total) : '?'}</h3><ul>${list}</ul>${c.scouted ? '<div class="muted small">Scouts warn that reinforcements may arrive during the battle.</div>' : '<div class="muted small">Without scouts, expect surprises.</div>'}</div></div>
     <p class="muted small">Goodwill ${c.favour}. Fort ${c.fort}. Supplies ${c.supplies}${c.supplies < totalMen(c) / 60 * 2 ? ' - LOW, morale will suffer' : ''}.</p>
-    <div class="row"><button class="primary" id="go">Deploy</button><button id="back">Back to camp</button></div></div>`;
+    <div class="row"><button class="primary" id="go">Deploy</button><button id="back">Back to map</button></div></div>`;
   $('go').onclick = () => startBattle(scn);
-  $('back').onclick = () => { camp.show(campaign); show('screen-camp'); };
+  $('back').onclick = () => showMap();
   show('screen-brief');
 }
 
 function startBattle(scn) {
   const c = campaign;
-  store.set(PRE, c); // snapshot so a bad result can be retried
+  store.set(preKey(c.slot), c);
   show('screen-battle');
   const low = c.supplies < totalMen(c) / 60 * 2;
-  battle.start(scn, romeSpecs(c), { difficulty: c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low }, (res) => showResult(res));
+  battle.start(scn, romeSpecs(c, scn), { difficulty: c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low }, (res) => showResult(res, scn));
 }
 
 // ----- result -----
-function showResult(res) {
+function showResult(res, scn) {
   battle.stop();
   const c = campaign;
-  const notes = applyResult(c, res);
-  c.scouted = false; c.daysLeft = 3; c.battlesFought = (c.battlesFought || 0) + 1;
+  const notes = applyResult(c, res, scn);
   c.cohorts.forEach(h => { h.condition = Math.max(35, h.condition); });
   save();
   const o = res.outcome, title = { victory: 'VICTORY', draw: 'DRAW', defeat: 'DEFEAT' }[o];
-  const flavour = { victory: 'The Gauls break and scatter. The field is yours.', draw: 'Neither side can claim the field, but your legion marches away intact.', defeat: 'The line has broken. You live to fight another day, but the loss is bitter.' }[o];
+  const flavour = { victory: 'The enemy breaks and scatters. The field is yours.', draw: 'Neither side can claim the field, but your legion marches away intact.', defeat: 'The line has broken. You live to fight another day, but the loss is bitter.' }[o];
   const rows = res.rows.map(r => `<tr><td>${esc(r.name)}</td><td>${r.startMen}</td><td>${r.endMen}</td><td>${r.casualties}</td><td>${r.kills}</td><td>+${r.xpGain}</td></tr>`).join('');
-  const s = res.spoils;
+  const s = res.spoils, next = SCENARIOS[c.scenario];
   $('screen-result').innerHTML = `<div class="panel-page"><div class="big ${o}">${title}</div><p>${flavour}</p>
     <div class="card"><h3>Casualties</h3><table><tr><th>Unit</th><th>Before</th><th>After</th><th>Lost</th><th>Kills</th><th>XP</th></tr>${rows}</table>
     <p class="muted small">Enemy dead: about ${res.enemyDead} of ${res.enemyStart}. Wounded men who can march are counted in the 'after' column.</p></div>
-    <div class="card" style="margin-top:12px"><h3>Spoils</h3>${o === 'defeat' ? 'None.' : `+${s.gold} denarii, +${s.supplies} supplies, +${s.recruits} fresh recruits`}</div>
-    ${notes.length ? `<div class="card" style="margin-top:12px"><h3>Officers</h3>${notes.map(n => `<div>${esc(n)}</div>`).join('')}</div>` : ''}
-    <div class="row" style="margin-top:16px"><button class="primary" id="cont">Return to camp</button><button id="retry">Retry this battle</button></div>
-    <p class="muted small">This vertical slice has a single battle; after returning to camp you can march to the same fight again. Later battles are the next milestone.</p></div>`;
-  $('cont').onclick = () => { camp.msgs = []; camp.note(`After the ${o}, the army makes camp.`); camp.show(campaign); show('screen-camp'); };
-  $('retry').onclick = () => { campaign = store.get(PRE); save(); camp.show(campaign); show('screen-camp'); };
+    <div class="card" style="margin-top:12px"><h3>Spoils</h3>${o === 'defeat' ? 'None. The enemy keeps the field; you may try again.' : `+${s.gold} denarii, +${s.supplies} supplies, +${s.recruits} fresh recruits`}</div>
+    ${notes.length ? `<div class="card" style="margin-top:12px"><h3>Dispatches</h3>${notes.map(n => `<div>${esc(n)}</div>`).join('')}</div>` : ''}
+    <div class="row" style="margin-top:16px"><button class="primary" id="cont">${o !== 'defeat' && !next ? 'Finish Act I' : 'Return to the map'}</button><button id="retry">Retry this battle (undo)</button></div></div>`;
+  $('cont').onclick = () => { camp.msgs = []; camp.note(`After the ${o}, the army makes camp.`); showMap(); };
+  $('retry').onclick = () => { const snap = store.get(preKey(c.slot)); if (snap) { campaign = snap; save(); } showMap(); };
   show('screen-result');
 }
 
 // test hooks for automated checks
-window.__legio = { get campaign() { return campaign; }, battle, show };
+window.__legio = { get campaign() { return campaign; }, battle, show, store };

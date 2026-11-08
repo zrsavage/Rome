@@ -7,7 +7,7 @@ export class Renderer {
     this.canvas = canvas; this.ctx = canvas.getContext('2d');
     this.cam = { x: WORLD.w / 2, y: WORLD.h / 2, zoom: 1 };
     this.bg = null; this.dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.selection = new Set(); this.box = null; this.hover = null; this.dragLine = null;
+    this.selection = new Set(); this.box = null; this.hover = null; this.dragLine = null; this.showRange = false;
   }
   resize() {
     const r = this.canvas.getBoundingClientRect();
@@ -84,9 +84,14 @@ export class Renderer {
     // bodies
     for (const d of b.bodies) { ctx.fillStyle = d.side === 'rome' ? 'rgba(120,30,25,0.8)' : 'rgba(30,50,90,0.8)'; ctx.fillRect(d.x - 1, d.y - 1, 2.2, 2.2); }
     const order = b.units.filter(u => u.present).sort((a, b2) => a.y - b2.y);
+    this.drawObjectives(ctx, b);
+    for (const f of b.fx) if (f.kind === 'dust') this.drawDust(ctx, f);
+    for (const id of new Set([...this.selection, this.hover])) { const u = b.byId(id); if (u && u.present && u.state !== 'routing') this.drawArcs(ctx, u); }
+    for (const u of order) if (this.showRange || this.selection.has(u.id)) this.drawRange(ctx, u);
     for (const u of order) this.drawUnit(ctx, u, b);
-    for (const f of b.fx) this.drawFx(ctx, f);
+    for (const f of b.fx) if (f.kind !== 'dust') this.drawFx(ctx, f);
     this.drawOrders(ctx, b);
+    this.drawFloats(ctx, b);
     ctx.restore();
     for (const u of order) this.drawLabel(ctx, u);
     if (this.box) { ctx.strokeStyle = '#e8c36a'; ctx.fillStyle = 'rgba(232,195,106,0.12)'; const bx = this.box; ctx.fillRect(bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0); ctx.strokeRect(bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0); }
@@ -124,6 +129,7 @@ export class Renderer {
     ctx.fillStyle = t.color; ctx.fillRect(-u.d / 2 - 11, -4, 6, 8);
     if (sel) { ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 2.2; ctx.strokeRect(-u.d / 2 - 2, -u.w / 2 - 2, u.d + 4, u.w + 4); }
     else if (this.hover === u.id) { ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(-u.d / 2 - 1, -u.w / 2 - 1, u.d + 2, u.w + 2); }
+    if (u.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(0.4, u.flash / 0.22 * 0.4)})`; ctx.fillRect(-u.d / 2, -u.w / 2, u.d, u.w); }
     if (u.fighting) { ctx.strokeStyle = 'rgba(255,90,60,0.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(u.d / 2 + 1.5, -u.w / 2); ctx.lineTo(u.d / 2 + 1.5, u.w / 2); ctx.stroke(); }
     ctx.restore();
   }
@@ -156,17 +162,67 @@ export class Renderer {
   }
 
   drawOrders(ctx, b) {
-    ctx.lineWidth = 1.6; ctx.setLineDash([6, 5]);
+    ctx.lineWidth = 1.6;
     for (const id of this.selection) {
       const u = b.byId(id); if (!u || !u.present) continue;
-      let tx = null, ty = null, col = 'rgba(255,233,168,0.8)';
-      if (u.order.kind === 'move') { tx = u.order.x; ty = u.order.y; }
-      else if (u.order.kind === 'attack') { const e = b.byId(u.order.targetId); if (e && e.present) { tx = e.x; ty = e.y; col = 'rgba(255,110,90,0.9)'; } }
+      let tx = null, ty = null, col = 'rgba(255,233,168,0.85)', tf = null;
+      if (u.order.kind === 'move') { tx = u.order.x; ty = u.order.y; tf = u.order.tf; }
+      else if (u.order.kind === 'attack') { const e = b.byId(u.order.targetId); if (e && e.present) { tx = e.x; ty = e.y; col = 'rgba(255,100,80,0.95)'; } }
       if (tx == null) continue;
-      ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(u.x, u.y); ctx.lineTo(tx, ty); ctx.stroke();
-      ctx.setLineDash([]); ctx.beginPath(); ctx.arc(tx, ty, 5, 0, 7); ctx.stroke(); ctx.setLineDash([6, 5]);
+      ctx.strokeStyle = col; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.moveTo(u.x, u.y); ctx.lineTo(tx, ty); ctx.stroke(); ctx.setLineDash([]);
+      if (u.order.kind === 'attack') {
+        const e = b.byId(u.order.targetId);
+        ctx.beginPath(); ctx.arc(tx, ty, Math.max(e.w, e.d) / 2 + 8, 0, 7); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(tx - 10, ty); ctx.lineTo(tx + 10, ty); ctx.moveTo(tx, ty - 10); ctx.lineTo(tx, ty + 10); ctx.stroke();
+      } else {
+        // destination ghost + flag + facing arrow
+        ctx.save(); ctx.translate(tx, ty); ctx.rotate(tf ?? u.f);
+        ctx.fillStyle = 'rgba(255,233,168,0.12)'; ctx.fillRect(-u.d / 2, -u.w / 2, u.d, u.w); ctx.strokeRect(-u.d / 2, -u.w / 2, u.d, u.w);
+        ctx.beginPath(); ctx.moveTo(u.d / 2 + 4, 0); ctx.lineTo(u.d / 2 + 26, 0); ctx.moveTo(u.d / 2 + 19, -5); ctx.lineTo(u.d / 2 + 26, 0); ctx.lineTo(u.d / 2 + 19, 5); ctx.stroke();
+        ctx.restore();
+        ctx.fillStyle = col; ctx.fillRect(tx - 0.8, ty - 16, 1.6, 16); ctx.beginPath(); ctx.moveTo(tx + 0.8, ty - 16); ctx.lineTo(tx + 11, ty - 12); ctx.lineTo(tx + 0.8, ty - 8); ctx.fill();
+      }
     }
-    ctx.setLineDash([]);
+  }
+
+  // Flank arcs: green front, yellow flanks, red rear (matches the sim's angle classes).
+  drawArcs(ctx, u) {
+    const R = Math.max(u.w, u.d) / 2 + 26, a1 = Math.acos(0.6), a2 = Math.acos(-0.35);
+    const sector = (from, to, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(u.x, u.y); ctx.arc(u.x, u.y, R, u.f + from, u.f + to); ctx.closePath(); ctx.fill(); };
+    sector(-a1, a1, 'rgba(90,210,90,0.17)'); sector(a1, a2, 'rgba(235,205,70,0.2)'); sector(-a2, -a1, 'rgba(235,205,70,0.2)'); sector(a2, Math.PI * 2 - a2, 'rgba(225,70,60,0.22)');
+  }
+  drawRange(ctx, u) {
+    const t = u.type, ext = Math.max(u.w, u.d) / 2; let r = null, col = 'rgba(255,255,255,0.35)';
+    if (t.range) r = t.range + ext; else if (t.cat === 'cav') { r = 110 + ext; col = 'rgba(255,170,120,0.35)'; } else if (t.pilum && u.pilumLeft > 0) { r = 30 + ext; col = 'rgba(255,225,150,0.4)'; }
+    if (!r) return;
+    ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.setLineDash([5, 6]); ctx.beginPath(); ctx.arc(u.x, u.y, r, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+  }
+  drawDust(ctx, f) {
+    const a = f.life / f.max;
+    ctx.fillStyle = `rgba(200,180,140,${a * 0.3})`; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (1.6 - a * 0.6), 0, 7); ctx.fill();
+  }
+  drawFloats(ctx, b) {
+    const z = this.cam.zoom, fs = Math.max(11, 14 / Math.max(0.6, z));
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `bold ${fs}px system-ui, sans-serif`;
+    for (const f of b.floats) {
+      const a = f.life / f.max, y = f.y - (1 - a) * 26;
+      ctx.fillStyle = `rgba(0,0,0,${a * 0.7})`; ctx.fillText(f.text, f.x + 1, y + 1);
+      ctx.fillStyle = f.side === 'rome' ? `rgba(255,130,115,${a})` : `rgba(170,215,255,${a})`; ctx.fillText(f.text, f.x, y);
+    }
+  }
+  drawObjectives(ctx, b) {
+    for (const o of b.objectives) {
+      const col = o.contested ? '240,200,60' : o.owner === 'rome' ? '210,60,50' : o.owner === 'gaul' ? '60,110,190' : '200,200,200';
+      ctx.fillStyle = `rgba(${col},0.13)`; ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, 7); ctx.fill();
+      ctx.strokeStyle = `rgba(${col},0.8)`; ctx.lineWidth = 2; ctx.setLineDash([10, 8]); ctx.stroke(); ctx.setLineDash([]);
+      if (b.rule) {
+        const att = b.rule.attacker, fr = Math.min(1, b.hold[att] / b.rule.holdSecs);
+        if (fr > 0) { ctx.strokeStyle = att === 'rome' ? '#ff6a5a' : '#6aa8ff'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(o.x, o.y, o.r + 6, -Math.PI / 2, -Math.PI / 2 + fr * Math.PI * 2); ctx.stroke(); }
+      }
+      ctx.fillStyle = '#3a2a18'; ctx.fillRect(o.x - 1, o.y - 30, 2, 30);
+      ctx.fillStyle = `rgb(${col})`; ctx.beginPath(); ctx.moveTo(o.x + 1, o.y - 30); ctx.lineTo(o.x + 20, o.y - 24); ctx.lineTo(o.x + 1, o.y - 18); ctx.fill();
+      ctx.fillStyle = 'rgba(240,228,200,0.95)'; ctx.font = 'bold 13px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(o.name, o.x, o.y + o.r + 16);
+    }
   }
 
   unitAt(b, wx, wy, side) {

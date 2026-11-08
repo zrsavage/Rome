@@ -33,7 +33,7 @@ Historical-defeat scenarios use `rewardMult > 1` so a win or draw pays out a lot
 
 ## Roadmap
 1. (done) Vertical slice: one battle + camp.
-2. Campaign map, scenario chain for Act I (4-5 minor + 1 named battle), save/load slots.
+2. (done) Campaign map, Act I chain (5 minor + Bibracte), 3 save slots, objectives, reinforcements, battle-readability pass.
 3. Unit roster expansion (hastati/principes/triarii, auxiliaries, archers, onagers/scorpions), unit upgrades/tech.
 4. Battle features: reinforcements, fortifications/siege, weather/time of day, orders queue, better pathing.
 5. Art pass (AI-generated sprites/portraits/map art - check Hugging Face periodically), UI polish.
@@ -45,3 +45,8 @@ Historical-defeat scenarios use `rewardMult > 1` so a win or draw pays out a lot
 - No pathfinding (units go straight, blocked by enemy units, slowed by water/forest).
 - Only one scenario; replaying it is possible from the result screen.
 - Placeholder procedural art.
+
+## Lessons taken from NapWorld
+Battle readability (flank arcs, range rings, floating casualties, control groups, objectives), a headless balance harness,
+and gradual difficulty tiers. Still to borrow: tutorial/practice battle, seasons and supply pressure on the map, generals with
+traits, sound, a single-file build in `dist/`.

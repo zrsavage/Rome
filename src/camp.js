@@ -114,7 +114,7 @@ export class Camp {
 
   // ----- rendering -----
   render() {
-    const c = this.c, scn = SCENARIOS[c.scenario % SCENARIOS.length], diff = DIFFICULTY[c.difficulty];
+    const c = this.c, scn = SCENARIOS[Math.min(c.scenario, SCENARIOS.length - 1)], diff = DIFFICULTY[c.difficulty];
     const h = this.selected(), offs = c.officers.filter(o => o.alive);
     const drillers = offs.filter(o => o.drill >= 1);
     const act = this.canAct();
@@ -155,7 +155,7 @@ export class Camp {
             <button class="act" data-a="scout" ${act && !c.scouted ? '' : 'disabled'}>${c.scouted ? 'Enemy scouted' : 'Send scouts'}<small>Reveal exact enemy forces</small></button>
           </div></div>
         <div class="card"><h3>Next battle</h3><p><b>${esc(scn.name)}</b><br><span class="muted">${esc(scn.objective)}</span></p>
-          <div class="row"><button class="primary" id="march">March to battle</button><button id="menu">Main menu</button></div></div>
+          <div class="row"><button class="primary" id="march">March to battle</button><button id="tomap">Back to map</button></div></div>
         <div class="card"><h3>Dispatches</h3><div class="log">${this.msgs.map(m => `<div class="${m.kind}">${esc(m.msg)}</div>`).join('') || '<div>Choose how to spend your days.</div>'}</div></div>
       </div></div>`;
     this.root.querySelectorAll('tr.clickable').forEach(tr => tr.onclick = () => { this.sel = +tr.dataset.id; this.render(); });
@@ -166,6 +166,6 @@ export class Camp {
       else if (a === 'tribute') this.tribute(m === '1'); else this[a]();
     });
     this.root.querySelector('#march').onclick = () => this.api.march();
-    this.root.querySelector('#menu').onclick = () => this.api.menu();
+    this.root.querySelector('#tomap').onclick = () => this.api.map();
   }
 }

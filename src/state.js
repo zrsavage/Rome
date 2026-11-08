@@ -27,24 +27,31 @@ export const TRAITS = ['tactics', 'drill', 'logistics', 'diplomacy'];
 
 export function officerById(c, id) { return c.officers.find(o => o.id === id && o.alive) || null; }
 
-// Roman battle specs from cohorts, auto-deployed in a battle line.
-export function romeSpecs(c) {
-  const cohorts = c.cohorts.filter(h => h.men > 0);
-  const inf = cohorts.filter(h => h.type === 'legionary');
+// Roman battle specs from cohorts, deployed per the scenario's deploy block.
+export function romeSpecs(c, scn) {
+  const d = scn?.deploy || { mode: 'line', cx: 800, cy: 880 };
+  const live = c.cohorts.filter(h => h.men > 0);
+  const inf = live.filter(h => h.type === 'legionary' || h.type === 'aux_inf');
+  const ranged = live.filter(h => h.type === 'slinger' || h.type === 'archer');
+  const cav = live.filter(h => h.type === 'equites' || h.type === 'aux_cav');
   const specs = [];
-  const place = (list, y, x0, x1) => list.forEach((h, i) => {
-    const x = list.length === 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * i / (list.length - 1);
-    specs.push({ type: h.type, name: h.name, cohortId: h.id, men: h.men, maxMen: h.maxMen, xp: h.xp, drill: h.drill, condition: h.condition, officer: officerById(c, h.officerId), x, y, stance: 'aggressive' });
+  const mk = (h, x, y) => specs.push({ type: h.type, name: h.name, cohortId: h.id, men: h.men, maxMen: h.maxMen, xp: h.xp, drill: h.drill, condition: h.condition, officer: officerById(c, h.officerId), x, y, f: d.f, stance: 'aggressive' });
+  if (d.mode === 'grid') {
+    [...inf, ...ranged, ...cav].forEach((h, i) => { const col = i % d.cols, row = Math.floor(i / d.cols); mk(h, d.cx + (col - (d.cols - 1) / 2) * d.dx, d.cy + row * d.dy); });
+    return specs;
+  }
+  const sp = 100, n = inf.length, front = n <= 4 ? n : Math.ceil(n / 2), back = n - front;
+  inf.forEach((h, i) => {
+    const isBack = i >= front, k = isBack ? i - front : i, cnt = isBack ? back : front;
+    mk(h, d.cx + (k - (cnt - 1) / 2) * sp, d.cy + (isBack ? 85 : 0));
   });
-  const half = (inf.length - 1) * 50;
-  place(inf, 880, 800 - half, 800 + half);
-  place(cohorts.filter(h => h.type === 'slinger'), 935, 740, 860);
-  const cav = cohorts.filter(h => h.type === 'equites');
-  place(cav, 905, 1010, 1110);
+  ranged.forEach((h, i) => mk(h, d.cx + (i - (ranged.length - 1) / 2) * 80, d.cy + (back ? 170 : 58)));
+  const half = Math.max(0, (front - 1) / 2) * sp + 110;
+  cav.forEach((h, i) => mk(h, d.cx + (i % 2 ? 1 : -1) * (half + Math.floor(i / 2) * 75), d.cy + 25));
   return specs;
 }
 
-export function applyResult(c, result) {
+export function applyResult(c, result, scn) {
   const notes = [];
   for (const r of result.rows) {
     const h = c.cohorts.find(x => x.id === r.cohortId);
@@ -61,6 +68,28 @@ export function applyResult(c, result) {
   c.gold += result.spoils.gold; c.supplies += result.spoils.supplies;
   let recruits = result.spoils.recruits;
   for (const h of c.cohorts) { const add = Math.min(recruits, h.maxMen - h.men); h.men += add; recruits -= add; }
+  // Provincial levies: every cohort regains a quarter of its missing men, and nothing ever falls below 35% (no soft-locks).
+  for (const h of c.cohorts) {
+    const before = h.men;
+    h.men = Math.min(h.maxMen, h.men + Math.round((h.maxMen - h.men) * 0.25));
+    const floor = Math.ceil(h.maxMen * 0.35);
+    if (h.men < floor) { notes.push(`${h.name} is reduced to a remnant; the governor sends replacements.`); h.men = floor; }
+    if (h.men > before && before > 0) h.xp = Math.round(h.xp * (0.6 + 0.4 * before / h.men));
+  }
+  c.history = c.history || [];
+  c.history.push({ id: scn.id, outcome: result.outcome, day: c.day });
+  if (result.outcome !== 'defeat') {
+    for (const u of scn.unlock || []) {
+      const id = Math.max(0, ...c.cohorts.map(h => h.id)) + 1;
+      c.cohorts.push({ id, name: u.name, type: u.type, men: u.men, maxMen: u.maxMen, xp: u.xp, drill: u.drill, condition: 100, officerId: null });
+      notes.push(u.msg);
+    }
+    c.scenario++;
+    c.scouted = false; c.favour = Math.round(c.favour * 0.5);
+  }
+  const next = SCENARIOS[c.scenario];
+  c.daysLeft = next ? next.daysToPrepare : 0;
+  if (!next) c.over = true;
   return notes;
 }
 

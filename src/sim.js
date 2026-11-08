@@ -69,12 +69,16 @@ export class Battle {
     this.result = null; this.endTimer = null; this.pendingOutcome = null;
     this.retreating = false; this.broken = { rome: false, gaul: false };
     this.reinf = (scn.reinforcements || []).map(r => ({ ...r, done: false }));
+    this.floats = [];
+    this.objectives = (scn.objectives || []).map(o => ({ ...o, contested: false, presence: { rome: false, gaul: false } }));
+    this.rule = scn.rule || null; this.hold = { rome: 0, gaul: 0 };
     this.fortLevel = opts.fort || 0;
     this.favour = opts.favour || 0;
     // enemy strength modifiers: difficulty + local favour (informants and divided tribes)
     const favMult = this.favour >= 2 ? 0.9 : this.favour <= -2 ? 1.1 : 1;
     this.enemyScale = this.diff.enemyMult * favMult;
     const rb = this.diff.romeMorale + Math.min(8, this.fortLevel * 2) + (opts.suppliesLow ? -8 : 0);
+    this.romeBonus = rb;
     for (const s of romeSpecs) this.units.push(new Unit({ ...s, side: 'rome', moraleBonus: rb }));
     for (const e of scn.enemy) this.spawnEnemy(e);
     this.startRome = this.sumMen('rome'); this.startGaul = this.sumMen('gaul');
@@ -146,7 +150,7 @@ export class Battle {
       const near = this.nearestEnemy(u);
       if (!near) continue;
       if (ai.kind === 'ambush') {
-        if (near.gap < ai.trigger || this.t > ai.maxDelay) { ai.kind = 'rush'; ai.delay = this.t + 1 + this.rand() * 3; if (!u.alerted) { u.alerted = true; this.say('A Gallic warband bursts from the treeline!', 'warn'); } }
+        if (near.gap < ai.trigger || this.t > ai.maxDelay) { ai.kind = 'rush'; ai.delay = this.t + 1 + this.rand() * 3; if (!u.alerted) { u.alerted = true; if (!ai.quiet) this.say('A Gallic warband bursts from the treeline!', 'warn'); } }
       } else if (ai.kind === 'rush') {
         if (this.t < ai.delay) continue;
         const cur = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null;
@@ -159,6 +163,11 @@ export class Battle {
           this.setMove(u, clamp(u.x + dx / d * 90, 20, WORLD.w - 20), clamp(u.y + dy / d * 90, 20, WORLD.h - 20));
         } else if (near.gap > u.type.range * 0.9) this.setMove(u, tgt.x, tgt.y);
         else u.order = { kind: 'none' };
+      } else if (ai.kind === 'raid') {
+        if (this.t < (ai.delay || 0)) continue;
+        const o = this.objectives.find(x => x.id === ai.obj);
+        if (near.gap < 70) { ai.kind = 'rush'; ai.delay = 0; continue; }
+        if (o && !u.fighting) { if (Math.hypot(u.x - o.x, u.y - o.y) > 25) this.setMove(u, o.x, o.y); else u.order = { kind: 'none' }; }
       } else if (ai.kind === 'flank') {
         if (this.t < ai.delay) continue;
         let tgt = u.order.targetId ? this.byId(u.order.targetId) : null;
@@ -183,7 +192,20 @@ export class Battle {
   update(dt) {
     if (this.result) return;
     this.t += dt;
-    for (const r of this.reinf) if (!r.done && this.t >= r.at) { r.done = true; this.spawnEnemy(r.unit); this.startGaul += Math.round(r.unit.men * this.enemyScale); this.say(r.msg, 'warn'); }
+    for (const r of this.reinf) if (!r.done && this.t >= r.at) {
+      r.done = true;
+      if (r.side === 'rome') {
+        const u = new Unit({ ...r.unit, side: 'rome', xp: r.unit.xp ?? 30, drill: 25, moraleBonus: this.romeBonus, stance: 'aggressive' });
+        this.units.push(u); this.startRome += u.men;
+        const n = this.nearestEnemy(u); if (n) this.setAttack(u, n.e);
+        if (r.msg) this.say(r.msg, 'good');
+      } else {
+        this.spawnEnemy(r.unit); this.startGaul += Math.round(r.unit.men * this.enemyScale);
+        if (r.msg) this.say(r.msg, 'warn');
+      }
+    }
+    this.updateObjectives(dt);
+    this.floats = this.floats.filter(f => (f.life -= dt) > 0);
     this._ai = (this._ai || 0) + dt;
     if (this._ai >= 0.4) { this._ai = 0; this.aiThink(); }
     this.computeContacts();
@@ -247,6 +269,11 @@ export class Battle {
     if (goal && !(t.cat === 'ranged' && u.order.kind === 'none' && u.shooting)) {
       const moved = this.moveToward(u, goal.x, goal.y, dt, speedMul);
       u.state = 'moving';
+      u.dustCd = (u.dustCd || 0) - dt;
+      if (moved > 0.4 && u.dustCd <= 0 && this.fx.length < 450) {
+        u.dustCd = 0.16;
+        this.fx.push({ kind: 'dust', x: u.x - Math.cos(u.f) * u.d / 2 + (this.rand() - 0.5) * u.w * 0.6, y: u.y - Math.sin(u.f) * u.d / 2 + (this.rand() - 0.5) * u.w * 0.6, life: 1.1, max: 1.1, r: 3 + this.rand() * 3 });
+      }
       if (moved < 0.1 && u.blocked) u.state = 'idle';
     } else u.state = 'idle';
 
@@ -351,7 +378,7 @@ export class Battle {
   hit(att, def, n, ranged = false) {
     n = Math.min(n, def.men);
     if (n <= 0) return;
-    def.men -= n; def.casualties += n; att.kills += n;
+    def.men -= n; def.casualties += n; att.kills += n; def.flash = 0.22; def.floatAcc = (def.floatAcc || 0) + n;
     let loss = n / def.maxMen * 130 * def.type.fragile * (ranged ? 0.55 : 1);
     if (def.officer) loss *= 1 - 0.04 * (def.officer.tactics || 0);
     def.moralePending += loss;
@@ -431,6 +458,12 @@ export class Battle {
   }
 
   applyDamage(u, dt) {
+    if (u.flash > 0) u.flash -= dt;
+    u.floatCd = (u.floatCd || 0) - dt;
+    if (u.floatAcc >= 2 && u.floatCd <= 0) {
+      this.floats.push({ x: u.x + (this.rand() - 0.5) * u.w * 0.6, y: u.y - 4, text: '-' + Math.round(u.floatAcc), side: u.side, life: 1.5, max: 1.5 });
+      u.floatAcc = 0; u.floatCd = 0.9;
+    }
     if (u.moralePending > 0) {
       u.morale -= u.moralePending; u.moralePending = 0;
     }
@@ -447,6 +480,20 @@ export class Battle {
         }
       }
     }
+  }
+
+  updateObjectives(dt) {
+    if (!this.objectives.length) return;
+    for (const o of this.objectives) {
+      const pr = { rome: false, gaul: false };
+      for (const u of this.units) if (u.active && Math.hypot(u.x - o.x, u.y - o.y) < o.r + Math.max(u.w, u.d) / 3) pr[u.side] = true;
+      o.presence = pr; o.contested = pr.rome && pr.gaul;
+      if (pr.rome && !pr.gaul) o.owner = 'rome'; else if (pr.gaul && !pr.rome) o.owner = 'gaul';
+    }
+    if (!this.rule) return;
+    const att = this.rule.attacker, def = att === 'rome' ? 'gaul' : 'rome';
+    const holding = this.objectives.every(o => o.presence[att] && !o.presence[def]);
+    this.hold[att] = holding ? this.hold[att] + dt : Math.max(0, this.hold[att] - dt * 2);
   }
 
   armyMorale() {
@@ -470,7 +517,11 @@ export class Battle {
     const gaulActive = this.activeMen('gaul'), romeActive = this.activeMen('rome');
     const romeInField = this.units.some(u => u.side === 'rome' && u.present);
     const finish = (o, delay) => { this.pendingOutcome = o; this.endTimer = delay; };
-    if (gaulActive < this.startGaul * 0.25 && !this.reinf.some(r => !r.done)) {
+    if (this.rule && this.hold[this.rule.attacker] >= this.rule.holdSecs) {
+      if (this.rule.attacker === 'rome') { this.say('The objective is taken - the enemy lines collapse!', 'good'); for (const u of this.units) if (u.side === 'gaul' && u.active) u.state = 'routing'; return finish('victory', 4); }
+      this.say('The enemy has seized the objective. The convoy is lost!', 'bad'); return finish('defeat', 3);
+    }
+    if (gaulActive < this.startGaul * 0.25 && !this.reinf.some(r => !r.done && r.side !== 'rome')) {
       for (const u of this.units) if (u.side === 'gaul' && u.active) { u.state = 'routing'; }
       this.say('The Gallic host is broken. Victory!', 'good'); return finish('victory', 4);
     }
@@ -478,14 +529,16 @@ export class Battle {
       this.say('Your army is shattered.', 'bad'); return finish('defeat', 3);
     }
     if (this.retreating && !this.units.some(u => u.side === 'rome' && u.present && u.state !== 'routing')) {
-      return finish(this.preserved() >= this.startRome * 0.45 ? 'draw' : 'defeat', 1);
+      return finish(this.preserved() >= this.startRome * this.retreatFloor() ? 'draw' : 'defeat', 1);
     }
     if (this.t >= this.scn.timeLimit) {
       this.say('Night falls and both sides disengage.', 'info');
-      return finish(this.preserved() >= this.startRome * 0.45 && gaulActive > this.startGaul * 0.25 ? 'draw' : 'defeat', 1);
+      return finish(this.preserved() >= this.startRome * this.retreatFloor() && gaulActive > this.startGaul * 0.25 ? 'draw' : 'defeat', 1);
     }
-    if (!romeInField) finish(this.retreating && this.preserved() >= this.startRome * 0.45 ? 'draw' : 'defeat', 1);
+    if (!romeInField) finish(this.retreating && this.preserved() >= this.startRome * this.retreatFloor() ? 'draw' : 'defeat', 1);
   }
+  // Share of the army that must survive a withdrawal for it to count as a draw; fortifications help.
+  retreatFloor() { return Math.max(0.3, 0.45 - 0.05 * this.fortLevel); }
   preserved() { // men Rome keeps if the battle ended now
     let n = 0;
     for (const u of this.units) if (u.side === 'rome') n += u.state === 'routing' ? u.men * 0.5 : u.state === 'gone' ? (u.exited ? u.men : u.men * 0.5) : u.men;

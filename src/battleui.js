@@ -9,14 +9,14 @@ export class BattleUI {
   constructor() {
     this.canvas = $('canvas'); this.r = new Renderer(this.canvas);
     this.b = null; this.paused = true; this.speed = 1; this.running = false; this.keys = new Set();
-    this.onEnd = null; this.ended = false; this.logShown = 0;
+    this.onEnd = null; this.ended = false; this.logShown = 0; this.groups = {};
     this.bindInput();
     window.addEventListener('resize', () => { if (this.running) this.r.resize(); });
   }
 
   start(scn, specs, opts, onEnd) {
     this.scn = scn; this.b = new Battle(scn, specs, opts); this.onEnd = onEnd; this.ended = false;
-    this.paused = true; this.speed = 1; this.r.selection.clear(); this.logShown = 0; this.running = true;
+    this.paused = true; this.speed = 1; this.r.selection.clear(); this.logShown = 0; this.running = true; this.groups = {};
     $('hud-title').textContent = scn.name;
     $('hud-log').innerHTML = '';
     this.r.buildBackground(scn); this.r.fit();
@@ -138,7 +138,9 @@ export class BattleUI {
     window.addEventListener('keydown', (e) => {
       if (!this.running) return; const k = e.key.toLowerCase();
       if (k === ' ') { e.preventDefault(); this.setPause(!this.paused); return; }
-      if (k === '1') this.setSpeed(1); if (k === '2') this.setSpeed(2); if (k === '3') this.setSpeed(4);
+      if (k === 'z') this.setSpeed(1); if (k === 'x') this.setSpeed(2); if (k === 'c') this.setSpeed(4);
+      if (k === 'v') { this.r.showRange = !this.r.showRange; }
+      if (/^[1-9]$/.test(k) && !e.altKey) this.controlGroup(+k, e.ctrlKey || e.metaKey);
       if (['a', 'w', 's', 'd', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k) && !e.ctrlKey) this.keys.add(k);
       if (k === 'h') this.selected().forEach(u => { this.b.setHold(u); });
       if (k === 't') this.selected().forEach(u => this.b.toggleFormation(u));
@@ -150,6 +152,17 @@ export class BattleUI {
     document.querySelectorAll('.spd').forEach(b => b.onclick = () => this.setSpeed(+b.dataset.s));
     $('btn-help').onclick = () => $('hud-help').classList.toggle('hidden');
     $('btn-retreat').onclick = () => { if (this.b && confirm('Sound the retreat? You keep your surviving men and a partial reward only if you leave with at least 45% of your army.')) { this.b.retreatAll(); this.setPause(false); $('btn-retreat').disabled = true; } };
+  }
+
+  controlGroup(n, set) {
+    if (set) { this.groups[n] = this.selected().map(u => u.id); this.showBanner(`Group ${n} set`, 700); this.refreshHud(); return; }
+    const ids = (this.groups[n] || []).filter(id => { const u = this.b.byId(id); return u && u.active; });
+    if (!ids.length) return;
+    const now = performance.now();
+    if (this.lastGroup === n && now - this.lastGroupT < 450) { // double tap: centre camera
+      const us = ids.map(id => this.b.byId(id)); this.r.cam.x = us.reduce((a, u) => a + u.x, 0) / us.length; this.r.cam.y = us.reduce((a, u) => a + u.y, 0) / us.length; this.r.clampCam();
+    }
+    this.lastGroup = n; this.lastGroupT = now; this.select(ids);
   }
 
   // ----- HUD -----
@@ -166,7 +179,13 @@ export class BattleUI {
   refreshHud() {
     const b = this.b; if (!b) return;
     const mm = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-    $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${Math.round(b.activeMen('gaul'))}`;
+    const gs = Object.keys(this.groups).filter(n => (this.groups[n] || []).some(id => { const u = b.byId(id); return u && u.active; })).map(n => `[${n}]`).join(' ');
+    let objTxt = '';
+    if (b.objectives.length) {
+      const o = b.objectives[0], att = b.rule ? b.rule.attacker : null;
+      objTxt = `   |  ${o.name}: ${o.contested ? 'CONTESTED' : o.owner === 'rome' ? 'Roman' : 'Gallic'}` + (att ? ` - ${att === 'rome' ? 'you hold' : 'enemy holds'} ${Math.floor(b.hold[att])}/${b.rule.holdSecs}s` : '');
+    }
+    $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${Math.round(b.activeMen('gaul'))}${objTxt}   ${gs}`;
     document.querySelectorAll('.ucard').forEach(d => {
       const u = b.byId(+d.dataset.id); if (!u) return;
       d.classList.toggle('sel', this.r.selection.has(u.id)); d.classList.toggle('gone', !u.present);
