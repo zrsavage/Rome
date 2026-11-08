@@ -1,13 +1,26 @@
 // Campaign state: cohorts, officers, resources. Plain JSON so it saves to localStorage.
-import { XP_LEVELS, SCENARIOS, WORLD } from './data.js';
+import { XP_LEVELS, SCENARIOS, WORLD, START_TYPES, TYPE_UNLOCKS } from './data.js';
+import { PERKS } from './perks.js';
 import { levelFor } from './sim.js';
 
 export const DEFAULT_MODS = { recovery: 1, supplyUse: 1, spoils: 1, forage: 1, levy: 1, morale: 0, xp: 1 };
-export const modsOf = (c) => ({ ...DEFAULT_MODS, ...(c.mods || {}) });
+// Effective campaign modifiers: origins, plus officer perks and the field hospital.
+export function modsOf(c) {
+  const m = { ...DEFAULT_MODS, ...(c.mods || {}) };
+  const has = (id) => (c.officers || []).some(o => o.alive && (o.perks || []).includes(id));
+  if (has('quartermaster')) m.supplyUse *= 0.9;
+  if (has('forager')) m.forage *= 1.2;
+  if (has('surgeon')) m.recovery *= 1.2;
+  m.recovery *= 1 + 0.12 * (c.hospital || 0);
+  return m;
+}
+export const hasPerk = (c, id) => (c.officers || []).some(o => o.alive && (o.perks || []).includes(id));
+export const commandLimit = (c) => Math.min(12, 6 + (c.history || []).filter(h => h.outcome !== 'defeat').length);
+export const unlockedTypes = (c) => c.unlockedTypes || START_TYPES;
 
 export function newCampaign(difficulty = 'normal') {
   return {
-    version: 2, difficulty, prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, daysLeft: SCENARIOS[0].daysToPrepare,
+    version: 3, difficulty, hospital: 0, unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, daysLeft: SCENARIOS[0].daysToPrepare,
     gold: 300, supplies: 160, fort: 0, favour: 0, scouted: false, log: [], over: false,
     cohorts: [
       { id: 1, name: 'I Cohort',   type: 'legionary', men: 400, maxMen: 480, xp: 60, drill: 30, condition: 90, officerId: 1 },
@@ -17,10 +30,10 @@ export function newCampaign(difficulty = 'normal') {
       { id: 5, name: 'Equites Turma', type: 'equites', men: 50, maxMen: 60, xp: 20, drill: 25, condition: 95, officerId: 4 }
     ],
     officers: [
-      { id: 1, name: 'Titus Pullo', rank: 'Centurion', tactics: 3, drill: 2, logistics: 1, diplomacy: 0, xp: 40, level: 1, alive: true, bio: 'A brawler who leads from the front line.' },
-      { id: 2, name: 'Lucius Vorenus', rank: 'Centurion', tactics: 2, drill: 4, logistics: 1, diplomacy: 1, xp: 40, level: 1, alive: true, bio: 'A stern drillmaster; his cohorts march like clockwork.' },
-      { id: 3, name: 'Decimus Silvanus', rank: 'Tribune', tactics: 1, drill: 0, logistics: 4, diplomacy: 3, xp: 20, level: 1, alive: true, bio: 'A patrician quartermaster with a talent for haggling.' },
-      { id: 4, name: 'Aulus Fabius', rank: 'Prefect of Horse', tactics: 3, drill: 1, logistics: 2, diplomacy: 1, xp: 20, level: 1, alive: true, bio: 'Bold cavalryman, a little too fond of glory.' }
+      { id: 1, name: 'Titus Pullo', rank: 'Centurion', tactics: 3, drill: 2, logistics: 1, diplomacy: 0, xp: 40, level: 1, points: 1, perks: [], alive: true, bio: 'A brawler who leads from the front line.' },
+      { id: 2, name: 'Lucius Vorenus', rank: 'Centurion', tactics: 2, drill: 4, logistics: 1, diplomacy: 1, xp: 40, level: 1, points: 1, perks: [], alive: true, bio: 'A stern drillmaster; his cohorts march like clockwork.' },
+      { id: 3, name: 'Decimus Silvanus', rank: 'Tribune', tactics: 1, drill: 0, logistics: 4, diplomacy: 3, xp: 20, level: 1, points: 1, perks: [], alive: true, bio: 'A patrician quartermaster with a talent for haggling.' },
+      { id: 4, name: 'Aulus Fabius', rank: 'Prefect of Horse', tactics: 3, drill: 1, logistics: 2, diplomacy: 1, xp: 20, level: 1, points: 1, perks: [], alive: true, bio: 'Bold cavalryman, a little too fond of glory.' }
     ]
   };
 }
@@ -38,7 +51,7 @@ export function romeSpecs(c, scn) {
   const ranged = live.filter(h => h.type === 'slinger' || h.type === 'archer');
   const cav = live.filter(h => h.type === 'equites' || h.type === 'aux_cav');
   const specs = [];
-  const mk = (h, x, y) => specs.push({ type: h.type, name: h.name, cohortId: h.id, men: h.men, maxMen: h.maxMen, xp: h.xp, drill: h.drill, condition: h.condition, officer: officerById(c, h.officerId), x, y, f: d.f, stance: 'aggressive' });
+  const mk = (h, x, y) => specs.push({ type: h.type, name: h.name, cohortId: h.id, men: h.men, maxMen: h.maxMen, xp: h.xp, drill: h.drill, condition: h.condition, officer: officerById(c, h.officerId), upg: h.upg, x, y, f: d.f, stance: 'aggressive' });
   if (d.mode === 'grid') {
     [...inf, ...ranged, ...cav].forEach((h, i) => { const col = i % d.cols, row = Math.floor(i / d.cols); mk(h, d.cx + (col - (d.cols - 1) / 2) * d.dx, d.cy + row * d.dy); });
     return specs;
@@ -83,6 +96,7 @@ export function applyResult(c, result, scn) {
   c.history.push({ id: scn.id, outcome: result.outcome, day: c.day });
   if (scn.id === 'prologue') { if (result.outcome !== 'defeat') c.prologueDone = true; return notes; }
   if (result.outcome !== 'defeat') {
+    for (const t of TYPE_UNLOCKS[scn.id] || []) { c.unlockedTypes = c.unlockedTypes || [...START_TYPES]; if (!c.unlockedTypes.includes(t)) { c.unlockedTypes.push(t); notes.push(`You can now raise ${t.replace('_', ' ')} units at camp.`); } }
     for (const u of scn.unlock || []) {
       const id = Math.max(0, ...c.cohorts.map(h => h.id)) + 1;
       c.cohorts.push({ id, name: u.name, type: u.type, men: u.men, maxMen: u.maxMen, xp: u.xp, drill: u.drill, condition: 100, officerId: null });
@@ -100,7 +114,7 @@ export function applyResult(c, result, scn) {
 export function levelOfficer(o) {
   let msg = null;
   while (o.level < OFFICER_XP.length - 1 && o.xp >= OFFICER_XP[o.level + 1]) {
-    o.level++;
+    o.level++; o.points = (o.points || 0) + 1;
     // grow the officer's strongest trait; ties favour tactics
     const best = TRAITS.slice().sort((a, b) => o[b] - o[a] || TRAITS.indexOf(a) - TRAITS.indexOf(b))[0];
     o[best] = Math.min(5, o[best] + 1);

@@ -7,6 +7,7 @@ import { renderMap } from './map.js';
 import { artSrc, initArt } from './art.js';
 import { ask, inform } from './ui.js';
 import { Tutorial } from './tutorial.js';
+import { rewardOptions } from './rewards.js';
 import { buildTutorial, buildPractice, PRACTICE_OPTIONS, PRACTICE_DEFAULTS } from './practice.js';
 
 const $ = (id) => document.getElementById(id);
@@ -111,15 +112,20 @@ function showResult(res, scn) {
   const o = res.outcome, title = { victory: 'VICTORY', draw: 'DRAW', defeat: 'DEFEAT' }[o];
   const flavour = { victory: 'The enemy breaks and scatters. The field is yours.', draw: 'Neither side can claim the field, but your legion marches away intact.', defeat: 'The line has broken. You live to fight another day, but the loss is bitter.' }[o];
   const rows = res.rows.map(r => `<tr><td>${esc(r.name)}</td><td>${r.startMen}</td><td>${r.endMen}</td><td>${r.casualties}</td><td>${r.kills}</td><td>+${r.xpGain}</td></tr>`).join('');
-  const s = res.spoils, next = SCENARIOS[c.scenario];
+  const s = res.spoils, next = SCENARIOS[c.scenario], picks = rewardOptions(c, scn, o);
   $('screen-result').innerHTML = `<div class="panel-page"><img class="banner" alt="" src="${artSrc('outcome', o, 800, 200)}"><div class="big ${o}">${title}</div><p>${flavour}</p>
     <div class="card"><h3>Casualties</h3><table><tr><th>Unit</th><th>Before</th><th>After</th><th>Lost</th><th>Kills</th><th>XP</th></tr>${rows}</table>
     <p class="muted small">Enemy dead: about ${res.enemyDead} of ${res.enemyStart}. Wounded men who can march are counted in the 'after' column.</p></div>
     <div class="card" style="margin-top:12px"><h3>Spoils</h3>${o === 'defeat' ? 'None. The enemy keeps the field; you may try again.' : `+${s.gold} denarii, +${s.supplies} supplies, +${s.recruits} fresh recruits`}</div>
+    ${picks.length ? `<div class="card" style="margin-top:12px"><h3>Choose a bonus <span class="pill">pick one</span></h3><div class="ocards">${picks.map((p, i) => `<button class="ocard" data-i="${i}"><b>${esc(p.name)}</b><span class="t">${esc(p.text)}</span></button>`).join('')}</div></div>` : ''}
     ${notes.length ? `<div class="card" style="margin-top:12px"><h3>Dispatches</h3>${notes.map(n => `<div>${esc(n)}</div>`).join('')}</div>` : ''}
     <div class="row" style="margin-top:16px"><button class="primary" id="cont">${opening && o !== 'defeat' ? 'Continue to army management' : o !== 'defeat' && !next ? 'Finish Act I' : opening ? 'Try the opening battle again' : 'Return to the map'}</button><button id="retry">Retry this battle (undo)</button></div></div>`;
   $('cont').onclick = () => { camp.msgs = []; if (opening && o === 'defeat') { const snap = store.get(preKey(c.slot)); if (snap) { campaign = snap; save(); } showBrief(PROLOGUE); return; } camp.note(`After the ${o}, the army makes camp.`); showMap(); if (opening && !c.introShown) { c.introShown = true; save(); showManagementIntro(); } };
   $('retry').onclick = () => { const snap = store.get(preKey(c.slot)); if (snap) { campaign = snap; save(); } if (opening) showBrief(PROLOGUE); else showMap(); };
+  if (picks.length) {
+    const cont = $('cont'); cont.disabled = true; cont.title = 'Choose a bonus first';
+    document.querySelectorAll('#screen-result .ocard').forEach(b => b.onclick = () => { picks[+b.dataset.i].apply(c); save(); document.querySelectorAll('#screen-result .ocard').forEach(x => { x.disabled = true; x.classList.toggle('sel', x === b); }); cont.disabled = false; cont.title = ''; });
+  }
   show('screen-result');
 }
 

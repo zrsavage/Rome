@@ -30,6 +30,24 @@ python3 -m http.server 8080   # then open http://localhost:8080
   flashes, dust trails, destination ghosts with facing arrows, control groups, objective HUD.
 - Officers level up and can die (not on Tiro). Cohorts keep XP, drill and condition across the campaign.
 
+## Battle length and depth
+
+- Battles are built to run **5-10+ minutes**: slower lethality, softer morale shocks, and enemy armies that arrive in staged
+  **waves** (vanguard, main body, reserve), plus a per-scenario minimum fight time. A competent bot takes 7-10 minutes on Act I.
+- Fatigue builds during long fights; press **R** to pull a tired unit back to rest and re-form.
+
+## Army management depth
+
+- **Officer skill trees:** each level earns a skill point; 12 perks across tactics, drill, logistics and diplomacy (attached
+  officers help their unit, others help the whole army).
+- **Equipment:** upgrade armour and weapons per cohort (3 tiers, denarii + supplies + a day).
+- **Instructors:** assign an officer to train a cohort automatically every day.
+- **Field hospital:** up to 3 levels, better wound recovery.
+- **Raise units:** build new cohorts, slingers, archers and cavalry; the command limit grows with each battle won or drawn;
+  new unit types unlock as you progress (allied cavalry, archers, allied infantry).
+- **Veteran traits** by experience level, and a **choose-one bonus** after every victory or draw (plunder, captured arms,
+  a new officer, veterans, surgeons, stores).
+
 ## Starting a campaign
 
 New Campaign opens **Your Origins**, a short character creation in the spirit of Ultimate General: pick your family, early career
@@ -61,7 +79,7 @@ regenerates `src/mapdata.js`. Battle sites: Genava (Rhone fords), the Arar (Saon
 | `Space`, `Z X C` | Pause, speed 1x/2x/4x (orders allowed while paused) |
 | `Ctrl+1-9`, `1-9` | Set / recall control group (double-tap centres the camera) |
 | `V` | Toggle range rings for all units |
-| `H` / `T` | Hold position / toggle testudo (loose order for skirmishers) |
+| `H` / `T` / `R` | Hold position / toggle testudo (loose order for skirmishers) / fall back and rest |
 | WASD, wheel | Pan, zoom |
 
 ## Layout
@@ -79,6 +97,8 @@ src/mapdata.js   GENERATED coastlines, rivers, lakes (tools/gen_map.mjs)
 src/tutorial.js  guided tutorial
 src/practice.js  tutorial scenario and practice battle builder
 src/origins.js   character-creation choices, starting modifiers and their descriptions
+src/perks.js     officer perks, veteran traits, equipment tiers
+src/rewards.js   post-battle bonus choices
 src/art.js       art loader with procedural placeholders
 src/main.js      screen flow, briefing, results, saves
 tools/simtest.mjs  headless balance harness: node tools/simtest.mjs [runs] [scenario|all] [difficulty|all]

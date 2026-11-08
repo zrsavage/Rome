@@ -23,6 +23,11 @@ export const UNIT_TYPES = {
     speed: 58, turn: 2.6, morale: 66, charge: 1.6, space: 3.2, fragile: 1,
     cost: 90, color: '#8a3a8f', trim: '#e8c36a', blurb: 'Fast shock cavalry. Ruinous against flanks and routers.'
   },
+  aux_inf: {
+    name: 'Allied Gallic Infantry', side: 'rome', cat: 'inf', perDot: 8, atk: 0.058, def: 0.2,
+    speed: 26, turn: 1.6, morale: 56, charge: 0.9, space: 1.2, fragile: 1.1,
+    cost: 40, color: '#c9742b', trim: '#e8c36a', blurb: 'Loyal Gallic warriors in Roman pay. Cheap, fierce, less disciplined.'
+  },
   archer: {
     name: 'Cretan Archers', side: 'rome', cat: 'ranged', perDot: 8, atk: 0.025, def: 0.08,
     speed: 30, turn: 2.4, morale: 50, charge: 0.2, range: 135, rate: 0.019, ammo: 60, space: 1.5, fragile: 1,
@@ -54,6 +59,18 @@ export const UNIT_TYPES = {
     color: '#2a4a8c', trim: '#d8d2b0', blurb: 'Noble horsemen, quick to hit your rear.'
   }
 };
+
+// What it costs to raise a fresh unit of each Roman type at camp (and its full strength).
+export const RAISE = {
+  legionary: { men: 300, max: 480, gold: 420, supplies: 40 },
+  slinger: { men: 100, max: 150, gold: 150, supplies: 10 },
+  equites: { men: 50, max: 60, gold: 300, supplies: 20 },
+  archer: { men: 100, max: 130, gold: 200, supplies: 12 },
+  aux_cav: { men: 50, max: 70, gold: 240, supplies: 15 },
+  aux_inf: { men: 250, max: 350, gold: 260, supplies: 25 }
+};
+export const START_TYPES = ['legionary', 'slinger', 'equites'];
+export const TYPE_UNLOCKS = { arar: ['aux_cav'], convoy: ['archer'], oppidum: ['aux_inf'] };
 
 export const DIFFICULTY = {
   easy:      { name: 'Tiro',       enemyMult: 0.8,  enemyMorale: -6, romeMorale: 8,  officerRisk: 0.0,  reward: 0.9,  desc: 'Forgiving. Officers cannot die.' },
@@ -98,13 +115,13 @@ export const SCENARIOS = [
       { kind: 'hill', cx: 1230, cy: 760, rx: 170, ry: 95 }, { kind: 'forest', cx: 360, cy: 270, rx: 170, ry: 100 }, { kind: 'forest', cx: 1280, cy: 230, rx: 130, ry: 80 }
     ],
     enemy: [
-      { type: 'warband', men: 230, x: 640, y: 250, ai: { kind: 'rush', delay: 6 } },
-      { type: 'warband', men: 250, x: 820, y: 230, ai: { kind: 'rush', delay: 3 } },
-      { type: 'warband', men: 200, x: 380, y: 300, ai: { kind: 'ambush', trigger: 260, maxDelay: 120 } },
-      { type: 'gaul_skirm', men: 90, x: 740, y: 330, ai: { kind: 'skirm' } },
-      { type: 'gaul_cav', men: 45, x: 1260, y: 200, ai: { kind: 'flank', delay: 20 } }
+      { type: 'warband', men: 300, x: 640, y: 250, ai: { kind: 'rush', delay: 6 } },
+      { type: 'warband', men: 325, x: 820, y: 230, ai: { kind: 'rush', delay: 3 } },
+      { type: 'warband', men: 260, x: 380, y: 300, ai: { kind: 'ambush', trigger: 260, maxDelay: 120 } },
+      { type: 'gaul_skirm', men: 115, x: 740, y: 330, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 60, x: 1260, y: 200, ai: { kind: 'flank', delay: 20 } }
     ],
-    reinforcements: [{ at: 150, msg: 'War horns sound from the forest - another warband joins the fray!', unit: { type: 'warband', men: 200, x: 300, y: 80, ai: { kind: 'rush', delay: 0 } } }],
+    reinforcements: [{ at: 150, msg: 'War horns sound from the forest - another warband joins the fray!', unit: { type: 'warband', men: 260, x: 300, y: 80, ai: { kind: 'rush', delay: 0 } } }],
     rewards: { gold: 260, supplies: 120, recruits: 60, xpBase: 30, officerXp: 35 }, rewardMult: 1, unlock: []
   },
   {
@@ -119,13 +136,13 @@ export const SCENARIOS = [
       { kind: 'forest', cx: 1250, cy: 760, rx: 200, ry: 110 }, { kind: 'hill', cx: 330, cy: 760, rx: 150, ry: 85 }, { kind: 'forest', cx: 1100, cy: 150, rx: 220, ry: 90 }
     ],
     enemy: [
-      { type: 'warband', men: 270, x: 560, y: 560, ai: { kind: 'ambush', trigger: 130, maxDelay: 90, quiet: true } },
-      { type: 'warband', men: 250, x: 760, y: 590, ai: { kind: 'ambush', trigger: 130, maxDelay: 90, quiet: true } },
-      { type: 'warband', men: 240, x: 960, y: 560, ai: { kind: 'ambush', trigger: 130, maxDelay: 95, quiet: true } },
-      { type: 'gaul_skirm', men: 105, x: 650, y: 520, ai: { kind: 'skirm' } },
-      { type: 'gaul_cav', men: 60, x: 1100, y: 620, ai: { kind: 'flank', delay: 35 } }
+      { type: 'warband', men: 350, x: 560, y: 560, ai: { kind: 'ambush', trigger: 130, maxDelay: 90, quiet: true } },
+      { type: 'warband', men: 325, x: 760, y: 590, ai: { kind: 'ambush', trigger: 130, maxDelay: 90, quiet: true } },
+      { type: 'warband', men: 310, x: 960, y: 560, ai: { kind: 'ambush', trigger: 130, maxDelay: 95, quiet: true } },
+      { type: 'gaul_skirm', men: 135, x: 650, y: 520, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 80, x: 1100, y: 620, ai: { kind: 'flank', delay: 35 } }
     ],
-    reinforcements: [{ at: 120, msg: 'Warbands from across the Arar wade back to rescue their kin!', unit: { type: 'gaul_elite', men: 200, x: 620, y: 300, ai: { kind: 'rush', delay: 0 } } }],
+    reinforcements: [{ at: 120, msg: 'Warbands from across the Arar wade back to rescue their kin!', unit: { type: 'gaul_elite', men: 260, x: 620, y: 300, ai: { kind: 'rush', delay: 0 } } }],
     rewards: { gold: 360, supplies: 160, recruits: 80, xpBase: 44, officerXp: 50 }, rewardMult: 1.1,
     unlock: [{ type: 'aux_cav', name: 'Allied Gallic Horse', men: 60, maxMen: 70, xp: 20, drill: 15, msg: 'Aeduan cavalry ride in to support Rome.' }]
   },
@@ -133,23 +150,23 @@ export const SCENARIOS = [
     id: 'convoy', act: 'I', theater: 'Gaul', year: '58 BC', name: "The Foragers' Road", kind: 'skirmish',
     geo: { lat: 46.78, lon: 4.85, place: 'Cabillonum (Chalon-sur-Saone)', note: 'Aeduan country; the road is illustrative' },
     briefing: 'Your supply train is crawling along a forest road when scouts report raiders closing in. The wagons carry the legion\'s grain. Hold the wagons and drive the raiders off, because if the Gauls seize them and hold them, the campaign starves.',
-    objective: 'Keep the supply wagons (the gold marker) in Roman hands. If the Gauls hold them for 45 seconds the convoy is lost. Break the raiders to win.',
+    objective: 'Keep the supply wagons (the gold marker) in Roman hands. If the Gauls hold them for 90 seconds the convoy is lost. Break the raiders to win.',
     timeLimit: 450, daysToPrepare: 3,
-    deploy: { mode: 'line', cx: 800, cy: 800 },
+    deploy: { mode: 'line', cx: 800, cy: 745 },
     objectives: [{ id: 'wagons', name: 'Supply Wagons', x: 800, y: 700, r: 70, owner: 'rome' }],
-    rule: { holdSecs: 45, attacker: 'gaul' },
+    rule: { holdSecs: 90, attacker: 'gaul' },
     terrain: [
       { kind: 'forest', cx: 280, cy: 500, rx: 260, ry: 230 }, { kind: 'forest', cx: 1330, cy: 480, rx: 260, ry: 240 },
       { kind: 'hill', cx: 800, cy: 330, rx: 140, ry: 80 }, { kind: 'forest', cx: 820, cy: 120, rx: 220, ry: 90 }
     ],
     enemy: [
-      { type: 'warband', men: 385, x: 450, y: 450, ai: { kind: 'raid', obj: 'wagons' } },
-      { type: 'warband', men: 370, x: 1150, y: 430, ai: { kind: 'raid', obj: 'wagons', delay: 8 } },
-      { type: 'gaul_skirm', men: 155, x: 830, y: 330, ai: { kind: 'skirm' } },
-      { type: 'gaul_cav', men: 85, x: 1400, y: 380, ai: { kind: 'raid', obj: 'wagons', delay: 12 } },
-      { type: 'warband', men: 300, x: 300, y: 380, ai: { kind: 'ambush', trigger: 200, maxDelay: 100 } }
+      { type: 'warband', men: 500, x: 450, y: 450, ai: { kind: 'raid', obj: 'wagons' } },
+      { type: 'warband', men: 480, x: 1150, y: 430, ai: { kind: 'raid', obj: 'wagons', delay: 8 } },
+      { type: 'gaul_skirm', men: 200, x: 830, y: 330, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 110, x: 1400, y: 380, ai: { kind: 'raid', obj: 'wagons', delay: 12 } },
+      { type: 'warband', men: 390, x: 300, y: 380, ai: { kind: 'ambush', trigger: 200, maxDelay: 100 } }
     ],
-    reinforcements: [{ at: 100, msg: 'More raiders pour out of the eastern woods!', unit: { type: 'warband', men: 285, x: 1500, y: 420, ai: { kind: 'raid', obj: 'wagons' } } }],
+    reinforcements: [{ at: 100, msg: 'More raiders pour out of the eastern woods!', unit: { type: 'warband', men: 370, x: 1500, y: 420, ai: { kind: 'raid', obj: 'wagons' } } }],
     rewards: { gold: 180, supplies: 260, recruits: 50, xpBase: 34, officerXp: 40 }, rewardMult: 1,
     unlock: [{ type: 'archer', name: 'Cretan Archers', men: 100, maxMen: 130, xp: 25, drill: 20, msg: 'Cretan mercenary archers join your column.' }]
   },
@@ -157,22 +174,22 @@ export const SCENARIOS = [
     id: 'oppidum', act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Hill Fort of the Sequani', kind: 'skirmish',
     geo: { lat: 47.24, lon: 6.02, place: 'Vesontio (Besancon)', note: 'Great oppidum of the Sequani on a loop of the Doubs' },
     briefing: 'A local chieftain has fortified a hilltop and refuses to supply your army. The slopes are steep and the defenders are dug in. Soften them with missiles, lure them down, or storm the crest.',
-    objective: 'Capture the hill fort summit by holding it for 45 seconds, or break the defenders. Fighting uphill is costly.',
+    objective: 'Capture the hill fort summit by holding it for 150 seconds, or break the defenders. Fighting uphill is costly.',
     timeLimit: 600, daysToPrepare: 3,
     deploy: { mode: 'line', cx: 800, cy: 900 },
     objectives: [{ id: 'fort', name: 'Hill Fort', x: 800, y: 270, r: 90, owner: 'gaul' }],
-    rule: { holdSecs: 45, attacker: 'rome' },
+    rule: { holdSecs: 150, attacker: 'rome' },
     terrain: [
       { kind: 'hill', cx: 800, cy: 260, rx: 330, ry: 150 }, { kind: 'forest', cx: 250, cy: 520, rx: 170, ry: 100 }, { kind: 'forest', cx: 1350, cy: 560, rx: 180, ry: 110 },
       { kind: 'water', x: 0, y: 620, w: 520, h: 40 }, { kind: 'water', x: 1080, y: 620, w: 520, h: 40 }
     ],
     enemy: [
-      { type: 'warband', men: 500, x: 700, y: 240, ai: { kind: 'ambush', trigger: 90, maxDelay: 140 } },
-      { type: 'warband', men: 500, x: 900, y: 240, ai: { kind: 'ambush', trigger: 90, maxDelay: 140 } },
-      { type: 'gaul_elite', men: 320, x: 800, y: 215, ai: { kind: 'ambush', trigger: 40, maxDelay: 200 } },
-      { type: 'gaul_skirm', men: 220, x: 640, y: 300, ai: { kind: 'skirm' } },
-      { type: 'gaul_skirm', men: 200, x: 960, y: 300, ai: { kind: 'skirm' } },
-      { type: 'gaul_cav', men: 100, x: 1300, y: 330, ai: { kind: 'flank', delay: 50 } }
+      { type: 'warband', men: 650, x: 700, y: 240, ai: { kind: 'ambush', trigger: 90, maxDelay: 140 } },
+      { type: 'warband', men: 650, x: 900, y: 240, ai: { kind: 'ambush', trigger: 90, maxDelay: 140 } },
+      { type: 'gaul_elite', men: 415, x: 800, y: 215, ai: { kind: 'ambush', trigger: 40, maxDelay: 200 } },
+      { type: 'gaul_skirm', men: 285, x: 640, y: 300, ai: { kind: 'skirm' } },
+      { type: 'gaul_skirm', men: 260, x: 960, y: 300, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 130, x: 1300, y: 330, ai: { kind: 'flank', delay: 50 } }
     ],
     reinforcements: [],
     rewards: { gold: 320, supplies: 140, recruits: 70, xpBase: 40, officerXp: 45 }, rewardMult: 1,
@@ -190,12 +207,12 @@ export const SCENARIOS = [
       { kind: 'forest', cx: 800, cy: 90, rx: 420, ry: 110 }, { kind: 'hill', cx: 800, cy: 900, rx: 200, ry: 70 }
     ],
     enemy: [
-      { type: 'warband', men: 620, x: 520, y: 520, ai: { kind: 'ambush', trigger: 400, maxDelay: 6, quiet: true } },
-      { type: 'warband', men: 620, x: 1080, y: 560, ai: { kind: 'ambush', trigger: 400, maxDelay: 9, quiet: true } },
-      { type: 'warband', men: 525, x: 800, y: 300, ai: { kind: 'ambush', trigger: 400, maxDelay: 14, quiet: true } },
-      { type: 'gaul_elite', men: 380, x: 560, y: 380, ai: { kind: 'ambush', trigger: 400, maxDelay: 20, quiet: true } },
-      { type: 'gaul_skirm', men: 240, x: 1000, y: 330, ai: { kind: 'skirm' } },
-      { type: 'gaul_cav', men: 120, x: 1180, y: 700, ai: { kind: 'flank', delay: 25 } }
+      { type: 'warband', men: 805, x: 520, y: 520, ai: { kind: 'ambush', trigger: 400, maxDelay: 6, quiet: true } },
+      { type: 'warband', men: 805, x: 1080, y: 560, ai: { kind: 'ambush', trigger: 400, maxDelay: 9, quiet: true } },
+      { type: 'warband', men: 680, x: 800, y: 300, ai: { kind: 'ambush', trigger: 400, maxDelay: 14, quiet: true } },
+      { type: 'gaul_elite', men: 495, x: 560, y: 380, ai: { kind: 'ambush', trigger: 400, maxDelay: 20, quiet: true } },
+      { type: 'gaul_skirm', men: 310, x: 1000, y: 330, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 155, x: 1180, y: 700, ai: { kind: 'flank', delay: 25 } }
     ],
     reinforcements: [
       { at: 170, side: 'rome', msg: 'Your rearguard cohort fights its way up the road to relieve you!', unit: { type: 'legionary', men: 300, x: 800, y: 1010, f: -1.5708, name: 'Rearguard Cohort' } }
@@ -211,25 +228,25 @@ export const SCENARIOS = [
     timeLimit: 780, daysToPrepare: 4,
     deploy: { mode: 'line', cx: 780, cy: 860 },
     objectives: [{ id: 'ridge', name: 'The Ridge', x: 800, y: 420, r: 110, owner: 'gaul' }],
-    rule: { holdSecs: 60, attacker: 'rome' },
+    rule: { holdSecs: 180, attacker: 'rome' },
     terrain: [
       { kind: 'hill', cx: 800, cy: 260, rx: 520, ry: 190 }, { kind: 'hill', cx: 800, cy: 760, rx: 420, ry: 110 },
       { kind: 'forest', cx: 160, cy: 470, rx: 180, ry: 140 }, { kind: 'forest', cx: 1460, cy: 480, rx: 150, ry: 130 }, { kind: 'water', x: 0, y: 620, w: 330, h: 50 }
     ],
     enemy: [
-      { type: 'warband', men: 350, x: 520, y: 260, ai: { kind: 'ambush', trigger: 120, maxDelay: 70, quiet: true } },
-      { type: 'warband', men: 350, x: 680, y: 240, ai: { kind: 'ambush', trigger: 120, maxDelay: 60, quiet: true } },
-      { type: 'warband', men: 350, x: 920, y: 240, ai: { kind: 'ambush', trigger: 120, maxDelay: 60, quiet: true } },
-      { type: 'warband', men: 350, x: 1080, y: 260, ai: { kind: 'ambush', trigger: 120, maxDelay: 70, quiet: true } },
-      { type: 'gaul_elite', men: 295, x: 800, y: 290, ai: { kind: 'ambush', trigger: 100, maxDelay: 75, quiet: true } },
-      { type: 'gaul_skirm', men: 150, x: 640, y: 340, ai: { kind: 'skirm' } },
-      { type: 'gaul_skirm', men: 150, x: 960, y: 340, ai: { kind: 'skirm' } },
-      { type: 'gaul_cav', men: 80, x: 1350, y: 330, ai: { kind: 'flank', delay: 60 } }
+      { type: 'warband', men: 455, x: 520, y: 260, ai: { kind: 'ambush', trigger: 120, maxDelay: 70, quiet: true } },
+      { type: 'warband', men: 455, x: 680, y: 240, ai: { kind: 'ambush', trigger: 120, maxDelay: 60, quiet: true } },
+      { type: 'warband', men: 455, x: 920, y: 240, ai: { kind: 'ambush', trigger: 120, maxDelay: 60, quiet: true } },
+      { type: 'warband', men: 455, x: 1080, y: 260, ai: { kind: 'ambush', trigger: 120, maxDelay: 70, quiet: true } },
+      { type: 'gaul_elite', men: 385, x: 800, y: 290, ai: { kind: 'ambush', trigger: 100, maxDelay: 75, quiet: true } },
+      { type: 'gaul_skirm', men: 195, x: 640, y: 340, ai: { kind: 'skirm' } },
+      { type: 'gaul_skirm', men: 195, x: 960, y: 340, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 105, x: 1350, y: 330, ai: { kind: 'flank', delay: 60 } }
     ],
     reinforcements: [
-      { at: 120, msg: 'The Helvetii reserve advances to join the fight!', unit: { type: 'warband', men: 350, x: 800, y: 40, ai: { kind: 'rush', delay: 0 } } },
-      { at: 240, msg: 'The Boii and Tulingi appear on your flank and rear!', unit: { type: 'warband', men: 405, x: 1500, y: 700, ai: { kind: 'rush', delay: 0 } } },
-      { at: 245, msg: '', unit: { type: 'gaul_elite', men: 215, x: 1560, y: 820, ai: { kind: 'rush', delay: 0 } } }
+      { at: 120, msg: 'The Helvetii reserve advances to join the fight!', unit: { type: 'warband', men: 455, x: 800, y: 40, ai: { kind: 'rush', delay: 0 } } },
+      { at: 240, msg: 'The Boii and Tulingi appear on your flank and rear!', unit: { type: 'warband', men: 525, x: 1500, y: 700, ai: { kind: 'rush', delay: 0 } } },
+      { at: 245, msg: '', unit: { type: 'gaul_elite', men: 280, x: 1560, y: 820, ai: { kind: 'rush', delay: 0 } } }
     ],
     rewards: { gold: 700, supplies: 400, recruits: 200, xpBase: 80, officerXp: 90 }, rewardMult: 1,
     unlock: [
@@ -257,3 +274,34 @@ export const PROLOGUE = {
   reinforcements: [], objectives: [], rule: null,
   rewards: { gold: 120, supplies: 60, recruits: 30, xpBase: 22, officerXp: 25 }, rewardMult: 1, unlock: []
 };
+
+// ---------------------------------------------------------------------------
+// Battle phases. Holding back part of each enemy army as later waves (vanguard, main body, reserve) means a fight
+// cannot be over until the last wave has been met, which keeps battles in the 5-10 minute range.
+// plan: {keep: share of enemy infantry present at the start, at: [arrival times in seconds]}
+// ---------------------------------------------------------------------------
+const WAVE_PLAN = {
+  prologue: { keep: 0.5, at: [140, 310] },
+  ford: { keep: 0.4, at: [190, 400] },
+  arar: { keep: 0.4, at: [200, 420] },
+  convoy: { keep: 0.4, at: [220, 430] },
+  oppidum: { keep: 0.4, at: [230, 470] },
+  silva: { keep: 0.4, at: [180, 360] },
+  bibracte: { keep: 0.35, at: [230, 460, 620] }
+};
+const WAVE_MSGS = ['A fresh Gallic host marches onto the field!', 'The enemy reserve joins the fight!', 'Distant horns: yet another warband closes in!'];
+const MIN_TIME = { prologue: 270, ford: 300, arar: 300, convoy: 300, oppidum: 360, silva: 300, bibracte: 480 };
+const TIME_LIMITS = { prologue: 720, ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500 };
+for (const scn of [PROLOGUE, ...SCENARIOS]) {
+  const plan = WAVE_PLAN[scn.id]; if (!plan) continue;
+  scn.timeLimit = TIME_LIMITS[scn.id] || scn.timeLimit; scn.minTime = MIN_TIME[scn.id] || 0;
+  const inf = scn.enemy.filter(e => (e.type === 'warband' || e.type === 'gaul_elite') && e.ai.kind !== 'idle');
+  const stay = Math.max(1, Math.ceil(inf.length * plan.keep)), later = inf.slice(stay), parts = plan.at.length;
+  later.forEach((e, i) => {
+    scn.enemy.splice(scn.enemy.indexOf(e), 1);
+    for (let w = 0; w < parts; w++) {
+      scn.reinforcements.push({ at: plan.at[w] + ((i + w) % 3) * 7, msg: i === 0 ? WAVE_MSGS[w % WAVE_MSGS.length] : '',
+        unit: { type: e.type, men: Math.max(70, Math.round(e.men / parts)), x: Math.max(120, Math.min(1480, e.x + (w - 1) * 90)), y: 40, ai: { kind: 'rush', delay: 0 } } });
+    }
+  });
+}

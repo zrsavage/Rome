@@ -1,7 +1,8 @@
 // Between-battle camp phase: spend limited days on training, foraging, fortifying, diplomacy, recruiting.
-import { LEVEL_NAMES, SCENARIOS, DIFFICULTY, UNIT_TYPES } from './data.js';
+import { LEVEL_NAMES, SCENARIOS, DIFFICULTY, UNIT_TYPES, RAISE } from './data.js';
+import { PERKS, perkById, LEVEL_TRAITS, UPGRADES, MAX_TIER, upgradeCost } from './perks.js';
 import { levelFor } from './sim.js';
-import { officerById, modsOf } from './state.js';
+import { officerById, modsOf, hasPerk, commandLimit, unlockedTypes } from './state.js';
 import { artSrc } from './art.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -21,6 +22,11 @@ export class Camp {
     for (let i = 0; i < cost; i++) {
       c.daysLeft = Math.max(0, c.daysLeft - 1); c.day++;
       const food = Math.ceil(totalMen(c) / 60 * modsOf(c).supplyUse);
+      for (const h of c.cohorts) { // instructors drill their assigned cohort every day
+        const ins = officerById(c, h.instructorId); if (!ins || c.supplies < 2) continue;
+        c.supplies -= 2; const q = 0.35 + 0.08 * ins.drill, bonus = (ins.perks || []).includes('drillmaster') ? 1.25 : 1;
+        h.xp += Math.round(10 * q * bonus); h.drill = Math.min(100, h.drill + Math.round(3 * q * bonus));
+      }
       if (c.supplies >= food) c.supplies -= food;
       else { c.supplies = 0; c.cohorts.forEach(h => h.condition = Math.max(20, h.condition - 8)); this.note('The army goes hungry. Condition drops.', 'bad'); }
     }
@@ -34,10 +40,11 @@ export class Camp {
   drill(mode) {
     const c = this.c, h = this.selected();
     if (!this.canAct() || c.supplies < 8) return;
+    const leader = mode === 'self' ? null : officerById(c, +mode);
     const run = (quality, who) => {
       c.supplies -= 8;
       const attached = officerById(c, h.officerId);
-      const bonus = 1 + (attached ? 0.05 * attached.drill : 0);
+      const bonus = (1 + (attached ? 0.05 * attached.drill : 0)) * (who !== 'You' && leader && (leader.perks || []).includes('drillmaster') ? 1.25 : 1);
       const xp = Math.round(24 * (0.6 + quality) * bonus), dr = Math.round(7 * (0.5 + quality) * bonus);
       h.xp += xp; h.drill = Math.min(100, h.drill + dr); h.condition = Math.max(25, h.condition - 7);
       this.note(`${who} drilled ${h.name}: +${xp} XP, +${dr} drill.`, 'good');
@@ -67,8 +74,8 @@ export class Camp {
   tribute(demand) {
     const c = this.c; if (!this.canAct()) return;
     const dip = bestOfficer(c, 'diplomacy');
-    if (demand) { const g = 90 + 15 * dip; c.gold += g; c.favour = Math.max(-3, c.favour - 1); this.note(`Gallic nobles are made to pay ${g} denarii. They are not pleased.`, ''); }
-    else { if (c.gold < 60) return; c.gold -= 60; c.favour = Math.min(3, c.favour + 1); this.note('Gifts to friendly chieftains win goodwill; scouts and rivals speak in your favour.', 'good'); }
+    if (demand) { const g = Math.round((90 + 15 * dip) * (hasPerk(c, 'tribute') ? 1.3 : 1)); c.gold += g; c.favour = Math.max(-3, c.favour - 1); this.note(`Gallic nobles are made to pay ${g} denarii. They are not pleased.`, ''); }
+    else { if (c.gold < 60) return; c.gold -= 60; c.favour = Math.min(3, c.favour + (hasPerk(c, 'allies') ? 2 : 1)); this.note('Gifts to friendly chieftains win goodwill; scouts and rivals speak in your favour.', 'good'); }
     this.endDay(); this.render();
   }
   rest() { const c = this.c; if (!this.canAct()) return; c.cohorts.forEach(h => h.condition = Math.min(100, h.condition + 20)); this.note('The men rest and mend their kit.', 'good'); this.endDay(); this.render(); }
@@ -79,7 +86,34 @@ export class Camp {
     c.gold -= cost; const old = h.men; h.men += add; h.xp = Math.round(h.xp * old / h.men);
     this.note(`${add} recruits join ${h.name} (new men dilute experience).`, ''); this.endDay(); this.render();
   }
-  scout() { const c = this.c; if (!this.canAct() || c.scouted) return; c.scouted = true; this.note('Scouts report the enemy dispositions.', 'good'); this.endDay(); this.render(); }
+  scout() { const c = this.c, free = hasPerk(c, 'spymaster'); if ((!free && !this.canAct()) || c.scouted) return; c.scouted = true; this.note(free ? 'Your spies report the enemy dispositions (no day spent).' : 'Scouts report the enemy dispositions.', 'good'); if (free) this.api.save(); else this.endDay(); this.render(); }
+  // ----- management depth -----
+  learn(spec) {
+    const [oid, pid] = spec.split(':'), o = this.c.officers.find(x => x.id === +oid), p = perkById(pid);
+    if (!o || !p || (o.points || 0) < 1 || o[p.trait] < p.req || (o.perks || []).includes(pid)) return;
+    o.points--; o.perks = [...(o.perks || []), pid]; this.note(`${o.name} learns ${p.name}.`, 'good'); this.api.save(); this.render();
+  }
+  upgrade(kind) {
+    const c = this.c, h = this.selected(), cost = upgradeCost(h, kind), names = UPGRADES[UNIT_TYPES[h.type].cat];
+    if (!this.canAct() || cost.tier >= MAX_TIER || c.gold < cost.gold || c.supplies < cost.supplies) return;
+    c.gold -= cost.gold; c.supplies -= cost.supplies; h.upg = { armour: 0, weapon: 0, ...(h.upg || {}) }; h.upg[kind]++;
+    this.note(`${h.name}: ${names[kind]} upgraded to tier ${h.upg[kind]}.`, 'good'); this.endDay(); this.render();
+  }
+  raise(type) {
+    const c = this.c, r = RAISE[type];
+    if (!this.canAct() || !r || c.cohorts.length >= commandLimit(c) || c.gold < r.gold || c.supplies < r.supplies) return;
+    c.gold -= r.gold; c.supplies -= r.supplies;
+    const id = Math.max(0, ...c.cohorts.map(x => x.id)) + 1, n = c.cohorts.filter(x => x.type === type).length + 1;
+    const name = { legionary: `${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][c.cohorts.filter(x => x.type === 'legionary').length] || n} Cohort`, slinger: `Slingers ${n}`, archer: `Archers ${n}`, equites: `Turma ${n}`, aux_cav: `Allied Horse ${n}`, aux_inf: `Allied Infantry ${n}` }[type];
+    c.cohorts.push({ id, name, type, men: r.men, maxMen: r.max, xp: 0, drill: 10, condition: 100, officerId: null });
+    this.sel = id; this.note(`${name} is raised (${r.men} men).`, 'good'); this.endDay(); this.render();
+  }
+  hospital() {
+    const c = this.c, lvl = c.hospital || 0, gold = 120 * (lvl + 1), sup = 20;
+    if (!this.canAct() || lvl >= 3 || c.gold < gold || c.supplies < sup) return;
+    c.gold -= gold; c.supplies -= sup; c.hospital = lvl + 1; this.note(`Field hospital reaches level ${c.hospital}: wounded recover better.`, 'good'); this.endDay(); this.render();
+  }
+  setInstructor(oid) { const h = this.selected(); h.instructorId = oid || null; this.api.save(); this.render(); }
   assign(oid) {
     const c = this.c, h = this.selected();
     c.cohorts.forEach(x => { if (x.officerId === oid) x.officerId = null; });
@@ -132,14 +166,34 @@ export class Camp {
       <td>L${o.level}</td><td class="small">Tac ${o.tactics}<br>Drl ${o.drill}</td><td class="small">Log ${o.logistics}<br>Dip ${o.diplomacy}</td></tr>`).join('');
     const assignOpts = `<option value="">- none -</option>` + offs.map(o => `<option value="${o.id}" ${h.officerId === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
     const drillBtns = drillers.map(o => `<button class="act" data-a="drill" data-m="${o.id}" ${act && c.supplies >= 8 ? '' : 'disabled'}>Delegate to ${esc(o.name)}<small>Drill ${o.drill} - steady results</small></button>`).join('');
+    // --- management cards ---
+    const cat = UNIT_TYPES[h.type].cat, gnames = UPGRADES[cat], lv = levelFor(h.xp), lt = LEVEL_TRAITS[lv];
+    const upg = { armour: 0, weapon: 0, ...(h.upg || {}) };
+    const gearBtns = ['armour', 'weapon'].map(k => { const cost = upgradeCost(h, k), maxed = cost.tier >= MAX_TIER; return `<button class="act" data-a="upgrade" data-m="${k}" ${!maxed && act && c.gold >= cost.gold && c.supplies >= cost.supplies ? '' : 'disabled'}>${esc(gnames[k])}: tier ${upg[k]}/${MAX_TIER}<small>${maxed ? 'Fully equipped' : `Upgrade for ${cost.gold} denarii, ${cost.supplies} supplies (1 day)`}</small></button>`; }).join('');
+    const insOpts = '<option value="">- none -</option>' + offs.filter(o => o.drill >= 1).map(o => `<option value="${o.id}" ${h.instructorId === o.id ? 'selected' : ''}>${esc(o.name)} (drill ${o.drill})</option>`).join('');
+    const detail = `<div class="detail"><h4>${esc(h.name)}</h4>
+      <div class="row small"><span class="muted">Instructor:</span><select id="instr">${insOpts}</select><span class="muted">trains this unit every day for 2 supplies</span></div>
+      <div class="small muted" style="margin:4px 0">${lt ? `Veteran trait: <b style="color:var(--gold)">${esc(lt.name)}</b> - ${esc(lt.text)}` : 'No veteran trait yet. Reach Veteran (level 2) for the first.'}</div>
+      <div class="actions">${gearBtns}</div></div>`;
+    const skills = offs.map(o => {
+      const pts = o.points || 0, learned = (o.perks || []).map(id => `<span class="pill" title="${esc(perkById(id).text)}">${esc(perkById(id).name)}</span>`).join(' ');
+      const avail = PERKS.filter(p => !(o.perks || []).includes(p.id) && o[p.trait] >= p.req).map(p => `<button class="act" data-a="learn" data-m="${o.id}:${p.id}" ${pts > 0 ? '' : 'disabled'}>${esc(p.name)}<small>${esc(p.text)}</small></button>`).join('');
+      const locked = PERKS.filter(p => !(o.perks || []).includes(p.id) && o[p.trait] < p.req).length;
+      return `<div class="skillrow"><div class="row"><b>${esc(o.name)}</b><span class="pill">${pts} skill point${pts === 1 ? '' : 's'}</span>${learned}</div>${pts > 0 && avail ? `<div class="actions">${avail}</div>` : ''}${locked ? `<div class="small muted">${locked} more skill${locked === 1 ? '' : 's'} need higher ${'ratings'}.</div>` : ''}</div>`;
+    }).join('');
+    const room = commandLimit(c) - c.cohorts.length;
+    const raiseBtns = unlockedTypes(c).map(t => { const r = RAISE[t]; return `<button class="act" data-a="raise" data-m="${t}" ${act && room > 0 && c.gold >= r.gold && c.supplies >= r.supplies ? '' : 'disabled'}>${esc(UNIT_TYPES[t].name)}<small>${r.men} men - ${r.gold} denarii, ${r.supplies} supplies (1 day)</small></button>`; }).join('');
+    const hosp = c.hospital || 0, hcost = 120 * (hosp + 1);
     this.root.innerHTML = `<div class="camp">
       <header><h2>Camp - ${esc(scn.theater)}, ${esc(scn.year)}</h2>
         <div class="res"><span>Denarii <b>${c.gold}</b></span><span>Supplies <b>${c.supplies}</b> <span class="muted small">(-${Math.ceil(totalMen(c) / 60 * modsOf(c).supplyUse)}/day)</span></span>
         <span>Fort <b>${c.fort}/3</b></span><span>Goodwill <b>${c.favour > 0 ? '+' : ''}${c.favour}</b></span><span>Days left <b>${c.daysLeft}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
       <div class="col">
         <div class="card"><h3>The Legion</h3><table><tr><th>Unit</th><th>Strength</th><th>Experience</th><th>Drill</th><th>Condition</th></tr>${rows}</table>
-          <div class="row" style="margin-top:8px"><span class="muted small">Officer for ${esc(h.name)}:</span><select id="assign">${assignOpts}</select></div></div>
+          <div class="row" style="margin-top:8px"><span class="muted small">Officer for ${esc(h.name)}:</span><select id="assign">${assignOpts}</select></div>${detail}</div>
+        <div class="card"><h3>Raise a unit <span class="pill">${c.cohorts.length}/${commandLimit(c)} units</span></h3><div class="small muted">Your command limit grows with every battle you win or draw.${room <= 0 ? ' <b>You are at the limit.</b>' : ''}</div><div class="actions" style="margin-top:8px">${raiseBtns}</div></div>
         <div class="card"><h3>Officers</h3><table><tr><th>Name</th><th>Lvl</th><th></th><th></th></tr>${offRows}</table></div>
+        <div class="card"><h3>Officer skills</h3><div class="small muted">Officers earn a skill point each level. Perks need a high enough rating in their trait. Attached officers help their unit in battle; others help the whole army.</div>${skills}</div>
       </div>
       <div class="col">
         <div class="card"><h3>Orders of the day - ${c.daysLeft} day${c.daysLeft === 1 ? '' : 's'} before the enemy moves</h3>
@@ -153,6 +207,7 @@ export class Camp {
             <button class="act" data-a="tribute" data-m="1" ${act ? '' : 'disabled'}>Demand tribute<small>+~${90 + 15 * bestOfficer(c, 'diplomacy')} denarii, goodwill -1</small></button>
             <button class="act" data-a="tribute" data-m="0" ${act && c.gold >= 60 ? '' : 'disabled'}>Gifts to chieftains<small>-60 denarii, goodwill +1</small></button>
             <button class="act" data-a="recruit" ${act && h.men < h.maxMen && c.gold >= 3 ? '' : 'disabled'}>Recruit for ${esc(h.name)}<small>3 denarii per man, up to 40. Dilutes experience.</small></button>
+            <button class="act" data-a="hospital" ${act && hosp < 3 && c.gold >= hcost && c.supplies >= 20 ? '' : 'disabled'}>Field hospital (level ${hosp}/3)<small>${hosp >= 3 ? 'Fully built' : `${hcost} denarii, 20 supplies: wounded recover +12% per level`}</small></button>
             <button class="act" data-a="scout" ${act && !c.scouted ? '' : 'disabled'}>${c.scouted ? 'Enemy scouted' : 'Send scouts'}<small>Reveal exact enemy forces</small></button>
           </div></div>
         <div class="card"><h3>Next battle</h3><p><b>${esc(scn.name)}</b><br><span class="muted">${esc(scn.objective)}</span></p>
@@ -160,10 +215,11 @@ export class Camp {
         <div class="card"><h3>Dispatches</h3><div class="log">${this.msgs.map(m => `<div class="${m.kind}">${esc(m.msg)}</div>`).join('') || '<div>Choose how to spend your days.</div>'}</div></div>
       </div></div>`;
     this.root.querySelectorAll('tr.clickable').forEach(tr => tr.onclick = () => { this.sel = +tr.dataset.id; this.render(); });
+    this.root.querySelector('#instr').onchange = (e) => this.setInstructor(e.target.value ? +e.target.value : null);
     this.root.querySelector('#assign').onchange = (e) => this.assign(e.target.value ? +e.target.value : null);
     this.root.querySelectorAll('.act').forEach(b => b.onclick = () => {
       const a = b.dataset.a, m = b.dataset.m;
-      if (a === 'drill') this.drill(m); else if (a === 'forage') this.forage(m === '1');
+      if (a === 'drill') this.drill(m); else if (a === 'forage') this.forage(m === '1'); else if (a === 'learn') this.learn(m); else if (a === 'upgrade') this.upgrade(m); else if (a === 'raise') this.raise(m);
       else if (a === 'tribute') this.tribute(m === '1'); else this[a]();
     });
     this.root.querySelector('#march').onclick = () => this.api.march();

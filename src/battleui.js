@@ -150,6 +150,7 @@ export class BattleUI {
       if (['a', 'w', 's', 'd', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k) && !e.ctrlKey) this.keys.add(k);
       if (k === 'h') { const hs = this.selected(); hs.forEach(u => { this.b.setHold(u); }); if (hs.length) this.emit('hold', { count: hs.length }); }
       if (k === 't') { const ts = this.selected(); ts.forEach(u => this.b.toggleFormation(u)); if (ts.length) this.emit('formation', { count: ts.length }); }
+      if (k === 'r') { const rs = this.selected(); rs.forEach(u => this.b.fallBack(u)); if (rs.length) this.emit('fallback', { count: rs.length }); }
       if (k === 'escape') this.select([]);
       if (k === 'q') this.select(this.b.units.filter(u => u.side === 'rome' && u.active).map(u => u.id));
     });

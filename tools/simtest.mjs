@@ -25,7 +25,7 @@ function play(strategy, i, difficulty, seed) {
   const rome = b.units.filter(u => u.side === 'rome');
   const dt = 0.1;
   let guard = 0;
-  while (!b.result && guard++ < 12000) {
+  while (!b.result && guard++ < 20000) {
     if (strategy === 'charge' && b.t < 0.2) rome.forEach(u => { const n = b.nearestEnemy(u); if (n) b.setAttack(u, n.e); });
     if (strategy === 'objective' && b.t < 0.2) {
       // advance infantry on the objective (if any), hold cavalry/ranged back until contact
@@ -34,12 +34,38 @@ function play(strategy, i, difficulty, seed) {
     }
     if (strategy === 'hold' && b.t < 0.2) rome.forEach(u => { if (u.type.cat === 'inf') u.stance = 'hold'; });
     if (strategy === 'retreat' && b.t > 60) b.retreatAll();
+    if (strategy === 'tactician') {
+      if (b.t < 0.2) rome.forEach(u => { if (u.type.cat !== 'cav') u.stance = 'hold'; });
+      if (b.t < 0.2 && b.rule && b.rule.attacker === 'gaul') { const o = b.objectives[0]; rome.filter(u => u.type.cat === 'inf').forEach((u, i, a) => b.setMove(u, o.x + (i - (a.length - 1) / 2) * 70, o.y + 30, -Math.PI / 2)); }
+      if (Math.abs(b.t % 2) < dt) {
+        const engagedEnemies = new Set(); rome.forEach(u => { if (u.active && u.type.cat === 'inf') u.contacts.forEach(e => { if (e.active) engagedEnemies.add(e); }); });
+        for (const u of rome) {
+          if (!u.active) continue;
+          const n = b.nearestEnemy(u);
+          if (u.type.cat === 'inf') {
+            const tgt = u.order.kind === 'attack' ? b.byId(u.order.targetId) : null;
+            if (u.contacts.some(e => e.active)) continue;
+            if (u.fatigue > 65 && (!n || n.gap > 60)) { b.fallBack(u); continue; }
+            const guard = b.rule && b.rule.attacker === 'gaul' ? b.objectives[0] : null;   // defending: stay near the objective
+            if (guard && u.order.kind === 'none') u.stance = 'hold';
+            if (n && n.gap < 140 && (!tgt || !tgt.active) && (!guard || Math.hypot(n.e.x - guard.x, n.e.y - guard.y) < 230)) b.setAttack(u, n.e);
+            else if (!n || n.gap > 200) { if (u.order.kind === 'attack') u.order = { kind: 'none' }; }
+          } else if (u.type.cat === 'cav') {
+            const tgt = u.order.kind === 'attack' ? b.byId(u.order.targetId) : null;
+            if (tgt && tgt.present) continue;
+            let best = null, bd = 1e9; for (const e of engagedEnemies) { const g = b.gap(u, e); if (g < bd) { bd = g; best = e; } }
+            if (!best && b.t > 60) { const nn = b.nearestEnemy(u, e => e.active && e.type.cat === 'ranged'); if (nn) best = nn.e; }
+            if (best) b.setAttack(u, best);
+          }
+        }
+      }
+    }
     b.update(dt);
   }
   return b.result;
 }
 
-const strategies = ['charge', 'objective', 'hold', 'retreat'];
+const strategies = (process.env.STRATS || 'tactician,charge,hold,retreat').split(',');
 for (const i of SEL) {
   console.log(`\n== ${i + 1}. ${SCENARIOS[i].name} ==`);
   for (const diff of DIFFS) for (const strat of strategies) {

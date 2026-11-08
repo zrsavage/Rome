@@ -28,7 +28,7 @@ const STEPS = [
     check: (t) => t.flags.groupSet },
   { id: 'ranged', title: 'Skirmishers', hl: [], text: 'The Balearic slingers fire on their own once an enemy is in range (see their ring with V). Move them up behind your cohorts and shoot the lone warband <b>in the middle of the field</b>. It will not move unless touched.',
     markerUnit: 'dummy', check: (t) => t.b.stats.rangedKills >= 6 || gone(find(t.b, 'dummy')) },
-  { id: 'hold', title: 'Receive a charge', hl: [], text: 'Warband A is charging! Select your cohorts and press <b>H</b> to hold the line. Your pila hit as they close, then the gladius does the work. Watch morale (the blue bars): units that lose it will rout.',
+  { id: 'hold', title: 'Receive a charge', hl: [], text: 'Warband A is charging! Select your cohorts and press <b>H</b> to hold the line. Your pila hit as they close, then the gladius does the work. Watch morale (the blue bars) and fatigue: tired units fight badly, so press <b>R</b> to pull them back and rest. Units that lose morale will rout.',
     enter: (t) => { release(t.b, 'A'); t.b.say('A Gallic warband charges!', 'warn'); }, check: (t) => gone(find(t.b, 'A')) },
   { id: 'flank', title: 'Hit the flank', hl: [], text: 'Warband B advances on the other side. Send your <b>cavalry</b> or a spare cohort at it from the side or rear (its red or yellow arc). Flank and rear attacks do far more damage and shake morale.',
     enter: (t) => { release(t.b, 'B'); t.b.say('A second warband advances!', 'warn'); }, markerUnit: 'B',
