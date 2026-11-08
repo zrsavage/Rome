@@ -2,6 +2,7 @@
 import { LEVEL_NAMES, SCENARIOS, DIFFICULTY, UNIT_TYPES } from './data.js';
 import { levelFor } from './sim.js';
 import { officerById } from './state.js';
+import { artSrc } from './art.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pct = (v, m) => Math.max(0, Math.min(100, v / m * 100));
@@ -122,12 +123,12 @@ export class Camp {
     const rows = c.cohorts.map(x => {
       const o = officerById(c, x.officerId), lv = levelFor(x.xp);
       return `<tr class="clickable ${x.id === this.sel ? 'sel' : ''}" data-id="${x.id}">
-        <td>${esc(x.name)}<div class="muted small">${esc(UNIT_TYPES[x.type].name)}${o ? ' - ' + esc(o.name) : ''}</div></td>
+        <td><div class="cellflex"><img class="uicon" alt="" src="${artSrc('unit', x.type, 68, 68)}"><div>${esc(x.name)}<div class="muted small">${esc(UNIT_TYPES[x.type].name)}${o ? ' - ' + esc(o.name) : ''}</div></div></div></td>
         <td>${x.men}/${x.maxMen}${bar(x.men, x.maxMen)}</td>
         <td>${LEVEL_NAMES[lv]}${bar(x.xp - [0, 100, 250, 450, 700, 1000][lv], ([0, 100, 250, 450, 700, 1000, 1300][lv + 1] || 1300) - [0, 100, 250, 450, 700, 1000][lv], 'x')}</td>
         <td>${Math.round(x.drill)}${bar(x.drill, 100, 'm')}</td><td>${Math.round(x.condition)}%${bar(x.condition, 100)}</td></tr>`;
     }).join('');
-    const offRows = c.officers.map(o => `<tr class="${o.alive ? '' : 'dead'}"><td>${esc(o.rank)} ${esc(o.name)}<div class="muted small">${esc(o.bio)}</div></td>
+    const offRows = c.officers.map(o => `<tr class="${o.alive ? '' : 'dead'}"><td><div class="cellflex"><img class="portrait" alt="" src="${artSrc('officer', o.id, 80, 100, { title: o.name, rank: o.rank })}"><div>${esc(o.rank)} ${esc(o.name)}<div class="muted small">${esc(o.bio)}</div></div></div></td>
       <td>L${o.level}</td><td class="small">Tac ${o.tactics}<br>Drl ${o.drill}</td><td class="small">Log ${o.logistics}<br>Dip ${o.diplomacy}</td></tr>`).join('');
     const assignOpts = `<option value="">- none -</option>` + offs.map(o => `<option value="${o.id}" ${h.officerId === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
     const drillBtns = drillers.map(o => `<button class="act" data-a="drill" data-m="${o.id}" ${act && c.supplies >= 8 ? '' : 'disabled'}>Delegate to ${esc(o.name)}<small>Drill ${o.drill} - steady results</small></button>`).join('');

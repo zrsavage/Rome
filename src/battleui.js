@@ -2,6 +2,8 @@
 import { Battle, levelFor } from './sim.js';
 import { Renderer } from './render.js';
 import { WORLD, LEVEL_NAMES } from './data.js';
+import { artSrc } from './art.js';
+import { ask } from './ui.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -151,7 +153,11 @@ export class BattleUI {
     $('btn-pause').onclick = () => this.setPause(!this.paused);
     document.querySelectorAll('.spd').forEach(b => b.onclick = () => this.setSpeed(+b.dataset.s));
     $('btn-help').onclick = () => $('hud-help').classList.toggle('hidden');
-    $('btn-retreat').onclick = () => { if (this.b && confirm('Sound the retreat? You keep your surviving men and a partial reward only if you leave with at least 45% of your army.')) { this.b.retreatAll(); this.setPause(false); $('btn-retreat').disabled = true; } };
+    $('btn-retreat').onclick = async () => {
+      if (!this.b) return;
+      const floor = Math.round(this.b.retreatFloor() * 100);
+      if (await ask(`Sound the retreat? You keep your surviving men, and the withdrawal counts as a draw only if at least ${floor}% of your army gets away.`, 'Sound retreat', 'Keep fighting')) { this.b.retreatAll(); this.setPause(false); $('btn-retreat').disabled = true; }
+    };
   }
 
   controlGroup(n, set) {
@@ -170,7 +176,7 @@ export class BattleUI {
     const el = $('hud-bottom'); el.innerHTML = '';
     this.b.units.filter(u => u.side === 'rome').forEach(u => {
       const d = document.createElement('div'); d.className = 'ucard'; d.dataset.id = u.id;
-      d.innerHTML = `<b></b><div class="bar x"><i></i></div><div class="bar m" style="margin-top:3px"><i></i></div>`;
+      d.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 52, 52)}"><b></b><div class="bar x"><i></i></div><div class="bar m" style="margin-top:3px"><i></i></div>`;
       d.querySelector('b').textContent = u.name;
       d.onclick = (e) => this.select([u.id], e.shiftKey);
       el.appendChild(d);
@@ -208,7 +214,7 @@ export class BattleUI {
     if (!u) return;
     const t = u.type, lvl = LEVEL_NAMES[u.lvl];
     const kv = (a, v) => `<div class="kv"><span>${a}</span><span>${v}</span></div>`;
-    L.innerHTML = `<h3>${u.name}</h3><div class="muted">${t.blurb}</div>` +
+    L.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 88, 88)}"><h3>${u.name}</h3><div class="muted">${t.blurb}</div>` +
       kv('Men', `${u.men} / ${u.maxMen}`) + kv('Morale', `${Math.round(u.morale)} / ${Math.round(u.maxMorale)}`) + kv('Fatigue', Math.round(u.fatigue) + '%') +
       kv('Experience', lvl) + kv('Drill', Math.round(u.drill)) +
       (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics})` : 'none') + kv('Stance', u.stance === 'hold' ? 'Hold' : 'Aggressive') + kv('Formation', u.formation === 'close' ? 'Close order' : 'Normal') : '') +

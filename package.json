@@ -5,7 +5,12 @@
   "type": "module",
   "scripts": {
     "serve": "python3 -m http.server 8080",
-    "simtest": "node tools/simtest.mjs"
+    "simtest": "node tools/simtest.mjs",
+    "build": "node tools/build_single.mjs",
+    "art": "node tools/art_report.mjs --write"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
 }

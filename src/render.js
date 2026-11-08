@@ -2,34 +2,7 @@
 import { WORLD } from './data.js';
 import { mulberry32 } from './sim.js';
 
-export class Renderer {
-  constructor(canvas) {
-    this.canvas = canvas; this.ctx = canvas.getContext('2d');
-    this.cam = { x: WORLD.w / 2, y: WORLD.h / 2, zoom: 1 };
-    this.bg = null; this.dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.selection = new Set(); this.box = null; this.hover = null; this.dragLine = null; this.showRange = false;
-  }
-  resize() {
-    const r = this.canvas.getBoundingClientRect();
-    this.canvas.width = Math.max(1, Math.floor(r.width * this.dpr)); this.canvas.height = Math.max(1, Math.floor(r.height * this.dpr));
-    this.vw = r.width; this.vh = r.height;
-    this.minZoom = Math.min(this.vw / WORLD.w, this.vh / WORLD.h) * 0.98;
-    this.cam.zoom = Math.max(this.minZoom, Math.min(3, this.cam.zoom));
-    this.clampCam();
-  }
-  fit() { this.resize(); this.cam.zoom = this.minZoom; this.cam.x = WORLD.w / 2; this.cam.y = WORLD.h / 2; this.clampCam(); }
-  clampCam() {
-    const hw = this.vw / this.cam.zoom / 2, hh = this.vh / this.cam.zoom / 2;
-    this.cam.x = hw * 2 >= WORLD.w ? WORLD.w / 2 : Math.max(hw, Math.min(WORLD.w - hw, this.cam.x));
-    this.cam.y = hh * 2 >= WORLD.h ? WORLD.h / 2 : Math.max(hh, Math.min(WORLD.h - hh, this.cam.y));
-  }
-  toWorld(sx, sy) { return { x: (sx - this.vw / 2) / this.cam.zoom + this.cam.x, y: (sy - this.vh / 2) / this.cam.zoom + this.cam.y }; }
-  toScreen(wx, wy) { return { x: (wx - this.cam.x) * this.cam.zoom + this.vw / 2, y: (wy - this.cam.y) * this.cam.zoom + this.vh / 2 }; }
-
-  buildBackground(scn) {
-    const S = 0.8, c = document.createElement('canvas');
-    c.width = WORLD.w * S; c.height = WORLD.h * S;
-    const g = c.getContext('2d'); g.scale(S, S);
+export function paintTerrain(g, scn) {
     const rnd = mulberry32(7);
     g.fillStyle = '#6f9150'; g.fillRect(0, 0, WORLD.w, WORLD.h);
     for (let i = 0; i < 2600; i++) {
@@ -69,6 +42,37 @@ export class Renderer {
     const grd = g.createRadialGradient(WORLD.w / 2, WORLD.h / 2, WORLD.h * 0.5, WORLD.w / 2, WORLD.h / 2, WORLD.w * 0.75);
     grd.addColorStop(0, 'rgba(0,0,0,0)'); grd.addColorStop(1, 'rgba(0,0,0,0.35)');
     g.fillStyle = grd; g.fillRect(0, 0, WORLD.w, WORLD.h);
+}
+
+export class Renderer {
+  constructor(canvas) {
+    this.canvas = canvas; this.ctx = canvas.getContext('2d');
+    this.cam = { x: WORLD.w / 2, y: WORLD.h / 2, zoom: 1 };
+    this.bg = null; this.dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.selection = new Set(); this.box = null; this.hover = null; this.dragLine = null; this.showRange = false;
+  }
+  resize() {
+    const r = this.canvas.getBoundingClientRect();
+    this.canvas.width = Math.max(1, Math.floor(r.width * this.dpr)); this.canvas.height = Math.max(1, Math.floor(r.height * this.dpr));
+    this.vw = r.width; this.vh = r.height;
+    this.minZoom = Math.min(this.vw / WORLD.w, this.vh / WORLD.h) * 0.98;
+    this.cam.zoom = Math.max(this.minZoom, Math.min(3, this.cam.zoom));
+    this.clampCam();
+  }
+  fit() { this.resize(); this.cam.zoom = this.minZoom; this.cam.x = WORLD.w / 2; this.cam.y = WORLD.h / 2; this.clampCam(); }
+  clampCam() {
+    const hw = this.vw / this.cam.zoom / 2, hh = this.vh / this.cam.zoom / 2;
+    this.cam.x = hw * 2 >= WORLD.w ? WORLD.w / 2 : Math.max(hw, Math.min(WORLD.w - hw, this.cam.x));
+    this.cam.y = hh * 2 >= WORLD.h ? WORLD.h / 2 : Math.max(hh, Math.min(WORLD.h - hh, this.cam.y));
+  }
+  toWorld(sx, sy) { return { x: (sx - this.vw / 2) / this.cam.zoom + this.cam.x, y: (sy - this.vh / 2) / this.cam.zoom + this.cam.y }; }
+  toScreen(wx, wy) { return { x: (wx - this.cam.x) * this.cam.zoom + this.vw / 2, y: (wy - this.cam.y) * this.cam.zoom + this.vh / 2 }; }
+
+  buildBackground(scn) {
+    const S = 0.8, c = document.createElement('canvas');
+    c.width = WORLD.w * S; c.height = WORLD.h * S;
+    const g = c.getContext('2d'); g.scale(S, S);
+    paintTerrain(g, scn);
     this.bg = c;
   }
 
