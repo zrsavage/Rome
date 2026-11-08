@@ -19,7 +19,7 @@ python3 -m http.server 8080   # then open http://localhost:8080
 - **Six battles:** Fords of the Rhone at Genava (small skirmish), The Foragers' Road (defend the wagons), The Hill Fort of the Sequani
   (storm a hilltop), The Crossing of the Arar (catch stragglers), Ambush in the Silva (historical-defeat style: survive, big
   rewards) and the named **Battle of Bibracte** with a flank/rear attack by the Boii and Tulingi.
-- **Camp phase** between battles (limited days): drill a cohort yourself (timing mini-game) or delegate to an officer, forage,
+- **Camp phase** between battles (limited days): drill a cohort yourself (a short Latin command drill: Procedite, State, Testudinem formate, Sinistrorsum, Dextrorsum) or delegate to an officer, forage,
   fortify, rest, recruit, scout, demand tribute or give gifts. Fortifications improve morale and make orderly withdrawals easier.
 - **Rewards:** victories and **draws** (orderly withdrawal or surviving to the time limit) give spoils and new units
   (Cretan archers, IV-VII Cohorts, allied Gallic horse). Defeat keeps you on the same battle; there is a replacement floor so a

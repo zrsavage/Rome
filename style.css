@@ -213,3 +213,13 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .phead h2{color:var(--gold);font-size:24px;margin:0}.pres{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}.pres b{color:var(--gold)}
 .sect{color:var(--gold);font-weight:normal;letter-spacing:.06em;margin:14px 0 6px;font-size:15px}
 .plog{margin-top:12px;padding-top:8px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}.plog .good{color:#9be09b}.plog .bad{color:#ee9a8e}
+
+/* drill */
+#modal .box.drill{width:min(580px,94vw);text-align:center}
+#modal .box.drill canvas{width:100%;height:auto;border-radius:6px;border:1px solid var(--line);display:block;margin:8px 0}
+.drlist{margin:8px auto;border-collapse:collapse;text-align:left}.drlist td{padding:3px 12px;font-size:14px}
+#dr-cmd{font:bold 30px Georgia,serif;color:var(--gold);letter-spacing:.04em;margin-top:4px}
+#dr-en{min-height:20px}
+.drbar{height:8px;background:#000a;border-radius:4px;overflow:hidden;margin:10px 0}.drbar i{display:block;height:100%;width:100%;background:var(--gold)}
+.drbtn{min-width:96px;padding:10px 12px}.drbtn small{display:block;color:var(--muted);font-size:11px}
+#dr-msg{min-height:20px;margin-top:8px}
