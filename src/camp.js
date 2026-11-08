@@ -11,7 +11,7 @@ export const totalMen = (c) => c.cohorts.reduce((a, h) => a + h.men, 0);
 const bestOfficer = (c, trait) => Math.max(0, ...c.officers.filter(o => o.alive).map(o => o[trait]));
 
 export class Camp {
-  constructor(root, api) { this.root = root; this.api = api; this.sel = 1; this.c = null; this.msgs = []; }
+  constructor(root, api) { this.root = root; this.api = api; this.sel = 1; this.c = null; this.msgs = []; this.tab = 'days'; }
 
   show(c) { this.c = c; if (!c.cohorts.find(h => h.id === this.sel)) this.sel = c.cohorts[0].id; this.render(); }
   note(msg, kind = '') { this.msgs.unshift({ msg, kind }); this.msgs = this.msgs.slice(0, 30); }
@@ -184,36 +184,45 @@ export class Camp {
     const room = commandLimit(c) - c.cohorts.length;
     const raiseBtns = unlockedTypes(c).map(t => { const r = RAISE[t]; return `<button class="act" data-a="raise" data-m="${t}" ${act && room > 0 && c.gold >= r.gold && c.supplies >= r.supplies ? '' : 'disabled'}>${esc(UNIT_TYPES[t].name)}<small>${r.men} men - ${r.gold} denarii, ${r.supplies} supplies (1 day)</small></button>`; }).join('');
     const hosp = c.hospital || 0, hcost = 120 * (hosp + 1);
-    this.root.innerHTML = `<div class="camp">
+    const pts = offs.reduce((a, o) => a + (o.points || 0), 0);
+    const tabs = [['days', `Orders (${c.daysLeft} day${c.daysLeft === 1 ? '' : 's'})`], ['legion', 'Legion and equipment'], ['officers', `Officers${pts ? ` (${pts} skill point${pts === 1 ? '' : 's'})` : ''}`], ['raise', `Raise units (${c.cohorts.length}/${commandLimit(c)})`]];
+    this.root.innerHTML = `<div class="camp" data-tab="${this.tab}">
       <header><h2>Camp - ${esc(scn.theater)}, ${esc(scn.year)}</h2>
         <div class="res"><span>Denarii <b>${c.gold}</b></span><span>Supplies <b>${c.supplies}</b> <span class="muted small">(-${Math.ceil(totalMen(c) / 60 * modsOf(c).supplyUse)}/day)</span></span>
         <span>Fort <b>${c.fort}/3</b></span><span>Goodwill <b>${c.favour > 0 ? '+' : ''}${c.favour}</b></span><span>Days left <b>${c.daysLeft}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
+      <div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${this.tab === k ? 'on' : ''}" data-tab-btn="${k}">${esc(l)}</button>`).join('')}<span style="flex:1"></span><button id="march-top" class="primary">March to battle</button><button id="map-top">Map</button></div>
       <div class="col">
-        <div class="card"><h3>The Legion</h3><table><tr><th>Unit</th><th>Strength</th><th>Experience</th><th>Drill</th><th>Condition</th></tr>${rows}</table>
+        <div class="card" data-tab="legion"><h3>The Legion</h3><table><tr><th>Unit</th><th>Strength</th><th>Experience</th><th>Drill</th><th>Condition</th></tr>${rows}</table>
           <div class="row" style="margin-top:8px"><span class="muted small">Officer for ${esc(h.name)}:</span><select id="assign">${assignOpts}</select></div>${detail}</div>
-        <div class="card"><h3>Raise a unit <span class="pill">${c.cohorts.length}/${commandLimit(c)} units</span></h3><div class="small muted">Your command limit grows with every battle you win or draw.${room <= 0 ? ' <b>You are at the limit.</b>' : ''}</div><div class="actions" style="margin-top:8px">${raiseBtns}</div></div>
-        <div class="card"><h3>Officers</h3><table><tr><th>Name</th><th>Lvl</th><th></th><th></th></tr>${offRows}</table></div>
-        <div class="card"><h3>Officer skills</h3><div class="small muted">Officers earn a skill point each level. Perks need a high enough rating in their trait. Attached officers help their unit in battle; others help the whole army.</div>${skills}</div>
+        <div class="card" data-tab="raise"><h3>Raise a unit <span class="pill">${c.cohorts.length}/${commandLimit(c)} units</span></h3><div class="small muted">Your command limit grows with every battle you win or draw.${room <= 0 ? ' <b>You are at the limit.</b>' : ''}</div><div class="actions" style="margin-top:8px">${raiseBtns}</div></div>
+        <div class="card" data-tab="officers"><h3>Officers</h3><table><tr><th>Name</th><th>Lvl</th><th></th><th></th></tr>${offRows}</table></div>
+        <div class="card" data-tab="officers"><h3>Officer skills</h3><div class="small muted">Officers earn a skill point each level. Perks need a high enough rating in their trait. Attached officers help their unit in battle; others help the whole army.</div>${skills}</div>
       </div>
       <div class="col">
-        <div class="card"><h3>Orders of the day - ${c.daysLeft} day${c.daysLeft === 1 ? '' : 's'} before the enemy moves</h3>
+        <div class="card" data-tab="days"><h3>Orders of the day - ${c.daysLeft} day${c.daysLeft === 1 ? '' : 's'} before the enemy moves</h3>
           <div class="actions">
+            <div class="grp">Training</div>
             <button class="act" data-a="drill" data-m="self" ${act && c.supplies >= 8 ? '' : 'disabled'}>Drill ${esc(h.name)} yourself<small>Take part: a timing challenge. Best possible results.</small></button>
             ${drillBtns}
+            <div class="grp">Supplies and camp</div>
             <button class="act" data-a="forage" data-m="0" ${act ? '' : 'disabled'}>Forage (cautious)<small>+~${35 + 8 * bestOfficer(c, 'logistics')} supplies, safe</small></button>
             <button class="act" data-a="forage" data-m="1" ${act ? '' : 'disabled'}>Forage (wide)<small>+~${70 + 12 * bestOfficer(c, 'logistics')} supplies, risk of ambush</small></button>
             <button class="act" data-a="fortify" ${act && c.supplies >= 10 && c.fort < 3 ? '' : 'disabled'}>Fortify camp<small>10 supplies. Better morale and orderly retreats.</small></button>
             <button class="act" data-a="rest" ${act ? '' : 'disabled'}>Rest the army<small>+20 condition for every unit</small></button>
+            <div class="grp">Diplomacy</div>
             <button class="act" data-a="tribute" data-m="1" ${act ? '' : 'disabled'}>Demand tribute<small>+~${90 + 15 * bestOfficer(c, 'diplomacy')} denarii, goodwill -1</small></button>
             <button class="act" data-a="tribute" data-m="0" ${act && c.gold >= 60 ? '' : 'disabled'}>Gifts to chieftains<small>-60 denarii, goodwill +1</small></button>
+            <div class="grp">Manpower and care</div>
             <button class="act" data-a="recruit" ${act && h.men < h.maxMen && c.gold >= 3 ? '' : 'disabled'}>Recruit for ${esc(h.name)}<small>3 denarii per man, up to 40. Dilutes experience.</small></button>
             <button class="act" data-a="hospital" ${act && hosp < 3 && c.gold >= hcost && c.supplies >= 20 ? '' : 'disabled'}>Field hospital (level ${hosp}/3)<small>${hosp >= 3 ? 'Fully built' : `${hcost} denarii, 20 supplies: wounded recover +12% per level`}</small></button>
+            <div class="grp">Intelligence</div>
             <button class="act" data-a="scout" ${act && !c.scouted ? '' : 'disabled'}>${c.scouted ? 'Enemy scouted' : 'Send scouts'}<small>Reveal exact enemy forces</small></button>
           </div></div>
-        <div class="card"><h3>Next battle</h3><p><b>${esc(scn.name)}</b><br><span class="muted">${esc(scn.objective)}</span></p>
+        <div class="card" data-tab="days"><h3>Next battle</h3><p><b>${esc(scn.name)}</b><br><span class="muted">${esc(scn.objective)}</span></p>
           <div class="row"><button class="primary" id="march">March to battle</button><button id="tomap">Back to map</button></div></div>
-        <div class="card"><h3>Dispatches</h3><div class="log">${this.msgs.map(m => `<div class="${m.kind}">${esc(m.msg)}</div>`).join('') || '<div>Choose how to spend your days.</div>'}</div></div>
+        <div class="card" data-tab="days"><h3>Dispatches</h3><div class="log">${this.msgs.map(m => `<div class="${m.kind}">${esc(m.msg)}</div>`).join('') || '<div>Choose how to spend your days.</div>'}</div></div>
       </div></div>`;
+    this.root.querySelectorAll('[data-tab-btn]').forEach(b => b.onclick = () => { this.tab = b.dataset.tabBtn; this.render(); });
     this.root.querySelectorAll('tr.clickable').forEach(tr => tr.onclick = () => { this.sel = +tr.dataset.id; this.render(); });
     this.root.querySelector('#instr').onchange = (e) => this.setInstructor(e.target.value ? +e.target.value : null);
     this.root.querySelector('#assign').onchange = (e) => this.assign(e.target.value ? +e.target.value : null);
@@ -223,6 +232,8 @@ export class Camp {
       else if (a === 'tribute') this.tribute(m === '1'); else this[a]();
     });
     this.root.querySelector('#march').onclick = () => this.api.march();
+    this.root.querySelector('#march-top').onclick = () => this.api.march();
+    this.root.querySelector('#map-top').onclick = () => this.api.map();
     this.root.querySelector('#tomap').onclick = () => this.api.map();
   }
 }

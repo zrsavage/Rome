@@ -50,6 +50,8 @@ python3 -m http.server 8080   # then open http://localhost:8080
 
 ## Starting a campaign
 
+The flow is **one question per screen** with a progress indicator, a Back button, and a live summary of your starting position. The camp is split into tabs (Orders, Legion and equipment, Officers, Raise units) so only one area is on screen at a time.
+
 New Campaign opens **Your Origins**, a short character creation in the spirit of Ultimate General: pick your family, early career
 and approach (recommended picks are highlighted; a live summary shows starting denarii, supplies, soldiers, goodwill and
 modifiers for wounded recovery, replacements, food use, spoils, experience, foraging and morale). Then you fight a short

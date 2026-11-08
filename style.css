@@ -163,3 +163,26 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .detail{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}.detail h4{margin:0 0 6px;color:var(--gold);font-weight:normal;letter-spacing:.04em}
 .skillrow{padding:8px 0;border-bottom:1px dotted var(--line)}.skillrow .row{gap:8px}
 .skillrow .actions{margin-top:6px}
+
+/* camp tabs: one area at a time */
+.tabs{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.tab{padding:8px 16px}.tab.on{border-color:var(--gold);color:var(--gold);background:#3a2e1b}
+#screen-camp .camp [data-tab]{display:none}
+#screen-camp .camp[data-tab=days] [data-tab=days],#screen-camp .camp[data-tab=legion] [data-tab=legion],#screen-camp .camp[data-tab=officers] [data-tab=officers],#screen-camp .camp[data-tab=raise] [data-tab=raise]{display:block}
+#screen-camp .camp[data-tab]{grid-template-columns:minmax(0,860px);justify-content:center}
+#screen-camp .camp[data-tab]:not([data-tab=days]) > .col:last-child{display:none}
+#screen-camp .camp[data-tab=days] > .col:nth-of-type(2){display:none}
+.grp{grid-column:1/-1;color:var(--gold);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin-top:6px;border-bottom:1px solid var(--line);padding-bottom:3px}
+.grp:first-child{margin-top:0}
+
+/* origins wizard: one question at a time */
+.wiz{max-width:1000px;grid-template-columns:1.4fr 1fr}
+.wiz .main{display:flex;flex-direction:column;gap:12px}
+.wiz .stepbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.wiz .dot{width:11px;height:11px;border-radius:50%;background:#0006;border:1px solid var(--line)}.wiz .dot.done{background:var(--gold);border-color:var(--gold)}.wiz .dot.now{border-color:var(--gold);box-shadow:0 0 0 3px #e8c36a33}
+.wiz .q{font-size:22px;color:var(--gold);letter-spacing:.04em;margin:0}
+.wiz .ocards{grid-template-columns:1fr;gap:10px}
+.wiz .ocard{padding:14px 16px;font-size:15px}.wiz .ocard ul{font-size:13.5px;margin-top:4px}
+.wiz .nav{display:flex;justify-content:space-between;gap:10px;margin-top:4px}
+.wiz .review .kvl b{color:var(--ink)}
+@media (max-width:900px){.wiz{grid-template-columns:1fr}}

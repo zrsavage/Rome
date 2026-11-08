@@ -147,29 +147,42 @@ function showManagementIntro() {
   ], 'Begin the campaign');
 }
 
-// ----- Your Origins (character creation) -----
+// ----- Your Origins (character creation): one question per screen -----
 function showOrigins(slot) {
-  const picks = { ...RECOMMENDED }; let name = DEFAULT_NAME, diff = diffSel.value;
+  const keys = Object.keys(ORIGINS), picks = { ...RECOMMENDED }; let name = DEFAULT_NAME, diff = diffSel.value, step = 0;
+  const total = keys.length + 2;               // name, each choice, review
   const root = $('screen-origins');
+  const go = (p) => { const c = buildCampaign(p, name, diff); c.slot = slot; campaign = c; save(); store.set(preKey(slot), c); openCampaign(c, slot); };
   const draw = () => {
     const c = buildCampaign(picks, name, diff), d = describe(c);
-    root.innerHTML = `<div class="origins"><header><h2>Your Origins</h2><div class="muted">Three choices shape your starting position. Not sure? The highlighted picks are a gentle start for a first campaign. You can change nothing later, so read the summary on the right.</div></header>
-      <div class="col">
-        <div class="card"><div class="namerow"><label for="o-name">Your name</label><input id="o-name" maxlength="28" value="${esc(name)}"><label for="o-diff">Difficulty</label><select id="o-diff">${Object.entries(DIFFICULTY).map(([k, v]) => `<option value="${k}" ${k === diff ? 'selected' : ''}>${v.name}</option>`).join('')}</select></div><div class="muted small" style="margin-top:6px">${esc(DIFFICULTY[diff].desc)}</div></div>
-        ${Object.entries(ORIGINS).map(([k, g]) => `<div class="card"><h3>${esc(g.title)}</h3><div class="muted small">${esc(g.blurb)}</div><div class="ocards">${g.options.map(o => `<button class="ocard ${picks[k] === o.id ? 'sel' : ''}" data-k="${k}" data-id="${o.id}">${RECOMMENDED[k] === o.id ? '<span class="rec">Recommended</span>' : ''}<b>${esc(o.name)}</b><span class="t">${esc(o.text)}</span><ul>${o.fx.map(f => `<li>${esc(f)}</li>`).join('')}</ul></button>`).join('')}</div></div>`).join('')}
-      </div>
-      <div class="col"><div class="card"><h3>Your starting position</h3><div class="sumtiles">${d.numbers.map(([a, b]) => `<div><b>${esc(b)}</b><span>${esc(a)}</span></div>`).join('')}</div>${d.lines.map(([a, b]) => `<div class="kvl"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}
-        <p class="muted small" style="margin-top:10px">Next you fight a short opening battle, then reach the army management screen.</p>
-        <div class="row" style="margin-top:8px"><button class="primary" id="o-go">Begin</button><button id="o-quick" title="Use the recommended picks">Quick start</button><button id="o-back">Back</button></div></div>
-        <div class="card"><h3>New to the game?</h3><div class="small muted">A two-minute tutorial teaches the controls on a practice field. You can do it first and come back.</div><div class="row" style="margin-top:8px"><button id="o-tut">Do the tutorial first</button></div></div></div></div>`;
-    root.querySelectorAll('.ocard').forEach(b => b.onclick = () => { picks[b.dataset.k] = b.dataset.id; draw(); });
-    root.querySelector('#o-name').oninput = (e) => { name = e.target.value; };
-    root.querySelector('#o-diff').onchange = (e) => { diff = e.target.value; draw(); };
-    const go = (p) => { const c = buildCampaign(p, name, diff); c.slot = slot; campaign = c; save(); store.set(preKey(slot), c); openCampaign(c, slot); };
-    root.querySelector('#o-go').onclick = () => go(picks);
-    root.querySelector('#o-quick').onclick = () => go(RECOMMENDED);
-    root.querySelector('#o-back').onclick = () => toMenu();
-    root.querySelector('#o-tut').onclick = () => startTutorial();
+    const dots = Array.from({ length: total }, (_, i) => `<span class="dot ${i < step ? 'done' : i === step ? 'now' : ''}"></span>`).join('');
+    const summary = `<div class="card"><h3>Your starting position</h3><div class="sumtiles">${d.numbers.map(([a2, b2]) => `<div><b>${esc(b2)}</b><span>${esc(a2)}</span></div>`).join('')}</div>${d.lines.map(([a2, b2]) => `<div class="kvl"><span>${esc(a2)}</span><span>${esc(b2)}</span></div>`).join('')}<p class="muted small" style="margin-top:8px">This updates as you choose. Next: a short opening battle, then army management.</p></div>`;
+    let main = '';
+    if (step === 0) {
+      main = `<div class="card"><p class="q">Who are you?</p><p class="muted">You are a Roman officer taking command of a legion on the edge of the Province. You will answer three short questions about your past. Each one changes how your army starts.</p>
+        <div class="namerow" style="margin-top:12px"><label for="o-name">Your name</label><input id="o-name" maxlength="28" value="${esc(name)}"></div>
+        <div class="namerow" style="margin-top:10px"><label for="o-diff">Difficulty</label><select id="o-diff">${Object.entries(DIFFICULTY).map(([k, v]) => `<option value="${k}" ${k === diff ? 'selected' : ''}>${v.name}</option>`).join('')}</select></div><div class="muted small" style="margin-top:6px">${esc(DIFFICULTY[diff].desc)} Miles is the intended experience.</div></div>
+        <div class="card"><h3>New to the game?</h3><div class="small muted">A two-minute tutorial teaches the controls on a practice field.</div><div class="row" style="margin-top:8px"><button id="o-tut">Do the tutorial first</button><button id="o-quick" title="Use the recommended answers and skip the questions">Skip the questions (quick start)</button></div></div>`;
+    } else if (step <= keys.length) {
+      const k = keys[step - 1], g = ORIGINS[k];
+      main = `<div class="card"><p class="q">${esc(g.title)}</p><div class="muted small">${esc(g.blurb)}</div><div class="ocards" style="margin-top:10px">${g.options.map(o => `<button class="ocard ${picks[k] === o.id ? 'sel' : ''}" data-k="${k}" data-id="${o.id}">${RECOMMENDED[k] === o.id ? '<span class="rec">Recommended</span>' : ''}<b>${esc(o.name)}</b><span class="t">${esc(o.text)}</span><ul>${o.fx.map(f => `<li>${esc(f)}</li>`).join('')}</ul></button>`).join('')}</div></div>`;
+    } else {
+      main = `<div class="card review"><p class="q">Your story</p><div class="muted small">Check your choices. You cannot change them once the campaign begins.</div>
+        ${keys.map((k, i) => { const o = ORIGINS[k].options.find(x => x.id === picks[k]); return `<div class="kvl" style="padding:8px 0"><span>${esc(ORIGINS[k].title)}</span><span><b>${esc(o.name)}</b> <button data-edit="${i + 1}" style="padding:2px 8px;margin-left:8px">Change</button></span></div>`; }).join('')}
+        <div class="kvl" style="padding:8px 0"><span>Name / difficulty</span><span><b>${esc(name)}</b>, ${esc(DIFFICULTY[diff].name)} <button data-edit="0" style="padding:2px 8px;margin-left:8px">Change</button></span></div></div>`;
+    }
+    const last = step === total - 1;
+    root.innerHTML = `<div class="origins wiz"><header><h2>Your Origins</h2><div class="stepbar">${dots}<span class="muted small">Step ${step + 1} of ${total}</span></div></header>
+      <div class="main">${main}<div class="nav"><button id="o-back">${step === 0 ? 'Back to menu' : 'Back'}</button><button class="primary" id="o-next">${last ? 'Begin the campaign' : 'Next'}</button></div></div>
+      <div class="col">${step === 0 ? '' : summary}</div></div>`;
+    root.querySelectorAll('.ocard').forEach(b2 => b2.onclick = () => { picks[b2.dataset.k] = b2.dataset.id; draw(); });
+    root.querySelectorAll('[data-edit]').forEach(b2 => b2.onclick = () => { step = +b2.dataset.edit; draw(); });
+    const nm = root.querySelector('#o-name'); if (nm) nm.oninput = (e) => { name = e.target.value; };
+    const df = root.querySelector('#o-diff'); if (df) df.onchange = (e) => { diff = e.target.value; draw(); };
+    const q = root.querySelector('#o-quick'); if (q) q.onclick = () => go(RECOMMENDED);
+    const t = root.querySelector('#o-tut'); if (t) t.onclick = () => startTutorial();
+    root.querySelector('#o-back').onclick = () => { if (step === 0) toMenu(); else { step--; draw(); } };
+    root.querySelector('#o-next').onclick = () => { if (last) go(picks); else { step++; draw(); } };
   };
   draw(); show('screen-origins');
 }
