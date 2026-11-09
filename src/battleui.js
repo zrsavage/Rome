@@ -6,6 +6,7 @@ import { artSrc } from './art.js';
 import { ask } from './ui.js';
 import { icon } from './icons.js';
 import { dragLayout, compass } from './orders.js';
+import { WEATHER } from './weather.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -22,7 +23,7 @@ export class BattleUI {
   start(scn, specs, opts, onEnd) {
     this.scn = scn; this.b = new Battle(scn, specs, opts); this.onEnd = onEnd; this.ended = false;
     this.paused = true; this.speed = 1; this.r.selection.clear(); this.logShown = 0; this.running = true; this.groups = {}; this.listeners = []; this.frameHooks = []; this.r.markers = []; this.genSel = false; this.r.genSel = false;
-    $('hud-title').textContent = scn.name;
+    $('hud-title').textContent = scn.name + (this.b.wxKey !== 'clear' ? ' - ' + WEATHER[this.b.wxKey].name : '');
     $('hud-log').innerHTML = '';
     this.r.buildBackground(scn); this.r.fit();
     { const rs = this.b.units.filter(u => u.side === 'rome'); if (rs.length) { this.r.cam.zoom = Math.max(this.r.minZoom, Math.min(0.9, this.r.cam.zoom * 3)); this.r.cam.x = rs.reduce((a, u) => a + u.x, 0) / rs.length; this.r.cam.y = rs.reduce((a, u) => a + u.y, 0) / rs.length - 160 / this.r.cam.zoom; this.r.clampCam(); } }

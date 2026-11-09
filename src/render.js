@@ -55,7 +55,7 @@ export function paintTerrain(g, scn) {
       g.beginPath(); g.moveTo(top[0][0], top[0][1]); for (const q of top) g.lineTo(q[0], q[1]); for (let i = bot.length - 1; i >= 0; i--) g.lineTo(bot[i][0], bot[i][1]); g.closePath();
     };
     if (f.kind === 'water') {
-      const gr = g.createLinearGradient(0, f.y - 30, 0, f.y + f.h + 30); gr.addColorStop(0, '#4d7f9e'); gr.addColorStop(0.5, '#2f6288'); gr.addColorStop(1, '#4d7f9e');
+      const gr = g.createLinearGradient(0, f.y - 30, 0, f.y + f.h + 30); const ice = scn._wx === 'frost'; if (ice) { gr.addColorStop(0, '#9fc0d0'); gr.addColorStop(0.5, '#cfe3ec'); gr.addColorStop(1, '#9fc0d0'); } else { gr.addColorStop(0, '#4d7f9e'); gr.addColorStop(0.5, '#2f6288'); gr.addColorStop(1, '#4d7f9e'); }
       g.fillStyle = 'rgba(112,92,52,0.55)'; strip(f, 7); g.fill();          // muddy banks
       g.fillStyle = gr; strip(f, 0); g.fill();
       g.strokeStyle = 'rgba(205,232,244,0.3)'; g.lineWidth = 1.2;
@@ -64,7 +64,7 @@ export function paintTerrain(g, scn) {
       for (let i = 0; i < f.w / 9; i++) { const x = f.x + rnd() * f.w, up = rnd() > 0.5, y = (up ? f.y - 1 : f.y + f.h + 1) + riverShift(f, x); g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 3, y + (up ? -6 : 6) * (0.6 + rnd() * 0.7)); g.stroke(); }
     } else if (f.kind === 'ford') {
       g.fillStyle = 'rgba(112,92,52,0.5)'; strip(f, 7); g.fill();
-      g.fillStyle = '#86adbd'; strip(f, 0); g.fill();
+      g.fillStyle = scn._wx === 'frost' ? '#c4dbe5' : '#86adbd'; strip(f, 0); g.fill();
       for (let i = 0; i < 70; i++) { const x = f.x + rnd() * f.w, y = f.y + riverShift(f, x) + rnd() * f.h, rx = 3.5 + rnd() * 5, ry = 2.5 + rnd() * 3; g.fillStyle = 'rgba(40,60,70,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, rx, ry, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(196,184,150,0.8)'; g.beginPath(); g.ellipse(x, y, rx * 0.8, ry * 0.8, rnd() * 3, 0, 7); g.fill(); }
     } else if (f.kind === 'forest') {
       // trees are scattered inside the ragged woodland shape, with smaller outliers straggling past its edge
@@ -153,6 +153,7 @@ export class Renderer {
       ctx.stroke();
     }
     const order = b.units.filter(u => u.present && (u.side === 'rome' || u.spotted !== false)).sort((a, b2) => a.y - b2.y);
+    this.drawFlood(ctx, b);
     this.drawObjectives(ctx, b);
     for (const f of b.fx) if (f.kind === 'dust') this.drawDust(ctx, f);
     for (const id of new Set([...this.selection, this.hover])) { const u = b.byId(id); if (u && u.present && u.state !== 'routing') this.drawArcs(ctx, u); }
@@ -165,9 +166,44 @@ export class Renderer {
     this.drawMarkers(ctx);
     this.drawDragPreview(ctx, b);
     ctx.restore();
+    this.drawWeather(ctx, b);
     const placed = [];                                      // label boxes already on screen, so labels never sit on top of each other
     for (const u of [...order].sort((a, b2) => b2.y - a.y)) this.drawLabel(ctx, u, placed);
     if (this.box) { ctx.strokeStyle = '#e8c36a'; ctx.fillStyle = 'rgba(232,195,106,0.12)'; const bx = this.box; ctx.fillRect(bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0); ctx.strokeRect(bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0); }
+  }
+
+  // A storm raises the river: the ford is painted over with deeper, darker water as it fills.
+  drawFlood(ctx, b) {
+    const fl = b.scn.flood || 0; if (fl <= 0) return;
+    for (const f of b.scn.terrain) {
+      if (f.kind !== 'ford') continue;
+      ctx.beginPath(); const grow = 5 * fl;
+      for (let x = f.x; x <= f.x + f.w + 0.1; x += 10) { const y = f.y + riverShift(f, x) - grow; x === f.x ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+      for (let x = f.x + f.w; x >= f.x - 0.1; x -= 10) ctx.lineTo(x, f.y + f.h + riverShift(f, x) + grow);
+      ctx.closePath(); ctx.fillStyle = `rgba(38,86,122,${0.78 * fl})`; ctx.fill();
+      ctx.strokeStyle = `rgba(215,235,245,${0.35 * fl})`; ctx.lineWidth = 1.2;
+      const tt = performance.now() / 1000;
+      for (let x = f.x + 8; x < f.x + f.w; x += 26) { const y = f.y + riverShift(f, x) + 8 + ((x * 7) % (f.h - 16)), o = Math.sin(tt * 1.4 + x) * 3; ctx.beginPath(); ctx.moveTo(x + o, y); ctx.quadraticCurveTo(x + 8 + o, y - 3, x + 16 + o, y); ctx.stroke(); }
+    }
+  }
+  // Weather over the view (in screen space): rain streaks and mud-brown damp, drifting fog banks, a cold blue frost.
+  drawWeather(ctx, b) {
+    const k = b.wxKey; if (!k || k === 'clear') return;
+    const w = this.vw, h = this.vh, tt = performance.now() / 1000;
+    ctx.save(); ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    if (k === 'rain' || k === 'storm') {
+      ctx.fillStyle = k === 'storm' ? 'rgba(18,26,44,0.26)' : 'rgba(60,52,34,0.10)'; ctx.fillRect(0, 0, w, h);
+      const n = Math.round(w * h / (k === 'storm' ? 4200 : 7500)), slant = k === 'storm' ? 0.38 : 0.2, len = k === 'storm' ? 20 : 14, sp = k === 'storm' ? 1500 : 1000;
+      ctx.strokeStyle = k === 'storm' ? 'rgba(200,215,235,0.38)' : 'rgba(200,215,230,0.3)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let i = 0; i < n; i++) { const r1 = (Math.sin(i * 12.9898) * 43758.5453) % 1, r2 = (Math.sin(i * 78.233 + 1.7) * 24634.6345) % 1, ph = Math.abs(r2), x = ((Math.abs(r1) * (w + 120) + tt * sp * slant * (0.8 + ph * 0.4)) % (w + 120)) - 60, y = (ph * h + tt * sp * (0.8 + ph * 0.4)) % (h + 40) - 20; ctx.moveTo(x, y); ctx.lineTo(x - len * slant, y + len); }
+      ctx.stroke();
+    } else if (k === 'fog') {
+      ctx.fillStyle = 'rgba(205,210,206,0.3)'; ctx.fillRect(0, 0, w, h);
+      for (let i = 0; i < 6; i++) { const cx = ((i * 0.23 + tt * 0.004 * (1 + i * 0.3)) % 1.4 - 0.2) * w, cy = (0.15 + ((i * 0.37) % 0.7)) * h, r = Math.max(w, h) * 0.32, g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, 'rgba(225,228,224,0.34)'); g.addColorStop(1, 'rgba(225,228,224,0)'); ctx.fillStyle = g; ctx.fillRect(cx - r, cy - r, r * 2, r * 2); }
+    } else if (k === 'frost') {
+      ctx.fillStyle = 'rgba(165,200,240,0.13)'; ctx.fillRect(0, 0, w, h);
+    }
+    ctx.restore();
   }
 
   drawUnit(ctx, u, b) {

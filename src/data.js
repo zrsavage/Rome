@@ -126,8 +126,9 @@ export function terrainAt(scn, x, y) {
     else if (f.rx) inside = ((x - f.cx) / f.rx) ** 2 + ((y - f.cy) / f.ry) ** 2 <= 1;
     else { const sh = f.kind === 'water' || f.kind === 'ford' ? riverShift(f, x) : 0; inside = x >= f.x && x <= f.x + f.w && y - sh >= f.y && y - sh <= f.y + f.h; }
     if (!inside) continue;
-    if (f.kind === 'water')  r = { speed: 0.35, def: 1.0, atk: 0.8, cav: 0.5, kind: 'water' };
-    if (f.kind === 'ford')   r = { speed: 0.8,  def: 1.0, atk: 0.9, cav: 0.8, kind: 'ford' };
+    const fl = scn.flood || 0;                                          // a storm raises the river: fords deepen as the water comes up
+    if (f.kind === 'water')  r = scn._wx === 'frost' ? { speed: 0.7, def: 1.0, atk: 0.95, cav: 0.6, kind: 'ice' } : { speed: 0.35, def: 1.0, atk: 0.8, cav: 0.5, kind: 'water' };
+    if (f.kind === 'ford')   r = scn._wx === 'frost' ? { speed: 0.8, def: 1.0, atk: 0.95, cav: 0.7, kind: 'ice' } : { speed: 0.8 - 0.4 * fl, def: 1.0, atk: 0.9 - 0.15 * fl, cav: 0.8 - 0.4 * fl, kind: 'ford' };
     if (f.kind === 'forest') r = { speed: 0.6,  def: 0.95, atk: 0.95, cav: 0.55, kind: 'forest' };
   }
   if (r.kind === 'grass' && elevAt(scn, x, y) >= 6) r = { speed: 1, def: 0.9, atk: 1.06, cav: 0.95, kind: 'hill' };

@@ -41,6 +41,10 @@ export function reportHtml(res) {
   const rr = routs('rome'), gr = routs('gaul');
   const tally = (list) => { const c = {}; for (const e of list) c[e.cause] = (c[e.cause] || 0) + 1; return Object.entries(c).sort((a, b) => b[1] - a[1]); };
 
+  // weather
+  const WXN = { rain: 'Rain turned the ground to mud: marches were slower, horse charges lost weight and slings and bows fired about a fifth less.', fog: 'Fog cut sight to half. Enemies appeared late, so scouting, high ground and a general near the front mattered.', storm: 'A storm slowed every march and nearly silenced missile fire.' + (ev.some(e => e.kind === 'flood') ? ' The river rose and the fords deepened mid-battle: whoever was caught crossing paid for it.' : ''), frost: 'A hard frost froze the river, so it could be crossed on the ice (slowly) instead of only at the fords.' };
+  if (rep.wx && WXN[rep.wx]) out.push(`<b>Weather: ${esc(rep.wx[0].toUpperCase() + rep.wx.slice(1))}.</b> ${WXN[rep.wx]}`);
+
   // 1. where your line broke
   if (rr.length) {
     const f = rr[0], whyF = CAUSE[f.cause] || f.cause;
@@ -108,8 +112,8 @@ export function reportHtml(res) {
   if (!out.length) out.push('A short, one-sided fight: there is little to learn beyond what the casualty table already shows.');
 
   // key moments list
-  const keys = ev.filter(e => ['rout', 'dead', 'waver', 'surge', 'commit', 'wing', 'rally', 'relieve', 'rash', 'rival'].includes(e.kind));
-  const label = (e) => ({ rout: `${esc(e.text)} ${e.side === 'rome' ? '<b style="color:#e0614f">breaks</b>' : 'breaks (enemy)'}${e.cause ? ` &mdash; ${esc((CAUSE[e.cause] || e.cause))}` : ''}`, dead: `${esc(e.text)} destroyed${e.side === 'rome' ? '' : ' (enemy)'}`, waver: esc(e.text), surge: esc(e.text), commit: esc(e.text), wing: esc(e.text), rally: esc(e.text), relieve: esc(e.text), rash: esc(e.text), rival: esc(e.text) }[e.kind]);
+  const keys = ev.filter(e => ['rout', 'dead', 'waver', 'surge', 'commit', 'wing', 'rally', 'relieve', 'rash', 'rival', 'flood'].includes(e.kind));
+  const label = (e) => ({ rout: `${esc(e.text)} ${e.side === 'rome' ? '<b style="color:#e0614f">breaks</b>' : 'breaks (enemy)'}${e.cause ? ` &mdash; ${esc((CAUSE[e.cause] || e.cause))}` : ''}`, dead: `${esc(e.text)} destroyed${e.side === 'rome' ? '' : ' (enemy)'}`, waver: esc(e.text), surge: esc(e.text), commit: esc(e.text), wing: esc(e.text), rally: esc(e.text), relieve: esc(e.text), rash: esc(e.text), rival: esc(e.text), flood: esc(e.text) }[e.kind]);
   const shown = keys.length > 12 ? keys.filter((e, i) => e.kind !== 'rout' || e.side === 'rome' || i < 4).slice(0, 12) : keys;
   const moments = shown.length ? `<div class="muted small" style="margin-top:10px"><b>Key moments</b></div><div class="small" style="columns:2 280px;column-gap:24px;margin-top:2px">${shown.map(e => `<div style="break-inside:avoid"><span class="muted">${mmss(e.t)}</span> ${label(e)}</div>`).join('')}</div>` : '';
 

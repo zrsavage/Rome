@@ -13,9 +13,10 @@ export const PRACTICE_OPTIONS = {
   enemy: { grand: 'Grand (70 units)', small: 'Small (about 900 men)', medium: 'Medium (about 1,800 men)', large: 'Large (about 3,200 men)', elite: 'Elite (champions and nobles)' },
   terrain: { open: 'Open field', ford: 'River ford', hill: 'Hill in the centre', forest: 'Forests on the flanks' },
   tactics: { rush: 'Rush: all-out charge', ambush: 'Ambush: waits until you approach', mixed: 'Mixed: skirmishers, flankers and a charge' },
-  difficulty: { easy: 'Tiro', normal: 'Miles', hard: 'Centurion', legendary: 'Imperator' }
+  difficulty: { easy: 'Tiro', normal: 'Miles', hard: 'Centurion', legendary: 'Imperator' },
+  weather: { clear: 'Clear', rain: 'Rain (mud, wet missiles)', fog: 'Fog (short sight)', storm: 'Storm (the ford rises)', frost: 'Hard frost (rivers freeze)' }
 };
-export const PRACTICE_DEFAULTS = { army: 'medium', enemy: 'medium', terrain: 'open', tactics: 'mixed', difficulty: 'normal' };
+export const PRACTICE_DEFAULTS = { army: 'medium', enemy: 'medium', terrain: 'open', tactics: 'mixed', difficulty: 'normal', weather: 'clear' };
 
 const ARMIES = {
   small: [['I Cohort', 'legionary', 480], ['II Cohort', 'legionary', 480], ['Balearic Slingers', 'slinger', 150], ['Equites Turma', 'equites', 60]],

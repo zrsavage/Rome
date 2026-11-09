@@ -2,6 +2,7 @@
 import { UNIT_TYPES, WORLD, XP_LEVELS, DIFFICULTY, terrainAt, elevAt, setWorld, riverShift } from './data.js';
 import { MAX_TIER } from './perks.js';
 import { temperOf, tierOf, rivalOf } from './officers.js';
+import { WEATHER } from './weather.js';
 
 const TAU = Math.PI * 2;
 export const norm = (a) => { while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU; return a; };
@@ -84,7 +85,8 @@ export class Unit {
 export class Battle {
   constructor(scn, romeSpecs, opts = {}) {
     this.scn = scn; setWorld(scn);
-    this.fogOn = scn.fog === true || (!!scn.act && scn.id !== 'prologue' && scn.fog !== false);   // you must find the enemy in every real battle
+    this.wxKey = (opts && opts.weather && WEATHER[opts.weather]) ? opts.weather : 'clear'; this.wx = WEATHER[this.wxKey]; scn._wx = this.wxKey; scn.flood = 0;
+    this.fogOn = this.wxKey === 'fog' || scn.fog === true || (!!scn.act && scn.id !== 'prologue' && scn.fog !== false);   // you must find the enemy in every real battle
     this.diff = DIFFICULTY[opts.difficulty || 'normal'];
     this.rand = mulberry32(opts.seed ?? (Date.now() & 0xffffff));
     this.t = 0; this.units = []; this.bodies = []; this.fx = []; this.log = [];
@@ -138,7 +140,7 @@ export class Battle {
   // ---------- sight ----------
   // Ridges and woods hide armies. A unit sees farther from high ground; the sight line is blocked where the ground (or tree canopy)
   // rises above the line between the eyes of the viewer and the target.
-  sightOf(v) { return SIGHT * (1 + 0.6 * clamp(hgt(this, v), 0, 1.5)) * (v.type && v.type.cat === 'cav' ? 1.15 : 1); }
+  sightOf(v) { return SIGHT * this.wx.sight * (1 + 0.6 * clamp(hgt(this, v), 0, 1.5)) * (v.type && v.type.cat === 'cav' ? 1.15 : 1); }
   los(v, t) {
     const ev = elevAt(this.scn, v.x, v.y) + 6, et = elevAt(this.scn, t.x, t.y) + 3;
     const vf = this.terr(v).kind === 'forest', tf = this.terr(t).kind === 'forest';
@@ -160,7 +162,7 @@ export class Battle {
       if (!seen) {
         const inWood = this.terr(e).kind === 'forest';
         for (const v of viewers) {
-          const R = (v.general ? 700 : this.sightOf(v)) * (inWood ? 0.4 : 1);
+          const R = (v.general ? 700 * this.wx.sight : this.sightOf(v)) * (inWood ? 0.4 : 1);
           if (Math.hypot(v.x - e.x, v.y - e.y) <= R && this.los(v, e)) { seen = true; break; }
         }
       }
@@ -169,6 +171,13 @@ export class Battle {
     }
   }
   say(msg, kind = 'info') { this.log.push({ t: this.t, msg, kind }); }
+  // A storm raises the rivers: after a while the fords become deep and slow.
+  updateWeather() {
+    const w = this.wx; if (!w.floodAt) return;
+    const f = clamp((this.t - w.floodAt) / w.floodSecs, 0, 1); this.scn.flood = f;
+    if (f > 0 && !this._fl1) { this._fl1 = true; this.say('The river is rising in the storm - the fords are filling.', 'warn'); this.mark('flood', 'The river rises; the fords begin to fill', 'rome'); }
+    if (f >= 1 && !this._fl2) { this._fl2 = true; this.say('The fords are now deep and slow. Crossing will cost you.', 'warn'); this.mark('flood', 'The fords are deep and dangerous', 'rome'); }
+  }
   // Officers at work: a rash man charges unasked, rivals vie, and a promoted officer's cohort steadies those around it.
   updateOfficers(dt) {
     this.offT = (this.offT || 0) - dt; if (this.offT > 0) return; this.offT = 1;
@@ -495,7 +504,7 @@ export class Battle {
   // ---------- main step ----------
   update(dt) {
     if (this.result) return;
-    this.t += dt; this.sampleReport(); this.updateOfficers(dt);
+    this.t += dt; this.sampleReport(); this.updateOfficers(dt); this.updateWeather();
     for (const r of this.reinf) if (!r.done && this.t >= r.at) {
       r.done = true;
       if (r.side === 'rome') {
@@ -714,7 +723,7 @@ export class Battle {
     const terr = u.type.cat === 'cav' ? tr.cav : tr.speed;
     const e0 = elevAt(this.scn, u.x, u.y), grade = (elevAt(this.scn, u.x + Math.cos(u.f) * 12, u.y + Math.sin(u.f) * 12) - e0) / 12;   // uphill slows, downhill helps
     const slope = clamp(1 - (u.type.cat === 'cav' ? 2.2 : 1.5) * grade, 0.5, 1.15);
-    return u.type.speed * terr * slope * (1 - u.fatigue / 250) * (u.formation === 'close' ? 0.55 : u.formation === 'orb' ? 0.4 : u.formation === 'wedge' ? 0.92 : 1) * (1 - 0.06 * ((u.wide || 1) - 1));
+    return u.type.speed * terr * slope * (u.type.cat === 'cav' ? this.wx.cav : this.wx.speed) * (1 - u.fatigue / 250) * (u.formation === 'close' ? 0.55 : u.formation === 'orb' ? 0.4 : u.formation === 'wedge' ? 0.92 : 1) * (1 - 0.06 * ((u.wide || 1) - 1));
   }
   // Turning with a dead zone: small errors are ignored, so units settle instead of trembling.
   faceSmooth(u, ang, dt, k = 1) {
@@ -848,7 +857,7 @@ export class Battle {
         const am = this.angleMult(u, tgt).c;
         const prot = this.defOf(tgt, am === 1) * (tgt.formation === 'close' && am === 1 ? 2.2 : tgt.formation === 'orb' ? 1.2 : 0.6);
         const falloff = 1 - 0.4 * clamp(g / t.range, 0, 1);
-        u.fireAcc += u.men * t.rate * dt * (this.atkMult(u) / COMBAT_PACE) * RANGED_PACE * falloff * (1 - Math.min(0.9, prot)) * (this.terr(tgt).kind === 'forest' ? 0.6 : 1) * (1 + 0.15 * clamp(hgt(this, u) - hgt(this, tgt), -1, 1));
+        u.fireAcc += u.men * t.rate * dt * (this.atkMult(u) / COMBAT_PACE) * RANGED_PACE * this.wx.missile * falloff * (1 - Math.min(0.9, prot)) * (this.terr(tgt).kind === 'forest' ? 0.6 : 1) * (1 + 0.15 * clamp(hgt(this, u) - hgt(this, tgt), -1, 1));
         u.ammo -= dt;
         while (u.fireAcc >= 1) { u.fireAcc -= 1; this.hit(u, tgt, 1, true); }
         u.fxCd -= dt;
@@ -884,6 +893,7 @@ export class Battle {
         imp *= e.formation === 'close' && ang.c === 1 ? 0.7 : 1;
         imp *= 1 - Math.max(0, (e.type.antiCharge || 0) * (1 - 0.35 * ((e.wide || 1) - 1))) * (e.state === 'idle' || e.stance === 'hold' ? 1 : 0.4);
         imp *= 1 + 0.3 * ((e.wide || 1) - 1);                    // a charge into a thin line goes deeper
+        imp *= this.wx.charge;
         imp *= u.temper === 'rash' ? 1.15 : u.temper === 'bold' ? 1.1 : u.temper === 'cautious' ? 0.85 : 1;
         imp *= this.terr(e).def;
         imp *= 1 + 0.3 * clamp(hgt(this, u) - hgt(this, e), -1, 1);   // charging downhill hits harder, uphill softer
@@ -1037,7 +1047,7 @@ export class Battle {
     const rewardMult = (this.scn.rewardMult || 1) * dm.reward * this.rewardScale;
     this.sampleReport(); this.rep.nextSample = 0; this.rep.series.push({ t: Math.round(this.t), rome: Math.round(this.activeMen('rome')), gaul: Math.round(this.activeMen('gaul')), rr: 0, gr: 0 });
     this.result = {
-      outcome, time: this.t, rows, enemyDead, enemyStart, report: { series: this.rep.series, events: this.rep.events, stats: this.stats, startRome: this.startRome, startGaul: this.startGaul },
+      outcome, time: this.t, rows, enemyDead, enemyStart, report: { wx: this.wxKey, series: this.rep.series, events: this.rep.events, stats: this.stats, startRome: this.startRome, startGaul: this.startGaul },
       spoils: {
         gold: Math.round(rw.gold * mult * rewardMult),
         supplies: Math.round(rw.supplies * mult * rewardMult),
