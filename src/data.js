@@ -316,35 +316,15 @@ export const PROLOGUE = {
   objectives: [], rule: null,
   rewards: { gold: 120, supplies: 60, recruits: 30, xpBase: 22, officerXp: 25 }, rewardMult: 1, unlock: []
 };
+// The opening fight has no waves either: the raiders are all out there, coming from different distances.
+PROLOGUE.enemy.push(...PROLOGUE.reinforcements.map(r => ({ ...r.unit, ai: { kind: 'rush', delay: 0 } }))); PROLOGUE.reinforcements = [];
 
 // ---------------------------------------------------------------------------
-// Battle phases. Holding back part of each enemy army as later waves (vanguard, main body, reserve) means a fight
-// cannot be over until the last wave has been met, which keeps battles in the 5-10 minute range.
-// plan: {keep: share of enemy infantry present at the start, at: [arrival times in seconds]}
+// Battles are all or nothing: the whole enemy host is on the field from the start. The only reinforcements are the ones authored
+// into a scenario as a deliberate surprise (a flank attack, an ambush party, allies arriving late).
 // ---------------------------------------------------------------------------
-const WAVE_PLAN = {
-  ford: { keep: 0.4, at: [190, 400] },
-  arar: { keep: 0.4, at: [200, 420] },
-  convoy: { keep: 0.4, at: [220, 430] },
-  oppidum: { keep: 0.4, at: [230, 470] },
-  silva: { keep: 0.4, at: [180, 360] },
-  bibracte: { keep: 0.35, at: [230, 460, 620] }
-};
-const WAVE_MSGS = ['A fresh Gallic host marches onto the field!', 'The enemy reserve joins the fight!', 'Distant horns: yet another warband closes in!'];
 const TIME_LIMITS = { ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500 };
-for (const scn of [PROLOGUE, ...SCENARIOS]) {
-  const plan = WAVE_PLAN[scn.id]; if (!plan) continue;
-  scn.timeLimit = TIME_LIMITS[scn.id] || scn.timeLimit;
-  const inf = scn.enemy.filter(e => (e.type === 'warband' || e.type === 'gaul_elite') && e.ai.kind !== 'idle');
-  const stay = Math.max(1, Math.ceil(inf.length * plan.keep)), later = inf.slice(stay), parts = plan.at.length;
-  later.forEach((e, i) => {
-    scn.enemy.splice(scn.enemy.indexOf(e), 1);
-    for (let w = 0; w < parts; w++) {
-      scn.reinforcements.push({ at: plan.at[w] + ((i + w) % 3) * 7, msg: i === 0 ? WAVE_MSGS[w % WAVE_MSGS.length] : '',
-        unit: { type: e.type, men: Math.max(70, Math.round(e.men / parts)), x: Math.max(120, Math.min(1480, e.x + (w - 1) * 90)), y: 40, ai: { kind: 'rush', delay: 0 } } });
-    }
-  });
-}
+for (const scn of SCENARIOS) scn.timeLimit = TIME_LIMITS[scn.id] || scn.timeLimit;
 
 // ---------------------------------------------------------------------------
 // Battlefield scale. Maps are authored on a 1600x1000 grid and enlarged here, so the armies start far apart and you have to find the

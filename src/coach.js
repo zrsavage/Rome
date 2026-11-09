@@ -8,8 +8,7 @@ const TIPS = [
   { id: 'morale', when: (b) => b.stats.routs.gaul >= 1 || b.units.some(u => u.side === 'gaul' && u.active && u.morale < u.maxMorale * 0.45), text: 'The blue bars are morale. When one runs out the unit breaks and flees. Press on while the enemy wavers.' },
   { id: 'tired', when: (b) => b.units.some(u => u.side === 'rome' && u.active && u.fatigue > 45), text: 'Tired units fight worse. Select one and press <b>R</b> to pull it back and rest, then send it in again.' },
   { id: 'command', when: (b) => b.general && b.t > 20 && b.units.some(u => u.side === 'rome' && u.active && !b.inCommand(u)), text: 'A cohort has strayed outside the <b>gold command ring</b> around your general. Out there it recovers morale slowly and charges raggedly. Press <b>E</b> (or click the banner) to select the general, then <b>right-click</b> to move the ring where it is needed.' },
-  { id: 'wave', when: (b) => b.reinf.some(r => r.done && r.side !== 'rome'), text: 'More raiders are arriving. Battles come in waves, so keep your cohorts together and do not chase too far.' },
-  { id: 'clear', when: (b) => b.fieldClear, text: 'The field is clear, but more raiders are coming. The countdown at the top shows when the next wave arrives. Press <b>N</b> (or the button at the top) to call it at once, or use the time to reform your line and rest tired units.' },
+  { id: 'wave', when: (b) => b.reinf.some(r => r.done && r.side !== 'rome'), text: 'More enemies have appeared that you did not expect. Keep your cohorts together and do not chase too far.' },
   { id: 'finish', when: (b) => b.activeMen('gaul') < b.startGaul * 0.4, text: 'Nearly there. The battle is won when the enemy host falls below a quarter of its strength, so finish off the broken units.' }
 ];
 

@@ -155,7 +155,6 @@ export class BattleUI {
       if (!this.running) return; const k = e.key.toLowerCase();
       if (k === ' ') { e.preventDefault(); this.setPause(!this.paused); return; }
       if (k === '-' || k === '_') this.stepSpeed(-1); if (k === '=' || k === '+') this.stepSpeed(1);
-      if (k === 'n') this.callWave();
       if (k === 'z') this.setSpeed(1); if (k === 'x') this.setSpeed(2); if (k === 'c') this.setSpeed(4);
       if (k === 'v') { this.r.showRange = !this.r.showRange; this.emit('range', { on: this.r.showRange }); }
       if (/^[1-9]$/.test(k) && !e.altKey) this.controlGroup(+k, e.ctrlKey || e.metaKey);
@@ -169,7 +168,6 @@ export class BattleUI {
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
     $('btn-pause').onclick = () => this.setPause(!this.paused);
-    $('btn-wave').onclick = () => this.callWave();
     document.querySelectorAll('.spd').forEach(b => b.onclick = () => this.setSpeed(+b.dataset.s));
     $('btn-help').onclick = () => $('hud-help').classList.toggle('hidden');
     $('btn-retreat').onclick = async () => {
@@ -259,9 +257,7 @@ export class BattleUI {
       const o = b.objectives[0], att = b.rule ? b.rule.attacker : null;
       objTxt = `   |  ${o.name}: ${o.contested ? 'CONTESTED' : o.owner === 'rome' ? 'Roman' : 'Gallic'}` + (att ? ` - ${att === 'rome' ? 'you hold' : 'enemy holds'} ${Math.floor(b.hold[att])}/${b.rule.holdSecs}s` : '');
     }
-    const eta = b.nextWaveEta(), clear = eta !== null && b.activeMen('gaul') === 0;
-    $('btn-wave').classList.toggle('hidden', !clear);
-    const waveTxt = clear ? `   |  Field clear. Next wave in ${mm(Math.max(0, Math.min(eta, b.callDelay - b.clearT)))}` : '';
+    const waveTxt = '';
     $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${b.fogOn && b.units.some(u => u.side === 'gaul' && u.active && !u.spotted) ? '?' : Math.round(b.activeMen('gaul'))}   ${gs}`;
     $('hud-sub').textContent = (objTxt + waveTxt).replace(/^\s*\|\s*/, '').replace(/\s+\|\s+/g, '   |   ').trim();
     document.querySelectorAll('.ucard').forEach(d => {

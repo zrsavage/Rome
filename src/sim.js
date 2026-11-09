@@ -97,7 +97,7 @@ export class Battle {
     // enemy strength modifiers: difficulty + local favour (informants and divided tribes)
     const favMult = this.favour >= 2 ? 0.9 : this.favour <= -2 ? 1.1 : 1;
     this.powerScale = opts.forceScale || 1; this.rewardScale = Math.pow(this.powerScale, 0.75);   // bigger hosts carry bigger spoils
-    this.enemyScale = this.diff.enemyMult * favMult * (scn.id === 'prologue' || scn.practice ? 1 : 1.1);   // real battles are meant to be a fight
+    this.enemyScale = this.diff.enemyMult * favMult * (scn.id === 'prologue' || scn.practice ? 1 : 0.9);   // real battles are meant to be a fight
     this.recoveryMult = opts.recovery ?? 1;
     const rb = this.diff.romeMorale + Math.min(12, this.fortLevel * 4) + (opts.suppliesLow ? -8 : 0) + (opts.moraleBonus || 0);
     this.romeBonus = rb;
@@ -299,7 +299,7 @@ export class Battle {
   callNextWave(auto = false) {
     const p = this.pendingWaves(); if (!p.length || this.result) return false;
     const first = Math.min(...p.map(r => r.at));
-    for (const r of p) if (r.at <= first + 8) { r.at = this.t; if (!r.msg) r.msg = auto ? 'More enemies appear on the horizon!' : 'You call the next wave forward.'; }
+    for (const r of p) if (r.at <= first + 8) { r.at = this.t; if (!r.msg) r.msg = 'More enemies appear on the horizon!'; }
     this.clearT = 0; return true;
   }
 
@@ -432,12 +432,8 @@ export class Battle {
         if (r.msg) this.say(r.msg, 'warn');
       }
     }
-    // An empty field never means waiting: the next wave is called after a short breather (or the player can call it now).
-    if (this.pendingWaves().length && this.activeMen('gaul') === 0) {
-      this.clearT += dt;
-      if (!this.fieldClear && this.clearT > 1) { this.fieldClear = true; this.say('The field is clear. More enemies are on their way.', 'info'); }
-      if (this.clearT >= this.callDelay) this.callNextWave(true);
-    } else { this.clearT = 0; this.fieldClear = false; }
+    // If the field is cleared before a scripted surprise has sprung, it springs at once (there is no waiting around).
+    if (this.pendingWaves().length && this.activeMen('gaul') === 0) { this.clearT += dt; if (this.clearT >= 3) this.callNextWave(true); } else this.clearT = 0;
     this.updateObjectives(dt);
     this.floats = this.floats.filter(f => (f.life -= dt) > 0);
     this._ai = (this._ai || 0) + dt;

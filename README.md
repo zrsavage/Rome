@@ -71,12 +71,12 @@ shows on the unit card (`- hold`), on the field (`H` after the count) and in the
 
 ## Battle length and depth
 
-- Battles are built to run **5-10+ minutes**: slower lethality, softer morale shocks, and enemy armies that arrive in staged
-  **waves** (vanguard, main body, reserve). If you clear the field, the next wave is called after a 12-second breather, with a visible
-  countdown and a *Call next wave* button, so you never wait on an empty field.
+- Battles run **5-10+ minutes** because of slower lethality, softer morale shocks, big maps and fog. There are **no waves**: the whole enemy
+  host is on the field from the start. The only reinforcements are scripted surprises authored into a scenario (a flank attack, an ambush
+  party, late allies); if the field is cleared before one has sprung it arrives at once.
 - **Movement:** friendly units never shove each other; a unit marching through a friend moves at 30% speed. Marching missile units stop
   to fire when an enemy is in range ahead (Ctrl+right-click overrides). Fall back (R) is an orderly walk backward facing the enemy. A competent bot takes 7-10 minutes on Act I.
-- The opening battle is easy and takes about five minutes (about 4:50 if you attack all-out, 6-7 minutes if you play carefully): a stream of small waves with a 45-second breather before each next wave, shown on a countdown. Press N to call a wave sooner.
+- The opening battle is easy and short (a few minutes): all the raiders are out there, coming from different distances.
 - Fatigue builds during long fights; press **R** to pull a tired unit back to rest and re-form.
 
 ## Army management depth
@@ -127,7 +127,6 @@ regenerates `src/mapdata.js`. Battle sites: Genava (Rhone fords), the Arar (Saon
 | Right drag | Draw a battle line; units spread along it and face away from the drag |
 | `Space`, `Z X C`, `-` `=` | Pause, speed 1x/2x/4x, step speed down to 0.5x (orders allowed while paused) |
 | `Ctrl` + right-click | March without stopping to fire or fight |
-| `N` | Call the next enemy wave when the field is clear |
 | `Ctrl+1-9`, `1-9` | Set / recall control group (double-tap centres the camera) |
 | `V` | Toggle range rings for all units |
 | `H` / `G` | **Hold** (never leaves its spot) / **Defend post** (fights nearby enemies, then returns to its post) |
