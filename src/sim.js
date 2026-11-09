@@ -334,7 +334,7 @@ export class Battle {
       if (S.surge) { attack(); return; }
       const sp = { x: rc.x - a.x * 520, y: rc.y - a.y * 520 };
       if (d > 600) { this.setMove(u, sp.x, sp.y, null, true); u.staged = false; if (S.t0 === null) S.t0 = this.t; }
-      else { if (u.order.kind === 'move') u.order = { kind: 'none' }; u.staged = true; this.turnToward(u, { x: rc.x, y: rc.y }, 0.4, 0.6); }
+      else { if (u.order.kind === 'move') u.order = { kind: 'none' }; u.staged = true; }
     } else if (u.role === 'wing') {
       if (!u.wp) { const side = ((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x) >= 0 ? 1 : -1; u.wp = { x: rc.x - a.y * side * -1 * 0 + (-a.y) * side * 720 - a.x * 40, y: rc.y + a.x * side * 720 - a.y * 40 }; if (!this._wingSaid) { this._wingSaid = true; this.say('Gallic warbands are swinging wide around your flank!', 'warn'); } }
       if (Math.hypot(u.wp.x - u.x, u.wp.y - u.y) > 160 && !u.wpDone) this.setMove(u, u.wp.x, u.wp.y, null, true);
@@ -389,7 +389,7 @@ export class Battle {
         let tgt = u.order.targetId ? this.byId(u.order.targetId) : null;
         if (!tgt || !tgt.active) { tgt = this.pickTarget(u, (e) => e.type.cat !== 'cav'); if (!tgt) continue; u.order = { kind: 'none', targetId: tgt.id }; }
         const bx = tgt.x - Math.cos(tgt.f) * (tgt.d / 2 + 70), by = tgt.y - Math.sin(tgt.f) * (tgt.d / 2 + 70);
-        if (Math.hypot(u.x - bx, u.y - by) > 60 && !u.fighting) { u.order = { kind: 'move', x: bx, y: by, tf: null, targetId: tgt.id }; }
+        if (Math.hypot(u.x - bx, u.y - by) > 60 && !u.fighting) { const o = u.order; if (o.kind !== 'move' || Math.hypot(o.x - bx, o.y - by) > 50) u.order = { kind: 'move', x: bx, y: by, tf: null, targetId: tgt.id }; }   // only re-aim when the target has really moved
         else { const id = tgt.id; this.setAttack(u, tgt); u.ai.kind = 'rush'; u.ai.delay = 0; u.order.targetId = id; }
       }
     }
@@ -432,7 +432,7 @@ export class Battle {
     this.stepGeneral(dt);
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 5);
     this._vis = (this._vis || 0) + dt; if (this._vis >= 0.4) { this._vis = 0; this.updateVision(); }
-    if (this._ai >= 0.4) { this._ai = 0; this.aiThink(); }
+    if (this._ai >= 0.4) { this._ai = 0; this.updateFront(); this.aiThink(); }
     this.computeContacts();
     this.markExposure();
     for (const u of this.units) if (u.present) this.stepUnit(u, dt);
@@ -451,7 +451,7 @@ export class Battle {
       const a = us[i], b = us[j];
       if (a.side === b.side) continue;
       if (Math.abs(a.x - b.x) > 120 || Math.abs(a.y - b.y) > 120) continue;
-      if (this.gap(a, b) <= 3) { a.contacts.push(b); b.contacts.push(a); }
+      if (this.gap(a, b) <= (a.prevIds.has(b.id) ? 7 : 3)) { a.contacts.push(b); b.contacts.push(a); }   // a little hysteresis: locked units stay locked, so they do not flicker in and out of combat
     }
   }
 
@@ -531,8 +531,10 @@ export class Battle {
         if (t.cat === 'ranged') { if (u.ammo > 0 && !u.holdFire) { if (n.gap <= t.range * 0.85) this.turnToward(u, n.e, dt); else goal = { x: n.e.x, y: n.e.y }; } else this.turnToward(u, n.e, dt, 0.5); }
         else goal = { x: n.e.x, y: n.e.y };
       } else {
-        if (leashed && Math.hypot(u.x - u.post.x, u.y - u.post.y) > 14) goal = { x: u.post.x, y: u.post.y };   // return to the post
-        else if (n && n.gap < 150) this.turnToward(u, n.e, dt, 0.5);
+        const dp = leashed ? Math.hypot(u.x - u.post.x, u.y - u.post.y) : 0;
+        if (leashed) { if (dp > 26) u.returning = true; else if (dp < 7) u.returning = false; }          // hysteresis: no hunting around the post
+        if (leashed && u.returning) goal = { x: u.post.x, y: u.post.y };   // return to the post
+        else if (n && n.gap < 150) { const fa = this.front && this.front.rome; this.faceSmooth(u, u.side === 'rome' && fa != null ? fa : Math.atan2(n.e.y - u.y, n.e.x - u.x), dt, 0.5); }
       }
     }
 
@@ -563,9 +565,15 @@ export class Battle {
     } else u.state = 'idle';
 
     if (engaged && !breakoff) {
-      // face the nearest live contact
-      const c = u.contacts.filter(e => e.active).sort((a, b) => this.gap(u, a) - this.gap(u, b))[0];
-      if (c) this.turnToward(u, c, dt);
+      // face the weighted centre of everything pressing on the unit, not whichever enemy is nearest this instant (that flips every tick)
+      const act = u.contacts.filter(e => e.active); let sx = 0, sy = 0, sw = 0;
+      for (const e of act) { const w = 1 / (Math.max(0, this.gap(u, e)) + 12), bg = Math.atan2(e.y - u.y, e.x - u.x); sx += Math.cos(bg) * w; sy += Math.sin(bg) * w; sw += w; }
+      if (sw > 0) { const mag = Math.hypot(sx, sy) / sw; if (mag > 0.35) this.faceSmooth(u, Math.atan2(sy, sx), dt, 0.8); else if (u.faceId == null || !act.some(e => e.id === u.faceId)) u.faceId = act.sort((a, b) => this.gap(u, a) - this.gap(u, b))[0].id; }
+      if (sw > 0 && Math.hypot(sx, sy) / sw <= 0.35) { const f = this.byId(u.faceId); if (f) this.faceSmooth(u, Math.atan2(f.y - u.y, f.x - u.x), dt, 0.8); }
+    } else if (!engaged && u.side === 'rome' && u.order.kind === 'none' && !goal && !backing && !(t.cat === 'ranged' && u.ammo > 0 && !u.holdFire && (this.nearestEnemy(u) || { gap: 1e9 }).gap < t.range * 1.3)) {
+      // idle troops dress their ranks: face the enemy as one line (or square up with the neighbours) instead of each turning on its own
+      const fa = this.front && this.front.rome;
+      if (fa != null) this.faceSmooth(u, fa, dt, 0.5);
     }
     u.fighting = (engaged && (!breakoff || u.blocked)) || pursuit && !breakoff;
     if (u.fighting) u.state = 'fighting';
@@ -585,8 +593,9 @@ export class Battle {
     const d = Math.hypot(dx, dy) || 1;
     dx = dx / d; dy = dy / d + (u.side === 'rome' ? 0.6 : -0.6);
     const dd = Math.hypot(dx, dy) || 1;
-    const h = Math.atan2(dy / dd, dx / dd);
-    u.f = h;
+    if (u.fleeH == null || this.t >= (u.fleeT || 0)) { u.fleeH = Math.atan2(dy / dd, dx / dd); u.fleeT = this.t + 1.2; }   // pick a direction and hold it for a moment
+    const diffH = norm(u.fleeH - u.f), mH = u.type.turn * 1.6 * dt; u.f = norm(u.f + clamp(diffH, -mH, mH));
+    const h = u.f;
     const sp = this.speedOf(u) * 1.15;
     let rx = u.x + Math.cos(h) * sp * dt, ry = u.y + Math.sin(h) * sp * dt;
     if (this.waterAt(rx, ry) && !this.waterAt(u.x, u.y)) { if (!this.waterAt(rx, u.y)) ry = u.y; else if (!this.waterAt(u.x, ry)) rx = u.x; else { rx = u.x; ry = u.y; } }   // routers cannot swim either
@@ -607,14 +616,14 @@ export class Battle {
     const dx = g.x - u.x, dy = g.y - u.y, d = Math.hypot(dx, dy); if (d < 60) return g;
     let wet = false; const n = Math.min(40, Math.ceil(d / 30));
     for (let i = 1; i < n; i++) if (this.waterAt(u.x + dx * i / n, u.y + dy * i / n)) { wet = true; break; }
-    if (!wet) return g;
+    if (wet) u.wetT = this.t + 4; else if (!(this.t < (u.wetT || 0))) return g;      // once a river is in the way, keep the plan for a few seconds so the route does not flicker
     let best = null, bc = 1e18;
     for (const f of fords) { const cx = f.x + f.w / 2, cy = f.y + riverShift(f, cx) + f.h / 2, c = Math.hypot(cx - u.x, cy - u.y) + Math.hypot(g.x - cx, g.y - cy); if (c < bc) { bc = c; best = { f, cx, cy }; } }
     const { f, cx, cy } = best, dir = Math.sign(g.y - cy) || 1, half = f.h / 2 + 45;
     const A = { x: cx, y: cy - dir * half }, B = { x: cx, y: cy + dir * half };
-    if (Math.abs(u.y - cy) <= f.h / 2 + 15 && Math.abs(u.x - cx) <= f.w / 2 + 10) return B;
-    if ((u.y - cy) * dir < 0) return Math.hypot(A.x - u.x, A.y - u.y) > 35 ? A : B;
-    return g;
+    if (Math.abs(u.y - cy) <= f.h / 2 + 15 && Math.abs(u.x - cx) <= f.w / 2 + 10) { u.crossing = true; return B; }
+    if ((u.y - cy) * dir < 0) { if (u.crossing) return B; if (Math.hypot(A.x - u.x, A.y - u.y) > 35) return A; u.crossing = true; return B; }   // once at the ford, commit to crossing (no dithering between the two banks)
+    u.crossing = false; return g;
   }
   speedOf(u) {
     const tr = this.terr(u);
@@ -623,8 +632,20 @@ export class Battle {
     const slope = clamp(1 - (u.type.cat === 'cav' ? 2.2 : 1.5) * grade, 0.5, 1.15);
     return u.type.speed * terr * slope * (1 - u.fatigue / 250) * (u.formation === 'close' ? 0.55 : u.formation === 'orb' ? 0.4 : 1);
   }
+  // Turning with a dead zone: small errors are ignored, so units settle instead of trembling.
+  faceSmooth(u, ang, dt, k = 1) {
+    const diff = norm(ang - u.f); if (Math.abs(diff) < 0.1) return;
+    const m = u.type.turn * (0.7 + u.drill / 200) * dt * k; u.f = norm(u.f + clamp(diff, -m, m));
+  }
+  updateFront() {
+    const f = this.front = this.front || { rome: null, gaul: null };
+    const rs = this.units.filter(u => u.side === 'rome' && u.active), gs = this.units.filter(u => u.side === 'gaul' && u.active && u.spotted !== false);
+    if (!rs.length || !gs.length) return;
+    const rc = { x: rs.reduce((a, u) => a + u.x, 0) / rs.length, y: rs.reduce((a, u) => a + u.y, 0) / rs.length }, gc = { x: gs.reduce((a, u) => a + u.x, 0) / gs.length, y: gs.reduce((a, u) => a + u.y, 0) / gs.length };
+    f.rome = Math.atan2(gc.y - rc.y, gc.x - rc.x); f.gaul = f.rome + Math.PI;
+  }
   turnTo(u, ang, dt) { const diff = norm(ang - u.f), m = u.type.turn * dt; u.f = norm(u.f + clamp(diff, -m, m)); }
-  turnToward(u, e, dt, k = 1) { const ang = Math.atan2(e.y - u.y, e.x - u.x); const diff = norm(ang - u.f), m = u.type.turn * (0.7 + u.drill / 200) * dt * k; u.f = norm(u.f + clamp(diff, -m, m)); }
+  turnToward(u, e, dt, k = 1) { const ang = Math.atan2(e.y - u.y, e.x - u.x); const diff = norm(ang - u.f); if (Math.abs(diff) < 0.07) return; const m = u.type.turn * (0.7 + u.drill / 200) * dt * k; u.f = norm(u.f + clamp(diff, -m, m)); }
 
   // Orderly fall back: face the enemy and walk straight backward to the order's point.
   walkBack(u, dt) {
@@ -650,9 +671,9 @@ export class Battle {
     if (dist < 0.5) return 0;
     const h = Math.atan2(dy, dx), diff = norm(h - u.f);
     const m = u.type.turn * (0.7 + u.drill / 200) * (u.perks.includes('discipline') ? 1.2 : 1) * dt;
-    u.f = norm(u.f + clamp(diff, -m, m));
+    if (dist >= 30) u.f = norm(u.f + clamp(diff, -m, m));              // a short shuffle is a sidestep, not a turn
     const ad = Math.abs(norm(h - u.f));
-    const align = ad < 0.6 ? 1 : ad < 1.5 ? 0.4 : 0.12;
+    const align = dist < 30 ? 1 : ad < 0.6 ? 1 : ad < 1.5 ? 0.4 : 0.12;
     u.passing = this.overlapsFriend(u, Math.cos(h), Math.sin(h));          // marching through friendly units is slow going
     const sp = this.speedOf(u) * speedMul * align * (u.passing ? PASS_SPEED : 1);
     const step = Math.min(dist, sp * dt);

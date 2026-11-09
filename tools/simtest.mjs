@@ -49,7 +49,7 @@ export function play(strategy, i, difficulty, seed, mutate = null) {
           if (u.type.cat === 'inf') {
             const tgt = u.order.kind === 'attack' ? b.byId(u.order.targetId) : null;
             if (u.contacts.some(e => e.active)) continue;
-            if (u.fatigue > 65 && (!n || n.gap > 60)) { b.fallBack(u); continue; }
+            if (u.order.back) continue; if (u.fatigue > 65 && (!n || n.gap > 60) && !(u.fbT > b.t)) { b.fallBack(u); u.fbT = b.t + 45; continue; }   // rest for a while after falling back
             const guard = b.rule && b.rule.attacker === 'gaul' ? b.objectives[0] : null;   // defending: stay near the objective
             const threatened = guard && b.units.some(e => e.side === 'gaul' && e.active && Math.hypot(e.x - guard.x, e.y - guard.y) < 260);
             const keeper = guard && u === rome.find(x => x.type.cat === 'inf');           // one cohort always stays on the wagons
@@ -67,8 +67,10 @@ export function play(strategy, i, difficulty, seed, mutate = null) {
       }
     }
     b.update(dt);
+    if (process.env.TRACEU && Math.abs(b.t % 20) < dt / 2) { const u = b.units.find(x => x.name === process.env.TRACEU); if (u) console.log('  U', Math.round(b.t), Math.round(u.x), Math.round(u.y), u.state, u.order.kind, u.order.x ? Math.round(u.order.x) + ',' + Math.round(u.order.y) : '', 'post', Math.round(u.post.x) + ',' + Math.round(u.post.y), 'men', u.men, 'f', u.f.toFixed(2)); }
     if (process.env.TRACE && Math.abs(b.t % 30) < dt / 2) console.log('   t' + String(Math.round(b.t)).padStart(4), 'R', rome.filter(u => u.present).map(u => u.name.slice(0, 3) + u.men + (u.state === 'routing' ? 'R' : u.fighting ? 'f' : u.state[0])).join(' '), '| G', b.units.filter(u => u.side === 'gaul' && u.present).map(u => u.typeKey[0] + u.men + (u.state === 'routing' ? 'R' : u.fighting ? 'f' : u.state[0])).join(' '));
   }
+  if (process.env.DEBUG2) console.log(b.units.filter(u => u.present).map(u => `${u.side[0]}:${u.name.slice(0, 8)} ${Math.round(u.x)},${Math.round(u.y)} ${u.state}/${u.order.kind}${u.order.x ? '>' + Math.round(u.order.x) + ',' + Math.round(u.order.y) : ''} ${u.role || ''}${u.blocked ? ' BLOCKED' : ''}`).join('\n'));
   if (process.env.DEBUG) b.result._log = b.log.filter(l => !/hurls|rallies|crashes/.test(l.msg)).slice(-2).map(l => l.msg).join(' / ') + ` [rome ${Math.round(b.activeMen('rome'))} gaul ${Math.round(b.activeMen('gaul'))} hold ${JSON.stringify(b.hold)}]`;
   return b.result;
 }
