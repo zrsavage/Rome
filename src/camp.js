@@ -2,6 +2,7 @@
 import { LEVEL_NAMES, SCENARIOS, DIFFICULTY, UNIT_TYPES, RAISE, XP_LEVELS } from './data.js';
 import { PERKS, perkById, LEVEL_TRAITS, UPGRADES, MAX_TIER, upgradeCost } from './perks.js';
 import { levelFor } from './sim.js';
+import { TEMPERS, temperOf, rivalOf, tierOf, rankFor, TIER_TEXT } from './officers.js';
 import { officerById, modsOf, hasPerk, commandLimit, unlockedTypes } from './state.js';
 import { artSrc } from './art.js';
 import { inform } from './ui.js';
@@ -52,6 +53,12 @@ export function planDrill(c, h, key, leaderId) {
 const roman = (n) => { const m = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]; let o = ''; for (const [v, t] of m) while (n >= v) { o += t; n -= v; } return o; };
 const bestOfficer = (c, trait) => Math.max(0, ...c.officers.filter(o => o.alive).map(o => o[trait]));
 
+// Temperament, rival and promotion tags shown under an officer in the Officers panel.
+function officerTags(c, o) {
+  if (!o.alive) return '';
+  const t = temperOf(o), tm = TEMPERS[t], rv = rivalOf(o) != null ? c.officers.find(x => x.id === rivalOf(o) && x.alive) : null, tier = tierOf(o);
+  return `<div class="row small" style="gap:4px;margin-top:3px;flex-wrap:wrap"><span class="pill" title="${esc(tm.text)}">${esc(tm.name)}</span>${rv ? `<span class="pill" title="Rivals fight harder when side by side in a fight, each determined not to be outdone.">Rival: ${esc(rv.name.split(' ').pop())}</span>` : ''}${tier ? `<span class="pill" title="${esc(TIER_TEXT[tier])}">${tier === 1 ? 'Rallying point' : 'Immovable'}</span>` : ''}</div><div class="muted small">${esc(tm.text)}</div>`;
+}
 export class Camp {
   constructor(root, api) { this.root = root; this.api = api; this.sel = 1; this.c = null; this.msgs = []; this.open = null; this.regimen = null; this.leader = 'self'; this.recruitN = 20; this.hireN = 50; this.snap = null; this.scope = 'one'; this.raiseN = 1;
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.open && this.root.classList.contains('active') && document.getElementById('modal').classList.contains('hidden') && document.getElementById('confirm').classList.contains('hidden')) { this.open = null; this.render(); } });
@@ -362,7 +369,7 @@ export class Camp {
           <div class="row small" style="margin-top:6px"><span class="muted">Hire how many?</span><div class="chips">${[20, 50, 100, 200].map(k => `<button class="chip ${hn === k ? 'sel' : ''}" data-hiren="${k}">${k} men</button>`).join('')}</div></div>
           <h4 class="sect">Raise a unit <span class="pill">${c.cohorts.length}/${commandLimit(c)} units</span></h4><div class="small muted">Your command limit grows with every battle you win or draw.${room <= 0 ? ' <b>You are at the limit.</b>' : ''}</div>${room > 1 ? `<div class="row small" style="margin-top:6px"><span class="muted">Raise how many at once?</span><div class="chips">${[1, 5, 10].filter(k => k <= room || k === 1).map(k => `<button class="chip ${rk === k ? 'sel' : ''}" data-raisen="${k}">${k} unit${k > 1 ? 's' : ''}</button>`).join('')}</div></div>` : ''}<div class="regimens" style="margin-top:6px">${raise}</div>${note}`; }
       case 'officers': { const pts = offs.reduce((a, o) => a + (o.points || 0), 0);
-        const rows = c.officers.map(o => `<tr class="${o.alive ? '' : 'dead'}"><td><div class="cellflex"><img class="portrait" alt="" src="${artSrc('officer', o.id, 80, 100, { title: o.name, rank: o.rank })}"><div>${esc(o.rank)} ${esc(o.name)}<div class="muted small">${esc(o.bio)}</div></div></div></td><td>L${o.level}</td><td class="small">Tac ${o.tactics}<br>Drl ${o.drill}</td><td class="small">Log ${o.logistics}<br>Dip ${o.diplomacy}</td></tr>`).join('');
+        const rows = c.officers.map(o => `<tr class="${o.alive ? '' : 'dead'}"><td><div class="cellflex"><img class="portrait" alt="" src="${artSrc('officer', o.id, 80, 100, { title: o.name, rank: o.rank })}"><div>${esc(rankFor(o))} ${esc(o.name)}<div class="muted small">${esc(o.bio)}</div>${officerTags(c, o)}</div></div></td><td>L${o.level}</td><td class="small">Tac ${o.tactics}<br>Drl ${o.drill}</td><td class="small">Log ${o.logistics}<br>Dip ${o.diplomacy}</td></tr>`).join('');
         const assign = `<option value="">- none -</option>` + offs.map(o => `<option value="${o.id}" ${h.officerId === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
         const unitOpts = c.cohorts.map(x => `<option value="${x.id}" ${x.id === this.sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
         const skills = offs.map(o => { const p = o.points || 0, learned = (o.perks || []).map(i => `<span class="pill" title="${esc(perkById(i).text)}">${esc(perkById(i).name)}</span>`).join(' ');

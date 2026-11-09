@@ -95,6 +95,11 @@ export function reportHtml(res) {
   if (unitRallies) helped.push(`${unitRallies} broken cohort${unitRallies > 1 ? 's' : ''} rallied and returned`);
   if (helped.length) out.push(`<b>What helped:</b> ${helped.join('; ')}.`);
 
+  // officers
+  const rash = ev.filter(e => e.kind === 'rash');
+  if (rash.length) out.push(`<b>A rash officer acted on his own:</b> ${rash.length === 1 ? 'once' : rash.length + ' times'} a cohort charged without orders (${esc(rash[0].text.replace(/ charges .*$/, ''))}). Rash men win glory and lose cohorts; give them a task, or hold the enemy off until you are ready.`);
+  if (ev.some(e => e.kind === 'rival')) out.push('<b>Rivals fought side by side:</b> two officers who dislike each other each fought harder to avoid being outdone.');
+
   // 6. what the Gauls tried
   for (const e of ev) {
     if (e.kind === 'wing') out.push(`At ${mmss(e.t)} a Gallic warband swung wide to take you in the flank. Watch for a wing that moves away from the main line: it is going round you.`);
@@ -103,8 +108,8 @@ export function reportHtml(res) {
   if (!out.length) out.push('A short, one-sided fight: there is little to learn beyond what the casualty table already shows.');
 
   // key moments list
-  const keys = ev.filter(e => ['rout', 'dead', 'waver', 'surge', 'commit', 'wing', 'rally', 'relieve'].includes(e.kind));
-  const label = (e) => ({ rout: `${esc(e.text)} ${e.side === 'rome' ? '<b style="color:#e0614f">breaks</b>' : 'breaks (enemy)'}${e.cause ? ` &mdash; ${esc((CAUSE[e.cause] || e.cause))}` : ''}`, dead: `${esc(e.text)} destroyed${e.side === 'rome' ? '' : ' (enemy)'}`, waver: esc(e.text), surge: esc(e.text), commit: esc(e.text), wing: esc(e.text), rally: esc(e.text), relieve: esc(e.text) }[e.kind]);
+  const keys = ev.filter(e => ['rout', 'dead', 'waver', 'surge', 'commit', 'wing', 'rally', 'relieve', 'rash', 'rival'].includes(e.kind));
+  const label = (e) => ({ rout: `${esc(e.text)} ${e.side === 'rome' ? '<b style="color:#e0614f">breaks</b>' : 'breaks (enemy)'}${e.cause ? ` &mdash; ${esc((CAUSE[e.cause] || e.cause))}` : ''}`, dead: `${esc(e.text)} destroyed${e.side === 'rome' ? '' : ' (enemy)'}`, waver: esc(e.text), surge: esc(e.text), commit: esc(e.text), wing: esc(e.text), rally: esc(e.text), relieve: esc(e.text), rash: esc(e.text), rival: esc(e.text) }[e.kind]);
   const shown = keys.length > 12 ? keys.filter((e, i) => e.kind !== 'rout' || e.side === 'rome' || i < 4).slice(0, 12) : keys;
   const moments = shown.length ? `<div class="muted small" style="margin-top:10px"><b>Key moments</b></div><div class="small" style="columns:2 280px;column-gap:24px;margin-top:2px">${shown.map(e => `<div style="break-inside:avoid"><span class="muted">${mmss(e.t)}</span> ${label(e)}</div>`).join('')}</div>` : '';
 

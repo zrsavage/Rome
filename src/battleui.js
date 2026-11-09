@@ -306,7 +306,7 @@ export class BattleUI {
     L.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 88, 88)}"><h3>${u.name}</h3><div class="muted">${t.blurb}</div>` +
       kv('Men', `${u.men} / ${u.maxMen}`) + kv('Morale', `${Math.round(u.morale)} / ${Math.round(u.maxMorale)}`) + kv('Fatigue', Math.round(u.fatigue) + '%') +
       kv('Experience', lvl) + kv('Drill', Math.round(u.drill)) +
-      (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics})` : 'none') + kv('Stance', u.stance === 'hold' ? 'Hold (never leaves)' : 'Defend post') + kv('Formation', u.formation === 'close' ? 'Testudo' : u.formation === 'orb' ? 'Orbis' : u.formation === 'wedge' ? 'Wedge' : 'Normal') + kv('Line', (u.wide || 1) > 1.05 ? `Extended x${u.wide.toFixed(1)}` : 'Normal depth') + kv('Command', b.inCommand(u) ? 'in command' : 'OUT OF COMMAND') : '') +
+      (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics}${u.temper ? ', ' + u.temper : ''}${u.tier ? ', ' + ['', 'Pilus Prior', 'Primus Pilus'][u.tier] : ''})` : 'none') + kv('Stance', u.stance === 'hold' ? 'Hold (never leaves)' : 'Defend post') + kv('Formation', u.formation === 'close' ? 'Testudo' : u.formation === 'orb' ? 'Orbis' : u.formation === 'wedge' ? 'Wedge' : 'Normal') + kv('Line', (u.wide || 1) > 1.05 ? `Extended x${u.wide.toFixed(1)}` : 'Normal depth') + kv('Command', b.inCommand(u) ? 'in command' : 'OUT OF COMMAND') : '') +
       (t.pilum ? kv('Pila volleys', u.pilumLeft) : '') + (t.range ? kv('Ammo', Math.max(0, Math.round(u.ammo / t.ammo * 100)) + '%') : '') +
       kv('State', u.state);
   }

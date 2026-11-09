@@ -1,6 +1,7 @@
 // Campaign state: cohorts, officers, resources. Plain JSON so it saves to localStorage.
 import { XP_LEVELS, SCENARIOS, WORLD, START_TYPES, TYPE_UNLOCKS, UNIT_TYPES } from './data.js';
 import { PERKS } from './perks.js';
+import { promote } from './officers.js';
 import { levelFor } from './sim.js';
 
 export const DEFAULT_MODS = { recovery: 1, supplyUse: 1, spoils: 1, forage: 1, levy: 1, morale: 0, xp: 1 };
@@ -49,10 +50,10 @@ export function newCampaign(difficulty = 'normal') {
       { id: 5, name: 'Equites Turma', type: 'equites', men: 50, maxMen: 60, xp: 20, drill: 25, condition: 95, officerId: 4 }
     ],
     officers: [
-      { id: 1, name: 'Titus Pullo', rank: 'Centurion', tactics: 3, drill: 2, logistics: 1, diplomacy: 0, xp: 40, level: 1, points: 1, perks: [], alive: true, bio: 'A brawler who leads from the front line.' },
-      { id: 2, name: 'Lucius Vorenus', rank: 'Centurion', tactics: 2, drill: 4, logistics: 1, diplomacy: 1, xp: 40, level: 1, points: 1, perks: [], alive: true, bio: 'A stern drillmaster; his cohorts march like clockwork.' },
-      { id: 3, name: 'Decimus Silvanus', rank: 'Tribune', tactics: 1, drill: 0, logistics: 4, diplomacy: 3, xp: 20, level: 1, points: 1, perks: [], alive: true, bio: 'A patrician quartermaster with a talent for haggling.' },
-      { id: 4, name: 'Aulus Fabius', rank: 'Prefect of Horse', tactics: 3, drill: 1, logistics: 2, diplomacy: 1, xp: 20, level: 1, points: 1, perks: [], alive: true, bio: 'Bold cavalryman, a little too fond of glory.' }
+      { id: 1, name: 'Titus Pullo', rank: 'Centurion', tactics: 3, drill: 2, logistics: 1, diplomacy: 0, xp: 40, level: 1, points: 1, perks: [], alive: true, temper: 'bold', rival: 2, bio: 'A brawler who leads from the front line.' },
+      { id: 2, name: 'Lucius Vorenus', rank: 'Centurion', tactics: 2, drill: 4, logistics: 1, diplomacy: 1, xp: 40, level: 1, points: 1, perks: [], alive: true, temper: 'steady', rival: 1, bio: 'A stern drillmaster; his cohorts march like clockwork.' },
+      { id: 3, name: 'Decimus Silvanus', rank: 'Tribune', tactics: 1, drill: 0, logistics: 4, diplomacy: 3, xp: 20, level: 1, points: 1, perks: [], alive: true, temper: 'cautious', bio: 'A patrician quartermaster with a talent for haggling.' },
+      { id: 4, name: 'Aulus Fabius', rank: 'Prefect of Horse', tactics: 3, drill: 1, logistics: 2, diplomacy: 1, xp: 20, level: 1, points: 1, perks: [], alive: true, temper: 'rash', bio: 'A dashing cavalryman, a little too fond of glory.' }
     ]
   };
 }
@@ -155,6 +156,7 @@ export function levelOfficer(o) {
     o[best] = Math.min(5, o[best] + 1);
     msg = `${o.name} reached level ${o.level}! (${best} +1)`;
   }
+  const pr = promote(o); if (pr) msg = (msg ? msg + ' ' : '') + pr;
   return msg;
 }
 

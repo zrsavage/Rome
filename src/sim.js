@@ -1,6 +1,7 @@
 // Pure battle simulation (no DOM). Real-time; the UI drives update(dt) and may pause.
 import { UNIT_TYPES, WORLD, XP_LEVELS, DIFFICULTY, terrainAt, elevAt, setWorld, riverShift } from './data.js';
 import { MAX_TIER } from './perks.js';
+import { temperOf, tierOf, rivalOf } from './officers.js';
 
 const TAU = Math.PI * 2;
 export const norm = (a) => { while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU; return a; };
@@ -45,8 +46,9 @@ export class Unit {
     this.x = spec.x; this.y = spec.y; this.f = spec.f ?? (spec.side === 'rome' ? -Math.PI / 2 : Math.PI / 2);
     this.upg = { armour: 0, weapon: 0, ...(spec.upg || {}) };
     this.perks = (spec.officer && spec.officer.perks) || [];
+    this.temper = temperOf(spec.officer); this.tier = tierOf(spec.officer); this.rivalId = rivalOf(spec.officer); this.rashCd = 0; this.auraT = -1; this.rivalNear = false;
     const P = (id) => this.perks.includes(id);
-    this.maxMorale = this.type.morale + this.lvl * 3 + this.drill * 0.12 + (spec.moraleBonus || 0) + (P('inspire') ? 4 : 0) + (P('discipline') ? 8 : 0) + (this.lvl >= 5 ? 5 : 0);
+    this.maxMorale = this.type.morale + this.lvl * 3 + this.drill * 0.12 + (spec.moraleBonus || 0) + (P('inspire') ? 4 : 0) + (P('discipline') ? 8 : 0) + (this.lvl >= 5 ? 5 : 0) + (this.temper === 'steady' ? 5 : this.temper === 'cautious' ? 4 : 0) + (this.tier >= 2 ? 6 : 0);
     const cond = spec.condition ?? 100;
     this.morale = this.maxMorale * (0.88 + 0.12 * cond / 100);
     this.fatigue = (100 - cond) * 0.4;
@@ -167,6 +169,24 @@ export class Battle {
     }
   }
   say(msg, kind = 'info') { this.log.push({ t: this.t, msg, kind }); }
+  // Officers at work: a rash man charges unasked, rivals vie, and a promoted officer's cohort steadies those around it.
+  updateOfficers(dt) {
+    this.offT = (this.offT || 0) - dt; if (this.offT > 0) return; this.offT = 1;
+    for (const u of this.units) {
+      if (u.side !== 'rome' || !u.officer || !u.active || !u.present) continue;
+      if (u.tier >= 1) for (const f of this.units) if (f.side === 'rome' && f !== u && f.active && Math.hypot(f.x - u.x, f.y - u.y) < 170) f.auraT = this.t + 2;
+      if (u.rivalId != null) {
+        const was = u.rivalNear;
+        u.rivalNear = this.units.some(f => f !== u && f.side === 'rome' && f.active && f.officer && f.officer.id === u.rivalId && Math.hypot(f.x - u.x, f.y - u.y) < 380) && u.contacts.some(e => e.active);
+        if (u.rivalNear && !was && !u.rivalSaid) { u.rivalSaid = true; const r = this.units.find(f => f.officer && f.officer.id === u.rivalId); this.say(`${u.officer.name} will not be outdone by ${r ? r.officer.name : 'his rival'} - ${u.name} fights harder.`, 'info'); this.mark('rival', `${u.officer.name} and ${r ? r.officer.name : 'his rival'} compete for glory`, 'rome'); }
+      }
+      u.rashCd -= 1;
+      if (u.temper === 'rash' && u.rashCd <= 0 && (u.type.cat === 'inf' || u.type.cat === 'cav') && u.order.kind !== 'move' && u.order.kind !== 'attack' && u.order.kind !== 'guard' && !u.contacts.some(e => e.active) && !this.retreating) {
+        const n = this.nearestEnemy(u, (e) => e.active && e.spotted !== false);
+        if (n && n.gap < 170) { this.setAttack(u, n.e); u.stance = 'aggressive'; u.rashCd = 45; this.say(`${u.officer.name} cannot hold back - ${u.name} charges without orders!`, 'warn'); this.mark('rash', `${u.officer.name} charges ${u.name} unordered`, 'rome'); }
+      }
+    }
+  }
   mark(kind, text, side, extra) { if (this.rep.events.length < 120) this.rep.events.push({ t: this.t, kind, text, side, ...extra }); }
   mloss(u, cause, v) { if (v > 0) { u.mc = u.mc || {}; u.mc[cause] = (u.mc[cause] || 0) + v; } }
   sampleReport() {
@@ -475,7 +495,7 @@ export class Battle {
   // ---------- main step ----------
   update(dt) {
     if (this.result) return;
-    this.t += dt; this.sampleReport();
+    this.t += dt; this.sampleReport(); this.updateOfficers(dt);
     for (const r of this.reinf) if (!r.done && this.t >= r.at) {
       r.done = true;
       if (r.side === 'rome') {
@@ -668,7 +688,7 @@ export class Battle {
     // recover
     const safe = !n || n.gap > 140;
     if (safe) u.morale += 3 * dt * (u.side === 'rome' ? (this.inCommand(u) ? 1.3 : 0.6) : 1);
-    if (u.morale > u.maxMorale * 0.55 && safe && u.x > 0 && u.x < WORLD.w && u.y > 0 && u.y < WORLD.h) this.rallyUnit(u);   // rallied units walk back to their post
+    if (u.morale > u.maxMorale * (u.auraT > this.t ? 0.42 : 0.55) && safe && u.x > 0 && u.x < WORLD.w && u.y > 0 && u.y < WORLD.h) this.rallyUnit(u);   // rallied units walk back to their post
     if (u.x < -60 || u.x > WORLD.w + 60 || u.y < -60 || u.y > WORLD.h + 60) { u.state = 'gone'; u.fled = true; }
   }
 
@@ -777,7 +797,7 @@ export class Battle {
   atkMult(u) {
     const tr = this.terr(u), t = u.type;
     const moraleF = clamp(0.6 + 0.4 * (u.morale / u.maxMorale), 0.5, 1);
-    const off = u.officer ? 1 + 0.03 * (u.officer.tactics || 0) : 1;
+    const off = (u.officer ? 1 + 0.03 * (u.officer.tactics || 0) : 1) * (u.temper === 'bold' || u.temper === 'rash' ? 1.05 : 1) * (u.rivalNear ? 1.06 : 1);
     const terr = tr.atk * (t.cat === 'cav' ? tr.cav : 1);
     const pk = (id) => u.perks.includes(id);
     const gear = (1 + 0.10 * Math.min(MAX_TIER, u.upg.weapon)) * (u.lvl >= 4 ? 1.08 : 1) * (pk('shock') ? 1.05 : 1) * (pk('cadre') ? 1.1 : 1);
@@ -799,6 +819,7 @@ export class Battle {
     def.men -= n; def.casualties += n; att.kills += n; def.flash = 0.22; def.floatAcc = (def.floatAcc || 0) + n;
     let loss = n / def.maxMen * 130 * def.type.fragile * (ranged ? 0.55 : 1);
     if (def.officer) loss *= 1 - 0.04 * (def.officer.tactics || 0);
+    if (def.temper === 'rash') loss *= 1.15; else if (def.temper === 'steady') loss *= 0.9;
     if (def.perks.includes('steadfast')) loss *= 0.8;
     loss *= 1 - 0.15 * clamp(hgt(this, def), 0, 1.3);          // men on high ground hold their nerve
     { const th = (def.wide || 1) - 1; loss *= 1 + 0.7 * th + 0.6 * th * th; }                  // a thin line has no depth to absorb its losses: casualties shake it harder
@@ -863,6 +884,7 @@ export class Battle {
         imp *= e.formation === 'close' && ang.c === 1 ? 0.7 : 1;
         imp *= 1 - Math.max(0, (e.type.antiCharge || 0) * (1 - 0.35 * ((e.wide || 1) - 1))) * (e.state === 'idle' || e.stance === 'hold' ? 1 : 0.4);
         imp *= 1 + 0.3 * ((e.wide || 1) - 1);                    // a charge into a thin line goes deeper
+        imp *= u.temper === 'rash' ? 1.15 : u.temper === 'bold' ? 1.1 : u.temper === 'cautious' ? 0.85 : 1;
         imp *= this.terr(e).def;
         imp *= 1 + 0.3 * clamp(hgt(this, u) - hgt(this, e), -1, 1);   // charging downhill hits harder, uphill softer
         if (u.morale < u.maxMorale * 0.5 || u.fatigue > 60) {        // spent or shaken men cannot deliver a charge
@@ -909,15 +931,15 @@ export class Battle {
     u.updateDims();
     if (u.state === 'dead' || u.state === 'gone') return;
     if (u.state !== 'routing') {
-      if (!u.contacts.some(e => e.active)) u.morale = Math.min(u.maxMorale, u.morale + (2.2 + (u.officer ? 0.35 * (u.officer.tactics || 0) : 0) + (u.perks.includes('inspire') ? 1.1 : 0)) * dt * (u.side === 'rome' ? (this.inCommand(u) ? 1.2 : 0.45) : 1));
-      if (u.morale <= Math.max(12, u.maxMorale * 0.2)) {
+      if (!u.contacts.some(e => e.active)) u.morale = Math.min(u.maxMorale, u.morale + (2.2 + (u.officer ? 0.35 * (u.officer.tactics || 0) : 0) + (u.perks.includes('inspire') ? 1.1 : 0)) * (u.auraT > this.t ? 1.25 : 1) * dt * (u.side === 'rome' ? (this.inCommand(u) ? 1.2 : 0.45) : 1));
+      if (u.morale <= (u.tier >= 2 ? Math.max(8, u.maxMorale * 0.14) : Math.max(12, u.maxMorale * 0.2))) {
         u.state = 'routing'; u.order = { kind: 'none' }; this.stats.routs[u.side]++;
         this.addFx({ kind: 'ring', x: u.x, y: u.y, life: 1, max: 1, r: Math.max(u.w, u.d) });
         this.say(`${u.name} breaks and flees!`, u.side === 'rome' ? 'bad' : 'good');
         { const mc = u.mc || {}, tot = Object.values(mc).reduce((a, b) => a + b, 0) || 1; const top = Object.entries(mc).sort((a, b) => b[1] - a[1]); this.mark('rout', u.name, u.side, { x: u.x, y: u.y, men: u.men, cause: top.length ? top[0][0] : 'frontal', share: top.length ? top[0][1] / tot : 1, cause2: top[1] ? top[1][0] : null, cmd: this.inCommand(u), neigh: !!u.mc && (u.mc.neighbour || 0) / tot > 0.25 }); }
         for (const o of this.units) {
           if (!o.active || o === u) continue;
-          if (Math.hypot(o.x - u.x, o.y - u.y) < 170) { o.morale += o.side === u.side ? -4 : 3; if (o.side === u.side) this.mloss(o, 'neighbour', 4); }   // a rout shakes its neighbours, but does not guarantee a cascade
+          if (Math.hypot(o.x - u.x, o.y - u.y) < 170) { if (o.side === u.side) { if (o.tier >= 2) continue; o.morale -= 4; this.mloss(o, 'neighbour', 4); } else o.morale += 3; }   // a rout shakes its neighbours, but does not guarantee a cascade
         }
       }
     }
@@ -1005,7 +1027,8 @@ export class Battle {
       let fate = null;
       if (u.officer) {
         const r = casualties / Math.max(1, u.startMen);
-        const chance = (0.03 + r * 0.4 + (u.state === 'routing' ? 0.12 : 0) + (u.state === 'dead' ? 0.4 : 0) + (outcome === 'defeat' ? 0.08 : 0)) * dm.officerRisk;
+        const tm = u.temper === 'bold' ? 1.3 : u.temper === 'cautious' ? 0.6 : 1;
+        const chance = tm * (0.03 + r * 0.4 + (u.state === 'routing' ? 0.12 : 0) + (u.state === 'dead' ? 0.4 : 0) + (outcome === 'defeat' ? 0.08 : 0)) * dm.officerRisk;
         fate = this.rand() < chance ? 'killed' : 'survived';
       }
       rows.push({ cohortId: u.cohortId, name: u.name, startMen: u.startMen, endMen, casualties, kills: u.kills, xpGain, officerId: u.officer ? u.officer.id : null, officerFate: fate });
