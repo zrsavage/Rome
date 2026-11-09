@@ -52,7 +52,7 @@ a warband held by a cohort about 50 s. Tuning constants: `FRONT_GRIND`, `FLANK_D
 - **The general.** A banner (select with `E`, right-click to move) carries a command ring. Cohorts inside it recover morale 20% faster and rally 30% faster; outside it they recover at 45% speed, rally at 60%, and charge at 70% strength. A general who rides into melee can be wounded, which halves the ring for a minute.
 - **Charges need fresh, steady men.** Below 50% morale or above 60% fatigue a charge lands at 40% strength and the unit is disrupted.
 - **High ground.** Defenders on hills lose 15% less morale from casualties; charging downhill hits 20% harder and uphill 20% softer; missile fire from above is 12% stronger.
-- **Frontage.** Only two units can fight fully on one front. Extra frontal attackers fight at a reduced rate, so flanking is how you bring numbers to bear. A host that outnumbers you by 25% sends some warbands wide to wrap your line.
+- **Frontage.** Only three units can fight fully on one front. Extra frontal attackers fight at a reduced rate, so flanking is how you bring numbers to bear. A host that outnumbers you by 25% sends some warbands wide to wrap your line.
 - **Pursuit.** Cavalry on "defend post" ride down routers within 220 units and kill them at 2.2x. Routs are where most real losses happen.
 - **Orders are learned in camp** (Training Ground, "Battle orders"), one at a time, each needing victories and an officer who can teach it: Testudo `T` (1 win, drill 1), Rally `F` (2 wins, tactics 2), Relief of the Line `Y` (3 wins, drill 3), Orbis `O` (4 wins, drill 4). A new player begins with move, attack, hold, defend post and fall back. The list lives in `src/doctrine.js`.
 

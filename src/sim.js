@@ -638,7 +638,7 @@ export class Battle {
       const def = e.state === 'routing' ? 0 : this.defOf(e, ang.c === 1);
       // head-on is a grind; flank and rear hits are decisive; a unit hit from the side or behind, or surrounded, fights back less
       const pressed = u.surrounded ? 0.7 : 1 - 0.15 * Math.min(3, u.flanked || 0);
-      const room = ang.c === 1 ? Math.min(1, 2 / Math.max(1, e.frontCount || 1)) : 1;   // only so many men can fight on one front
+      const room = ang.c === 1 ? Math.min(1, 3 / Math.max(1, e.frontCount || 1)) : 1;   // only so many men can fight on one front
       u.pending += share * t.atk * dt * am * ang.g * room * pressed * (1 - def) * routingMult * this.terr(e).def;
       if (ang.c > 1 && e.state !== 'routing') e.morale -= (ang.c === 3 ? REAR_MORALE : FLANK_MORALE) * dt / targets.length;
       if (u.side === 'rome' && ang.c > 1 && e.state !== 'routing') this.stats[ang.c === 3 ? 'rearTime' : 'flankTime'] += dt / targets.length;
