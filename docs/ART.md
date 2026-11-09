@@ -55,3 +55,8 @@ the **pilum** (shown in hand until thrown, then the gladius). Gauls have **long 
 warriors are **bareheaded with lime-stiffened hair** and checked woollen tunics, nobles wear mail, a bronze helmet and a gold torc, and there is **no
 blue body-paint** (woad is a British story; the blue is only the team colour of dyed cloth). Standards: a Roman cohort **signum** (silver discs on a pole),
 and a Gallic **boar standard**.
+
+Cavalry (accuracy pass): horses now have real proportions seen from above (a long narrow barrel about three times as long as wide, a slightly broader croup,
+a tapering neck, a small head with ears, mane along the crest, tail), in bay, chestnut and dun. Riders sit on a four-horned saddle with no stirrups (the Celtic saddle the
+Romans adopted), legs hanging down both flanks, in mail with a spear, the Roman on a round parma equestris and the Gaul on a long oval shield along the horse's flank. A
+horse is drawn about four times as long as a man is wide, and a cavalry unit's footprint is correspondingly deeper (`updateDims`).

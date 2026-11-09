@@ -143,19 +143,45 @@ function gaul(g, t, v, kind) {
   }
 }
 
+// A horse seen from above, with real proportions: a long, narrow barrel (about three times as long as it is wide), a slightly broader croup,
+// a long tapering neck ending in a small head with ears, a mane along the crest, and a tail. Gallic ponies were small and sturdy.
+const COATS = [{ body: '#7a4a2a', dark: '#1f1610' }, { body: '#9a5a2a', dark: '#6b3a1a' }, { body: '#a69d88', dark: '#4a4036' }];   // bay, chestnut, dun/grey
+function horse(g, v) {
+  const { body, dark } = COATS[v];
+  // tail first, flowing back from the croup
+  for (const a of [-0.3, 0, 0.3]) { g.strokeStyle = dark; g.lineWidth = 2.4; g.lineCap = 'round'; g.beginPath(); g.moveTo(9, C); g.quadraticCurveTo(4, C + a * 8, 0.5, C + a * 17); g.stroke(); }
+  const parts = [[14.5, C, 8, 7.4], [25, C, 9.5, 6.6], [35, C, 7.2, 6.3], [53.5, C, 6.6, 3.1], [60, C, 3, 2.5]];
+  g.strokeStyle = OUT; g.lineWidth = 2.8; g.lineJoin = 'round';
+  for (const [x, y, rx, ry] of parts) { g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.stroke(); }
+  g.beginPath(); g.moveTo(37, C - 5); g.lineTo(52, C - 3); g.lineTo(52, C + 3); g.lineTo(37, C + 5); g.closePath(); g.stroke();
+  g.fillStyle = body; for (const [x, y, rx, ry] of parts) { g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.fill(); }
+  g.beginPath(); g.moveTo(37, C - 5); g.lineTo(52, C - 3); g.lineTo(52, C + 3); g.lineTo(37, C + 5); g.closePath(); g.fill();
+  ell(g, 60.5, C, 2.6, 2.1, shade(body, 0.7));                                                                          // muzzle
+  ell(g, 49.5, C - 3.4, 1.4, 2.2, shade(body, 0.8), OUT, 0.8, 0.4); ell(g, 49.5, C + 3.4, 1.4, 2.2, shade(body, 0.8), OUT, 0.8, -0.4);   // ears
+  line(g, 38, C, 51, C, dark, 2.6);                                                                                     // mane along the crest
+  line(g, 10, C, 34, C, shade(body, 0.8), 0.9);                                                                         // the spine
+  line(g, 51, C - 1.6, 57, C - 1.2, '#3a2a18', 0.9); line(g, 51, C + 1.6, 57, C + 1.2, '#3a2a18', 0.9);                // bridle cheek-straps
+}
 function horseman(g, t, v, gaulish, noble) {
-  const coat = ['#6b4a2e', '#8a5a34', '#4f3a28'][v], cloak = shade(t.color, 0.92);
+  const skin = SKIN[v], cloak = gaulish ? shade(t.color, 0.9) : '#a8281f', trousers = gaulish ? shade(t.color, 0.7) : '#c9b48a';
   shadow(g, true);
-  ell(g, 29, C, 22, 10, coat, OUT, 1.5);                                                                                // a small, sturdy horse seen from above
-  ell(g, 52, C, 8.5, 4.8, shade(coat, 1.08), OUT, 1.3); ell(g, 59, C, 3.2, 3.2, shade(coat, 0.9), OUT, 1);
-  line(g, 46, C, 33, C, shade(coat, 0.55), 2.2);
-  for (const a of [-0.35, 0, 0.35]) line(g, 7, C, 1, C + a * 14, shade(coat, 0.5), 2);
-  ell(g, 28, C, 7, 11.5, gaulish ? cloak : '#a8281f', OUT, 1.2);                                                        // rider's cloak over a mail shirt
-  mailBody(g, 29.5, C, 5.4, 9.8);
-  if (gaulish) longShield(g, 33, 20.5, 6.5, 15, shade(t.color, 0.95), t.trim); else { ell(g, 33, 22, 7, 7, shade(t.color, 0.95), OUT, 1.6); ell(g, 33, 22, 2.4, 2.4, '#d8dbe0', OUT, 0.8); }
-  line(g, 26, 42, 62, 38, WOOD, 2.2); g.fillStyle = '#d7dbe0'; g.beginPath(); g.moveTo(64, 37.6); g.lineTo(58.5, 34.8); g.lineTo(58.5, 40.6); g.fill();
-  ell(g, 30, C, 6.4, 6.4, gaulish && !noble ? HAIR[v] : shade(gaulish ? IRON : BRONZE, 1.0), OUT, 1.2);                   // helmet (or bare head)
-  if (gaulish && noble) { g.strokeStyle = '#d8c46a'; g.lineWidth = 1.8; g.beginPath(); g.arc(30, C, 8.2, 1.9, 4.3); g.stroke(); }
+  horse(g, v);
+  // the four-horned saddle (no stirrups): a saddle-cloth in the unit's colour, and the rider's legs hanging down both flanks
+  rect(g, 20, C - 7.6, 13, 15.2, shade(t.color, 0.85), OUT, 1.2, 3); rect(g, 22, C - 5.6, 9, 11.2, null, shade(t.trim, 0.8), 0.8, 2);
+  ell(g, 25.5, C - 8.2, 5.2, 2.4, trousers, OUT, 1, 0.1); ell(g, 25.5, C + 8.2, 5.2, 2.4, trousers, OUT, 1, -0.1);
+  ell(g, 21, C, 6.4, 9.2, cloak, OUT, 1.2);                                                                              // cloak streaming behind the rider
+  mailBody(g, 27, C, 5.2, 8.6);                                                                                          // mail shirt
+  // reins and the weapon arm
+  line(g, 31, C - 2, 56, C - 1.4, '#6b4a2a', 0.9); line(g, 31, C + 2, 56, C + 1.4, '#6b4a2a', 0.9);
+  arm(g, 29, C - 5, 0.1, 7, skin); arm(g, 29, C + 5.5, 0.1, 8, skin);
+  line(g, 24, C + 10, 63, C + 5.5, WOOD, 2.2); g.fillStyle = '#d7dbe0'; g.beginPath(); g.moveTo(64.5, C + 5); g.lineTo(58.5, C + 2.6); g.lineTo(58.8, C + 8.6); g.fill();   // spear
+  // shield on the left arm, along the horse's flank
+  if (gaulish) { rect(g, 20, C - 17.5, 15, 6.4, shade(t.color, 0.95), OUT, 1.5, 3.2); line(g, 21, C - 14.3, 34, C - 14.3, shade(t.trim, 0.8), 1.6); ell(g, 27.5, C - 14.3, 2.4, 2.4, '#cfc9a8', OUT, 0.8); }
+  else { ell(g, 27, C - 14, 6.8, 6.8, shade(t.color, 0.95), OUT, 1.6); ell(g, 27, C - 14, 2.4, 2.4, '#d8dbe0', OUT, 0.8); }          // the round parma equestris
+  // head: bronze helmet for the Roman and the noble, bare long hair for the common Gallic rider
+  if (!gaulish || noble) { ell(g, 22.6, C, 4.2, 6, shade(gaulish ? IRON : BRONZE, 0.8), OUT, 1); ell(g, 28, C, 5.8, 5.8, gaulish ? IRON : BRONZE, OUT, 1.2); ell(g, 28, C, 2.4, 2.4, shade(gaulish ? IRON : BRONZE, 1.2)); }
+  else { ell(g, 28, C, 5.6, 5.8, HAIR[v], OUT, 1.2); for (const a of [-0.8, 0, 0.8]) line(g, 24, C + a * 4, 18, C + a * 6, shade(HAIR[v], 1.15), 1.6); }
+  if (gaulish && noble) { g.strokeStyle = '#d8c46a'; g.lineWidth = 1.7; g.beginPath(); g.arc(28, C, 7.4, 1.9, 4.3); g.stroke(); }
 }
 
 const PAINT = {

@@ -71,7 +71,7 @@ export class Unit {
     this.front = Math.max(3, Math.sqrt(this.men * 3 * t.space));
     const rows = Math.max(1, this.men / this.front);
     this.w = Math.max(14, this.front * 2.7 * (this.formation === 'close' ? 0.8 : 1));
-    this.d = Math.max(12, rows * 3.6 * (this.formation === 'close' ? 1.25 : 1));
+    this.d = Math.max(12, rows * 3.6 * (t.cat === 'cav' ? 2.3 : 1) * (this.formation === 'close' ? 1.25 : 1));   // a horse is about four times as long as a man is wide
     if (this.formation === 'wedge') { this.w *= 0.72; this.d *= 1.35; }
     if (this.formation === 'orb') { const q = Math.sqrt(this.w * this.d) * 1.05; this.w = q; this.d = q; }   // a hollow square: no front, no flank
   }

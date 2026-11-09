@@ -199,7 +199,7 @@ export class Renderer {
           continue;
         }
         // each man is a real top-down figure (see sprites.js): helmet or hair, shoulders, shield and weapon, facing the way the unit faces
-        const cav = t.cat === 'cav', sz = cav ? Math.min(Math.max(sx * 1.5, 9), 26) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
+        const cav = t.cat === 'cav', sz = cav ? Math.min(Math.max(Math.min(sx * 1.08, sy * 2.7), 11), 32) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
         ctx.drawImage(soldierSprite(u.typeKey, (k * 7 + u.id) % 3, u.typeKey !== 'legionary' || u.pilumLeft > 0), xx - sz / 2, y - sz / 2, sz, sz);   // a legionary who has thrown his pila draws the gladius
       }
     }
