@@ -128,7 +128,7 @@ export class BattleUI {
           this.select(ids, left.shift);
         } else {
           const u = this.r.unitAt(this.b, w.x, w.y), gn = this.b.general;
-          if (gn && !u && Math.hypot(w.x - gn.x, w.y - gn.y) < 18) this.selectGeneral();
+          if (gn && !u && Math.hypot(w.x - gn.x, w.y - gn.y) < 24) this.selectGeneral();
           else if (u && u.side === 'rome') this.select([u.id], left.shift);
           else if (u) { this.inspect = u.id; this.refreshHud(); }
           else { this.inspect = null; this.select([], false); }

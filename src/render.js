@@ -1,6 +1,6 @@
 // Canvas renderer for the battle: terrain, soldier dots, effects, order lines.
 import { WORLD, elevAt, terrainAt, forestIn, riverShift, vnoise } from './data.js';
-import { soldierSprite } from './sprites.js';
+import { soldierSprite, specialSprite, shieldTile } from './sprites.js';
 import { mulberry32 } from './sim.js';
 
 // Hillshading and contour lines from the real height map, lit from the north-west.
@@ -193,15 +193,19 @@ export class Renderer {
       for (let c = 0; c < inRow; c++, k++) {
         let y = (c - (inRow - 1) / 2) * sy, xx = x;
         if (routing) { xx += Math.sin(now * 9 + k * 1.7) * 2.4; y += Math.cos(now * 8 + k * 2.3) * 2.4; }
-        if (roof) {   // locked shields
-          ctx.fillStyle = shade(k) || t.color; ctx.fillRect(xx - sx * 0.5, y - sy * 0.5, sx * 0.96, sy * 0.96);
-          ctx.fillStyle = t.trim; ctx.fillRect(xx - 0.7, y - 0.7, 1.4, 1.4);
+        if (roof) {   // a roof of locked shields, each one the real scutum
+          ctx.drawImage(shieldTile(u.typeKey), xx - sx * 0.56, y - sy * 0.56, sx * 1.12, sy * 1.12);
           continue;
         }
         // each man is a real top-down figure (see sprites.js): helmet or hair, shoulders, shield and weapon, facing the way the unit faces
         const cav = t.cat === 'cav', sz = cav ? Math.min(Math.max(Math.min(sx * 1.08, sy * 2.7), 11), 32) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
         ctx.drawImage(soldierSprite(u.typeKey, (k * 7 + u.id) % 3, u.typeKey !== 'legionary' || u.pilumLeft > 0), xx - sz / 2, y - sz / 2, sz, sz);   // a legionary who has thrown his pila draws the gladius
       }
+    }
+    if (!lod && rome && u.typeKey === 'legionary' && !roof) {     // the signifer stands in the front rank, the centurion at its right end
+      const so = Math.min(Math.max(Math.max(sx, sy) * 1.3, 6.5), 20);
+      ctx.drawImage(specialSprite('signifer'), u.d / 2 - sx * 0.2 - so / 2, -so / 2, so, so);
+      if (u.officer) ctx.drawImage(specialSprite('centurion'), u.d / 2 - sx * 0.2 - so / 2, u.w / 2 + so * 0.05, so, so);
     }
     // standard: a Roman cohort's signum (pole hung with silver discs, a crossbar and a small hand or spearhead on top), or a Gallic boar standard
     ctx.fillStyle = '#4a3418'; ctx.fillRect(-u.d / 2 - 12, -0.9, 12, 1.8);
@@ -290,9 +294,8 @@ export class Renderer {
     ctx.beginPath(); ctx.arc(g.x, g.y, R, 0, 7); ctx.stroke(); ctx.setLineDash([]);
     if (g.goal) { ctx.strokeStyle = 'rgba(232,195,106,0.6)'; ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(g.goal.x, g.goal.y); ctx.stroke(); ctx.setLineDash([]); }
     ctx.translate(g.x, g.y);
-    ctx.fillStyle = '#3a2410'; ctx.fillRect(-0.9, -26, 1.8, 26);
-    ctx.fillStyle = hurt ? '#b05a4a' : '#b3261e'; ctx.beginPath(); ctx.moveTo(0.9, -26); ctx.lineTo(13, -22); ctx.lineTo(0.9, -17); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#e8c36a'; ctx.strokeStyle = sel ? '#fff' : '#5a4210'; ctx.lineWidth = sel ? 2 : 1.2; ctx.beginPath(); ctx.arc(0, 0, 7, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.rotate(g.f); const gs = 40; ctx.drawImage(specialSprite('general'), -gs / 2, -gs / 2, gs, gs);       // the general on his grey horse, in the red paludamentum
+    if (sel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(0, 0, 19, 0, 7); ctx.stroke(); }
     ctx.restore();
   }
 
