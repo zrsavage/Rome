@@ -5,6 +5,7 @@ import { WORLD, LEVEL_NAMES } from './data.js';
 import { artSrc } from './art.js';
 import { ask } from './ui.js';
 import { icon } from './icons.js';
+import { dragLayout, compass } from './orders.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -83,12 +84,9 @@ export class BattleUI {
     let ang, pts = [];
     us.sort((a, c) => (a.x - c.x));
     if (drag) {
-      const dx = drag.x1 - drag.x0, dy = drag.y1 - drag.y0, L = Math.hypot(dx, dy) || 1;
-      let nx = -dy / L, ny = dx / L;
-      if (nx * fx + ny * fy < 0) { nx = -nx; ny = -ny; }
-      ang = Math.atan2(ny, nx);
-      us.forEach((u, i) => { const t = us.length === 1 ? 0.5 : i / (us.length - 1); pts.push({ x: drag.x0 + dx * t, y: drag.y0 + dy * t }); });
-      if (us.length === 1) pts[0] = { x: (drag.x0 + drag.x1) / 2, y: (drag.y0 + drag.y1) / 2 };
+      const lay = dragLayout(us, drag); ang = lay.ang;                      // the line faces to the left of the way it was drawn
+      lay.pts.forEach(p => b.setMove(p.u, Math.max(8, Math.min(WORLD.w - 8, p.x)), Math.max(8, Math.min(WORLD.h - 8, p.y)), ang, ignore, sprint));
+      this.showBanner(`Line faces ${compass(ang)}`, 900); this.emit('move', { drag: true, count: us.length }); return;
     } else {
       const dx = wx - mx, dy = wy - my, d = Math.hypot(dx, dy);
       ang = d > 30 ? Math.atan2(dy, dx) : Math.atan2(fy, fx);
@@ -284,7 +282,7 @@ export class BattleUI {
     const L = $('hud-left');
     if (this.genSel && b.general) { const g = b.general; L.innerHTML = `<h3>Your general</h3><div class="muted">The gold ring is your command radius. Cohorts inside it recover morale and rally faster and charge with full force; outside it they are slow to recover. Right-click to move the general.</div>` + (g.wound > 0 ? `<div class="kv"><span>Wounded</span><span>${Math.ceil(g.wound)}s</span></div>` : '') + (b.orders.has('rally') ? `<div class="kv"><span>Rally (F)</span><span>${b.rallyCd > 0 ? Math.ceil(b.rallyCd) + 's' : 'ready'}</span></div>` : ''); return; }
     if (!sel.length && !ins) { L.innerHTML = '<h3>No selection</h3><div class="muted">Click a cohort, or drag a box. Right-click to order. Press ? for controls.</div>'; return; }
-    if (sel.length > 1) { L.innerHTML = `<h3>${sel.length} units selected</h3><div class="muted">Right-click to move in a line; right-drag to set a battle line and facing.</div>`; return; }
+    if (sel.length > 1) { L.innerHTML = `<h3>${sel.length} units selected</h3><div class="muted">Right-click to move in a line; right-drag to draw a battle line: it faces to the left of the way you draw it (left to right = north).</div>`; return; }
     if (!u) return;
     const t = u.type, lvl = LEVEL_NAMES[u.lvl];
     const kv = (a, v) => `<div class="kv"><span>${a}</span><span>${v}</span></div>`;

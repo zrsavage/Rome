@@ -173,6 +173,12 @@ docs/DESIGN.md   scope, roadmap, open questions
 Balance is first-pass: on Miles an aggressive plan with cavalry beats every scenario; passive defence usually loses; Centurion
 and Imperator scale enemy size and morale. Art is procedural placeholder; AI-generated art is planned. See `docs/DESIGN.md`.
 
+## Facing a battle line
+Right-drag draws a battle line and the units form along it. **The line faces to the left of the way you draw it**, like walking along it: left to right faces north,
+right to left south, top to bottom east, bottom to top west. While you drag you see a ghost of each selected unit in its place, an arrow showing the facing and a
+compass label; on release the banner confirms it ("Line faces north"). Units are placed in the order they already stand along the line so they do not cross over each other.
+A plain right-click still marches to a point and faces the way you travel (`src/orders.js`).
+
 ## The Gallic battle line
 Gallic infantry no longer converge on your army as a swarm. The host forms a **moving battle line**: each unit gets a slot side by side across the axis of advance (a second
 and third rank when the host is wide, the units nearest your army taking the front rank, each rank ordered by where its men stand so nobody crosses through a friend), the line
