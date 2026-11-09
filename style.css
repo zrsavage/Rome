@@ -310,3 +310,9 @@ input.mslide{width:100%;accent-color:#e8c36a;height:6px;cursor:pointer}
 #hud-cmds .cmd{display:inline-flex;align-items:center;gap:3px}
 #hud-top button{display:inline-flex;align-items:center;gap:4px}
 .ucard .ico{color:var(--gold)}
+
+.campstage{position:relative;line-height:0}
+.campart{display:block;width:100%;height:auto;border-radius:8px;box-shadow:0 6px 26px #000a}
+.campstage #campsvg{position:absolute;inset:0;width:100%;height:100%}
+.campstage .bl{paint-order:stroke;stroke:#140c04;stroke-width:4px;stroke-linejoin:round}
+.campstage .bs{paint-order:stroke;stroke:#140c04;stroke-width:3px}

@@ -73,3 +73,9 @@ are painted busts. `src/sprites.js` is the single source for all of it.
 `src/icons.js` is a line-icon set (coin, grain, sun, helmet, palisade, laurel, shield, chevrons, bow, shield-roof, wedge, banner...) used in the camp and map headers, the battle top bar
 and the command bar. The campaign map now has Roman roads (paved ribbon between kerbs once travelled), walled towns and a temple-fronted Roma, battle badges with crossed swords (a
 general's star for the named battle) ringed with a laurel once won, a legion's standard planted at the current battle, triremes and wave marks on the sea.
+
+### The camp as a painting
+`src/campart.js` paints the camp onto a canvas in an oblique bird's-eye view (rampart and ditch, palisade, towers, gate, streets, goatskin tent rows, each building, campfires, soldiers drawn with
+the real top-down sprites) and then gives it a painterly finish: brush dabs sampled from the picture, canvas grain, warm light from the upper left, a vignette. `src/campscene.js` lays the clickable
+buildings, labels and badges over it as an SVG layer in a 1000 x 620 space, and unbuilt plots are staked-out ground in the picture. **To use a generated painting instead**, put its data URL in `CAMP_PAINTING`
+(campart.js) and adjust the building positions in `BUILDINGS` (campscene.js) to match the new image; nothing else changes.
