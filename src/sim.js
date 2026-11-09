@@ -145,7 +145,7 @@ export class Battle {
           if (Math.hypot(v.x - e.x, v.y - e.y) <= R && this.los(v, e)) { seen = true; break; }
         }
       }
-      if (seen) { e.seenUntil = this.t + 6; if (!e.sighted) { e.sighted = true; this.say(`Enemy sighted: ${e.name}.`, 'warn'); } }
+      if (seen) { e.seenUntil = this.t + 6; if (!e.sighted) { e.sighted = true; this.say(`Enemy sighted: ${e.name} (about ${Math.round(e.men / 10) * 10} men).`, 'warn'); } }
       e.spotted = this.t < (e.seenUntil || 0);
     }
   }

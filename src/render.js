@@ -140,7 +140,8 @@ export class Renderer {
     this.drawFloats(ctx, b);
     this.drawMarkers(ctx);
     ctx.restore();
-    for (const u of order) this.drawLabel(ctx, u);
+    const placed = [];                                      // label boxes already on screen, so labels never sit on top of each other
+    for (const u of [...order].sort((a, b2) => b2.y - a.y)) this.drawLabel(ctx, u, placed);
     if (this.box) { ctx.strokeStyle = '#e8c36a'; ctx.fillStyle = 'rgba(232,195,106,0.12)'; const bx = this.box; ctx.fillRect(bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0); ctx.strokeRect(bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0); }
     if (this.dragLine) {
       const d = this.dragLine, a = this.toScreen(d.x0, d.y0), c = this.toScreen(d.x1, d.y1);
@@ -205,12 +206,17 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawLabel(ctx, u) {
+  drawLabel(ctx, u, placed = []) {
     const p = this.toScreen(u.x, u.y - u.w / 2 - 4), z = this.cam.zoom;
     const yy = this.toScreen(u.x, u.y).y - Math.max(u.w, u.d) * z / 2 - 8;
     const rome = u.side === 'rome', fs = Math.max(10, Math.min(14, 11 * z + 3));
     const text = String(u.men) + (u.side === 'rome' && u.stance === 'hold' && u.active ? ' H' : ''), w = Math.max(30, 24 + text.length * 6);
-    const x = p.x, y = yy;
+    const x = p.x; let y = yy;
+    const box = (yy2) => ({ x0: x - w / 2 - 2, x1: x + w / 2 + 2, y0: yy2 - 26, y1: yy2 + 7 });
+    const clash = (b1) => placed.some(o => o.x0 < b1.x1 && o.x1 > b1.x0 && o.y0 < b1.y1 && o.y1 > b1.y0);
+    for (let tries = 0; tries < 10 && clash(box(y)); tries++) y -= 17;                 // nudge up until clear
+    placed.push(box(y));
+    if (yy - y > 8) { ctx.strokeStyle = 'rgba(240,230,200,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x, yy + 6); ctx.stroke(); }
     ctx.globalAlpha = u.state === 'routing' ? 0.7 : 1;
     ctx.fillStyle = 'rgba(15,12,8,0.78)'; ctx.fillRect(x - w / 2, y - 13, w, 15);
     ctx.fillStyle = rome ? '#f0d9a8' : '#bcd6f2'; ctx.font = `bold ${fs}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

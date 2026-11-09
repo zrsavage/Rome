@@ -3,7 +3,7 @@
   /* Cinzel: capitals modelled on Roman inscriptions (Trajan's Column). Cardo: a serif made for classicists and Latin. */
   --head:'Cinzel','Trajan Pro','Palatino Linotype',Georgia,serif;
   --body:'Cardo','Palatino Linotype','Book Antiqua',Georgia,serif;
-  --bg:#17130d; --panel:#241d13; --panel2:#2f261a; --ink:#f0e4c8; --muted:#a8987a; --gold:#e8c36a; --red:#b3261e;
+  --bg:#17130d; --panel:#241d13; --panel2:#2f261a; --ink:#f0e4c8; --muted:#c2b496; --gold:#e8c36a; --red:#b3261e;
   --green:#6fcf6f; --blue:#7fb3e6; --line:#4a3d28;
 }
 *{box-sizing:border-box}
@@ -68,7 +68,9 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 #canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
 #hud-top{position:absolute;left:0;right:0;top:0;display:flex;gap:8px;align-items:center;padding:6px 10px;background:linear-gradient(#000c,#0000);pointer-events:none}
 #hud-top>*{pointer-events:auto}
-#hud-title{font-size:18px;color:var(--gold);white-space:nowrap}#hud-top button{white-space:nowrap} #hud-time{color:var(--muted);font-variant-numeric:tabular-nums}
+#hud-title{font-size:18px;color:var(--gold);white-space:nowrap;max-width:30vw;overflow:hidden;text-overflow:ellipsis}
+#hud-sub{position:absolute;left:50%;top:50px;transform:translateX(-50%);max-width:44vw;background:#14100ae0;border:1px solid var(--line);border-radius:14px;padding:3px 14px;font-size:14px;color:#e6dcc0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+#hud-sub:empty{display:none}#hud-top button{white-space:nowrap} #hud-time{color:#cfc4a6;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:15px}
 .spacer{flex:1}
 .spd.on{border-color:var(--gold);color:var(--gold)}
 #hud-left{position:absolute;left:10px;top:52px;width:230px;background:#241d13e6;border:1px solid var(--line);border-radius:6px;padding:10px;font-size:13px}
@@ -82,7 +84,7 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .ucard.sel{border-color:var(--gold);background:#3a2e1b}
 .ucard.gone{opacity:.4}
 .ucard b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#hud-help{position:absolute;left:50%;top:56px;transform:translateX(-50%);background:#241d13f2;border:1px solid var(--gold);border-radius:6px;padding:12px 16px;font-size:13px;line-height:1.6;text-align:center}
+#hud-help{position:absolute;left:50%;top:92px;max-width:640px;z-index:5;transform:translateX(-50%);background:#241d13f2;border:1px solid var(--gold);border-radius:6px;padding:12px 16px;font-size:13px;line-height:1.6;text-align:center}
 #banner{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);background:#000a;padding:14px 30px;font-size:30px;letter-spacing:.2em;color:var(--gold);border-top:1px solid var(--gold);border-bottom:1px solid var(--gold);pointer-events:none}
 
 /* Modal (drill minigame) */
@@ -98,7 +100,7 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .slot small{display:block;color:var(--muted)}
 /* map */
 .mapscreen{grid-template-columns:1.6fr 1fr}
-.mapcard{padding:8px}
+.mapcard{padding:8px;align-self:start}
 .maptools{margin-bottom:6px;gap:8px}
 .maptools button.on{border-color:var(--gold);color:var(--gold)}
 #mapsvg{width:100%;height:auto;display:block;border-radius:4px;background:#1c3441}
@@ -114,9 +116,9 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .river{fill:none;stroke:#4f83a3;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
 .grat{stroke:#ffffff;stroke-opacity:.07;stroke-width:1}
 .gl{fill:#d9cba8;opacity:.55;font-family:system-ui,sans-serif}
-.region{fill:#2a2112;opacity:.5;letter-spacing:.3em;font-family:var(--head)}
-.tribe{fill:#2a2112;opacity:.62;font-style:italic;font-family:var(--body)}
-.rivlab{fill:#a9cfe6;opacity:.8;font-style:italic;font-family:var(--body)}
+.region{fill:#2a2112;opacity:.8;letter-spacing:.3em;font-family:var(--head);paint-order:stroke;stroke:#9a8a58;stroke-width:3px;stroke-linejoin:round}
+.tribe{fill:#241a0c;opacity:.92;font-style:italic;font-family:var(--body);paint-order:stroke;stroke:#968655;stroke-width:2.6px;stroke-linejoin:round}
+.rivlab{fill:#d6ecfa;opacity:.95;font-style:italic;font-family:var(--body);paint-order:stroke;stroke:#18313f;stroke-width:3px;stroke-linejoin:round}
 .city{fill:#f0e4c8;stroke:#14100a;stroke-width:1.2}
 .pl{fill:#f0e4c8;font-family:var(--body);paint-order:stroke;stroke:#1b150b;stroke-width:3px;stroke-linejoin:round}
 .route{stroke:#e8c36a66;stroke-dasharray:8 7;fill:none}
@@ -226,7 +228,7 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .pulsebox{fill:none;stroke:#ffe9a8;stroke-width:4;animation:pulsebox 1.3s ease-in-out infinite}
 @keyframes pulsebox{50%{stroke-opacity:.2}}
 .campbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
-.overlay{position:fixed;inset:0;background:#000b;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:4vh 12px;z-index:8}
+.overlay{position:fixed;inset:0;background:rgba(8,6,3,.94);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:4vh 12px;z-index:8}
 .panel{background:var(--panel);border:1px solid var(--gold);border-radius:8px;width:min(860px,100%);padding:16px 18px;box-shadow:0 10px 40px #000a}
 .phead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:10px}
 .phead h2{color:var(--gold);font-size:24px;margin:0}.pres{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}.pres b{color:var(--gold)}

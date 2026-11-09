@@ -45,7 +45,7 @@ let view = 'act'; // 'act' | 'all'
 function viewBox() {
   if (view === 'all') return { x: 0, y: 0, w: MAP.W, h: MAP.H };
   const [cx, cy] = project(46.5, 5.0);
-  const w = 15 * MAP.s * rad(1), h = w * 0.66;
+  const w = 15 * MAP.s * rad(1), h = w * 0.8;
   return { x: cx - w / 2, y: cy - h / 2, w, h };
 }
 
@@ -63,29 +63,69 @@ export function renderMap(root, c, api) {
   const vb = viewBox(), k = vb.w / 700, inView = (x, y, pad = 0) => x > vb.x - pad && x < vb.x + vb.w + pad && y > vb.y - pad && y < vb.y + vb.h + pad;
   const big = view === 'all';
 
-  const text = (cls, arr, size, anchor = 'middle') => arr.map(([n, lat, lon]) => { const [x, y] = project(lat, lon); return inView(x, y) ? `<text x="${x}" y="${y}" class="${cls}" style="font-size:${size * k}px" text-anchor="${anchor}">${esc(n)}</text>` : ''; }).join('');
-  const places = PLACES.map(([n, lat, lon, sz]) => { const [x, y] = project(lat, lon); if (!inView(x, y)) return ''; if (big && sz < 2) return ''; if (n === 'Bibracte' || n === 'Vesontio' || n === 'Genava') return ''; // drawn as battle nodes
-    return `<g><circle cx="${x}" cy="${y}" r="${(sz === 2 ? 4.5 : 3) * k}" class="city"/><text x="${x + 6 * k}" y="${y + 3.5 * k}" class="pl" style="font-size:${(sz === 2 ? 12 : 10.5) * k}px">${esc(n)}</text></g>`; }).join('');
+  // ---- labels: placed greedily by priority so that no two overlap and nothing sits on a marker ----
+  const occ = [], R = (x0, y0, x1, y1) => ({ x0, y0, x1, y1 });
+  const hit = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+  const inside = (r) => r.x0 >= vb.x + 12 * k && r.x1 <= vb.x + vb.w - 12 * k && r.y0 >= vb.y + 12 * k && r.y1 <= vb.y + vb.h - 12 * k;
+  const free = (r) => inside(r) && !occ.some(o => hit(o, r));
+  const WF = { head: 0.74, body: 0.5, node: 0.72 };   // average glyph width per em for each face
+  let labelSvg = '';
+  // try each side in turn; returns true when placed. `force` places at the first side even if it collides (battle names must show).
+  const label = (txt, size, face, cls, x, y, rad, sides, force = false) => {
+    const fs = size * k, w = txt.length * fs * WF[face] + 5 * k, h = fs * 1.15, gap = 4 * k;
+    for (const side of sides) {
+      const x0 = side === 'right' ? x + rad + gap : side === 'left' ? x - rad - gap - w : x - w / 2;
+      const y0 = side === 'above' ? y - rad - gap - h : side === 'below' ? y + rad + gap : y - h / 2;
+      const r = R(x0, y0, x0 + w, y0 + h);
+      if (!force && !free(r)) continue;
+      occ.push(r);
+      const ax = side === 'right' ? x0 + 2 * k : side === 'left' ? x0 + w - 2 * k : x0 + w / 2, an = side === 'right' ? 'start' : side === 'left' ? 'end' : 'middle';
+      labelSvg += `<text x="${ax}" y="${y0 + fs * 0.88}" class="${cls}" style="font-size:${fs}px" text-anchor="${an}">${esc(txt)}</text>`;
+      return true;
+    }
+    return false;
+  };
+  const dot = (x, y, r) => occ.push(R(x - r, y - r, x + r, y + r));
+  const OTHERS = ['right', 'left', 'below', 'above'];
+
+  // fixed furniture the labels must avoid
+  const midLat0 = big ? 45 : 47, ppk = MAP.s * rad(1) / (111.32 * Math.cos(rad(midLat0))), sbw0 = (big ? 500 : 100) * ppk;
+  occ.push(R(vb.x + vb.w / 2 - 120 * k, vb.y + 10 * k, vb.x + vb.w / 2 + 120 * k, vb.y + 58 * k));                       // title plate
+  occ.push(R(vb.x + vb.w - 92 * k, vb.y + vb.h - 98 * k, vb.x + vb.w, vb.y + vb.h));                                      // compass rose
+  occ.push(R(vb.x + vb.w - 46 * k, vb.y + 8 * k, vb.x + vb.w, vb.y + 64 * k));                                            // north arrow
+  occ.push(R(vb.x, vb.y + vb.h - 62 * k, vb.x + sbw0 + 40 * k, vb.y + vb.h));                                             // scale bar
 
   const pts = SCENARIOS.map(s => project(s.geo.lat, s.geo.lon));
+  const rN = (s, i) => (s.kind === 'named' ? 12 : 8.5) * k * (big ? 0.7 : 1);
+  pts.forEach(([x, y], i) => { if (inView(x, y, 40 * k)) dot(x, y, rN(SCENARIOS[i], i) + 9 * k); });
+  const futs = FUTURE.map(f => { const [x, y] = project(f.lat, f.lon); return { f, x, y, r: (f.rome ? 12 : 8) * k * (big ? 0.8 : 1) }; }).filter(o => inView(o.x, o.y, 30 * k));
+  futs.forEach(o => dot(o.x, o.y, o.r + 3 * k));
+  const placeList = PLACES.map(([n, lat, lon, sz]) => { const [x, y] = project(lat, lon); return { n, x, y, sz }; }).filter(p => inView(p.x, p.y) && !(big && p.sz < 2) && !['Bibracte', 'Vesontio', 'Genava'].includes(p.n));
+  placeList.forEach(p => dot(p.x, p.y, (p.sz === 2 ? 4.5 : 3) * k + 2 * k));
+
+  // 1. the battles (always shown), 2. the future acts, 3. cities, 4. towns, 5. tribes, 6. rivers, 7. regions
+  if (!big) SCENARIOS.forEach((s, i) => { const [x, y] = pts[i]; if (inView(x, y, 40 * k)) { const first = LABEL_SIDE[i], order = [first, ...OTHERS.concat(['above']).filter(z => z !== first)]; label(SHORT[i], 13, 'node', 'nl', x, y, rN(s, i) + 3 * k, order, true); } });
+  futs.forEach(o => label(`Act ${o.f.act}: ${o.f.name}`, 12, 'body', 'fl', o.x, o.y, o.r + 2 * k, ['above', 'below', 'right', 'left']));
+  for (const sz of [2, 1]) placeList.filter(p => p.sz === sz).forEach(p => label(p.n, sz === 2 ? 13.5 : 12, 'body', 'pl', p.x, p.y, (sz === 2 ? 4.5 : 3) * k, OTHERS));
+  if (!big) TRIBES.forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, 12, 'body', 'tribe', x, y, 0, ['center']); });
+  if (!big) RIVERS.forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, 11.5, 'body', 'rivlab', x, y, 0, ['center']); });
+  REGIONS.filter(r => big || !['AEGYPTUS', 'ASIA', 'MACEDONIA'].includes(r[0])).forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, big ? 30 : 17, 'head', 'region', x, y, 0, ['center']); });
+  const placeDots = placeList.map(p => `<circle cx="${p.x}" cy="${p.y}" r="${(p.sz === 2 ? 4.5 : 3) * k}" class="city"/>`).join('');
+
   const edges = SCENARIOS.slice(1).map((s, i) => `<line x1="${pts[i][0]}" y1="${pts[i][1]}" x2="${pts[i + 1][0]}" y2="${pts[i + 1][1]}" class="route ${i + 1 <= idx ? 'done' : ''}" style="stroke-width:${3 * k}px"/>`).join('');
   const nodes = SCENARIOS.map((s, i) => {
     const [x, y] = pts[i]; if (!inView(x, y, 40 * k)) return '';
     const state = i < idx ? 'done' : i === idx ? 'current' : 'locked';
     const col = state === 'done' ? OUT[best[s.id]] || '#6fcf6f' : state === 'current' ? '#e8c36a' : '#8a7a58';
-    const r = (s.kind === 'named' ? 12 : 8.5) * k * (big ? 0.7 : 1), side = LABEL_SIDE[i];
-    const lx = side === 'right' ? r + 6 * k : side === 'left' ? -r - 6 * k : 0, ly = side === 'above' ? -r - 7 * k : side === 'below' ? r + 15 * k : 4 * k, an = side === 'right' ? 'start' : side === 'left' ? 'end' : 'middle';
+    const r = rN(s, i);
     return `<g class="node ${state}" transform="translate(${x},${y})"><title>${esc(s.name)} - ${esc(s.geo.place)}. ${esc(s.geo.note)}</title>
       ${state === 'current' ? `<circle r="${r + 7 * k}" class="pulse" style="stroke-width:${2 * k}px"/>` : ''}
       <circle r="${r}" fill="${col}" stroke="#14100a" stroke-width="${2.2 * k}"/>
-      ${s.kind === 'named' ? `<path d="M${-5.5 * k} ${3 * k} L0 ${-6.5 * k} L${5.5 * k} ${3 * k} Z" fill="#14100a"/>` : `<text y="${3.8 * k}" text-anchor="middle" class="nn" style="font-size:${11 * k}px">${i + 1}</text>`}
-      ${big ? '' : `<text x="${lx}" y="${ly}" text-anchor="${an}" class="nl" style="font-size:${12.5 * k}px">${esc(SHORT[i])}</text>`}</g>`;
+      ${s.kind === 'named' ? `<path d="M${-5.5 * k} ${3 * k} L0 ${-6.5 * k} L${5.5 * k} ${3 * k} Z" fill="#14100a"/>` : `<text y="${3.8 * k}" text-anchor="middle" class="nn" style="font-size:${11 * k}px">${i + 1}</text>`}</g>`;
   }).join('');
   const [gx, gy] = project(46.6, 5.0);
   const actLabel = big ? `<text x="${gx - 40 * k}" y="${gy - 26 * k}" text-anchor="end" class="nl" style="font-size:${13 * k}px">Act I: Gaul</text>` : '';
-  const future = FUTURE.map(f => { const [x, y] = project(f.lat, f.lon); if (!inView(x, y, 30 * k)) return ''; const r = (f.rome ? 12 : 8) * k * (big ? 0.8 : 1);
-    return `<g class="fut" transform="translate(${x},${y})"><title>${esc(f.hint)}</title><circle r="${r}" fill="${f.rome ? '#7a2a22' : '#3b3120'}" stroke="#14100a" stroke-width="${2 * k}"/>
-      <text y="${-r - 6 * k}" text-anchor="middle" class="fl" style="font-size:${11.5 * k}px">Act ${f.act}: ${esc(f.name)}</text></g>`; }).join('');
+  const future = futs.map(o => `<g class="fut" transform="translate(${o.x},${o.y})"><title>${esc(o.f.hint)}</title><circle r="${o.r}" fill="${o.f.rome ? '#7a2a22' : '#3b3120'}" stroke="#14100a" stroke-width="${2 * k}"/></g>`).join('');
 
   // scale bar (Mercator: km per px depends on latitude)
   const midLat = (view === 'all') ? 45 : 47, pxPerKm = MAP.s * rad(1) / (111.32 * Math.cos(rad(midLat))), km = big ? 500 : 100, sbw = km * pxPerKm;
@@ -117,8 +157,8 @@ export function renderMap(root, c, api) {
           <filter id="mgrain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="${(0.55 / k).toFixed(3)}" numOctaves="3" seed="9" result="t"/><feColorMatrix in="t" values="0 0 0 0 .16  0 0 0 0 .12  0 0 0 0 .04  0 0 0 .75 -.18" result="g"/><feComposite in="g" in2="SourceGraphic" operator="in"/></filter></defs>
         <rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" class="sea"/>
         <g class="geo">${graticule(vb, k)}<path d="${MAP.land}" class="shore" style="stroke-width:${16 * k}px"/><path d="${MAP.land}" class="shore s2" style="stroke-width:${8 * k}px"/><path d="${MAP.land}" class="land" style="stroke-width:${1.6 * k}px"/><path d="${MAP.land}" fill="#000" filter="url(#mgrain)"/><path d="${MAP.lakes}" class="lake" style="stroke-width:${1 * k}px"/><path d="${MAP.rivers}" class="river" style="stroke-width:${1.5 * k}px"/></g>
-        ${text('region', REGIONS.filter(r => big || !['AEGYPTUS', 'ASIA', 'MACEDONIA'].includes(r[0])), big ? 30 : 17)}${big ? '' : text('tribe', TRIBES, 11)}${text('rivlab', big ? [] : RIVERS, 10.5)}
-        ${glyphs}${places}${edges}${future}${nodes}${actLabel}${scale}${north}${decor}</svg></div>
+        ${glyphs}${labelSvg}
+        ${placeDots}${edges}${future}${nodes}${actLabel}${scale}${north}${decor}</svg></div>
     <div class="col">
       <div class="card"><h3>${done ? 'Act I complete' : `Act ${scn.act} - battle ${idx + 1} of ${SCENARIOS.length}`}</h3>
         ${done ? `<p>The Helvetii are broken and Gaul lies open before you. Acts II onward (Germania, Britannia, the civil war and Rome itself) are the next milestones.</p>`
