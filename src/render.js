@@ -108,7 +108,7 @@ export class Renderer {
     this.canvas.width = Math.max(1, Math.floor(r.width * this.dpr)); this.canvas.height = Math.max(1, Math.floor(r.height * this.dpr));
     this.vw = r.width; this.vh = r.height;
     this.fitZoom = Math.min(this.vw / WORLD.w, this.vh / WORLD.h) * 0.98; this.minZoom = this.fitZoom * 0.5;   // you can pull back past the whole field
-    this.cam.zoom = Math.max(this.minZoom, Math.min(3, this.cam.zoom));
+    this.cam.zoom = Math.max(this.minZoom, Math.min(2.4, this.cam.zoom));
     this.clampCam();
   }
   fit() { this.resize(); this.cam.zoom = this.fitZoom; this.cam.x = WORLD.w / 2; this.cam.y = WORLD.h / 2; this.clampCam(); }
@@ -121,7 +121,7 @@ export class Renderer {
   toScreen(wx, wy) { return { x: (wx - this.cam.x) * this.cam.zoom + this.vw / 2, y: (wy - this.cam.y) * this.cam.zoom + this.vh / 2 }; }
 
   buildBackground(scn) {
-    const S = Math.min(0.8, 2600 / WORLD.w), c = document.createElement('canvas');
+    const S = Math.min(1, 4200 / WORLD.w), c = document.createElement('canvas');   // the ground texture is kept at full resolution, so it stays crisp when you zoom in
     c.width = WORLD.w * S; c.height = WORLD.h * S;
     const g = c.getContext('2d'); g.scale(S, S);
     paintTerrain(g, scn);

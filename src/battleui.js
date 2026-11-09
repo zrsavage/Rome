@@ -150,7 +150,7 @@ export class BattleUI {
     });
     c.addEventListener('wheel', (e) => {
       e.preventDefault(); const p = pos(e), before = this.r.toWorld(p.x, p.y);
-      this.r.cam.zoom = Math.max(this.r.minZoom, Math.min(3, this.r.cam.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+      this.r.cam.zoom = Math.max(this.r.minZoom, Math.min(2.4, this.r.cam.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
       const after = this.r.toWorld(p.x, p.y); this.r.cam.x += before.x - after.x; this.r.cam.y += before.y - after.y; this.r.clampCam();
     }, { passive: false });
     window.addEventListener('keydown', (e) => {

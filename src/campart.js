@@ -8,7 +8,7 @@
 import { soldierSprite } from './sprites.js';
 
 export const CAMP_PAINTING = null;
-const W = 1000, H = 620, R = 1.6;
+const W = 1000, H = 620, R = 2.2;
 const cache = new Map();
 
 function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -184,10 +184,10 @@ const SPOTS = { training: trainingGround, barracks, depot, officers: officersTen
 function paintFinish(c, rnd) {
   const g = c.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0);       // back to pixel space (the scene was drawn scaled)
   const w = c.width, h = c.height, src = g.getImageData(0, 0, w, h).data;
-  g.save(); g.globalAlpha = 0.38; g.lineCap = 'round';
+  g.save(); g.globalAlpha = 0.2; g.lineCap = 'round';
   for (let y = 4; y < h; y += 5) for (let x = 4; x < w; x += 5) {
     const i = (Math.floor(y + (rnd() - 0.5) * 3) * w + Math.floor(x + (rnd() - 0.5) * 3)) * 4;
-    g.strokeStyle = `rgb(${src[i]},${src[i + 1]},${src[i + 2]})`; g.lineWidth = 3 + rnd() * 3;
+    g.strokeStyle = `rgb(${src[i]},${src[i + 1]},${src[i + 2]})`; g.lineWidth = 2 + rnd() * 2;
     const a = -0.55 + (rnd() - 0.5) * 0.7, l = 4 + rnd() * 7; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
   }
   g.restore();
@@ -212,5 +212,5 @@ export function campArt(unlockedIds, allIds) {
   tentRows(g); plaza(g); southWall(g); gate(g);
   tower(g, 30, 42); tower(g, 970, 42); tower(g, 30, H - 26); tower(g, 970, H - 26);
   paintFinish(c, rnd);
-  const url = c.toDataURL('image/jpeg', 0.9); cache.set(key, url); return url;
+  const url = c.toDataURL('image/jpeg', 0.95); cache.set(key, url); return url;
 }
