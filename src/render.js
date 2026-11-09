@@ -94,6 +94,7 @@ export class Renderer {
     for (const u of order) if (this.showRange || this.selection.has(u.id)) this.drawRange(ctx, u);
     for (const u of order) this.drawUnit(ctx, u, b);
     for (const f of b.fx) if (f.kind !== 'dust') this.drawFx(ctx, f);
+    this.drawGeneral(ctx, b);
     this.drawOrders(ctx, b);
     this.drawFloats(ctx, b);
     this.drawMarkers(ctx);
@@ -114,6 +115,8 @@ export class Renderer {
     // footprint
     ctx.fillStyle = (rome ? 'rgba(180,40,30,' : 'rgba(40,90,170,') + (sel ? 0.28 : 0.13) + ')';
     ctx.fillRect(-u.d / 2, -u.w / 2, u.d, u.w);
+    if (rome && b.general && u.state !== 'routing' && !b.inCommand(u)) { ctx.strokeStyle = 'rgba(190,190,190,0.55)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.strokeRect(-u.d / 2 - 2, -u.w / 2 - 2, u.d + 4, u.w + 4); ctx.setLineDash([]); }
+    if (u.formation === 'orb') { ctx.strokeStyle = 'rgba(150,200,255,0.95)'; ctx.lineWidth = 1.6; ctx.strokeRect(-u.d / 2, -u.w / 2, u.d, u.w); }
     if (u.formation === 'close') { ctx.strokeStyle = 'rgba(232,195,106,0.9)'; ctx.lineWidth = 1.4; ctx.strokeRect(-u.d / 2, -u.w / 2, u.d, u.w); }
     // dots: front row at +x
     const n = Math.max(1, Math.ceil(u.men / t.perDot));
@@ -190,6 +193,20 @@ export class Renderer {
         ctx.fillStyle = col; ctx.fillRect(tx - 0.8, ty - 16, 1.6, 16); ctx.beginPath(); ctx.moveTo(tx + 0.8, ty - 16); ctx.lineTo(tx + 11, ty - 12); ctx.lineTo(tx + 0.8, ty - 8); ctx.fill();
       }
     }
+  }
+
+  // The general's banner and command ring.
+  drawGeneral(ctx, b) {
+    const g = b.general; if (!g) return; const R = b.cmdNow(), sel = this.genSel, hurt = g.wound > 0;
+    ctx.save(); ctx.lineWidth = sel ? 1.8 : 1;
+    ctx.strokeStyle = hurt ? `rgba(220,110,90,${sel ? 0.7 : 0.3})` : `rgba(232,195,106,${sel ? 0.75 : 0.28})`; ctx.setLineDash(sel ? [10, 7] : [4, 9]);
+    ctx.beginPath(); ctx.arc(g.x, g.y, R, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+    if (g.goal) { ctx.strokeStyle = 'rgba(232,195,106,0.6)'; ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(g.goal.x, g.goal.y); ctx.stroke(); ctx.setLineDash([]); }
+    ctx.translate(g.x, g.y);
+    ctx.fillStyle = '#3a2410'; ctx.fillRect(-0.9, -26, 1.8, 26);
+    ctx.fillStyle = hurt ? '#b05a4a' : '#b3261e'; ctx.beginPath(); ctx.moveTo(0.9, -26); ctx.lineTo(13, -22); ctx.lineTo(0.9, -17); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e8c36a'; ctx.strokeStyle = sel ? '#fff' : '#5a4210'; ctx.lineWidth = sel ? 2 : 1.2; ctx.beginPath(); ctx.arc(0, 0, 7, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.restore();
   }
 
   // Flank arcs: green front, yellow flanks, red rear (matches the sim's angle classes).

@@ -5,6 +5,7 @@ import { levelFor } from './sim.js';
 import { officerById, modsOf, hasPerk, commandLimit, unlockedTypes } from './state.js';
 import { artSrc } from './art.js';
 import { inform } from './ui.js';
+import { DOCTRINES, winsOf } from './doctrine.js';
 import { BUILDINGS, sceneSvg, advice, unlockedBuildings } from './campscene.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -165,6 +166,13 @@ export class Camp {
     if (!this.canAct() || lvl >= 3 || c.gold < gold || c.supplies < sup) return;
     c.gold -= gold; c.supplies -= sup; c.hospital = lvl + 1; this.note(`Field hospital reaches level ${c.hospital}: wounded recover better.`, 'good'); this.endDay(); this.render();
   }
+  learnDoctrine(id) {
+    const c = this.c, d = DOCTRINES.find(x => x.id === id); c.doctrines = c.doctrines || [];
+    const teacher = c.officers.filter(o => o.alive && o[d.trait] >= d.req).sort((a, b) => b[d.trait] - a[d.trait])[0];
+    if (!d || !this.canAct() || c.doctrines.includes(id) || winsOf(c) < d.wins || c.gold < d.gold || !teacher) return;
+    c.gold -= d.gold; c.doctrines.push(id);
+    this.note(`${teacher.rank} ${teacher.name} drills the army in ${d.name}. In battle, press ${d.key}.`, 'good'); this.endDay(); this.render();
+  }
   setInstructor(oid) { const h = this.selected(); h.instructorId = oid || null; this.api.save(); this.render(); }
   assign(oid) {
     const c = this.c, h = this.selected();
@@ -228,6 +236,22 @@ export class Camp {
     }).join('')}</table>`;
   }
 
+  // Formation orders, learned one at a time. Only what you can afford now, plus a single hint of the next, is ever shown.
+  doctrineHtml(act) {
+    const c = this.c, known = c.doctrines || [], wins = winsOf(c), offs = c.officers.filter(o => o.alive);
+    const learned = DOCTRINES.filter(d => known.includes(d.id)).map(d => `<span class="pill" title="${esc(d.text)}">${esc(d.name)} (${d.key})</span>`).join(' ');
+    const open = DOCTRINES.filter(d => !known.includes(d.id) && wins >= d.wins);
+    const next = DOCTRINES.find(d => !known.includes(d.id) && wins < d.wins);
+    const cards = open.map(d => {
+      const t = offs.filter(o => o[d.trait] >= d.req).sort((a, b) => b[d.trait] - a[d.trait])[0];
+      const why = !t ? `needs an officer with ${d.trait} ${d.req}` : c.gold < d.gold ? 'not enough denarii' : '';
+      return `<button class="act" data-a="doctrine" data-m="${d.id}" ${act && !why ? '' : 'disabled'}>${esc(d.name)}<small>${esc(d.text)}</small><small>${d.gold} denarii, 1 day. ${t ? `Taught by ${esc(t.name)}.` : esc(why)}</small></button>`; }).join('');
+    if (!learned && !cards && !next) return '';
+    return `<h4 class="sect">Battle orders</h4><div class="small muted">New formation orders are learned here as the campaign goes on. Your army knows move, attack, hold, defend post and fall back.</div>
+      ${learned ? `<div class="row" style="margin:6px 0">${learned}</div>` : ''}${cards ? `<div class="actions">${cards}</div>` : ''}
+      ${next ? `<div class="small muted" style="margin-top:6px">Another order will be ready to learn after ${next.wins - wins} more victor${next.wins - wins === 1 ? 'y' : 'ies'}.</div>` : ''}`;
+  }
+
   panelBody(id) {
     const c = this.c, h = this.selected(), act = this.canAct(), offs = c.officers.filter(o => o.alive), scn = SCENARIOS[Math.min(c.scenario, SCENARIOS.length - 1)];
     const off = act ? '' : 'disabled', btn = (attrs, label, sub, ok = true) => `<button class="act" ${attrs} ${act && ok ? '' : 'disabled'}>${label}<small>${sub}</small></button>`;
@@ -248,6 +272,7 @@ export class Camp {
           <h4 class="sect">1. What should ${esc(h.name)} practise?</h4><div class="regimens">${cards}</div>
           <h4 class="sect">2. Who leads it?</h4><div class="chips">${chips}</div><div class="small muted" style="margin-top:4px">${this.regimen ? `For ${REGIMENS[this.regimen].name.toLowerCase()}, an officer is judged on ${REGIMENS[this.regimen].trait}.` : 'Officers are better at some drills than others.'}</div>
           <div class="row" style="margin-top:12px"><button class="primary" id="run-drill" ${act && this.regimen ? '' : 'disabled'}>${this.regimen ? 'Run the drill' : 'Choose a drill first'}</button></div>
+          ${this.doctrineHtml(act)}
           <h4 class="sect">Instructor</h4><div class="row small"><span class="muted">Trains ${esc(h.name)} automatically every day for 2 supplies (a modest, steady gain):</span><select id="instr">${insOpts}</select></div>${note}`;
       }
       case 'depot': {
@@ -337,7 +362,7 @@ export class Camp {
     if (q('#run-drill')) q('#run-drill').onclick = () => this.runDrill();
     R.querySelectorAll('.act').forEach(b => b.onclick = () => {
       const a = b.dataset.a, m = b.dataset.m;
-      if (a === 'learn') this.learn(m); else if (a === 'upgrade') this.upgrade(m); else if (a === 'raise') this.raise(m);
+      if (a === 'learn') this.learn(m); else if (a === 'upgrade') this.upgrade(m); else if (a === 'raise') this.raise(m); else if (a === 'doctrine') this.learnDoctrine(m);
       else if (a === 'tribute') this.tribute(m === '1'); else this[a]();
     });
     q('#march').onclick = () => this.api.march(); q('#tomap').onclick = () => this.api.map();

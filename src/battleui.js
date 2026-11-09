@@ -18,11 +18,12 @@ export class BattleUI {
 
   start(scn, specs, opts, onEnd) {
     this.scn = scn; this.b = new Battle(scn, specs, opts); this.onEnd = onEnd; this.ended = false;
-    this.paused = true; this.speed = 1; this.r.selection.clear(); this.logShown = 0; this.running = true; this.groups = {}; this.listeners = []; this.frameHooks = []; this.r.markers = [];
+    this.paused = true; this.speed = 1; this.r.selection.clear(); this.logShown = 0; this.running = true; this.groups = {}; this.listeners = []; this.frameHooks = []; this.r.markers = []; this.genSel = false; this.r.genSel = false;
     $('hud-title').textContent = scn.name;
     $('hud-log').innerHTML = '';
     this.r.buildBackground(scn); this.r.fit();
     this.refreshBottom(); this.setPause(true); this.setSpeed(1);
+    $('help-orders').innerHTML = [['testudo', '<b>T</b> testudo'], ['orbis', '<b>O</b> orbis (hollow square)'], ['relieve', '<b>Y</b> relieve a tired cohort'], ['rally', '<b>F</b> rally the line']].filter(([id]) => this.b.orders.has(id)).map(x => x[1]).join(' &middot; ');
     $('btn-retreat').disabled = false;
     this.showBanner('DEPLOYMENT - press SPACE', 2500);
     this.last = performance.now(); this.acc = 0; this.hudT = 0;
@@ -66,9 +67,11 @@ export class BattleUI {
 
   // ----- selection / orders -----
   selected() { return [...this.r.selection].map(id => this.b.byId(id)).filter(u => u && u.active && u.side === 'rome'); }
-  select(ids, add = false) { if (!add) this.r.selection.clear(); ids.forEach(i => this.r.selection.add(i)); this.refreshBottom(); this.refreshHud(); this.emit('select', { ids }); }
+  selectGeneral() { if (!this.b.general) return; this.r.selection.clear(); this.genSel = true; this.r.genSel = true; this.refreshBottom(); this.refreshHud(); this.emit('general-select'); }
+  select(ids, add = false) { this.genSel = false; this.r.genSel = false; if (!add) this.r.selection.clear(); ids.forEach(i => this.r.selection.add(i)); this.refreshBottom(); this.refreshHud(); this.emit('select', { ids }); }
 
   issueMove(wx, wy, drag, ignore = false) {
+    if (this.genSel && this.b.general) { const g = drag ? { x: (drag.x0 + drag.x1) / 2, y: (drag.y0 + drag.y1) / 2 } : { x: wx, y: wy }; this.b.moveGeneral(g.x, g.y); this.emit('general-move'); return; }
     const us = this.selected(); if (!us.length) return;
     const b = this.b;
     let mx = 0, my = 0, fx = 0, fy = 0;
@@ -122,8 +125,9 @@ export class BattleUI {
           const ids = this.b.units.filter(u => u.side === 'rome' && u.active).filter(u => { const s = this.r.toScreen(u.x, u.y); return s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1; }).map(u => u.id);
           this.select(ids, left.shift);
         } else {
-          const u = this.r.unitAt(this.b, w.x, w.y);
-          if (u && u.side === 'rome') this.select([u.id], left.shift);
+          const u = this.r.unitAt(this.b, w.x, w.y), gn = this.b.general;
+          if (gn && !u && Math.hypot(w.x - gn.x, w.y - gn.y) < 18) this.selectGeneral();
+          else if (u && u.side === 'rome') this.select([u.id], left.shift);
           else if (u) { this.inspect = u.id; this.refreshHud(); }
           else { this.inspect = null; this.select([], false); }
         }
@@ -133,7 +137,7 @@ export class BattleUI {
         if (dl) this.issueMove(0, 0, dl, e.ctrlKey);
         else {
           const u = this.r.unitAt(this.b, w.x, w.y);
-          if (u && u.side === 'gaul') this.issueAttack(u); else this.issueMove(w.x, w.y, null, e.ctrlKey);
+          if (u && u.side === 'gaul' && !this.genSel) this.issueAttack(u); else this.issueMove(w.x, w.y, null, e.ctrlKey);
         }
         this.r.dragLine = null; right = null;
       } else if (e.button === 1) this.pd = null;
@@ -154,7 +158,13 @@ export class BattleUI {
       if (['a', 'w', 's', 'd', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k) && !e.ctrlKey) this.keys.add(k);
       if (k === 'h') { const hs = this.selected(); hs.forEach(u => { this.b.setHold(u); }); if (hs.length) { this.emit('hold', { count: hs.length }); this.showBanner('Hold position', 600); } }
       if (k === 'g') { const gs = this.selected(); gs.forEach(u => this.b.setEngage(u)); if (gs.length) { this.emit('engage', { count: gs.length }); this.showBanner('Defend post', 600); } }
-      if (k === 't') { const ts = this.selected(); ts.forEach(u => this.b.toggleFormation(u)); if (ts.length) this.emit('formation', { count: ts.length }); }
+      if (k === 't' || k === 'o' || k === 'y') {
+        const id = k === 't' ? 'testudo' : k === 'o' ? 'orbis' : 'relieve', ts = this.selected().filter(u => u.type.cat === 'inf');
+        if (!this.b.orders.has(id)) { if (this.selected().length) this.showBanner('You have not learned that order yet. Train it at camp.', 1400); }
+        else if (ts.length) { ts.forEach(u => k === 't' ? this.b.toggleFormation(u) : k === 'o' ? this.b.toggleOrbis(u) : this.b.relieve(u)); this.emit('formation', { count: ts.length }); }
+      }
+      if (k === 'f') { if (!this.b.orders.has('rally')) this.showBanner('You have not learned that order yet. Train it at camp.', 1400); else if (this.b.rallyCd > 0) this.showBanner(`The line was just rallied (${Math.ceil(this.b.rallyCd)}s)`, 900); else if (this.b.rally()) this.showBanner('Rally!', 700); }
+      if (k === 'e') this.selectGeneral();
       if (k === 'r') { const rs = this.selected(); rs.forEach(u => this.b.fallBack(u)); if (rs.length) this.emit('fallback', { count: rs.length }); }
       if (k === 'escape') this.select([]);
       if (k === 'q') this.select(this.b.units.filter(u => u.side === 'rome' && u.active).map(u => u.id));
@@ -185,6 +195,7 @@ export class BattleUI {
   // ----- HUD -----
   refreshBottom() {
     const el = $('hud-bottom'); el.innerHTML = '';
+    if (this.b.general) { const d = document.createElement('div'); d.className = 'ucard'; d.dataset.gen = '1'; d.innerHTML = '<b>General (E)</b><div class="muted" style="font-size:12px">command ring</div>'; d.onclick = () => this.selectGeneral(); el.appendChild(d); }
     this.b.units.filter(u => u.side === 'rome').forEach(u => {
       const d = document.createElement('div'); d.className = 'ucard'; d.dataset.id = u.id;
       d.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 52, 52)}"><b></b><div class="bar x"><i></i></div><div class="bar m" style="margin-top:3px"><i></i></div>`;
@@ -207,6 +218,7 @@ export class BattleUI {
     const waveTxt = clear ? `   |  Field clear. Next wave in ${mm(Math.max(0, Math.min(eta, b.callDelay - b.clearT)))}` : '';
     $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${Math.round(b.activeMen('gaul'))}${objTxt}${waveTxt}   ${gs}`;
     document.querySelectorAll('.ucard').forEach(d => {
+      if (d.dataset.gen) { d.classList.toggle('sel', this.genSel); return; }
       const u = b.byId(+d.dataset.id); if (!u) return;
       d.dataset.stance = u.stance; d.classList.toggle('sel', this.r.selection.has(u.id)); d.classList.toggle('gone', !u.present);
       d.querySelector('.x i').style.width = Math.max(0, u.men / u.maxMen * 100) + '%';
@@ -223,15 +235,16 @@ export class BattleUI {
     const sel = this.selected(), ins = this.inspect ? b.byId(this.inspect) : null;
     const u = sel.length === 1 ? sel[0] : (!sel.length && ins ? ins : null);
     const L = $('hud-left');
+    if (this.genSel && b.general) { const g = b.general; L.innerHTML = `<h3>Your general</h3><div class="muted">The gold ring is your command radius. Cohorts inside it recover morale and rally faster and charge with full force; outside it they are slow to recover. Right-click to move the general.</div>` + (g.wound > 0 ? `<div class="kv"><span>Wounded</span><span>${Math.ceil(g.wound)}s</span></div>` : '') + (b.orders.has('rally') ? `<div class="kv"><span>Rally (F)</span><span>${b.rallyCd > 0 ? Math.ceil(b.rallyCd) + 's' : 'ready'}</span></div>` : ''); return; }
     if (!sel.length && !ins) { L.innerHTML = '<h3>No selection</h3><div class="muted">Click a cohort, or drag a box. Right-click to order. Press ? for controls.</div>'; return; }
-    if (sel.length > 1) { L.innerHTML = `<h3>${sel.length} units selected</h3><div class="muted">Right-click to move in a line; right-drag to set a battle line and facing. H to hold, T for testudo.</div>`; return; }
+    if (sel.length > 1) { L.innerHTML = `<h3>${sel.length} units selected</h3><div class="muted">Right-click to move in a line; right-drag to set a battle line and facing. H to hold.</div>`; return; }
     if (!u) return;
     const t = u.type, lvl = LEVEL_NAMES[u.lvl];
     const kv = (a, v) => `<div class="kv"><span>${a}</span><span>${v}</span></div>`;
     L.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 88, 88)}"><h3>${u.name}</h3><div class="muted">${t.blurb}</div>` +
       kv('Men', `${u.men} / ${u.maxMen}`) + kv('Morale', `${Math.round(u.morale)} / ${Math.round(u.maxMorale)}`) + kv('Fatigue', Math.round(u.fatigue) + '%') +
       kv('Experience', lvl) + kv('Drill', Math.round(u.drill)) +
-      (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics})` : 'none') + kv('Stance', u.stance === 'hold' ? 'Hold (never leaves)' : 'Defend post') + kv('Formation', u.formation === 'close' ? 'Close order' : 'Normal') : '') +
+      (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics})` : 'none') + kv('Stance', u.stance === 'hold' ? 'Hold (never leaves)' : 'Defend post') + kv('Formation', u.formation === 'close' ? 'Testudo' : u.formation === 'orb' ? 'Orbis' : 'Normal') + kv('Command', b.inCommand(u) ? 'in command' : 'OUT OF COMMAND') : '') +
       (t.pilum ? kv('Pila volleys', u.pilumLeft) : '') + (t.range ? kv('Ammo', Math.max(0, Math.round(u.ammo / t.ammo * 100)) + '%') : '') +
       kv('State', u.state);
   }

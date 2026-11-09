@@ -29,6 +29,7 @@ export function play(strategy, i, difficulty, seed, mutate = null) {
   const dt = 0.1;
   let guard = 0;
   while (!b.result && guard++ < 20000) {
+    if (b.general && Math.abs(b.t % 3) < dt) { const live = rome.filter(u => u.active && u.type.cat === 'inf'); if (live.length) b.moveGeneral(live.reduce((a, u) => a + u.x, 0) / live.length, live.reduce((a, u) => a + u.y, 0) / live.length + 70); }   // the general trails the line
     if (strategy === 'charge' && b.t < 0.2) rome.forEach(u => { const n = b.nearestEnemy(u); if (n) b.setAttack(u, n.e); });
     if (strategy === 'objective' && b.t < 0.2) {
       // advance infantry on the objective (if any), hold cavalry/ranged back until contact
