@@ -15,10 +15,12 @@ export const backups = (n) => read(histKey(n)).map((b, i) => ({ i, t: b.t, why: 
 export const restoreBackup = (n, i) => { const b = read(histKey(n))[i]; return b ? JSON.parse(b.data) : null; };
 export const clearBackups = (n) => { try { localStorage.removeItem(histKey(n)); } catch { /* ignore */ } };
 
-export function exportCampaign(c) {
-  const blob = new Blob([JSON.stringify({ game: 'legio', format: 1, savedAt: new Date().toISOString(), campaign: c }, null, 1)], { type: 'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = `legio-${(c.player && c.player.name || 'campaign').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-battle${c.scenario + 1}-day${c.day}.json`;
+export async function exportCampaign(c) {
+  const text = JSON.stringify({ game: 'legio', format: 1, savedAt: new Date().toISOString(), campaign: c }, null, 1);
+  const name = `legio-${(c.player && c.player.name || 'campaign').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-battle${c.scenario + 1}-day${c.day}.json`;
+  // Inside a claude.ai artifact the page may not trigger a download itself: ask the viewer through the downloads capability.
+  try { const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; if (dl) { await dl.save({ filename: name, data: text }); return; } } catch (e) { if (e && e.code === 'declined') return; }
+  const blob = new Blob([text], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 // Returns a campaign object, or throws with a readable message.
