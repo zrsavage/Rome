@@ -1,5 +1,6 @@
 // Canvas renderer for the battle: terrain, soldier dots, effects, order lines.
 import { WORLD, elevAt, terrainAt, forestIn, riverShift, vnoise } from './data.js';
+import { soldierSprite } from './sprites.js';
 import { mulberry32 } from './sim.js';
 
 // Hillshading and contour lines from the real height map, lit from the north-west.
@@ -197,21 +198,9 @@ export class Renderer {
           ctx.fillStyle = t.trim; ctx.fillRect(xx - 0.7, y - 0.7, 1.4, 1.4);
           continue;
         }
-        ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(xx + 0.7, y + 1.1, r * 0.9, r * 0.7, 0, 0, 7); ctx.fill();
-        if (t.cat === 'cav') {
-          ctx.fillStyle = rome ? '#5e422a' : '#74502e'; ctx.beginPath(); ctx.ellipse(xx, y, r * 1.45, r * 0.78, 0, 0, 7); ctx.fill();
-          ctx.fillStyle = t.color; ctx.beginPath(); ctx.arc(xx - r * 0.15, y, r * 0.78, 0, 7); ctx.fill();
-          ctx.fillStyle = helm; ctx.beginPath(); ctx.arc(xx + r * 0.1, y, r * 0.42, 0, 7); ctx.fill();
-          ctx.strokeStyle = '#4a3a22'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(xx + r * 0.2, y + r * 0.5); ctx.lineTo(xx + r * 2.2, y + r * 0.5); ctx.stroke();
-        } else if (t.cat === 'ranged') {
-          ctx.fillStyle = t.color; ctx.beginPath(); ctx.arc(xx, y, r * 0.85, 0, 7); ctx.fill();
-          ctx.fillStyle = helm; ctx.beginPath(); ctx.arc(xx + r * 0.2, y, r * 0.45, 0, 7); ctx.fill();
-        } else {
-          ctx.fillStyle = '#d9b48f'; ctx.beginPath(); ctx.arc(xx - r * 0.35, y, r * 0.62, 0, 7); ctx.fill();               // body
-          ctx.fillStyle = helm; ctx.beginPath(); ctx.arc(xx - r * 0.3, y, r * 0.5, 0, 7); ctx.fill();                      // helmet or hair
-          if (rome) { ctx.fillStyle = shade(k); ctx.fillRect(xx + r * 0.05, y - r * 0.95, r * 0.62, r * 1.9); ctx.fillStyle = t.trim; ctx.fillRect(xx + r * 0.22, y - r * 0.2, r * 0.28, r * 0.4); }
-          else { ctx.fillStyle = t.color; ctx.beginPath(); ctx.arc(xx + r * 0.3, y, r * 0.95, 0, 7); ctx.fill(); ctx.fillStyle = t.trim; ctx.beginPath(); ctx.arc(xx + r * 0.3, y, r * 0.35, 0, 7); ctx.fill(); }
-        }
+        // each man is a real top-down figure (see sprites.js): helmet or hair, shoulders, shield and weapon, facing the way the unit faces
+        const cav = t.cat === 'cav', sz = cav ? Math.min(Math.max(sx * 1.5, 9), 26) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
+        ctx.drawImage(soldierSprite(u.typeKey, (k * 7 + u.id) % 3), xx - sz / 2, y - sz / 2, sz, sz);
       }
     }
     // standard: pole, crossbar, discs and a pennant (a gilded eagle-bearer for Rome, a boar standard for the Gauls)

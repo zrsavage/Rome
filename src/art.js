@@ -2,6 +2,7 @@
 // If real art exists (assets/art/manifest.json, or an inlined manifest in single-file builds) it is used;
 // otherwise a procedural placeholder is drawn. Drop finished images into assets/art/ and list them in the manifest.
 import { UNIT_TYPES, WORLD, setWorld } from './data.js';
+import { soldierSprite } from './sprites.js';
 import { paintTerrain } from './render.js';
 
 let manifest = {};
@@ -51,30 +52,8 @@ function unitIcon(key, w, h) {
   const grd = g.createLinearGradient(0, 0, 0, h); grd.addColorStop(0, '#3a2e1b'); grd.addColorStop(1, '#17130d');
   g.fillStyle = grd; g.fillRect(0, 0, w, h);
   g.strokeStyle = t.trim; g.globalAlpha = 0.55; g.lineWidth = Math.max(2, w * 0.025); g.strokeRect(w * 0.03, h * 0.03, w * 0.94, h * 0.94); g.globalAlpha = 1;
-  g.save(); g.translate(w / 2, h * 0.47); const u = Math.min(w, h) / 100; g.scale(u, u);
-  g.fillStyle = t.color; g.strokeStyle = t.trim; g.lineWidth = 3; g.lineJoin = 'round'; g.lineCap = 'round';
-  const shield = () => { g.beginPath(); g.roundRect(-22, -34, 44, 68, 8); g.fill(); g.stroke(); g.beginPath(); g.arc(0, 0, 7, 0, 7); g.fillStyle = t.trim; g.fill(); };
-  if (key === 'legionary') {
-    shield(); g.strokeStyle = t.trim; g.lineWidth = 3.5; g.beginPath(); g.moveTo(-4, -26); g.lineTo(4, -12); g.lineTo(-3, -9); g.lineTo(5, 6); g.moveTo(-5, 12); g.lineTo(5, 12); g.stroke();
-  } else if (key === 'slinger') {
-    g.beginPath(); g.arc(0, 4, 26, Math.PI * 0.15, Math.PI * 1.05); g.stroke(); g.fillStyle = t.trim; g.beginPath(); g.arc(-24, -16, 7, 0, 7); g.fill();
-    g.beginPath(); g.moveTo(24, 4); g.lineTo(34, -22); g.stroke();
-  } else if (key === 'archer') {
-    g.beginPath(); g.arc(-8, 0, 32, -Math.PI * 0.42, Math.PI * 0.42); g.stroke(); g.beginPath(); g.moveTo(11, -29); g.lineTo(11, 29); g.stroke();
-    g.beginPath(); g.moveTo(-34, 0); g.lineTo(32, 0); g.moveTo(24, -6); g.lineTo(32, 0); g.lineTo(24, 6); g.stroke();
-  } else if (t.cat === 'cav') {
-    g.beginPath(); g.moveTo(-26, 30); g.lineTo(-20, -4); g.lineTo(-30, -22); g.lineTo(-14, -34); g.lineTo(8, -26); g.lineTo(26, -4); g.lineTo(30, 14); g.lineTo(18, 16); g.lineTo(10, 2); g.lineTo(0, 12); g.lineTo(-4, 30); g.closePath(); g.fill(); g.stroke();
-    g.fillStyle = t.trim; g.beginPath(); g.arc(-8, -22, 3, 0, 7); g.fill();
-  } else if (key === 'warband') {
-    g.beginPath(); g.arc(0, 4, 26, 0, 7); g.fill(); g.stroke(); g.fillStyle = t.trim; g.beginPath(); g.arc(0, 4, 7, 0, 7); g.fill();
-    g.strokeStyle = t.trim; g.beginPath(); g.moveTo(-30, -30); g.lineTo(30, 34); g.moveTo(30, -30); g.lineTo(-30, 34); g.stroke();
-  } else if (key === 'gaul_elite') {
-    g.lineWidth = 6; g.beginPath(); g.arc(0, 0, 24, 0.3, Math.PI * 2 - 0.3); g.stroke(); g.fillStyle = t.trim; g.beginPath(); g.arc(21, -10, 5, 0, 7); g.arc(21, 10, 5, 0, 7); g.fill();
-    g.lineWidth = 3; g.beginPath(); g.moveTo(0, -34); g.lineTo(0, 34); g.stroke();
-  } else { // skirmishers
-    g.lineWidth = 3; for (const o of [-14, 0, 14]) { g.beginPath(); g.moveTo(o - 16, 30); g.lineTo(o + 16, -26); g.stroke(); g.fillStyle = t.trim; g.beginPath(); g.moveTo(o + 16, -26); g.lineTo(o + 8, -22); g.lineTo(o + 20, -16); g.fill(); }
-  }
-  g.restore();
+  // the unit's own top-down soldier, turned to face up the card
+  g.save(); g.translate(w / 2, h * 0.43); g.rotate(-Math.PI / 2); const sz = Math.min(w, h) * 0.8; g.drawImage(soldierSprite(key, 0), -sz / 2, -sz / 2, sz, sz); g.restore();
   g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, h * 0.8, w, h * 0.2);
   g.fillStyle = '#f0e4c8'; g.font = `bold ${Math.round(h * 0.085)}px Cinzel, Georgia, serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText((UNIT_TYPES[key] ? UNIT_TYPES[key].name : key).replace('Cohort', '').replace('(Cavalry Turma)', '').trim().slice(0, 22), w / 2, h * 0.9);
