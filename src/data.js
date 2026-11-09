@@ -79,20 +79,41 @@ export const DIFFICULTY = {
   legendary: { name: 'Imperator',  enemyMult: 1.6,  enemyMorale: 12, romeMorale: -5, officerRisk: 1.5,  reward: 1.3,  desc: 'Brutal. Draws will feel like victories.' }
 };
 
+// ---- Height ----
+// Hills are smooth, slightly irregular bumps (height in metres, `h` per hill, default 40). Everything that matters about a hill in battle
+// (speed up and down slopes, charge power, morale, missile fire, who can see whom) is derived from this one function.
+const hash2 = (ix, iy) => { let h = Math.imul(ix, 374761393) + Math.imul(iy, 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+const vnoise = (x, y) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = hash2(ix, iy), b = hash2(ix + 1, iy), c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1); return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy; };
+export function elevAt(scn, x, y) {
+  if (!scn || !scn.terrain) return 0;
+  let e = 0;
+  for (const f of scn.terrain) {
+    if (f.kind !== 'hill') continue;
+    const nx = (x - f.cx) / f.rx, ny = (y - f.cy) / f.ry;
+    const r = Math.sqrt(nx * nx + ny * ny) + (vnoise(x / 80 + f.cx * 0.017, y / 80 + f.cy * 0.011) - 0.5) * 0.32;
+    if (r >= 1) continue;
+    const t = 1 - Math.max(0, r), v = (f.h || 40) * t * t * (3 - 2 * t) * (0.88 + 0.24 * vnoise(x / 38, y / 38));
+    if (v > e) e = v;
+  }
+  return e;
+}
+
 // Terrain features. Rectangles use x,y,w,h; ellipses use cx,cy,rx,ry.
 export function terrainAt(scn, x, y) {
   let r = { speed: 1, def: 1, atk: 1, cav: 1, kind: 'grass' };
   if (!scn) return r;
   for (const f of scn.terrain) {
     let inside;
+    if (f.kind === 'hill') continue;                                   // hills come from the height map below
     if (f.rx) inside = ((x - f.cx) / f.rx) ** 2 + ((y - f.cy) / f.ry) ** 2 <= 1;
     else inside = x >= f.x && x <= f.x + f.w && y >= f.y && y <= f.y + f.h;
     if (!inside) continue;
     if (f.kind === 'water')  r = { speed: 0.35, def: 1.0, atk: 0.8, cav: 0.5, kind: 'water' };
     if (f.kind === 'ford')   r = { speed: 0.8,  def: 1.0, atk: 0.9, cav: 0.8, kind: 'ford' };
-    if (f.kind === 'hill')   r = { speed: 0.9,  def: 0.88, atk: 1.08, cav: 0.9, kind: 'hill' };
     if (f.kind === 'forest') r = { speed: 0.6,  def: 0.95, atk: 0.95, cav: 0.55, kind: 'forest' };
   }
+  if (r.kind === 'grass' && elevAt(scn, x, y) >= 6) r = { speed: 1, def: 0.9, atk: 1.06, cav: 0.95, kind: 'hill' };
   return r;
 }
 
@@ -125,7 +146,7 @@ export const SCENARIOS = [
     rewards: { gold: 260, supplies: 120, recruits: 60, xpBase: 30, officerXp: 35 }, rewardMult: 1, unlock: []
   },
   {
-    id: 'arar', act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Crossing of the Arar', kind: 'skirmish',
+    id: 'arar', fog: true, act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Crossing of the Arar', kind: 'skirmish',
     geo: { lat: 45.94, lon: 4.77, place: 'The Arar (Saone) near Trevoux', note: 'Site of the Tigurini crossing is approximate' },
     briefing: 'The Helvetii are crossing the Arar, and the Tigurini clan is still on your bank, strung out and unready. Strike hard before the rest can return. The river is deep: only the ford and the banks allow easy movement, and the warbands across the water are watching.',
     objective: 'Destroy the stragglers (reduce the host below 25%), or withdraw with at least 45% of your men.',
@@ -171,7 +192,7 @@ export const SCENARIOS = [
     unlock: [{ type: 'archer', name: 'Cretan Archers', men: 100, maxMen: 130, xp: 25, drill: 20, msg: 'Cretan mercenary archers join your column.' }]
   },
   {
-    id: 'oppidum', act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Hill Fort of the Sequani', kind: 'skirmish',
+    id: 'oppidum', fog: true, act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Hill Fort of the Sequani', kind: 'skirmish',
     geo: { lat: 47.24, lon: 6.02, place: 'Vesontio (Besancon)', note: 'Great oppidum of the Sequani on a loop of the Doubs' },
     briefing: 'A local chieftain has fortified a hilltop and refuses to supply your army. The slopes are steep and the defenders are dug in. Soften them with missiles, lure them down, or storm the crest.',
     objective: 'Capture the hill fort summit by holding it for 150 seconds, or break the defenders. Fighting uphill is costly.',
@@ -180,7 +201,7 @@ export const SCENARIOS = [
     objectives: [{ id: 'fort', name: 'Hill Fort', x: 800, y: 270, r: 90, owner: 'gaul' }],
     rule: { holdSecs: 150, attacker: 'rome' },
     terrain: [
-      { kind: 'hill', cx: 800, cy: 260, rx: 330, ry: 150 }, { kind: 'forest', cx: 250, cy: 520, rx: 170, ry: 100 }, { kind: 'forest', cx: 1350, cy: 560, rx: 180, ry: 110 },
+      { kind: 'hill', cx: 800, cy: 260, rx: 330, ry: 150, h: 70 }, { kind: 'forest', cx: 250, cy: 520, rx: 170, ry: 100 }, { kind: 'forest', cx: 1350, cy: 560, rx: 180, ry: 110 },
       { kind: 'water', x: 0, y: 620, w: 520, h: 40 }, { kind: 'water', x: 1080, y: 620, w: 520, h: 40 }
     ],
     enemy: [
@@ -196,7 +217,7 @@ export const SCENARIOS = [
     unlock: [{ type: 'legionary', name: 'IV Cohort', men: 360, maxMen: 480, xp: 10, drill: 15, msg: 'Fresh legionaries of the IV Cohort arrive from Cisalpine Gaul.' }]
   },
   {
-    id: 'silva', act: 'I', theater: 'Gaul', year: '58 BC', name: 'Ambush in the Silva', kind: 'skirmish',
+    id: 'silva', fog: true, act: 'I', theater: 'Gaul', year: '58 BC', name: 'Ambush in the Silva', kind: 'skirmish',
     geo: { lat: 47.15, lon: 4.00, place: 'Forests of the Morvan', note: 'Illustrative ambush site' },
     briefing: 'Dense forest closes around your column. The Gauls know every path; you are caught in a clearing with enemies on both flanks. This is the sort of day that has broken Roman armies before. Hold together, survive until your rearguard arrives, and the spoils of a hard-won escape will be rich.',
     objective: 'Survive until the relief column arrives and the Gauls withdraw: break the host, or hold on until the time runs out with at least 45% of your army.',
@@ -230,7 +251,7 @@ export const SCENARIOS = [
     objectives: [{ id: 'ridge', name: 'The Ridge', x: 800, y: 420, r: 110, owner: 'gaul' }],
     rule: { holdSecs: 180, attacker: 'rome' },
     terrain: [
-      { kind: 'hill', cx: 800, cy: 260, rx: 520, ry: 190 }, { kind: 'hill', cx: 800, cy: 760, rx: 420, ry: 110 },
+      { kind: 'hill', cx: 800, cy: 260, rx: 520, ry: 190, h: 60 }, { kind: 'hill', cx: 800, cy: 760, rx: 420, ry: 110, h: 30 },
       { kind: 'forest', cx: 160, cy: 470, rx: 180, ry: 140 }, { kind: 'forest', cx: 1460, cy: 480, rx: 150, ry: 130 }, { kind: 'water', x: 0, y: 620, w: 330, h: 50 }
     ],
     enemy: [

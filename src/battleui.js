@@ -216,7 +216,7 @@ export class BattleUI {
     const eta = b.nextWaveEta(), clear = eta !== null && b.activeMen('gaul') === 0;
     $('btn-wave').classList.toggle('hidden', !clear);
     const waveTxt = clear ? `   |  Field clear. Next wave in ${mm(Math.max(0, Math.min(eta, b.callDelay - b.clearT)))}` : '';
-    $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${Math.round(b.activeMen('gaul'))}${objTxt}${waveTxt}   ${gs}`;
+    $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${b.scn.fog && b.units.some(u => u.side === 'gaul' && u.active && !u.spotted) ? '?' : Math.round(b.activeMen('gaul'))}${objTxt}${waveTxt}   ${gs}`;
     document.querySelectorAll('.ucard').forEach(d => {
       if (d.dataset.gen) { d.classList.toggle('sel', this.genSel); return; }
       const u = b.byId(+d.dataset.id); if (!u) return;

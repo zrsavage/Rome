@@ -56,6 +56,13 @@ a warband held by a cohort about 50 s. Tuning constants: `FRONT_GRIND`, `FLANK_D
 - **Pursuit.** Cavalry on "defend post" ride down routers within 220 units and kill them at 2.2x. Routs are where most real losses happen.
 - **Orders are learned in camp** (Training Ground, "Battle orders"), one at a time, each needing victories and an officer who can teach it: Testudo `T` (1 win, drill 1), Rally `F` (2 wins, tactics 2), Relief of the Line `Y` (3 wins, drill 3), Orbis `O` (4 wins, drill 4). A new player begins with move, attack, hold, defend post and fall back. The list lives in `src/doctrine.js`.
 
+## Height and sight
+- **A real height map.** Hills are smooth, irregular bumps (`elevAt` in `src/data.js`, metres, per-hill `h`), not flat patches. The battlefield is drawn with hillshading and contour lines from the same data.
+- **Slopes.** Marching uphill slows a unit (cavalry more), downhill speeds it up a little.
+- **Charges and missiles.** The height difference between attacker and target scales charge impact by up to 30% either way and missile damage by up to 15%. Defenders lose up to 15% less morale on a hilltop.
+- **Sight.** In scenarios with `fog: true` (Arar, Hill Fort, Silva) the enemy is hidden until seen. Sight range is 320 and grows with the viewer's height; the general sees 420. A ridge blocks the line of sight, tree canopy adds 11 m, and a unit inside a wood is only seen from about 40% of the normal range. Units in melee are always seen. Scouting in camp reveals the opening positions for the first 25 seconds. The enemy total shows as "Foe ?" while unseen enemies remain.
+- **Effects.** Clashes flash and shake the screen, sparks show contact (red on flank and rear hits), routs send out a ring, the fallen lie on the field.
+
 ## Stances
 
 Orders never change a unit's stance. A move order sets the unit's new **post**. Units on *Defend post* (the default) fight what

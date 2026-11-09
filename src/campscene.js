@@ -50,16 +50,27 @@ function art(id) {
 export function sceneSvg(c, { visited = [], focus = null } = {}) {
   const un = unlockedBuildings(c), unIds = new Set(un.map(b => b.id)), seen = new Set(visited);
   let s = `<svg viewBox="0 0 ${W} ${H}" id="campsvg" role="group" aria-label="Your camp. Click a building to use it.">
-    <defs><linearGradient id="gnd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6e5f3a"/><stop offset="1" stop-color="#5a4d2e"/></linearGradient></defs>
-    <rect width="${W}" height="${H}" fill="#2b2415"/><rect x="30" y="30" width="940" height="560" fill="url(#gnd)"/>`;
+    <defs><linearGradient id="gnd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#76673f"/><stop offset="1" stop-color="#5a4d2e"/></linearGradient>
+      <filter id="shadow" x="-20%" y="-20%" width="150%" height="160%"><feDropShadow dx="5" dy="7" stdDeviation="3.5" flood-color="#0b0804" flood-opacity=".55"/></filter>
+      <filter id="grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="5" result="t"/><feColorMatrix in="t" values="0 0 0 0 .09  0 0 0 0 .07  0 0 0 0 .02  0 0 0 .55 -.12"/></filter>
+      <radialGradient id="glow"><stop offset="0" stop-color="#ffd27a" stop-opacity=".75"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>
+      <linearGradient id="dusk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe9a8" stop-opacity=".07"/><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient></defs>
+    <rect width="${W}" height="${H}" fill="#3a4524"/><rect width="${W}" height="${H}" filter="url(#grain)"/>
+    <rect x="30" y="30" width="940" height="560" fill="url(#gnd)"/><rect x="30" y="30" width="940" height="560" filter="url(#grain)" opacity=".8"/>`;
   // ground texture
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   for (let i = 0; i < 160; i++) s += `<ellipse cx="${40 + rnd() * 920}" cy="${40 + rnd() * 540}" rx="${3 + rnd() * 9}" ry="${2 + rnd() * 5}" fill="${rnd() > 0.5 ? '#80713f' : '#4f432a'}" opacity=".35"/>`;
-  // streets
-  s += `<rect x="30" y="278" width="940" height="44" fill="#a08a58" opacity=".55"/><rect x="478" y="30" width="44" height="560" fill="#a08a58" opacity=".55"/>`;
+  // streets, with rutted edges
+  s += `<rect x="30" y="278" width="940" height="44" fill="#a08a58" opacity=".55"/><rect x="478" y="30" width="44" height="560" fill="#a08a58" opacity=".55"/>
+    <path d="M30 284 H970 M30 316 H970 M484 30 V590 M516 30 V590" stroke="#6a5830" stroke-width="1.2" opacity=".5" stroke-dasharray="14 9" fill="none"/>`;
   // palisade (with a gate at the bottom)
   s += `<path d="M30 30 H970 V590 H560 M440 590 H30 Z" fill="none" stroke="#2f2210" stroke-width="11"/><path d="M30 30 H970 V590 H560 M440 590 H30 Z" fill="none" stroke="#9a7a42" stroke-width="6" stroke-dasharray="3 6"/>
     <rect x="420" y="574" width="22" height="34" fill="#4a3516" stroke="#241808" stroke-width="2"/><rect x="558" y="574" width="22" height="34" fill="#4a3516" stroke="#241808" stroke-width="2"/>`;
+  // corner watchtowers, with a flapping banner and a torch
+  for (const [tx, ty] of [[30, 30], [970, 30], [30, 590], [970, 590]]) s += `<g transform="translate(${tx},${ty})" filter="url(#shadow)"><rect x="-17" y="-17" width="34" height="34" fill="#8a6a38" stroke="#2f2210" stroke-width="3"/><rect x="-11" y="-11" width="22" height="22" fill="#6d5128"/><polygon points="-21,-14 0,-32 21,-14" fill="#7a2a22" stroke="#2a0a08" stroke-width="2"/><line x1="0" y1="-32" x2="0" y2="-52" stroke="#3a2a14" stroke-width="2.5"/><polygon class="flag" points="0,-52 20,-47 0,-41" fill="#b3261e"/></g>`;
+  // campfires with a warm glow, and sentries pacing the street
+  for (const [fx, fy] of [[446, 338], [554, 262], [250, 262], [750, 338]]) s += `<g transform="translate(${fx},${fy})"><circle r="30" fill="url(#glow)" class="flick"/><circle r="6" fill="#3a2a14"/><polygon class="flame" points="0,-12 5,0 -5,0" fill="#ff9a2e"/><polygon class="flame f2" points="0,-8 3,0 -3,0" fill="#ffe08a"/></g>`;
+  s += `<g class="walker"><circle r="4.5" fill="#b3261e" stroke="#2a0a08"/><circle cy="-4" r="2.6" fill="#cfcfc4"/></g><g class="walker w2"><circle r="4.5" fill="#b3261e" stroke="#2a0a08"/><circle cy="-4" r="2.6" fill="#cfcfc4"/></g>`;
   // plaza standard
   s += `<g transform="translate(500,300)"><line x1="0" y1="0" x2="0" y2="-40" stroke="#3a2a14" stroke-width="4"/><circle cx="0" cy="-46" r="9" fill="#e8c36a" stroke="#6a4a14" stroke-width="2"/><rect x="-14" y="-34" width="28" height="12" fill="#a8322a"/></g>`;
   // praetorium (always available)
@@ -73,12 +84,12 @@ export function sceneSvg(c, { visited = [], focus = null } = {}) {
     if (!unIds.has(b.id)) { s += `<g transform="translate(${tx},${ty})" class="plot" aria-hidden="true"><rect x="6" y="6" width="158" height="98" rx="8" fill="none" stroke="#e8c36a" stroke-opacity=".28" stroke-width="2.5" stroke-dasharray="8 8"/><text x="85" y="66" text-anchor="middle" class="plotq">?</text></g>`; continue; }
     const isNew = !seen.has(b.id), isFocus = focus === b.id;
     s += `<g class="bld ${isFocus ? 'focus' : ''}" data-b="${b.id}" tabindex="0" role="button" aria-label="${b.name}: ${b.sub}" transform="translate(${tx},${ty})"><title>${b.name}: ${b.sub}</title>
-      <rect x="-6" y="-6" width="182" height="146" rx="10" class="hit"/>${art(b.id)}
+      <rect x="-6" y="-6" width="182" height="146" rx="10" class="hit"/><g filter="url(#shadow)">${art(b.id)}</g>
       ${isFocus ? '<rect x="-4" y="-4" width="178" height="124" rx="10" class="pulsebox"/>' : ''}
       ${isNew ? '<g transform="translate(160,2)"><circle r="13" fill="#e8c36a" stroke="#2a1a08" stroke-width="2"/><text y="5" text-anchor="middle" class="newb">NEW</text></g>' : ''}
       <text x="85" y="132" class="bl" text-anchor="middle">${b.name}</text></g>`;
   }
-  s += `</svg>`;
+  s += `<rect width="${W}" height="${H}" fill="url(#dusk)" pointer-events="none"/></svg>`;
   return s;
 }
 

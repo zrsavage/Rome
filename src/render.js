@@ -1,47 +1,82 @@
 // Canvas renderer for the battle: terrain, soldier dots, effects, order lines.
-import { WORLD } from './data.js';
+import { WORLD, elevAt } from './data.js';
 import { mulberry32 } from './sim.js';
 
+// Hillshading and contour lines from the real height map, lit from the north-west.
+function paintRelief(g, scn) {
+  if (!scn.terrain.some(f => f.kind === 'hill')) return;
+  const cell = 2, gw = Math.ceil(WORLD.w / cell), gh = Math.ceil(WORLD.h / cell), H = new Float32Array(gw * gh);
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) H[y * gw + x] = elevAt(scn, x * cell, y * cell);
+  const c = document.createElement('canvas'); c.width = gw; c.height = gh;
+  const cg = c.getContext('2d'), img = cg.createImageData(gw, gh), d = img.data;
+  const at = (x, y) => H[Math.max(0, Math.min(gh - 1, y)) * gw + Math.max(0, Math.min(gw - 1, x))];
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+    const h = H[y * gw + x]; if (h < 0.4) continue;
+    const lit = (at(x + 1, y + 1) - at(x - 1, y - 1)) * 0.9;                      // positive: slope faces the light
+    // layers, composited bottom to top: warm height tint, light/shadow, contour line
+    let r = 214, gg = 200, b = 138, a = Math.min(0.34, h / 70 * 0.34);
+    const over = (cr, cgc, cb, ca) => { const na = ca + a * (1 - ca); if (na > 0) { r = (cr * ca + r * a * (1 - ca)) / na; gg = (cgc * ca + gg * a * (1 - ca)) / na; b = (cb * ca + b * a * (1 - ca)) / na; } a = na; };
+    if (lit > 0) over(255, 248, 196, Math.min(0.42, lit * 0.07)); else over(24, 36, 18, Math.min(0.55, -lit * 0.09));
+    const band = Math.floor(h / 7);
+    if (Math.floor(at(x + 1, y) / 7) !== band || Math.floor(at(x, y + 1) / 7) !== band) over(70, 56, 26, 0.32);
+    const i = (y * gw + x) * 4; d[i] = r; d[i + 1] = gg; d[i + 2] = b; d[i + 3] = a * 255;
+  }
+  cg.putImageData(img, 0, 0);
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(c, 0, 0, WORLD.w, WORLD.h);
+}
+
 export function paintTerrain(g, scn) {
-    const rnd = mulberry32(7);
-    g.fillStyle = '#6f9150'; g.fillRect(0, 0, WORLD.w, WORLD.h);
-    for (let i = 0; i < 2600; i++) {
-      g.fillStyle = rnd() > 0.5 ? 'rgba(90,125,60,0.35)' : 'rgba(135,160,90,0.3)';
-      const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 6 + rnd() * 22;
-      g.beginPath(); g.ellipse(x, y, r, r * 0.6, 0, 0, 7); g.fill();
+  const rnd = mulberry32(7);
+  g.fillStyle = '#6f9150'; g.fillRect(0, 0, WORLD.w, WORLD.h);
+  // soft colour variation, dry patches, then grass tufts, flowers and stones
+  for (let i = 0; i < 2600; i++) {
+    g.fillStyle = rnd() > 0.5 ? 'rgba(90,125,60,0.35)' : 'rgba(135,160,90,0.3)';
+    const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 6 + rnd() * 22;
+    g.beginPath(); g.ellipse(x, y, r, r * 0.6, 0, 0, 7); g.fill();
+  }
+  for (let i = 0; i < 120; i++) { g.fillStyle = 'rgba(176,160,96,0.22)'; const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 18 + rnd() * 46; g.beginPath(); g.ellipse(x, y, r, r * 0.55, rnd() * 3, 0, 7); g.fill(); }
+  g.lineCap = 'round';
+  for (let i = 0; i < 5200; i++) {
+    const x = rnd() * WORLD.w, y = rnd() * WORLD.h, l = 2 + rnd() * 3;
+    g.strokeStyle = rnd() > 0.5 ? 'rgba(52,88,34,0.5)' : 'rgba(168,190,104,0.45)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 2, y - l); g.moveTo(x + 2, y); g.lineTo(x + 2 + (rnd() - 0.5) * 2, y - l * 0.8); g.stroke();
+  }
+  for (let i = 0; i < 260; i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h; g.fillStyle = ['#f3e7a8', '#ffffff', '#d98cc4', '#e8b04a'][i & 3]; g.globalAlpha = 0.75; g.beginPath(); g.arc(x, y, 1.1, 0, 7); g.fill(); }
+  g.globalAlpha = 1;
+  for (let i = 0; i < 70; i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 2 + rnd() * 3.5; g.fillStyle = 'rgba(40,38,30,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, r, r * 0.6, 0, 0, 7); g.fill(); g.fillStyle = '#a7a396'; g.beginPath(); g.ellipse(x, y, r, r * 0.65, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.ellipse(x - 0.8, y - 0.8, r * 0.5, r * 0.3, 0, 0, 7); g.fill(); }
+  const trees = [];
+  for (const f of scn.terrain) {
+    if (f.kind === 'water') {
+      const gr = g.createLinearGradient(0, f.y, 0, f.y + f.h); gr.addColorStop(0, '#4d7f9e'); gr.addColorStop(0.5, '#2f6288'); gr.addColorStop(1, '#4d7f9e');
+      g.fillStyle = 'rgba(112,92,52,0.55)'; g.fillRect(f.x, f.y - 7, f.w, f.h + 14);          // muddy banks
+      g.fillStyle = gr; g.fillRect(f.x, f.y, f.w, f.h);
+      g.strokeStyle = 'rgba(205,232,244,0.3)'; g.lineWidth = 1.2;
+      for (let i = 0; i < f.w / 14; i++) { const x = f.x + rnd() * f.w, y = f.y + 5 + rnd() * (f.h - 10), l = 8 + rnd() * 20; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - 1.8, x + l, y); g.stroke(); }
+      g.strokeStyle = 'rgba(70,96,40,0.85)'; g.lineWidth = 1.2;
+      for (let i = 0; i < f.w / 9; i++) { const x = f.x + rnd() * f.w, up = rnd() > 0.5, y = up ? f.y - 1 : f.y + f.h + 1; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 3, y + (up ? -6 : 6) * (0.6 + rnd() * 0.7)); g.stroke(); }
+    } else if (f.kind === 'ford') {
+      g.fillStyle = 'rgba(112,92,52,0.5)'; g.fillRect(f.x, f.y - 7, f.w, f.h + 14);
+      g.fillStyle = '#86adbd'; g.fillRect(f.x, f.y, f.w, f.h);
+      for (let i = 0; i < 70; i++) { const x = f.x + rnd() * f.w, y = f.y + rnd() * f.h, rx = 3.5 + rnd() * 5, ry = 2.5 + rnd() * 3; g.fillStyle = 'rgba(40,60,70,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, rx, ry, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(196,184,150,0.8)'; g.beginPath(); g.ellipse(x, y, rx * 0.8, ry * 0.8, rnd() * 3, 0, 7); g.fill(); }
+    } else if (f.kind === 'forest') {
+      g.fillStyle = 'rgba(24,46,24,0.5)'; g.beginPath(); g.ellipse(f.cx, f.cy, f.rx, f.ry, 0, 0, 7); g.fill();
+      const n = Math.round(f.rx * f.ry / 95);
+      for (let i = 0; i < n; i++) { const a = rnd() * 7, rr = Math.sqrt(rnd()); trees.push({ x: f.cx + Math.cos(a) * f.rx * rr * 0.97, y: f.cy + Math.sin(a) * f.ry * rr * 0.97, r: 7 + rnd() * 6.5, k: rnd(), edge: rr }); }
     }
-    for (const f of scn.terrain) {
-      if (f.kind === 'water') {
-        g.fillStyle = '#3d6f96'; g.fillRect(f.x, f.y, f.w, f.h);
-        g.fillStyle = 'rgba(190,225,240,0.25)';
-        for (let i = 0; i < f.w / 22; i++) { g.fillRect(f.x + rnd() * f.w, f.y + 6 + rnd() * (f.h - 12), 10 + rnd() * 18, 1.4); }
-        g.fillStyle = 'rgba(80,60,30,0.35)'; g.fillRect(f.x, f.y - 3, f.w, 3); g.fillRect(f.x, f.y + f.h, f.w, 3);
-      } else if (f.kind === 'ford') {
-        g.fillStyle = '#7fa8b8'; g.fillRect(f.x, f.y, f.w, f.h);
-        g.fillStyle = 'rgba(214,196,150,0.8)';
-        for (let i = 0; i < 90; i++) { g.beginPath(); g.ellipse(f.x + rnd() * f.w, f.y + rnd() * f.h, 4 + rnd() * 5, 3 + rnd() * 3, rnd() * 3, 0, 7); g.fill(); }
-      } else if (f.kind === 'hill') {
-        for (let i = 4; i >= 0; i--) {
-          g.fillStyle = `rgba(${150 + i * 12},${158 + i * 12},${92 + i * 10},${0.55})`;
-          g.beginPath(); g.ellipse(f.cx, f.cy - i * 4, f.rx * (1 - i * 0.16), f.ry * (1 - i * 0.16), 0, 0, 7); g.fill();
-          g.strokeStyle = 'rgba(70,80,40,0.35)'; g.stroke();
-        }
-      } else if (f.kind === 'forest') {
-        g.fillStyle = 'rgba(30,58,30,0.55)'; g.beginPath(); g.ellipse(f.cx, f.cy, f.rx, f.ry, 0, 0, 7); g.fill();
-        const n = Math.round(f.rx * f.ry / 120);
-        for (let i = 0; i < n; i++) {
-          const a = rnd() * 7, rr = Math.sqrt(rnd());
-          const x = f.cx + Math.cos(a) * f.rx * rr * 0.95, y = f.cy + Math.sin(a) * f.ry * rr * 0.95, r = 7 + rnd() * 6;
-          g.fillStyle = `rgb(${34 + rnd() * 20},${78 + rnd() * 34},${38 + rnd() * 18})`;
-          g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
-          g.fillStyle = 'rgba(255,255,255,0.08)'; g.beginPath(); g.arc(x - 2, y - 2, r * 0.5, 0, 7); g.fill();
-        }
-      }
-    }
-    // map edge vignette
-    const grd = g.createRadialGradient(WORLD.w / 2, WORLD.h / 2, WORLD.h * 0.5, WORLD.w / 2, WORLD.h / 2, WORLD.w * 0.75);
-    grd.addColorStop(0, 'rgba(0,0,0,0)'); grd.addColorStop(1, 'rgba(0,0,0,0.35)');
-    g.fillStyle = grd; g.fillRect(0, 0, WORLD.w, WORLD.h);
+  }
+  paintRelief(g, scn);
+  // trees last, far to near, so canopies overlap properly and stand over the hillshade
+  trees.sort((a, b) => a.y - b.y);
+  for (const t of trees) {
+    g.fillStyle = 'rgba(8,20,8,0.3)'; g.beginPath(); g.ellipse(t.x + t.r * 0.4, t.y + t.r * 0.55, t.r * 1.05, t.r * 0.7, 0, 0, 7); g.fill();
+    g.fillStyle = `rgb(${28 + t.k * 16},${62 + t.k * 28},${30 + t.k * 14})`; g.beginPath(); g.arc(t.x, t.y, t.r, 0, 7); g.fill();
+    g.fillStyle = `rgba(${86 + t.k * 30},${140 + t.k * 30},${70},0.55)`; g.beginPath(); g.arc(t.x - t.r * 0.28, t.y - t.r * 0.32, t.r * 0.62, 0, 7); g.fill();
+    g.fillStyle = 'rgba(210,235,150,0.18)'; g.beginPath(); g.arc(t.x - t.r * 0.4, t.y - t.r * 0.45, t.r * 0.28, 0, 7); g.fill();
+  }
+  // map edge vignette
+  const grd = g.createRadialGradient(WORLD.w / 2, WORLD.h / 2, WORLD.h * 0.5, WORLD.w / 2, WORLD.h / 2, WORLD.w * 0.75);
+  grd.addColorStop(0, 'rgba(0,0,0,0)'); grd.addColorStop(1, 'rgba(0,0,0,0.35)');
+  g.fillStyle = grd; g.fillRect(0, 0, WORLD.w, WORLD.h);
 }
 
 export class Renderer {
@@ -82,12 +117,18 @@ export class Renderer {
     ctx.fillStyle = '#1b1a14'; ctx.fillRect(0, 0, this.vw, this.vh);
     ctx.save();
     ctx.translate(this.vw / 2, this.vh / 2); ctx.scale(z, z); ctx.translate(-this.cam.x, -this.cam.y);
+    if (b.shake > 0.05) ctx.translate((Math.random() - 0.5) * b.shake * 2, (Math.random() - 0.5) * b.shake * 2);   // the thud of a charge
     if (this.bg) ctx.drawImage(this.bg, 0, 0, WORLD.w, WORLD.h);
     // retreat edge
     if (b.retreating) { ctx.fillStyle = 'rgba(232,195,106,0.25)'; ctx.fillRect(0, WORLD.h - 16, WORLD.w, 16); }
     // bodies
-    for (const d of b.bodies) { ctx.fillStyle = d.side === 'rome' ? 'rgba(120,30,25,0.8)' : 'rgba(30,50,90,0.8)'; ctx.fillRect(d.x - 1, d.y - 1, 2.2, 2.2); }
-    const order = b.units.filter(u => u.present).sort((a, b2) => a.y - b2.y);
+    ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    for (const side of ['rome', 'gaul']) {          // the fallen, as small figures lying on the ground
+      ctx.strokeStyle = side === 'rome' ? 'rgba(125,32,26,0.85)' : 'rgba(34,56,104,0.85)'; ctx.beginPath();
+      for (const d of b.bodies) if (d.side === side) { const a = d.a || 0, c = Math.cos(a) * 1.9, sn = Math.sin(a) * 1.9; ctx.moveTo(d.x - c, d.y - sn); ctx.lineTo(d.x + c, d.y + sn); }
+      ctx.stroke();
+    }
+    const order = b.units.filter(u => u.present && (u.side === 'rome' || u.spotted !== false)).sort((a, b2) => a.y - b2.y);
     this.drawObjectives(ctx, b);
     for (const f of b.fx) if (f.kind === 'dust') this.drawDust(ctx, f);
     for (const id of new Set([...this.selection, this.hover])) { const u = b.byId(id); if (u && u.present && u.state !== 'routing') this.drawArcs(ctx, u); }
@@ -113,28 +154,50 @@ export class Renderer {
     const routing = u.state === 'routing';
     ctx.globalAlpha = routing ? 0.6 : 1;
     // footprint
-    ctx.fillStyle = (rome ? 'rgba(180,40,30,' : 'rgba(40,90,170,') + (sel ? 0.28 : 0.13) + ')';
+    ctx.fillStyle = (rome ? 'rgba(190,40,30,' : 'rgba(40,90,190,') + (sel ? 0.3 : 0.17) + ')';
     ctx.fillRect(-u.d / 2, -u.w / 2, u.d, u.w);
     if (rome && b.general && u.state !== 'routing' && !b.inCommand(u)) { ctx.strokeStyle = 'rgba(190,190,190,0.55)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.strokeRect(-u.d / 2 - 2, -u.w / 2 - 2, u.d + 4, u.w + 4); ctx.setLineDash([]); }
     if (u.formation === 'orb') { ctx.strokeStyle = 'rgba(150,200,255,0.95)'; ctx.lineWidth = 1.6; ctx.strokeRect(-u.d / 2, -u.w / 2, u.d, u.w); }
     if (u.formation === 'close') { ctx.strokeStyle = 'rgba(232,195,106,0.9)'; ctx.lineWidth = 1.4; ctx.strokeRect(-u.d / 2, -u.w / 2, u.d, u.w); }
-    // dots: front row at +x
+    // soldiers: front row at +x. Each is a little figure with a shield; a testudo is a roof of locked shields; routers scatter.
     const n = Math.max(1, Math.ceil(u.men / t.perDot));
     const cols = Math.max(1, Math.min(n, Math.round(Math.sqrt(n * u.w / Math.max(1, u.d))))), rows = Math.ceil(n / cols);
     const sx = u.d / rows, sy = u.w / cols, r = Math.max(1.1, Math.min(t.cat === 'cav' ? 3 : 2.3, Math.min(sx, sy) * 0.42));
+    const now = b.t, roof = u.formation === 'close', helm = rome ? '#cfcfc4' : (u.typeKey === 'gaul_elite' ? '#e4c56a' : '#cfa96e');
+    const shade = (k) => (u.typeKey === 'legionary' ? (k & 1 ? '#a52a22' : '#b9362c') : t.color);
     let k = 0;
     for (let row = 0; row < rows && k < n; row++) {
       const x = u.d / 2 - sx * (row + 0.5);
       const inRow = Math.min(cols, n - k);
       for (let c = 0; c < inRow; c++, k++) {
-        const y = (c - (inRow - 1) / 2) * sy;
-        ctx.fillStyle = t.color; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-        ctx.fillStyle = t.trim; ctx.fillRect(x + r * 0.15, y - r * 0.4, r * 0.8, r * 0.8);
+        let y = (c - (inRow - 1) / 2) * sy, xx = x;
+        if (routing) { xx += Math.sin(now * 9 + k * 1.7) * 2.4; y += Math.cos(now * 8 + k * 2.3) * 2.4; }
+        if (roof) {   // locked shields
+          ctx.fillStyle = shade(k) || t.color; ctx.fillRect(xx - sx * 0.5, y - sy * 0.5, sx * 0.96, sy * 0.96);
+          ctx.fillStyle = t.trim; ctx.fillRect(xx - 0.7, y - 0.7, 1.4, 1.4);
+          continue;
+        }
+        ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(xx + 0.7, y + 1.1, r * 0.9, r * 0.7, 0, 0, 7); ctx.fill();
+        if (t.cat === 'cav') {
+          ctx.fillStyle = rome ? '#5e422a' : '#74502e'; ctx.beginPath(); ctx.ellipse(xx, y, r * 1.45, r * 0.78, 0, 0, 7); ctx.fill();
+          ctx.fillStyle = t.color; ctx.beginPath(); ctx.arc(xx - r * 0.15, y, r * 0.78, 0, 7); ctx.fill();
+          ctx.fillStyle = helm; ctx.beginPath(); ctx.arc(xx + r * 0.1, y, r * 0.42, 0, 7); ctx.fill();
+          ctx.strokeStyle = '#4a3a22'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(xx + r * 0.2, y + r * 0.5); ctx.lineTo(xx + r * 2.2, y + r * 0.5); ctx.stroke();
+        } else if (t.cat === 'ranged') {
+          ctx.fillStyle = t.color; ctx.beginPath(); ctx.arc(xx, y, r * 0.85, 0, 7); ctx.fill();
+          ctx.fillStyle = helm; ctx.beginPath(); ctx.arc(xx + r * 0.2, y, r * 0.45, 0, 7); ctx.fill();
+        } else {
+          ctx.fillStyle = '#d9b48f'; ctx.beginPath(); ctx.arc(xx - r * 0.35, y, r * 0.62, 0, 7); ctx.fill();               // body
+          ctx.fillStyle = helm; ctx.beginPath(); ctx.arc(xx - r * 0.3, y, r * 0.5, 0, 7); ctx.fill();                      // helmet or hair
+          if (rome) { ctx.fillStyle = shade(k); ctx.fillRect(xx + r * 0.05, y - r * 0.95, r * 0.62, r * 1.9); ctx.fillStyle = t.trim; ctx.fillRect(xx + r * 0.22, y - r * 0.2, r * 0.28, r * 0.4); }
+          else { ctx.fillStyle = t.color; ctx.beginPath(); ctx.arc(xx + r * 0.3, y, r * 0.95, 0, 7); ctx.fill(); ctx.fillStyle = t.trim; ctx.beginPath(); ctx.arc(xx + r * 0.3, y, r * 0.35, 0, 7); ctx.fill(); }
+        }
       }
     }
-    // standard
-    ctx.fillStyle = '#3a2a18'; ctx.fillRect(-u.d / 2 - 5, -0.8, 5, 1.6);
-    ctx.fillStyle = t.color; ctx.fillRect(-u.d / 2 - 11, -4, 6, 8);
+    // standard: pole, crossbar, discs and a pennant (a gilded eagle-bearer for Rome, a boar standard for the Gauls)
+    ctx.fillStyle = '#3a2a18'; ctx.fillRect(-u.d / 2 - 12, -0.9, 12, 1.8);
+    if (rome) { ctx.fillStyle = '#e0bb55'; ctx.fillRect(-u.d / 2 - 12, -3.4, 1.8, 6.8); ctx.beginPath(); ctx.arc(-u.d / 2 - 9, 0, 1.6, 0, 7); ctx.arc(-u.d / 2 - 6, 0, 1.6, 0, 7); ctx.fill(); ctx.fillStyle = t.color; ctx.fillRect(-u.d / 2 - 6, 1.6, 5, 4.6); }
+    else { ctx.fillStyle = t.color; ctx.beginPath(); ctx.moveTo(-u.d / 2 - 12, -5); ctx.lineTo(-u.d / 2 - 2, 0); ctx.lineTo(-u.d / 2 - 12, 5); ctx.closePath(); ctx.fill(); ctx.fillStyle = t.trim; ctx.fillRect(-u.d / 2 - 9, -1, 4, 2); }
     if (sel) { ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 2.2; ctx.strokeRect(-u.d / 2 - 2, -u.w / 2 - 2, u.d + 4, u.w + 4); }
     else if (this.hover === u.id) { ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(-u.d / 2 - 1, -u.w / 2 - 1, u.d + 2, u.w + 2); }
     if (u.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(0.4, u.flash / 0.22 * 0.4)})`; ctx.fillRect(-u.d / 2, -u.w / 2, u.d, u.w); }
@@ -164,6 +227,9 @@ export class Renderer {
 
   drawFx(ctx, f) {
     const a = f.life / f.max;
+    if (f.kind === 'clash') { const t = 1 - a; ctx.fillStyle = `rgba(255,236,170,${a * 0.65})`; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.35 + t * 0.8), 0, 7); ctx.fill(); ctx.strokeStyle = `rgba(255,255,255,${a * 0.9})`; ctx.lineWidth = 1.6; ctx.beginPath(); for (let i = 0; i < 8; i++) { const an = i * 0.785 + f.x, r0 = f.r * 0.5, r1 = f.r * (0.9 + t * 0.9); ctx.moveTo(f.x + Math.cos(an) * r0, f.y + Math.sin(an) * r0); ctx.lineTo(f.x + Math.cos(an) * r1, f.y + Math.sin(an) * r1); } ctx.stroke(); return; }
+    if (f.kind === 'spark') { const t = 1 - a; ctx.strokeStyle = f.hot ? `rgba(255,120,80,${a})` : `rgba(255,232,170,${a})`; ctx.lineWidth = f.hot ? 1.8 : 1.2; ctx.beginPath(); for (let i = 0; i < 3; i++) { const an = i * 2.1 + f.x * 3, r0 = 1 + t * 2, r1 = 3 + t * (f.hot ? 8 : 5); ctx.moveTo(f.x + Math.cos(an) * r0, f.y + Math.sin(an) * r0); ctx.lineTo(f.x + Math.cos(an) * r1, f.y + Math.sin(an) * r1); } ctx.stroke(); return; }
+    if (f.kind === 'ring') { const t = 1 - a; ctx.strokeStyle = `rgba(255,216,120,${a * 0.8})`; ctx.lineWidth = 2.5 * a + 0.5; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.5 + t * 1.1), 0, 7); ctx.stroke(); return; }
     if (f.kind === 'pilum') { ctx.strokeStyle = `rgba(60,40,20,${a})`; ctx.lineWidth = 1.2; }
     else { ctx.strokeStyle = `rgba(240,230,200,${a * 0.9})`; ctx.lineWidth = 0.9; }
     const t = 1 - a, x = f.x1 + (f.x2 - f.x1) * t, y = f.y1 + (f.y2 - f.y1) * t - Math.sin(t * Math.PI) * 14;
@@ -263,7 +329,7 @@ export class Renderer {
   unitAt(b, wx, wy, side) {
     let best = null, bd = Infinity;
     for (const u of b.units) {
-      if (!u.present || (side && u.side !== side)) continue;
+      if (!u.present || (side && u.side !== side) || (u.side === 'gaul' && u.spotted === false)) continue;
       const dx = wx - u.x, dy = wy - u.y, c = Math.cos(-u.f), s = Math.sin(-u.f);
       const lx = dx * c - dy * s, ly = dx * s + dy * c, pad = 7 / this.cam.zoom;
       if (Math.abs(lx) <= u.d / 2 + pad && Math.abs(ly) <= u.w / 2 + pad) {
