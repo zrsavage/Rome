@@ -15,7 +15,8 @@ export function modsOf(c) {
   return m;
 }
 export const hasPerk = (c, id) => (c.officers || []).some(o => o.alive && (o.perks || []).includes(id));
-export const commandLimit = (c) => Math.min(12, 6 + (c.history || []).filter(h => h.outcome !== 'defeat').length);
+// A campaign grows an army from a handful of cohorts to 60-80 units by the final battles.
+export const commandLimit = (c) => Math.min(80, 6 + Math.round((c.history || []).filter(h => h.outcome !== 'defeat').length * 2.2));
 export const unlockedTypes = (c) => c.unlockedTypes || START_TYPES;
 
 export function newCampaign(difficulty = 'normal') {

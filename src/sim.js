@@ -1,5 +1,5 @@
 // Pure battle simulation (no DOM). Real-time; the UI drives update(dt) and may pause.
-import { UNIT_TYPES, WORLD, XP_LEVELS, DIFFICULTY, terrainAt, elevAt } from './data.js';
+import { UNIT_TYPES, WORLD, XP_LEVELS, DIFFICULTY, terrainAt, elevAt, setWorld, riverShift } from './data.js';
 import { MAX_TIER } from './perks.js';
 
 const TAU = Math.PI * 2;
@@ -25,9 +25,9 @@ const PASS_SPEED = 0.3;
 const FRONT_GRIND = 0.8, FLANK_DMG = 1.5, REAR_DMG = 2.2;
 const FLANK_MORALE = 1.0, REAR_MORALE = 2.0, SURROUND_MORALE = 1.2;
 // Command: the general's banner sets a radius inside which Roman cohorts recover and rally well. Charges need fresh, steady men.
-const CMD_R = 240, GEN_SPEED = 75, ALL_ORDERS = ['testudo', 'relieve', 'rally', 'orbis'];
+const CMD_R = 240, GEN_SPEED = 75, ALL_ORDERS = ['testudo', 'sprint', 'guard', 'rally', 'relieve', 'pursue', 'orbis'];
 const hgt = (b, u) => elevAt(b.scn, u.x, u.y) / 40;   // height in 'hill units': 1 is an ordinary hilltop
-const SIGHT = 320;
+const SIGHT = 520, SPRINT = 1.45;
 let UID = 1;
 
 export class Unit {
@@ -79,7 +79,8 @@ export class Unit {
 
 export class Battle {
   constructor(scn, romeSpecs, opts = {}) {
-    this.scn = scn;
+    this.scn = scn; setWorld(scn);
+    this.fogOn = scn.fog === true || (!!scn.act && scn.id !== 'prologue' && scn.fog !== false);   // you must find the enemy in every real battle
     this.diff = DIFFICULTY[opts.difficulty || 'normal'];
     this.rand = mulberry32(opts.seed ?? (Date.now() & 0xffffff));
     this.t = 0; this.units = []; this.bodies = []; this.fx = []; this.log = [];
@@ -95,7 +96,7 @@ export class Battle {
     this.favour = opts.favour || 0;
     // enemy strength modifiers: difficulty + local favour (informants and divided tribes)
     const favMult = this.favour >= 2 ? 0.9 : this.favour <= -2 ? 1.1 : 1;
-    this.enemyScale = this.diff.enemyMult * favMult;
+    this.enemyScale = this.diff.enemyMult * favMult * (scn.id === 'prologue' || scn.practice ? 1 : 1.1);   // real battles are meant to be a fight
     this.recoveryMult = opts.recovery ?? 1;
     const rb = this.diff.romeMorale + Math.min(12, this.fortLevel * 4) + (opts.suppliesLow ? -8 : 0) + (opts.moraleBonus || 0);
     this.romeBonus = rb;
@@ -112,7 +113,7 @@ export class Battle {
   spawnEnemy(e) {
     const men = Math.round(e.men * this.enemyScale);
     const u = new Unit({ side: 'gaul', type: e.type, men, x: e.x, y: e.y, ai: { ...e.ai }, stance: e.ai && e.ai.kind === 'idle' ? 'hold' : 'aggressive', moraleBonus: this.diff.enemyMorale, xp: 40 + (this.diff.enemyMult > 1 ? 60 : 0) });
-    if (this.scn.fog) { u.spotted = false; u.seenUntil = this.t === 0 && this.scouted ? 25 : 0; if (u.seenUntil) u.spotted = true; }   // scouts have told you where they are, for a while
+    if (this.fogOn) { u.spotted = false; u.seenUntil = this.t === 0 && this.scouted ? 40 : 0; if (u.seenUntil) u.spotted = true; }   // scouts have told you where they are, for a while
     this.units.push(u);
   }
   addFx(f) { if (this.fx.length < 600) this.fx.push(f); }
@@ -132,7 +133,7 @@ export class Battle {
     return true;
   }
   updateVision() {
-    if (!this.scn.fog) return;
+    if (!this.fogOn) return;
     const viewers = this.units.filter(u => u.side === 'rome' && u.active);
     if (this.general) viewers.push({ x: this.general.x, y: this.general.y, type: null, general: true });
     for (const e of this.units) {
@@ -141,7 +142,7 @@ export class Battle {
       if (!seen) {
         const inWood = this.terr(e).kind === 'forest';
         for (const v of viewers) {
-          const R = (v.general ? 420 : this.sightOf(v)) * (inWood ? 0.4 : 1);
+          const R = (v.general ? 700 : this.sightOf(v)) * (inWood ? 0.4 : 1);
           if (Math.hypot(v.x - e.x, v.y - e.y) <= R && this.los(v, e)) { seen = true; break; }
         }
       }
@@ -188,8 +189,8 @@ export class Battle {
 
   // ---------- orders ----------
   // Orders never change a unit's stance. A move order sets its new post; an attack ends with the unit holding where it finished.
-  setMove(u, x, y, tf = null, ignore = false) { if (!u.active) return; u.order = { kind: 'move', x, y, tf, ignore }; u.post = { x, y }; }
-  setAttack(u, tgt) { if (!u.active) return; u.order = { kind: 'attack', targetId: tgt.id }; }
+  setMove(u, x, y, tf = null, ignore = false, sprint = false) { if (!u.active) return; u.order = { kind: 'move', x, y, tf, ignore, sprint: sprint && this.orders.has('sprint') }; u.post = { x, y }; }
+  setAttack(u, tgt, sprint = false) { if (!u.active) return; u.order = { kind: 'attack', targetId: tgt.id, sprint: sprint && this.orders.has('sprint') }; }
   setHold(u) { if (!u.active) return; u.order = { kind: 'none' }; u.stance = 'hold'; u.post = { x: u.x, y: u.y }; }
   setEngage(u) { if (!u.active) return; u.stance = 'aggressive'; if (u.order.kind === 'none') u.post = { x: u.x, y: u.y }; }
   toggleFormation(u) {
@@ -252,15 +253,17 @@ export class Battle {
     this.setMove(u, bx, by, uf, true); u.order.back = true; u.stance = 'hold';
     this.say(`${best.name} relieves ${u.name}.`, 'info'); return true;
   }
-  // Cavalry ride down routers inside their reach (the reason a rout is so costly).
-  pursue() {
-    for (const u of this.units) {
-      if (u.side !== 'rome' || u.type.cat !== 'cav' || !u.active || u.stance !== 'aggressive' || u.order.kind !== 'none' || u.contacts.some(e => e.active)) continue;
-      let best = null, bg = 220;
-      for (const e of this.units) if (e.side === 'gaul' && e.state === 'routing' && e.present) { const g = this.gap(u, e); if (g < bg) { bg = g; best = e; } }
-      if (best) { this.setAttack(u, best); u.fatigue = Math.min(100, u.fatigue + 6); }
-    }
+  // Pursuit is an order, never a reflex: cavalry only ride down routers when you tell them to.
+  pursue(u) {
+    if (!u.active || u.type.cat !== 'cav' || !this.orders.has('pursue')) return false;
+    let best = null, bg = 600;
+    for (const e of this.units) if (e.side === 'gaul' && e.state === 'routing' && e.present && e.spotted !== false) { const g = this.gap(u, e); if (g < bg) { bg = g; best = e; } }
+    if (!best) { this.say(`${u.name} sees no routers within reach.`, 'info'); return false; }
+    this.setAttack(u, best, true); this.say(`${u.name} rides down the fugitives.`, 'info'); return true;
   }
+  // Guard: stay with a friendly unit and fight whatever threatens it.
+  setGuard(u, f) { if (!u.active || !f || f === u || f.side !== u.side || !this.orders.has('guard')) return false; u.order = { kind: 'guard', targetId: f.id }; return true; }
+  toggleHoldFire(u) { if (u.type.cat !== 'ranged') return; u.holdFire = !u.holdFire; }
   // Pull a unit back from the nearest enemy to rest and re-form, facing the enemy.
   fallBack(u) {
     if (!u.active) return;
@@ -369,7 +372,7 @@ export class Battle {
     this.stepGeneral(dt);
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 5);
     this._vis = (this._vis || 0) + dt; if (this._vis >= 0.4) { this._vis = 0; this.updateVision(); }
-    if (this._ai >= 0.4) { this._ai = 0; this.aiThink(); this.pursue(); }
+    if (this._ai >= 0.4) { this._ai = 0; this.aiThink(); }
     this.computeContacts();
     this.markExposure();
     for (const u of this.units) if (u.present) this.stepUnit(u, dt);
@@ -414,6 +417,7 @@ export class Battle {
     u.blocked = false; u.fighting = false; u.shooting = false;
     if (u.pilumCd > 0) u.pilumCd -= dt;
     if (u.disrupted > 0) u.disrupted -= dt;
+    if (u.skCd > 0) u.skCd -= dt;
     if (u.state === 'routing') return this.stepRout(u, dt);
     const engaged = u.contacts.some(e => e.active);
     const pursuit = !engaged && u.contacts.length > 0;
@@ -442,7 +446,21 @@ export class Battle {
       const tg = this.byId(u.order.targetId);
       if (!tg || !tg.present) { u.order = { kind: 'none' }; u.post = { x: u.x, y: u.y }; }
       else if (t.cat === 'ranged' && tg.active && this.gap(u, tg) <= t.range * 0.85 && u.ammo > 0) { this.turnToward(u, tg, dt); }
+      else if (t.cat === 'ranged' && u.ammo <= 0) { u.order = { kind: 'none' }; u.post = { x: u.x, y: u.y }; }   // an empty skirmisher never walks into melee on its own
       else goal = { x: tg.x, y: tg.y };
+    } else if (u.order.kind === 'guard') {
+      const gd = this.byId(u.order.targetId);
+      if (!gd || !gd.present || gd.state === 'routing') { u.order = { kind: 'none' }; u.post = { x: u.x, y: u.y }; }
+      else {
+        let thr = null, tgp = 1e9;
+        for (const e of this.units) { if (e.side === u.side || !e.active) continue; const g2 = this.gap(gd, e); if (g2 < tgp) { tgp = g2; thr = e; } }
+        if (thr && tgp < 90 && t.cat !== 'ranged') goal = { x: thr.x, y: thr.y };            // fight what threatens the guarded unit
+        else {
+          const behind = t.cat === 'ranged', sd = (u.id & 1) ? 1 : -1, off = behind ? gd.d / 2 + u.d / 2 + 16 : gd.w / 2 + u.w / 2 + 14;
+          const sx = behind ? gd.x - Math.cos(gd.f) * off : gd.x - Math.sin(gd.f) * sd * off, sy = behind ? gd.y - Math.sin(gd.f) * off : gd.y + Math.cos(gd.f) * sd * off;
+          if (Math.hypot(sx - u.x, sy - u.y) > 12) goal = { x: sx, y: sy }; else this.turnTo(u, gd.f, dt);
+        }
+      }
     }
     if (u.order.kind === 'none' && u.stance === 'aggressive' && !engaged) {
       const n = this.nearestEnemy(u, (e) => e.active);
@@ -450,7 +468,7 @@ export class Battle {
       const leashed = u.side === 'rome' && u.post, lim = u.leash + (t.cat === 'ranged' ? t.range * 0.5 : 0);
       const inReach = n && n.gap < aggro && (!leashed || Math.hypot(n.e.x - u.post.x, n.e.y - u.post.y) < lim + aggro);
       if (inReach) {
-        if (t.cat === 'ranged' && n.gap <= t.range * 0.85 && u.ammo > 0) this.turnToward(u, n.e, dt);
+        if (t.cat === 'ranged') { if (u.ammo > 0 && !u.holdFire) { if (n.gap <= t.range * 0.85) this.turnToward(u, n.e, dt); else goal = { x: n.e.x, y: n.e.y }; } else this.turnToward(u, n.e, dt, 0.5); }
         else goal = { x: n.e.x, y: n.e.y };
       } else {
         if (leashed && Math.hypot(u.x - u.post.x, u.y - u.post.y) > 14) goal = { x: u.post.x, y: u.post.y };   // return to the post
@@ -458,6 +476,13 @@ export class Battle {
       }
     }
 
+    // skirmishers step back from melee troops that reach them (through their own line) instead of standing and dying
+    if (t.cat === 'ranged' && engaged && u.ammo > 0 && !u.holdFire && u.order.kind === 'none' && u.stance !== 'hold' && !(u.skCd > 0)) {
+      const c = u.contacts.filter(e => e.active && e.type.cat !== 'ranged').sort((a, b) => this.gap(u, a) - this.gap(u, b))[0];
+      if (c) { const dx = u.x - c.x, dy = u.y - c.y, d = Math.hypot(dx, dy) || 1; this.setMove(u, clamp(u.x + dx / d * 110, 20, WORLD.w - 20), clamp(u.y + dy / d * 110, 20, WORLD.h - 20), null, true); u.skCd = 6; }
+    }
+    if (goal && u.order.kind !== 'retreat') goal = this.pathGoal(u, goal);
+    if (goal && u.order.sprint && u.fatigue < 78) speedMul = SPRINT;
     if (engaged) {
       // fight unless deliberately breaking off
       const away = goal && (u.order.kind === 'move' || u.order.kind === 'retreat') && Math.hypot(goal.x - u.x, goal.y - u.y) > 15;
@@ -486,7 +511,7 @@ export class Battle {
     if (u.fighting) u.state = 'fighting';
     // fatigue
     if (u.fighting) u.fatigue = Math.min(100, u.fatigue + 0.9 * dt);
-    else if (u.state === 'moving') u.fatigue = Math.min(100, u.fatigue + 0.45 * dt);
+    else if (u.state === 'moving') u.fatigue = Math.min(100, u.fatigue + (speedMul > 1 ? 1.9 : 0.45) * dt);
     else u.fatigue = Math.max(0, u.fatigue - 2.2 * dt);
     // exit by retreat
     if (u.order.kind === 'retreat' && u.y >= H + 60) { u.state = 'gone'; u.exited = true; this.say(`${u.name} has withdrawn from the field.`, 'info'); }
@@ -503,7 +528,9 @@ export class Battle {
     const h = Math.atan2(dy / dd, dx / dd);
     u.f = h;
     const sp = this.speedOf(u) * 1.15;
-    u.x += Math.cos(h) * sp * dt; u.y += Math.sin(h) * sp * dt;
+    let rx = u.x + Math.cos(h) * sp * dt, ry = u.y + Math.sin(h) * sp * dt;
+    if (this.waterAt(rx, ry) && !this.waterAt(u.x, u.y)) { if (!this.waterAt(rx, u.y)) ry = u.y; else if (!this.waterAt(u.x, ry)) rx = u.x; else { rx = u.x; ry = u.y; } }   // routers cannot swim either
+    u.x = rx; u.y = ry;
     u.state = 'routing';
     // recover
     const safe = !n || n.gap > 140;
@@ -512,6 +539,23 @@ export class Battle {
     if (u.x < -60 || u.x > WORLD.w + 60 || u.y < -60 || u.y > WORLD.h + 60) { u.state = 'gone'; u.fled = true; }
   }
 
+  waterAt(x, y) { return terrainAt(this.scn, x, y).kind === 'water'; }
+  // Where a unit should actually head: straight for its goal, unless a river lies between, in which case via the nearest ford.
+  pathGoal(u, g) {
+    const fords = this._fords || (this._fords = this.scn.terrain.filter(f => f.kind === 'ford'));
+    if (!fords.length) return g;
+    const dx = g.x - u.x, dy = g.y - u.y, d = Math.hypot(dx, dy); if (d < 60) return g;
+    let wet = false; const n = Math.min(40, Math.ceil(d / 30));
+    for (let i = 1; i < n; i++) if (this.waterAt(u.x + dx * i / n, u.y + dy * i / n)) { wet = true; break; }
+    if (!wet) return g;
+    let best = null, bc = 1e18;
+    for (const f of fords) { const cx = f.x + f.w / 2, cy = f.y + riverShift(f, cx) + f.h / 2, c = Math.hypot(cx - u.x, cy - u.y) + Math.hypot(g.x - cx, g.y - cy); if (c < bc) { bc = c; best = { f, cx, cy }; } }
+    const { f, cx, cy } = best, dir = Math.sign(g.y - cy) || 1, half = f.h / 2 + 45;
+    const A = { x: cx, y: cy - dir * half }, B = { x: cx, y: cy + dir * half };
+    if (Math.abs(u.y - cy) <= f.h / 2 + 15 && Math.abs(u.x - cx) <= f.w / 2 + 10) return B;
+    if ((u.y - cy) * dir < 0) return Math.hypot(A.x - u.x, A.y - u.y) > 35 ? A : B;
+    return g;
+  }
   speedOf(u) {
     const tr = this.terr(u);
     const terr = u.type.cat === 'cav' ? tr.cav : tr.speed;
@@ -552,7 +596,12 @@ export class Battle {
     u.passing = this.overlapsFriend(u, Math.cos(h), Math.sin(h));          // marching through friendly units is slow going
     const sp = this.speedOf(u) * speedMul * align * (u.passing ? PASS_SPEED : 1);
     const step = Math.min(dist, sp * dt);
-    const nx = u.x + Math.cos(h) * step, ny = u.y + Math.sin(h) * step;
+    let nx = u.x + Math.cos(h) * step, ny = u.y + Math.sin(h) * step;
+    if (u.order.kind !== 'retreat' && this.waterAt(nx, ny) && !this.waterAt(u.x, u.y)) {   // deep water cannot be crossed: slide along the bank
+      let ok = false; const sg = u.slideSign || 1;
+      for (const a of [0.6, -0.6, 1.2, -1.2, 1.8, -1.8]) { const hh = h + a * sg, tx = u.x + Math.cos(hh) * step, ty = u.y + Math.sin(hh) * step; if (!this.waterAt(tx, ty)) { nx = tx; ny = ty; ok = true; if (a < 0) u.slideSign = -sg; break; } }
+      if (!ok) { u.blocked = true; return 0; }
+    }
     for (const e of this.units) {
       if (e.side === u.side || !e.active) continue;
       const g = this.gapAt(u, nx, ny, e);
@@ -621,7 +670,7 @@ export class Battle {
     const t = u.type;
     if (u.state === 'routing') return;
     // ranged fire
-    if (t.range && u.ammo > 0 && !u.contacts.some(e => e.active) && (u.state !== 'moving' || u.order.kind === 'none')) {
+    if (t.range && u.ammo > 0 && !u.holdFire && !u.contacts.some(e => e.active) && (u.state !== 'moving' || u.order.kind === 'none')) {
       let tgt = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null;
       if (!tgt || !tgt.active || this.gap(u, tgt) > t.range) { const n = this.nearestEnemy(u, u.side === 'rome' ? (e) => e.active && e.spotted !== false : undefined); tgt = n && n.gap <= t.range ? n.e : null; }
       if (tgt) {

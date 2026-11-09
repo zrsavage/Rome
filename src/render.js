@@ -5,7 +5,7 @@ import { mulberry32 } from './sim.js';
 // Hillshading and contour lines from the real height map, lit from the north-west.
 function paintRelief(g, scn) {
   if (!scn.terrain.some(f => f.kind === 'hill')) return;
-  const cell = 2, gw = Math.ceil(WORLD.w / cell), gh = Math.ceil(WORLD.h / cell), H = new Float32Array(gw * gh);
+  const cell = Math.max(2, Math.round(1.2 * Math.sqrt(WORLD.w * WORLD.h / 1.6e6))), gw = Math.ceil(WORLD.w / cell), gh = Math.ceil(WORLD.h / cell), H = new Float32Array(gw * gh);
   for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) H[y * gw + x] = elevAt(scn, x * cell, y * cell);
   const c = document.createElement('canvas'); c.width = gw; c.height = gh;
   const cg = c.getContext('2d'), img = cg.createImageData(gw, gh), d = img.data;
@@ -26,24 +26,24 @@ function paintRelief(g, scn) {
 }
 
 export function paintTerrain(g, scn) {
-  const rnd = mulberry32(7);
+  const rnd = mulberry32(7), A = WORLD.w * WORLD.h / 1.6e6;          // everything below scales with the size of the battlefield
   g.fillStyle = '#6f9150'; g.fillRect(0, 0, WORLD.w, WORLD.h);
   // soft colour variation, dry patches, then grass tufts, flowers and stones
-  for (let i = 0; i < 2600; i++) {
+  for (let i = 0; i < Math.round(2600 * A); i++) {
     g.fillStyle = rnd() > 0.5 ? 'rgba(90,125,60,0.35)' : 'rgba(135,160,90,0.3)';
     const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 6 + rnd() * 22;
     g.beginPath(); g.ellipse(x, y, r, r * 0.6, 0, 0, 7); g.fill();
   }
-  for (let i = 0; i < 120; i++) { g.fillStyle = 'rgba(176,160,96,0.22)'; const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 18 + rnd() * 46; g.beginPath(); g.ellipse(x, y, r, r * 0.55, rnd() * 3, 0, 7); g.fill(); }
+  for (let i = 0; i < Math.round(120 * A); i++) { g.fillStyle = 'rgba(176,160,96,0.22)'; const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 18 + rnd() * 46; g.beginPath(); g.ellipse(x, y, r, r * 0.55, rnd() * 3, 0, 7); g.fill(); }
   g.lineCap = 'round';
-  for (let i = 0; i < 5200; i++) {
+  for (let i = 0; i < Math.round(5200 * A); i++) {
     const x = rnd() * WORLD.w, y = rnd() * WORLD.h, l = 2 + rnd() * 3;
     g.strokeStyle = rnd() > 0.5 ? 'rgba(52,88,34,0.5)' : 'rgba(168,190,104,0.45)'; g.lineWidth = 1;
     g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 2, y - l); g.moveTo(x + 2, y); g.lineTo(x + 2 + (rnd() - 0.5) * 2, y - l * 0.8); g.stroke();
   }
-  for (let i = 0; i < 260; i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h; g.fillStyle = ['#f3e7a8', '#ffffff', '#d98cc4', '#e8b04a'][i & 3]; g.globalAlpha = 0.75; g.beginPath(); g.arc(x, y, 1.1, 0, 7); g.fill(); }
+  for (let i = 0; i < Math.round(260 * A); i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h; g.fillStyle = ['#f3e7a8', '#ffffff', '#d98cc4', '#e8b04a'][i & 3]; g.globalAlpha = 0.75; g.beginPath(); g.arc(x, y, 1.1, 0, 7); g.fill(); }
   g.globalAlpha = 1;
-  for (let i = 0; i < 70; i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 2 + rnd() * 3.5; g.fillStyle = 'rgba(40,38,30,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, r, r * 0.6, 0, 0, 7); g.fill(); g.fillStyle = '#a7a396'; g.beginPath(); g.ellipse(x, y, r, r * 0.65, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.ellipse(x - 0.8, y - 0.8, r * 0.5, r * 0.3, 0, 0, 7); g.fill(); }
+  for (let i = 0; i < Math.round(70 * A); i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 2 + rnd() * 3.5; g.fillStyle = 'rgba(40,38,30,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, r, r * 0.6, 0, 0, 7); g.fill(); g.fillStyle = '#a7a396'; g.beginPath(); g.ellipse(x, y, r, r * 0.65, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.ellipse(x - 0.8, y - 0.8, r * 0.5, r * 0.3, 0, 0, 7); g.fill(); }
   const trees = [];
   for (const f of scn.terrain) {
     // a river is a wandering strip: its banks follow riverShift, the same function the sim uses to decide where the water is
@@ -66,21 +66,21 @@ export function paintTerrain(g, scn) {
       for (let i = 0; i < 70; i++) { const x = f.x + rnd() * f.w, y = f.y + riverShift(f, x) + rnd() * f.h, rx = 3.5 + rnd() * 5, ry = 2.5 + rnd() * 3; g.fillStyle = 'rgba(40,60,70,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, rx, ry, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(196,184,150,0.8)'; g.beginPath(); g.ellipse(x, y, rx * 0.8, ry * 0.8, rnd() * 3, 0, 7); g.fill(); }
     } else if (f.kind === 'forest') {
       // trees are scattered inside the ragged woodland shape, with smaller outliers straggling past its edge
-      const n = Math.round(Math.PI * f.rx * f.ry * 0.8 / 95);
+      const ts = Math.sqrt(f.sc || 1), n = Math.round(Math.PI * f.rx * f.ry * 0.8 / (95 * ts * ts));   // bigger woods get bigger trees, not endless ones
       let placed = 0, tries = 0;
-      while (placed < n && tries++ < n * 8) { const x = f.cx + (rnd() * 2 - 1) * f.rx * 1.25, y = f.cy + (rnd() * 2 - 1) * f.ry * 1.25; if (!forestIn(f, x, y)) continue; placed++; trees.push({ x, y, r: 6.5 + rnd() * 7.5, k: rnd(), under: true }); }
+      while (placed < n && tries++ < n * 8) { const x = f.cx + (rnd() * 2 - 1) * f.rx * 1.25, y = f.cy + (rnd() * 2 - 1) * f.ry * 1.25; if (!forestIn(f, x, y)) continue; placed++; trees.push({ x, y, r: (6.5 + rnd() * 7.5) * ts, k: rnd(), under: true }); }
       const out = Math.round(n * 0.07); placed = 0; tries = 0;
-      while (placed < out && tries++ < out * 30) { const x = f.cx + (rnd() * 2 - 1) * f.rx * 1.5, y = f.cy + (rnd() * 2 - 1) * f.ry * 1.5; if (forestIn(f, x, y) || !forestIn(f, f.cx + (x - f.cx) * 0.8, f.cy + (y - f.cy) * 0.8)) continue; placed++; trees.push({ x, y, r: 4.5 + rnd() * 4, k: rnd() }); }
+      while (placed < out && tries++ < out * 30) { const x = f.cx + (rnd() * 2 - 1) * f.rx * 1.5, y = f.cy + (rnd() * 2 - 1) * f.ry * 1.5; if (forestIn(f, x, y) || !forestIn(f, f.cx + (x - f.cx) * 0.8, f.cy + (y - f.cy) * 0.8)) continue; placed++; trees.push({ x, y, r: (4.5 + rnd() * 4) * ts, k: rnd() }); }
     }
   }
   paintRelief(g, scn);
   // trees last, far to near, so canopies overlap properly and stand over the hillshade
-  for (let i = 0; i < 70; i++) {               // lone trees and thickets out in the open
+  for (let i = 0; i < Math.round(70 * A); i++) {               // lone trees and thickets out in the open
     const x = rnd() * WORLD.w, y = rnd() * WORLD.h, kind = terrainAt(scn, x, y).kind, k = rnd(), sz = 4 + rnd() * 5, cl = rnd() < 0.4 ? 3 : 1;
     if (kind !== 'grass') continue;
     for (let j = 0; j < cl; j++) trees.push({ x: x + (rnd() - 0.5) * 22 * (cl > 1), y: y + (rnd() - 0.5) * 16 * (cl > 1), r: sz * (0.7 + rnd() * 0.5), k });
   }
-  for (let i = 0; i < 260; i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h; if (terrainAt(scn, x, y).kind !== 'grass') continue; g.fillStyle = 'rgba(52,84,34,0.55)'; g.beginPath(); g.ellipse(x, y, 3 + rnd() * 4, 2 + rnd() * 2.5, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(120,150,70,0.35)'; g.beginPath(); g.ellipse(x - 1, y - 1, 1.8, 1.2, 0, 0, 7); g.fill(); }
+  for (let i = 0; i < Math.round(260 * A); i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h; if (terrainAt(scn, x, y).kind !== 'grass') continue; g.fillStyle = 'rgba(52,84,34,0.55)'; g.beginPath(); g.ellipse(x, y, 3 + rnd() * 4, 2 + rnd() * 2.5, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(120,150,70,0.35)'; g.beginPath(); g.ellipse(x - 1, y - 1, 1.8, 1.2, 0, 0, 7); g.fill(); }
   for (const t of trees) if (t.under) { g.fillStyle = 'rgba(18,34,16,0.13)'; g.beginPath(); g.arc(t.x, t.y, t.r * 2.1, 0, 7); g.fill(); }   // the dark floor of a wood
   trees.sort((a, b) => a.y - b.y);
   for (const t of trees) {
@@ -106,11 +106,11 @@ export class Renderer {
     const r = this.canvas.getBoundingClientRect();
     this.canvas.width = Math.max(1, Math.floor(r.width * this.dpr)); this.canvas.height = Math.max(1, Math.floor(r.height * this.dpr));
     this.vw = r.width; this.vh = r.height;
-    this.minZoom = Math.min(this.vw / WORLD.w, this.vh / WORLD.h) * 0.98;
+    this.fitZoom = Math.min(this.vw / WORLD.w, this.vh / WORLD.h) * 0.98; this.minZoom = this.fitZoom * 0.5;   // you can pull back past the whole field
     this.cam.zoom = Math.max(this.minZoom, Math.min(3, this.cam.zoom));
     this.clampCam();
   }
-  fit() { this.resize(); this.cam.zoom = this.minZoom; this.cam.x = WORLD.w / 2; this.cam.y = WORLD.h / 2; this.clampCam(); }
+  fit() { this.resize(); this.cam.zoom = this.fitZoom; this.cam.x = WORLD.w / 2; this.cam.y = WORLD.h / 2; this.clampCam(); }
   clampCam() {
     const hw = this.vw / this.cam.zoom / 2, hh = this.vh / this.cam.zoom / 2;
     this.cam.x = hw * 2 >= WORLD.w ? WORLD.w / 2 : Math.max(hw, Math.min(WORLD.w - hw, this.cam.x));
@@ -120,7 +120,7 @@ export class Renderer {
   toScreen(wx, wy) { return { x: (wx - this.cam.x) * this.cam.zoom + this.vw / 2, y: (wy - this.cam.y) * this.cam.zoom + this.vh / 2 }; }
 
   buildBackground(scn) {
-    const S = 0.8, c = document.createElement('canvas');
+    const S = Math.min(0.8, 2600 / WORLD.w), c = document.createElement('canvas');
     c.width = WORLD.w * S; c.height = WORLD.h * S;
     const g = c.getContext('2d'); g.scale(S, S);
     paintTerrain(g, scn);

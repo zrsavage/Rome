@@ -1,7 +1,7 @@
 // Art layer. Every picture in the UI comes through artSrc(kind, key, w, h).
 // If real art exists (assets/art/manifest.json, or an inlined manifest in single-file builds) it is used;
 // otherwise a procedural placeholder is drawn. Drop finished images into assets/art/ and list them in the manifest.
-import { UNIT_TYPES, WORLD } from './data.js';
+import { UNIT_TYPES, WORLD, setWorld } from './data.js';
 import { paintTerrain } from './render.js';
 
 let manifest = {};
@@ -112,7 +112,7 @@ function scenarioBanner(key, w, h, extra) {
   const [c, g] = mk(w, h);
   g.fillStyle = '#17130d'; g.fillRect(0, 0, w, h);
   if (scn) {
-    const s = w / WORLD.w; g.save(); g.translate(0, (h - WORLD.h * s) / 2 + 40 * s); g.scale(s, s); paintTerrain(g, scn); g.restore();
+    setWorld(scn); const s = w / WORLD.w; g.save(); g.translate(0, (h - WORLD.h * s) / 2 + 40 * s); g.scale(s, s); paintTerrain(g, scn); g.restore();
   }
   const grd = g.createLinearGradient(0, 0, 0, h); grd.addColorStop(0, 'rgba(0,0,0,0.05)'); grd.addColorStop(1, 'rgba(10,8,4,0.88)');
   g.fillStyle = grd; g.fillRect(0, 0, w, h);

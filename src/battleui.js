@@ -22,8 +22,9 @@ export class BattleUI {
     $('hud-title').textContent = scn.name;
     $('hud-log').innerHTML = '';
     this.r.buildBackground(scn); this.r.fit();
+    { const rs = this.b.units.filter(u => u.side === 'rome'); if (rs.length) { this.r.cam.zoom = Math.max(this.r.minZoom, Math.min(0.9, this.r.cam.zoom * 3)); this.r.cam.x = rs.reduce((a, u) => a + u.x, 0) / rs.length; this.r.cam.y = rs.reduce((a, u) => a + u.y, 0) / rs.length - 160 / this.r.cam.zoom; this.r.clampCam(); } }
     this.refreshBottom(); this.setPause(true); this.setSpeed(1);
-    $('help-orders').innerHTML = [['testudo', '<b>T</b> testudo'], ['orbis', '<b>O</b> orbis (hollow square)'], ['relieve', '<b>Y</b> relieve a tired cohort'], ['rally', '<b>F</b> rally the line']].filter(([id]) => this.b.orders.has(id)).map(x => x[1]).join(' &middot; ');
+    $('help-orders').innerHTML = [['sprint', '<b>Shift+right-click</b> sprint / charge'], ['guard', '<b>right-click a friendly unit</b> to guard it'], ['testudo', '<b>T</b> testudo'], ['orbis', '<b>O</b> orbis (hollow square)'], ['relieve', '<b>Y</b> relieve a tired cohort'], ['pursue', '<b>P</b> cavalry pursue routers'], ['rally', '<b>F</b> rally the line']].filter(([id]) => this.b.orders.has(id)).map(x => x[1]).join(' &middot; ');
     $('btn-retreat').disabled = false;
     this.showBanner('DEPLOYMENT - press SPACE', 2500);
     this.last = performance.now(); this.acc = 0; this.hudT = 0;
@@ -70,7 +71,7 @@ export class BattleUI {
   selectGeneral() { if (!this.b.general) return; this.r.selection.clear(); this.genSel = true; this.r.genSel = true; this.refreshBottom(); this.refreshHud(); this.emit('general-select'); }
   select(ids, add = false) { this.genSel = false; this.r.genSel = false; if (!add) this.r.selection.clear(); ids.forEach(i => this.r.selection.add(i)); this.refreshBottom(); this.refreshHud(); this.emit('select', { ids }); }
 
-  issueMove(wx, wy, drag, ignore = false) {
+  issueMove(wx, wy, drag, ignore = false, sprint = false) {
     if (this.genSel && this.b.general) { const g = drag ? { x: (drag.x0 + drag.x1) / 2, y: (drag.y0 + drag.y1) / 2 } : { x: wx, y: wy }; this.b.moveGeneral(g.x, g.y); this.emit('general-move'); return; }
     const us = this.selected(); if (!us.length) return;
     const b = this.b;
@@ -93,10 +94,11 @@ export class BattleUI {
       let total = us.reduce((a, u) => a + u.w + gap, -gap), off = -total / 2;
       us.forEach(u => { off += u.w / 2; pts.push({ x: wx + px * off, y: wy + py * off }); off += u.w / 2 + gap; });
     }
-    us.forEach((u, i) => b.setMove(u, Math.max(8, Math.min(WORLD.w - 8, pts[i].x)), Math.max(8, Math.min(WORLD.h - 8, pts[i].y)), ang, ignore));
+    us.forEach((u, i) => b.setMove(u, Math.max(8, Math.min(WORLD.w - 8, pts[i].x)), Math.max(8, Math.min(WORLD.h - 8, pts[i].y)), ang, ignore, sprint));
     this.emit('move', { drag: !!drag, count: us.length });
   }
-  issueAttack(target) { const us = this.selected(); us.forEach(u => this.b.setAttack(u, target)); if (us.length) this.emit('attack', { target: target.id, count: us.length }); }
+  issueGuard(f) { const us = this.selected().filter(u => u !== f); let n = 0; us.forEach(u => { if (this.b.setGuard(u, f)) n++; }); if (n) { this.showBanner(`Guarding ${f.name}`, 800); this.emit('guard', { count: n }); } return n > 0; }
+  issueAttack(target, sprint = false) { const us = this.selected(); us.forEach(u => this.b.setAttack(u, target, sprint)); if (us.length) this.emit('attack', { target: target.id, count: us.length }); }
 
   bindInput() {
     const c = this.canvas; let left = null, right = null;
@@ -134,10 +136,12 @@ export class BattleUI {
         this.r.box = null; left = null;
       } else if (e.button === 2 && right) {
         const dl = this.r.dragLine;
-        if (dl) this.issueMove(0, 0, dl, e.ctrlKey);
+        if (dl) this.issueMove(0, 0, dl, e.ctrlKey, e.shiftKey);
         else {
           const u = this.r.unitAt(this.b, w.x, w.y);
-          if (u && u.side === 'gaul' && !this.genSel) this.issueAttack(u); else this.issueMove(w.x, w.y, null, e.ctrlKey);
+          if (u && u.side === 'gaul' && !this.genSel) this.issueAttack(u, e.shiftKey);
+          else if (u && u.side === 'rome' && !this.genSel && this.selected().length && !this.selected().includes(u) && this.b.orders.has('guard') && this.issueGuard(u)) { /* guard order given */ }
+          else this.issueMove(w.x, w.y, null, e.ctrlKey, e.shiftKey);
         }
         this.r.dragLine = null; right = null;
       } else if (e.button === 1) this.pd = null;
@@ -156,16 +160,9 @@ export class BattleUI {
       if (k === 'v') { this.r.showRange = !this.r.showRange; this.emit('range', { on: this.r.showRange }); }
       if (/^[1-9]$/.test(k) && !e.altKey) this.controlGroup(+k, e.ctrlKey || e.metaKey);
       if (['a', 'w', 's', 'd', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k) && !e.ctrlKey) this.keys.add(k);
-      if (k === 'h') { const hs = this.selected(); hs.forEach(u => { this.b.setHold(u); }); if (hs.length) { this.emit('hold', { count: hs.length }); this.showBanner('Hold position', 600); } }
-      if (k === 'g') { const gs = this.selected(); gs.forEach(u => this.b.setEngage(u)); if (gs.length) { this.emit('engage', { count: gs.length }); this.showBanner('Defend post', 600); } }
-      if (k === 't' || k === 'o' || k === 'y') {
-        const id = k === 't' ? 'testudo' : k === 'o' ? 'orbis' : 'relieve', ts = this.selected().filter(u => u.type.cat === 'inf');
-        if (!this.b.orders.has(id)) { if (this.selected().length) this.showBanner('You have not learned that order yet. Train it at camp.', 1400); }
-        else if (ts.length) { ts.forEach(u => k === 't' ? this.b.toggleFormation(u) : k === 'o' ? this.b.toggleOrbis(u) : this.b.relieve(u)); this.emit('formation', { count: ts.length }); }
-      }
-      if (k === 'f') { if (!this.b.orders.has('rally')) this.showBanner('You have not learned that order yet. Train it at camp.', 1400); else if (this.b.rallyCd > 0) this.showBanner(`The line was just rallied (${Math.ceil(this.b.rallyCd)}s)`, 900); else if (this.b.rally()) this.showBanner('Rally!', 700); }
+      const keyCmd = { h: 'hold', g: 'defend', r: 'fallback', t: 'testudo', o: 'orbis', y: 'relieve', p: 'pursue', j: 'holdfire', f: 'rally' }[k];
+      if (keyCmd && !e.ctrlKey && !e.metaKey) this.cmd(keyCmd);
       if (k === 'e') this.selectGeneral();
-      if (k === 'r') { const rs = this.selected(); rs.forEach(u => this.b.fallBack(u)); if (rs.length) this.emit('fallback', { count: rs.length }); }
       if (k === 'escape') this.select([]);
       if (e.key === '?' || e.key === '/') $('hud-help').classList.toggle('hidden');
       if (k === 'q') this.select(this.b.units.filter(u => u.side === 'rome' && u.active).map(u => u.id));
@@ -193,6 +190,43 @@ export class BattleUI {
     this.lastGroup = n; this.lastGroupT = now; this.select(ids);
   }
 
+  // One place for every unit command, used by both the keyboard and the command bar.
+  cmd(name) {
+    const b = this.b, sel = this.selected(), inf = sel.filter(u => u.type.cat === 'inf');
+    const need = (id) => { if (b.orders.has(id)) return true; if (sel.length || id === 'rally') this.showBanner('You have not learned that order yet. Train it at camp.', 1400); return false; };
+    switch (name) {
+      case 'hold': sel.forEach(u => b.setHold(u)); if (sel.length) { this.emit('hold', { count: sel.length }); this.showBanner('Hold position', 600); } break;
+      case 'defend': sel.forEach(u => b.setEngage(u)); if (sel.length) { this.emit('engage', { count: sel.length }); this.showBanner('Defend post', 600); } break;
+      case 'fallback': sel.forEach(u => b.fallBack(u)); if (sel.length) this.emit('fallback', { count: sel.length }); break;
+      case 'testudo': if (need('testudo') && inf.length) { inf.forEach(u => b.toggleFormation(u)); this.emit('formation', { count: inf.length }); } break;
+      case 'orbis': if (need('orbis') && inf.length) { inf.forEach(u => b.toggleOrbis(u)); this.emit('formation', { count: inf.length }); } break;
+      case 'relieve': if (need('relieve') && inf.length) inf.forEach(u => b.relieve(u)); break;
+      case 'pursue': if (need('pursue')) sel.filter(u => u.type.cat === 'cav').forEach(u => b.pursue(u)); break;
+      case 'holdfire': sel.filter(u => u.type.cat === 'ranged').forEach(u => b.toggleHoldFire(u)); if (sel.some(u => u.type.cat === 'ranged')) this.showBanner(sel.find(u => u.type.cat === 'ranged').holdFire ? 'Hold fire' : 'Fire at will', 700); break;
+      case 'rally': if (!need('rally')) break; if (b.rallyCd > 0) this.showBanner(`The line was just rallied (${Math.ceil(b.rallyCd)}s)`, 900); else if (b.rally()) this.showBanner('Rally!', 700); break;
+    }
+    this.cmdSig = null;
+  }
+  // The command bar shows only what the selected units can do, and only orders the army has learned.
+  refreshCmds() {
+    const b = this.b, sel = this.selected(), el = $('hud-cmds');
+    const has = (c) => sel.some(u => u.type.cat === c);
+    const list = [['hold', 'Hold', 'H', true], ['defend', 'Defend post', 'G', true], ['fallback', 'Fall back', 'R', true],
+      ['testudo', 'Testudo', 'T', b.orders.has('testudo') && has('inf')], ['orbis', 'Orbis', 'O', b.orders.has('orbis') && has('inf')], ['relieve', 'Relieve', 'Y', b.orders.has('relieve') && has('inf')],
+      ['pursue', 'Pursue', 'P', b.orders.has('pursue') && has('cav')], ['holdfire', 'Hold fire', 'J', has('ranged')]]
+      .filter(x => x[3]).map(x => ({ id: x[0], label: x[1], key: x[2] }));
+    if (this.genSel && b.orders.has('rally')) list.push({ id: 'rally', label: 'Rally', key: 'F' });
+    const sig = (sel.length || this.genSel ? list.map(x => x.id).join() : '') + '|' + sel.map(u => (u.holdFire ? 'f' : '') + u.formation + u.stance).join();
+    if (sig === this.cmdSig) return; this.cmdSig = sig;
+    el.innerHTML = ''; if (!sel.length && !this.genSel) return;
+    for (const c of list) {
+      const btn = document.createElement('button'); btn.className = 'cmd'; btn.innerHTML = `${c.label}<kbd>${c.key}</kbd>`;
+      const on = (c.id === 'hold' && sel.length && sel.every(u => u.stance === 'hold')) || (c.id === 'defend' && sel.length && sel.every(u => u.stance !== 'hold')) || (c.id === 'testudo' && sel.some(u => u.formation === 'close')) || (c.id === 'orbis' && sel.some(u => u.formation === 'orb')) || (c.id === 'holdfire' && sel.some(u => u.holdFire));
+      if (on) btn.classList.add('on');
+      btn.onclick = () => this.cmd(c.id); el.appendChild(btn);
+    }
+  }
+
   // ----- HUD -----
   refreshBottom() {
     const el = $('hud-bottom'); el.innerHTML = '';
@@ -217,7 +251,7 @@ export class BattleUI {
     const eta = b.nextWaveEta(), clear = eta !== null && b.activeMen('gaul') === 0;
     $('btn-wave').classList.toggle('hidden', !clear);
     const waveTxt = clear ? `   |  Field clear. Next wave in ${mm(Math.max(0, Math.min(eta, b.callDelay - b.clearT)))}` : '';
-    $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${b.scn.fog && b.units.some(u => u.side === 'gaul' && u.active && !u.spotted) ? '?' : Math.round(b.activeMen('gaul'))}   ${gs}`;
+    $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${b.fogOn && b.units.some(u => u.side === 'gaul' && u.active && !u.spotted) ? '?' : Math.round(b.activeMen('gaul'))}   ${gs}`;
     $('hud-sub').textContent = (objTxt + waveTxt).replace(/^\s*\|\s*/, '').replace(/\s+\|\s+/g, '   |   ').trim();
     document.querySelectorAll('.ucard').forEach(d => {
       if (d.dataset.gen) { d.classList.toggle('sel', this.genSel); return; }
@@ -234,6 +268,7 @@ export class BattleUI {
       while (lg.children.length > 7) lg.removeChild(lg.firstChild);
     }
     // left panel
+    this.refreshCmds();
     const sel = this.selected(), ins = this.inspect ? b.byId(this.inspect) : null;
     const u = sel.length === 1 ? sel[0] : (!sel.length && ins ? ins : null);
     const L = $('hud-left');

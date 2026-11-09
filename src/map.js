@@ -164,7 +164,8 @@ export function renderMap(root, c, api) {
         ${done ? `<p>The Helvetii are broken and Gaul lies open before you. Acts II onward (Germania, Britannia, the civil war and Rome itself) are the next milestones.</p>`
           : `<p><b>${esc(scn.name)}</b>${scn.kind === 'named' ? ' <span class="pill">Named battle</span>' : ''}${scn.rewardMult > 1.4 ? ' <span class="pill">Dangerous - rich spoils</span>' : ''}<br><span class="small muted">${esc(scn.geo.place)} (${scn.geo.lat.toFixed(2)}&deg;N, ${scn.geo.lon.toFixed(2)}&deg;E)</span><br><span class="muted">${esc(scn.briefing)}</span></p>
           <p class="small muted">${esc(scn.objective)}</p>
-          <div class="row"><button class="primary" id="m-camp">Make camp (${c.daysLeft} day${c.daysLeft === 1 ? '' : 's'})</button><button id="m-march">March at once</button></div>`}
+          <div class="row"><button class="primary" id="m-camp">Make camp</button><button id="m-march">March at once</button></div>
+          <div class="small muted" style="margin-top:6px">You have <b>${c.daysLeft} day${c.daysLeft === 1 ? '' : 's'}</b> before the enemy moves. Every camp activity (a drill, foraging, a purchase) takes one day, so you can do about ${c.daysLeft} thing${c.daysLeft === 1 ? '' : 's'}. Marching at once saves them but you fight as you are.</div>`}
         <div class="row" style="margin-top:8px"><button id="m-menu">Main menu</button></div></div>
       <div class="card"><h3>${esc((c.player && c.player.name) || 'Your command')}</h3><div class="small muted">${esc(picksNames(c).join(' - ') || 'Veteran commander')}</div>${describe(c).lines.map(([a, b]) => `<div class="kvl"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}</div>
       <div class="card"><h3>Your army</h3><ul class="armylist">${army}</ul></div>

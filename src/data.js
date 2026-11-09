@@ -1,8 +1,11 @@
 // Static game data: unit types, difficulty, XP ladder, terrain and scenarios.
 
+// The battlefield is sized per scenario (see scaleScenario at the bottom); WORLD always describes the battle currently loaded.
 export const WORLD = { w: 1600, h: 1000 };
+export const setWorld = (scn) => { WORLD.w = (scn && scn.world && scn.world.w) || 1600; WORLD.h = (scn && scn.world && scn.world.h) || 1000; };
 
-export const XP_LEVELS = [0, 100, 250, 450, 700, 1000];
+// Experience is slow: a raw cohort needs several battles to become Miles and a long campaign to become a veteran.
+export const XP_LEVELS = [0, 260, 700, 1350, 2200, 3300];
 export const LEVEL_NAMES = ['Tiro (raw)', 'Miles', 'Veteran', 'Seasoned', 'Elite', 'Legendary'];
 
 // atk = kills per fighting man per second (before armour). def = damage reduction (0..1).
@@ -93,19 +96,20 @@ export function forestIn(f, x, y) {
   const a = Math.atan2(ny, nx), sd = f.cx * 0.013 + f.cy * 0.007;
   const edge = 0.86 + 0.3 * vnoise(Math.cos(a) * 1.7 + sd, Math.sin(a) * 1.7 + sd * 1.3) + 0.2 * vnoise(Math.cos(a) * 4.1 + sd * 2, Math.sin(a) * 4.1 - sd) - 0.08;
   if (r >= edge) return false;
-  if (r > 0.38 && vnoise(x / 52 + sd, y / 52 - sd) < 0.2) return false;     // a glade
+  const gs = 52 * Math.pow(f.sc || 1, 0.6);
+  if (r > 0.38 && vnoise(x / gs + sd, y / gs - sd) < 0.2) return false;     // a glade
   return true;
 }
-export function riverShift(f, x) { return (vnoise(x / 150 + f.y * 0.013, f.y * 0.031) - 0.5) * 2 * 26 + Math.sin(x / 210 + f.y * 0.02) * 12; }
+export function riverShift(f, x) { const sc = f.sc || 1; return ((vnoise(x / (150 * sc) + f.y * 0.013 / sc, f.y * 0.031 / sc) - 0.5) * 2 * 26 + Math.sin(x / (210 * sc) + f.y * 0.02 / sc) * 12) * Math.sqrt(sc); }
 export function elevAt(scn, x, y) {
   if (!scn || !scn.terrain) return 0;
   let e = 0;
   for (const f of scn.terrain) {
     if (f.kind !== 'hill') continue;
     const nx = (x - f.cx) / f.rx, ny = (y - f.cy) / f.ry;
-    const r = Math.sqrt(nx * nx + ny * ny) + (vnoise(x / 80 + f.cx * 0.017, y / 80 + f.cy * 0.011) - 0.5) * 0.32;
+    const sc = f.sc || 1, r = Math.sqrt(nx * nx + ny * ny) + (vnoise(x / (80 * sc) + f.cx * 0.017 / sc, y / (80 * sc) + f.cy * 0.011 / sc) - 0.5) * 0.32;
     if (r >= 1) continue;
-    const t = 1 - Math.max(0, r), v = (f.h || 40) * t * t * (3 - 2 * t) * (0.88 + 0.24 * vnoise(x / 38, y / 38));
+    const t = 1 - Math.max(0, r), v = (f.h || 40) * t * t * (3 - 2 * t) * (0.88 + 0.24 * vnoise(x / (38 * sc), y / (38 * sc)));
     if (v > e) e = v;
   }
   return e;
@@ -341,3 +345,27 @@ for (const scn of [PROLOGUE, ...SCENARIOS]) {
     }
   });
 }
+
+// ---------------------------------------------------------------------------
+// Battlefield scale. Maps are authored on a 1600x1000 grid and enlarged here, so the armies start far apart and you have to find the
+// enemy, manoeuvre, and choose your ground. Heights grow more slowly than distances so slopes stay walkable.
+// ---------------------------------------------------------------------------
+export const MAP_SCALE = 2.5, PROLOGUE_SCALE = 1.8;
+function scaleScenario(scn, k) {
+  const S = (v) => Math.round(v * k), p = (o, ...keys) => { for (const key of keys) if (key in o) o[key] = S(o[key]); };
+  for (const f of scn.terrain) {
+    f.sc = k;
+    if (f.kind === 'hill') { p(f, 'cx', 'cy', 'rx', 'ry'); f.h = Math.round((f.h || 40) * Math.sqrt(k)); }
+    else if (f.rx) p(f, 'cx', 'cy', 'rx', 'ry');
+    else p(f, 'x', 'y', 'w', 'h');
+  }
+  for (const o of scn.objectives || []) { p(o, 'x', 'y'); o.r = Math.round(o.r * Math.sqrt(k) * 1.2); }
+  p(scn.deploy, 'cx', 'cy'); if (scn.deploy.dx) { scn.deploy.dx = Math.round(scn.deploy.dx * 1.4); scn.deploy.dy = Math.round(scn.deploy.dy * 1.4); }
+  for (const e of scn.enemy) { p(e, 'x', 'y'); if (e.ai && e.ai.trigger) e.ai.trigger = Math.round(e.ai.trigger * 1.6); }
+  for (const r of scn.reinforcements || []) { if (r.unit) p(r.unit, 'x', 'y'); }
+  scn.timeLimit = Math.round(scn.timeLimit * 1.2);
+  scn.world = { w: S(1600), h: S(1000) };
+  scn.scale = k;
+}
+scaleScenario(PROLOGUE, PROLOGUE_SCALE);
+for (const scn of SCENARIOS) scaleScenario(scn, MAP_SCALE);

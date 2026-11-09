@@ -18,15 +18,15 @@ export class Coach {
   start() {
     this.active = true; this.listener = (name) => { if (this.cur && this.cur.until && this.cur.until.includes(name)) this.hide(); };
     this.ui.on(this.listener); this.hook = (dt) => this.frame(dt); this.ui.frameHooks.push(this.hook);
-    $('co-ok').onclick = () => this.hide();
-    this.show(TIPS[0]);
+    setTimeout(() => { if (this.active && !this.cur) this.show(TIPS[0]); }, 1800);
   }
   stop() { this.active = false; this.hide(); this.ui.listeners = this.ui.listeners.filter(f => f !== this.listener); this.ui.frameHooks = this.ui.frameHooks.filter(f => f !== this.hook); }
-  show(tip) { this.cur = tip; this.shown.add(tip.id); this.age = 0; $('co-text').innerHTML = tip.text; $('coach').classList.remove('hidden'); }
-  hide() { this.cur = null; $('coach').classList.add('hidden'); }
+  show(tip) { this.cur = tip; this.shown.add(tip.id); this.age = 0; this.gap = 0; clearTimeout(this._ft); $('co-text').innerHTML = tip.text; $('coach').classList.remove('hidden', 'fade'); }
+  hide() { this.cur = null; const el = $('coach'); el.classList.add('fade'); clearTimeout(this._ft); this._ft = setTimeout(() => el.classList.add('hidden'), 700); }
   frame(dt) {
     if (!this.active || this.ui.b.result) { if (this.cur) this.hide(); return; }
-    if (this.cur) { if (!this.ui.paused) this.age += dt; if (this.age > 16) this.hide(); return; }
+    if (this.cur) { this.age += dt; if (this.age > Math.max(7, this.cur.text.replace(/<[^>]+>/g, '').length / 16)) this.hide(); return; }   // a tip leaves by itself, paused or not
+    this.gap = (this.gap || 0) + dt; if (this.gap < 5) return;                                                                      // breathing room between tips
     this.acc += dt; if (this.acc < 0.5) return; this.acc = 0;
     const tip = TIPS.find(t => !this.shown.has(t.id) && t.when(this.ui.b));
     if (tip) this.show(tip);

@@ -4,10 +4,10 @@
 export const BUILDINGS = [
   { id: 'training', name: 'Training Ground', sub: 'Drill your cohorts', x: 190, y: 470,
     intro: ['Your cohorts improve by <b>drilling</b>. Each drill uses one day and a little food.', 'Lead the drill yourself for the best result, or let an officer do it.', 'Experienced, well-drilled units fight better and break less easily.'] },
-  { id: 'depot', name: 'Supply Depot', sub: 'Forage for food', x: 810, y: 470,
-    intro: ['Your army eats every day. Send <b>foraging parties</b> to refill your supplies.', 'A cautious sweep is safe. A wide sweep brings back more but risks an ambush.'] },
   { id: 'barracks', name: 'Barracks', sub: 'Rest, recruit, raise units', x: 190, y: 150,
     intro: ['Rest tired units, recruit replacements and fortify the camp.', 'As you win battles your command grows: <b>raise new units</b> here.'] },
+  { id: 'depot', name: 'Supply Depot', sub: 'Forage for food', x: 810, y: 470,
+    intro: ['Your army eats every day. Send <b>foraging parties</b> to refill your supplies.', 'A cautious sweep is safe. A wide sweep brings back more but risks an ambush.'] },
   { id: 'officers', name: "Officers' Tent", sub: 'Skills and assignments', x: 810, y: 150,
     intro: ['Officers earn <b>skill points</b> as they level. Spend them on perks.', 'Attach an officer to a unit to help it in battle.'] },
   { id: 'forge', name: 'Armourer', sub: 'Better arms and armour', x: 190, y: 310,

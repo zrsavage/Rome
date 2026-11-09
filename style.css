@@ -79,6 +79,10 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 #hud-log{position:absolute;right:10px;top:52px;width:300px;max-height:36vh;overflow:hidden;font-size:13px;display:flex;flex-direction:column;gap:3px;pointer-events:none}
 #hud-log div{background:#14100ad0;padding:3px 8px;border-left:3px solid var(--line);border-radius:3px}
 #hud-log .warn{border-color:#e0a030}#hud-log .bad{border-color:#d65a4a}#hud-log .good{border-color:#6fcf6f}
+#hud-cmds{position:absolute;left:50%;transform:translateX(-50%);bottom:74px;display:flex;gap:5px;flex-wrap:wrap;justify-content:center;max-width:70vw;z-index:3}
+#hud-cmds .cmd{background:#241d13ee;border:1px solid var(--line);border-radius:5px;padding:4px 9px;font-size:13px;color:var(--ink);cursor:pointer}
+#hud-cmds .cmd kbd{margin-left:6px;font:600 11px var(--body);color:var(--gold);opacity:.9}
+#hud-cmds .cmd.on{border-color:var(--gold);background:#3a2f1c}
 #hud-bottom{position:absolute;left:0;right:0;bottom:0;display:flex;gap:6px;justify-content:center;padding:8px;background:linear-gradient(#0000,#000b);pointer-events:none}
 .ucard{pointer-events:auto;background:#241d13e6;border:1px solid var(--line);border-radius:5px;padding:5px 8px;width:140px;font-size:12px;cursor:pointer}
 .ucard.sel{border-color:var(--gold);background:#3a2e1b}
@@ -143,8 +147,8 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 #hud-left .uicon{width:44px;height:44px;float:right;margin:0 0 6px 8px}
 
 /* tutorial */
-#coach{position:absolute;left:50%;top:54px;transform:translateX(-50%);width:min(500px,44vw);min-width:300px;background:#241d13f4;border:1px solid var(--gold);border-radius:8px;padding:12px 16px;z-index:5;box-shadow:0 6px 24px #000a}
-#coach p{margin:6px 0 4px;line-height:1.45;font-size:14px}
+#coach{position:absolute;left:12px;bottom:104px;width:min(340px,32vw);background:#241d13ea;border-left:3px solid var(--gold);border-radius:6px;padding:8px 12px;z-index:4;pointer-events:none;font-size:14px;line-height:1.45;opacity:1;transition:opacity .7s;box-shadow:0 4px 16px #0008}
+#coach.fade{opacity:0}
 .tt-head{display:flex;gap:10px;align-items:baseline}.tt-head span{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}.tt-head b{color:var(--gold);font-size:17px;font-weight:normal;letter-spacing:.04em}
 .tt-bar{height:4px;background:#000a;border-radius:2px;margin-top:8px;overflow:hidden}.tt-bar i{display:block;height:100%;background:var(--gold);transition:width .4s}
 .tut-hl{outline:2px solid var(--gold)!important;outline-offset:2px;animation:tuthl 1.2s ease-in-out infinite}
