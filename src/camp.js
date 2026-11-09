@@ -38,6 +38,15 @@ function enemyProfile(scn) {
 const enemyLine = (p) => `The enemy will be mostly ${p.parts.slice(0, 3).map(([n, pc]) => `${n} (${pc}%)`).join(', ')}.`;
 const enemyScaleFor = (favour) => favour >= 2 ? 0.9 : favour <= -2 ? 1.1 : 1;
 const TYPE_ROLE = { legionary: 'Holds the line against charges.', slinger: 'Punishes massed warbands from behind the line.', archer: 'Long-range fire; outranges javelineers.', equites: 'Flank charges and running down routers.', aux_cav: 'Cheap flankers and pursuers.', aux_inf: 'Cheap and fierce, but less disciplined.' };
+// Leading a drill yourself is the generalist choice: decent at everything (a little better if you rose through the ranks), but a specialist
+// officer beats you at their own drill. An officer is judged on the trait the regimen needs.
+export function selfQuality(c) { const p = c.player && c.player.picks; return p && p.career === 'ranks' ? 0.75 : 0.65; }
+export function planDrill(c, h, key, leaderId) {
+  const r = REGIMENS[key], leader = leaderId && leaderId !== 'self' ? officerById(c, +leaderId) : null;
+  const q = leader ? 0.45 + 0.1 * leader[r.trait] : selfQuality(c), attached = officerById(c, h.officerId);
+  const bonus = (1 + (attached ? 0.05 * attached.drill : 0)) * (leader && (leader.perks || []).includes('drillmaster') ? 1.25 : 1);
+  return { r, leader, quality: q, xp: Math.round(24 * (0.6 + q) * r.xp * bonus), dr: Math.round(7 * (0.5 + q) * r.dr * bonus), cond: r.cond, risk: r.risk, sup: r.sup };
+}
 const bestOfficer = (c, trait) => Math.max(0, ...c.officers.filter(o => o.alive).map(o => o[trait]));
 
 export class Camp {
@@ -75,15 +84,8 @@ export class Camp {
   selected() { return this.c.cohorts.find(h => h.id === this.sel); }
 
   // ----- actions -----
-  // Leading a drill yourself is the generalist choice: decent at everything (a little better if you rose through the ranks), but a specialist officer beats you at their own drill.
-  // An officer is judged on the trait the regimen needs: drill for formation work, tactics for weapons and field work.
-  selfQuality() { const p = this.c.player && this.c.player.picks; return p && p.career === 'ranks' ? 0.75 : 0.65; }
-  drillPlan(h, key, leaderId) {
-    const c = this.c, r = REGIMENS[key], leader = leaderId && leaderId !== 'self' ? officerById(c, +leaderId) : null;
-    const q = leader ? 0.45 + 0.1 * leader[r.trait] : this.selfQuality(), attached = officerById(c, h.officerId);
-    const bonus = (1 + (attached ? 0.05 * attached.drill : 0)) * (leader && (leader.perks || []).includes('drillmaster') ? 1.25 : 1);
-    return { r, leader, quality: q, xp: Math.round(24 * (0.6 + q) * r.xp * bonus), dr: Math.round(7 * (0.5 + q) * r.dr * bonus), cond: r.cond, risk: r.risk, sup: r.sup };
-  }
+  selfQuality() { return selfQuality(this.c); }
+  drillPlan(h, key, leaderId) { return planDrill(this.c, h, key, leaderId); }
   runDrill() {
     const c = this.c, h = this.selected(), key = this.regimen; if (!key) return;
     const p = this.drillPlan(h, key, this.leader || 'self');

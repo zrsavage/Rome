@@ -2,7 +2,7 @@
 // Plays each scenario with the army you'd plausibly have at that point, using simple scripted "players".
 import { Battle } from '../src/sim.js';
 import { SCENARIOS } from '../src/data.js';
-import { newCampaign, romeSpecs } from '../src/state.js';
+import { newCampaign, romeSpecs, modsOf } from '../src/state.js';
 
 const RUNS = +process.argv[2] || 20;
 const SEL = process.argv[3] && process.argv[3] !== 'all' ? [+process.argv[3]] : SCENARIOS.map((_, i) => i);
@@ -19,9 +19,12 @@ function campaignAt(i, difficulty) {
   return c;
 }
 
-export function play(strategy, i, difficulty, seed) {
+export { campaignAt };
+export function play(strategy, i, difficulty, seed, mutate = null) {
   const scn = SCENARIOS[i], c = campaignAt(i, difficulty);
-  const b = new Battle(scn, romeSpecs(c, scn), { difficulty, seed, fort: c.fort });
+  if (mutate) mutate(c);   // camp decisions applied before the battle (used by tools/campbalance.mjs)
+  const m = modsOf(c);
+  const b = new Battle(scn, romeSpecs(c, scn), { difficulty, seed, fort: c.fort, recovery: m.recovery, moraleBonus: m.morale });
   const rome = b.units.filter(u => u.side === 'rome');
   const dt = 0.1;
   let guard = 0;
