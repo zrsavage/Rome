@@ -30,7 +30,7 @@ export class BattleUI {
     this.refreshBottom(); this.setPause(true); this.setSpeed(1);
     $('help-orders').innerHTML = [['hold', '<b>H</b> hold position &middot; <b>G</b> defend post'], ['fallback', '<b>R</b> fall back and rest'], ['holdfire', '<b>J</b> hold fire (missile troops)'], ['extend', '<b>L</b> extend the line (thinner, wider); <b>Alt+right-drag</b> fills a drawn line'], ['wedge', '<b>U</b> wedge'], ['sprint', '<b>Shift+right-click</b> sprint / charge'], ['guard', '<b>right-click a friendly unit</b> to guard it'], ['testudo', '<b>T</b> testudo'], ['orbis', '<b>O</b> orbis (hollow square)'], ['relieve', '<b>Y</b> relieve a tired cohort'], ['pursue', '<b>P</b> cavalry pursue routers'], ['rally', '<b>F</b> rally the line']].filter(([id]) => this.b.orders.has(id)).map(x => x[1]).join(' &middot; ');
     $('btn-retreat').disabled = false;
-    this.showBanner('DEPLOYMENT - press SPACE', 2500);
+    if (scn.id !== 'prologue') { this.b.beginDeploy(); this.showBanner('DEPLOYMENT - place your units in the gold zone, then press SPACE', 4000); } else this.showBanner('DEPLOYMENT - press SPACE', 2500);
     this.last = performance.now(); this.acc = 0; this.hudT = 0;
     if (!this.raf) this.raf = requestAnimationFrame((t) => this.frame(t));
   }
@@ -38,7 +38,7 @@ export class BattleUI {
 
   on(fn) { this.listeners.push(fn); }
   emit(name, data = {}) { for (const fn of this.listeners) fn(name, data); }
-  setPause(p) { const was = this.paused; this.paused = p; if (was !== p) this.emit('pause', { paused: p }); $('btn-pause').innerHTML = p ? `${icon('play', 15)} Resume (Space)` : `${icon('pause', 15)} Pause (Space)`; }
+  setPause(p) { if (!p && this.b && this.b.deploying) { this.b.endDeploy(); this.showBanner('The battle begins', 1200); } const was = this.paused; this.paused = p; if (was !== p) this.emit('pause', { paused: p }); $('btn-pause').innerHTML = p ? `${icon('play', 15)} Resume (Space)` : `${icon('pause', 15)} Pause (Space)`; }
   stepSpeed(d) { const L = [0.5, 1, 2, 4], i = Math.max(0, Math.min(L.length - 1, L.indexOf(this.speed) + d)); this.setSpeed(L[i]); }
   callWave() { if (this.b && this.b.callNextWave()) { this.showBanner('Next wave called', 800); this.setPause(false); } }
   setSpeed(s) { this.speed = s; this.emit('speed', { speed: s }); document.querySelectorAll('.spd').forEach(b => b.classList.toggle('on', +b.dataset.s === s)); }

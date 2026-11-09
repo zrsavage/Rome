@@ -244,7 +244,21 @@ export class Battle {
 
   // ---------- orders ----------
   // Orders never change a unit's stance. A move order sets its new post; an attack ends with the unit holding where it finished.
-  setMove(u, x, y, tf = null, ignore = false, sprint = false) { if (!u.active) return; u.order = { kind: 'move', x, y, tf, ignore, sprint: sprint && this.orders.has('sprint') }; u.post = { x, y }; }
+  // ----- deployment: before the first move, units can be placed anywhere inside your zone (not on water) -----
+  beginDeploy() {
+    const rs = this.units.filter(u => u.side === 'rome'); if (!rs.length) return;
+    const W = WORLD.w, H = WORLD.h, px = 0.2 * W, up = 0.28 * H, dn = 0.04 * H;
+    this.deployZone = { x0: Math.max(24, Math.min(...rs.map(u => u.x)) - px), x1: Math.min(W - 24, Math.max(...rs.map(u => u.x)) + px), y0: Math.max(24, Math.min(...rs.map(u => u.y)) - up), y1: Math.min(H - 24, Math.max(...rs.map(u => u.y)) + dn) };
+    this.deploying = true;
+    this.say('Deployment: right-click or right-drag to place your cohorts anywhere inside the gold zone, then press SPACE to begin.', 'info');
+  }
+  endDeploy() { if (!this.deploying) return; this.deploying = false; for (const u of this.units) if (u.side === 'rome') { u.post = { x: u.x, y: u.y }; u.order = { kind: 'none' }; } if (this.general) this.general.goal = null; }
+  deployAt(u, x, y, f) {
+    const z = this.deployZone; x = clamp(x, z.x0, z.x1); y = clamp(y, z.y0, z.y1);
+    if (this.waterAt(x, y)) return false;
+    u.x = x; u.y = y; if (f != null) u.f = f; u.post = { x, y }; u.order = { kind: 'none' }; u.updateDims(); return true;
+  }
+  setMove(u, x, y, tf = null, ignore = false, sprint = false) { if (this.deploying && u.side === 'rome') { this.deployAt(u, x, y, tf); return; } if (!u.active) return; u.order = { kind: 'move', x, y, tf, ignore, sprint: sprint && this.orders.has('sprint') }; u.post = { x, y }; }
   setAttack(u, tgt, sprint = false) { if (!u.active) return; u.order = { kind: 'attack', targetId: tgt.id, sprint: sprint && this.orders.has('sprint') }; }
   setHold(u) { if (!u.active) return; u.order = { kind: 'none' }; u.stance = 'hold'; u.post = { x: u.x, y: u.y }; }
   setEngage(u) { if (!u.active) return; u.stance = 'aggressive'; if (u.order.kind === 'none') u.post = { x: u.x, y: u.y }; }
@@ -274,7 +288,7 @@ export class Battle {
   // ---------- command ----------
   cmdNow() { return this.cmdR * (this.general && this.general.wound > 0 ? 0.5 : 1); }
   inCommand(u) { const g = this.general; return u.side !== 'rome' || !g || Math.hypot(u.x - g.x, u.y - g.y) <= this.cmdNow(); }
-  moveGeneral(x, y) { if (this.general) this.general.goal = { x: clamp(x, 15, WORLD.w - 15), y: clamp(y, 15, WORLD.h - 15) }; }
+  moveGeneral(x, y) { if (this.deploying && this.general) { const z = this.deployZone; if (!this.waterAt(x, y)) { this.general.x = clamp(x, z.x0, z.x1); this.general.y = clamp(y, z.y0, z.y1); this.general.goal = null; } return; } if (this.general) this.general.goal = { x: clamp(x, 15, WORLD.w - 15), y: clamp(y, 15, WORLD.h - 15) }; }
   stepGeneral(dt) {
     const g = this.general; if (!g) return;
     if (this.rallyCd > 0) this.rallyCd -= dt;

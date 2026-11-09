@@ -154,6 +154,7 @@ export class Renderer {
     }
     const order = b.units.filter(u => u.present && (u.side === 'rome' || u.spotted !== false)).sort((a, b2) => a.y - b2.y);
     this.drawFlood(ctx, b);
+    this.drawDeployZone(ctx, b);
     this.drawObjectives(ctx, b);
     for (const f of b.fx) if (f.kind === 'dust') this.drawDust(ctx, f);
     for (const id of new Set([...this.selection, this.hover])) { const u = b.byId(id); if (u && u.present && u.state !== 'routing') this.drawArcs(ctx, u); }
@@ -172,6 +173,14 @@ export class Renderer {
     if (this.box) { ctx.strokeStyle = '#e8c36a'; ctx.fillStyle = 'rgba(232,195,106,0.12)'; const bx = this.box; ctx.fillRect(bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0); ctx.strokeRect(bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0); }
   }
 
+  // While deploying, your zone is outlined in gold: units may be placed anywhere inside it.
+  drawDeployZone(ctx, b) {
+    const z = b.deploying && b.deployZone; if (!z) return;
+    ctx.save(); ctx.fillStyle = 'rgba(232,195,106,0.09)'; ctx.fillRect(z.x0, z.y0, z.x1 - z.x0, z.y1 - z.y0);
+    ctx.strokeStyle = 'rgba(232,195,106,0.9)'; ctx.lineWidth = 2 / this.cam.zoom; ctx.setLineDash([14 / this.cam.zoom, 9 / this.cam.zoom]); ctx.strokeRect(z.x0, z.y0, z.x1 - z.x0, z.y1 - z.y0); ctx.setLineDash([]);
+    const fs = 15 / this.cam.zoom; ctx.font = `600 ${fs}px Cinzel, Georgia, serif`; ctx.fillStyle = 'rgba(232,195,106,0.95)'; ctx.textAlign = 'left';
+    ctx.fillText('YOUR DEPLOYMENT ZONE', z.x0 + 10 / this.cam.zoom, z.y0 + fs + 6 / this.cam.zoom); ctx.restore();
+  }
   // A storm raises the river: the ford is painted over with deeper, darker water as it fills.
   drawFlood(ctx, b) {
     const fl = b.scn.flood || 0; if (fl <= 0) return;
