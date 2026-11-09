@@ -96,6 +96,7 @@ export class Battle {
     this.favour = opts.favour || 0;
     // enemy strength modifiers: difficulty + local favour (informants and divided tribes)
     const favMult = this.favour >= 2 ? 0.9 : this.favour <= -2 ? 1.1 : 1;
+    this.powerScale = opts.forceScale || 1; this.rewardScale = Math.pow(this.powerScale, 0.75);   // bigger hosts carry bigger spoils
     this.enemyScale = this.diff.enemyMult * favMult * (scn.id === 'prologue' || scn.practice ? 1 : 1.1);   // real battles are meant to be a fight
     this.recoveryMult = opts.recovery ?? 1;
     const rb = this.diff.romeMorale + Math.min(12, this.fortLevel * 4) + (opts.suppliesLow ? -8 : 0) + (opts.moraleBonus || 0);
@@ -111,11 +112,22 @@ export class Battle {
     this.say('Your army deploys. Press SPACE to begin the battle; you may issue orders while paused.', 'info');
   }
 
+  // One authored enemy unit becomes as many units as the host needs to match your army: a warband never grows past about 520 men, so a
+  // bigger army meets more warbands, in ranks, not a handful of monsters. Returns the men spawned.
   spawnEnemy(e) {
-    const men = Math.round(e.men * this.enemyScale);
-    const u = new Unit({ side: 'gaul', type: e.type, men, x: e.x, y: e.y, ai: { ...e.ai }, stance: e.ai && e.ai.kind === 'idle' ? 'hold' : 'aggressive', moraleBonus: this.diff.enemyMorale, xp: 40 + (this.diff.enemyMult > 1 ? 60 : 0) });
-    if (this.fogOn) { u.spotted = false; u.seenUntil = this.t === 0 && this.scouted ? 40 : 0; if (u.seenUntil) u.spotted = true; }   // scouts have told you where they are, for a while
-    this.units.push(u);
+    const total = Math.round(e.men * this.enemyScale * this.powerScale);
+    const cap = { warband: 520, gaul_elite: 330, gaul_skirm: 190, gaul_cav: 95 }[e.type] || 400, n = Math.max(1, Math.min(14, Math.ceil(total / cap)));
+    let spawned = 0;
+    for (let i = 0; i < n; i++) {
+      const men = Math.round(total / n), row = Math.floor(i / 8), per = Math.min(8, n - row * 8);
+      let x = e.x + ((i % 8) - (per - 1) / 2) * 115 * (n > 1 ? 1 : 0), y = e.y - row * 110 * (n > 1 ? 1 : 0);
+      if (y < 40) y = e.y + row * 110; x = Math.max(40, Math.min(WORLD.w - 40, x)); y = Math.min(WORLD.h - 40, y);
+      const ai = { ...e.ai }; if (ai.delay != null) ai.delay += (i % 4) * 1.5;
+      const u = new Unit({ side: 'gaul', type: e.type, men, x, y, ai, stance: e.ai && e.ai.kind === 'idle' ? 'hold' : 'aggressive', moraleBonus: this.diff.enemyMorale, xp: 40 + (this.diff.enemyMult > 1 ? 60 : 0) });
+      if (this.fogOn) { u.spotted = false; u.seenUntil = this.t === 0 && this.scouted ? 40 : 0; if (u.seenUntil) u.spotted = true; }   // scouts have told you where they are, for a while
+      this.units.push(u); spawned += men;
+    }
+    return spawned;
   }
   addFx(f) { if (this.fx.length < 600) this.fx.push(f); }
   // ---------- sight ----------
@@ -416,7 +428,7 @@ export class Battle {
         const n = this.nearestEnemy(u); if (n) this.setAttack(u, n.e);
         if (r.msg) this.say(r.msg, 'good');
       } else {
-        this.spawnEnemy(r.unit); this.startGaul += Math.round(r.unit.men * this.enemyScale);
+        this.startGaul += this.spawnEnemy(r.unit);
         if (r.msg) this.say(r.msg, 'warn');
       }
     }
@@ -940,7 +952,7 @@ export class Battle {
       rows.push({ cohortId: u.cohortId, name: u.name, startMen: u.startMen, endMen, casualties, kills: u.kills, xpGain, officerId: u.officer ? u.officer.id : null, officerFate: fate });
     }
     const mult = outcome === 'victory' ? 1 : outcome === 'draw' ? 0.45 : 0;
-    const rewardMult = (this.scn.rewardMult || 1) * dm.reward;
+    const rewardMult = (this.scn.rewardMult || 1) * dm.reward * this.rewardScale;
     this.result = {
       outcome, time: this.t, rows, enemyDead, enemyStart,
       spoils: {

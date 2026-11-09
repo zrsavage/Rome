@@ -1,5 +1,5 @@
 import { SCENARIOS, DIFFICULTY, UNIT_TYPES, PROLOGUE } from './data.js';
-import { romeSpecs, applyResult, modsOf } from './state.js';
+import { romeSpecs, applyResult, modsOf, forceScale } from './state.js';
 import { ORIGINS, DEFAULT_NAME, buildCampaign, describe } from './origins.js';
 import { Camp, totalMen } from './camp.js';
 import { BattleUI } from './battleui.js';
@@ -71,7 +71,7 @@ function showBrief(scnArg) {
   if (!scn) return showMap();
   const opening = scn.id === 'prologue';
   const diff = DIFFICULTY[c.difficulty];
-  const favMult = c.favour >= 2 ? 0.9 : c.favour <= -2 ? 1.1 : 1, scale = diff.enemyMult * favMult;
+  const favMult = c.favour >= 2 ? 0.9 : c.favour <= -2 ? 1.1 : 1, fs = forceScale(c, scn), scale = diff.enemyMult * favMult * (opening ? 1 : 1.1) * fs;
   const groups = {};
   [...scn.enemy, ...scn.reinforcements.filter(r => r.side !== 'rome').map(r => r.unit)].forEach(e => { groups[e.type] = (groups[e.type] || 0) + e.men * scale; });
   const total = Object.values(groups).reduce((a, b) => a + b, 0);
@@ -85,8 +85,8 @@ function showBrief(scnArg) {
   $('screen-brief').innerHTML = `<div class="panel-page"><div class="muted">${opening ? 'Opening battle' : `Act ${scn.act} - ${esc(scn.theater)}, ${esc(scn.year)} - Battle ${c.scenario + 1} of ${SCENARIOS.length}${scn.kind === 'named' ? ' - NAMED BATTLE' : ''}`}</div>
     <h2>${esc(scn.name)}</h2><img class="banner" alt="" src="${artSrc('scenario', scn.id, 800, 240, { scn })}"><p>${esc(scn.briefing)}</p>
     <div class="card"><h3>Objective</h3>${esc(scn.objective)}<br><span class="muted small">Time limit ${Math.round(scn.timeLimit / 60)} minutes. A well-ordered withdrawal (keeping at least ${Math.round((0.45 - 0.05 * c.fort) * 100)}% of your men; fortifications lower this) counts as a draw and earns partial spoils.${scn.rewardMult > 1.4 ? ' Historically a dark day for Rome: survival or victory pays handsomely.' : ''}</span></div>
-    <div class="row" style="align-items:flex-start;margin-top:12px"><div class="card" style="flex:1"><h3>Your force (${rome} men)</h3><ul>${c.cohorts.map(h => `<li>${esc(h.name)} - ${h.men}</li>`).join('')}</ul></div>
-    <div class="card" style="flex:1"><h3>Enemy${c.scouted ? ` (scouted) ~${Math.round(total)}` : ' (estimated)'}</h3><ul>${list}</ul>${c.scouted ? waveText : '<div class="muted small">Without scouts, expect surprises: you will not know how many reinforcements come, or when.</div>'}</div></div>
+    <div class="row" style="align-items:flex-start;margin-top:12px"><div class="card" style="flex:1"><h3>Your force (${rome} men)</h3><ul>${c.cohorts.length > 10 ? Object.entries(c.cohorts.reduce((g, h) => { (g[h.type] = g[h.type] || { n: 0, men: 0 }).n++; g[h.type].men += h.men; return g; }, {})).map(([t, g]) => `<li>${g.n} x ${esc(UNIT_TYPES[t].name)} - ${g.men} men</li>`).join('') : c.cohorts.map(h => `<li>${esc(h.name)} - ${h.men}</li>`).join('')}</ul></div>
+    <div class="card" style="flex:1"><h3>Enemy${c.scouted ? ` (scouted) ~${Math.round(total)}` : ' (estimated)'}</h3><ul>${list}</ul>${fs > 1.05 ? '<div class="muted small">The Gauls gather in proportion to the army you bring: the bigger your host, the bigger theirs.</div>' : ''}${c.scouted ? waveText : '<div class="muted small">Without scouts, expect surprises: you will not know how many reinforcements come, or when.</div>'}</div></div>
     <p class="muted small">Goodwill ${c.favour}. Fort ${c.fort}. Supplies ${c.supplies}${c.supplies < totalMen(c) / 60 * 2 ? ' - LOW, morale will suffer' : ''}.</p>
     ${opening ? '<p class="small" style="color:var(--gold)">After this fight you will see your army management screen, where you spend days between battles.</p>' : ''}
     <div class="row"><button class="primary" id="go">Deploy</button>${opening ? '<button id="back">Main menu</button>' : '<button id="back">Back to map</button>'}</div></div>`;
@@ -100,7 +100,7 @@ function startBattle(scn) {
   store.set(preKey(c.slot), c);
   show('screen-battle');
   const low = c.supplies < totalMen(c) / 60 * 2, m = modsOf(c), opening = scn.id === 'prologue';
-  battle.start(scn, romeSpecs(c, scn), { difficulty: opening ? 'easy' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale, orders: c.doctrines || [], scouted: !!c.scouted }, (res) => showResult(res, scn));
+  battle.start(scn, romeSpecs(c, scn), { difficulty: opening ? 'easy' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale, orders: c.doctrines || [], scouted: !!c.scouted, forceScale: forceScale(c, scn) }, (res) => showResult(res, scn));
   if (opening) startCoach(); else stopCoach();
 }
 

@@ -1,5 +1,5 @@
 // Campaign state: cohorts, officers, resources. Plain JSON so it saves to localStorage.
-import { XP_LEVELS, SCENARIOS, WORLD, START_TYPES, TYPE_UNLOCKS } from './data.js';
+import { XP_LEVELS, SCENARIOS, WORLD, START_TYPES, TYPE_UNLOCKS, UNIT_TYPES } from './data.js';
 import { PERKS } from './perks.js';
 import { levelFor } from './sim.js';
 
@@ -17,6 +17,24 @@ export function modsOf(c) {
 export const hasPerk = (c, id) => (c.officers || []).some(o => o.alive && (o.perks || []).includes(id));
 // A campaign grows an army from a handful of cohorts to 60-80 units by the final battles.
 export const commandLimit = (c) => Math.min(80, 6 + Math.round((c.history || []).filter(h => h.outcome !== 'defeat').length * 2.2));
+// ---- Enemy strength follows yours ----
+// The Gauls gather in proportion to the army you bring (a little less than one for one, so a bigger and better army is still an
+// advantage). Early battles are authored for the starting army; as your host grows to seventy units, so do the hosts that meet it.
+export function armyPower(c) {
+  let p = 0;
+  for (const h of c.cohorts) {
+    if (h.men <= 0) continue;
+    const t = UNIT_TYPES[h.type], u = h.upg || {}, w = (t.cost || 60) / 60, lvl = levelFor(h.xp || 0);
+    p += h.men * w * (1 + 0.07 * lvl) * (1 + 0.1 * Math.min(100, h.drill || 0) / 100) * (1 + 0.05 * ((u.armour || 0) + (u.weapon || 0)));
+  }
+  return p;
+}
+let POWER_REF = 0;
+export const powerRef = () => POWER_REF || (POWER_REF = armyPower(newCampaign('normal')));
+export function forceScale(c, scn) {
+  if (!scn || scn.id === 'prologue' || scn.practice || scn.id === 'practice') return 1;
+  return Math.max(0.8, Math.min(20, Math.pow(armyPower(c) / powerRef(), 0.9)));
+}
 export const unlockedTypes = (c) => c.unlockedTypes || START_TYPES;
 
 export function newCampaign(difficulty = 'normal') {
