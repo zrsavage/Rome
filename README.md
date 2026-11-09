@@ -38,6 +38,16 @@ different army so the result is not a coin-flip. Unit-targeted options are appli
 tier. Drills about +50% over the first pass. Rest also returns 15% of missing men. Fortify +4 morale per level. Hospital +30% recovery per
 level. Allied infantry 340 denarii, slingers 130.
 
+## Combat geometry
+
+Fighting a unit head-on is a slow grind; hitting it from the side or rear, or surrounding it, is decisive. In melee, damage is x0.8 head-on,
+x1.5 from the flank and x2.2 from the rear; a flanked unit fights back less (-15% per attacker at its side or behind), and a *surrounded*
+unit (enemies on opposite sides) loses 15% armour, deals 30% less damage and bleeds morale. Units show `FLANKED` or `SURROUNDED`.
+Typical engagements, first contact until one side breaks (game seconds at 1x): an even head-on duel (480 v 480) about 110 s; one extra
+warband on the flank about 40 s; cavalry into the rear about 20-25 s; caught between two warbands about 15 s; Roman horse into the rear of
+a warband held by a cohort about 50 s. Tuning constants: `FRONT_GRIND`, `FLANK_DMG`, `REAR_DMG`, `FLANK_MORALE`, `REAR_MORALE`,
+`SURROUND_MORALE` in `src/sim.js`.
+
 ## Stances
 
 Orders never change a unit's stance. A move order sets the unit's new **post**. Units on *Defend post* (the default) fight what

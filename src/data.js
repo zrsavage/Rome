@@ -115,13 +115,13 @@ export const SCENARIOS = [
       { kind: 'hill', cx: 1230, cy: 760, rx: 170, ry: 95 }, { kind: 'forest', cx: 360, cy: 270, rx: 170, ry: 100 }, { kind: 'forest', cx: 1280, cy: 230, rx: 130, ry: 80 }
     ],
     enemy: [
-      { type: 'warband', men: 300, x: 640, y: 250, ai: { kind: 'rush', delay: 6 } },
-      { type: 'warband', men: 325, x: 820, y: 230, ai: { kind: 'rush', delay: 3 } },
-      { type: 'warband', men: 260, x: 380, y: 300, ai: { kind: 'ambush', trigger: 260, maxDelay: 120 } },
-      { type: 'gaul_skirm', men: 115, x: 740, y: 330, ai: { kind: 'skirm' } },
-      { type: 'gaul_cav', men: 60, x: 1260, y: 200, ai: { kind: 'flank', delay: 20 } }
+      { type: 'warband', men: 240, x: 640, y: 250, ai: { kind: 'rush', delay: 6 } },
+      { type: 'warband', men: 265, x: 820, y: 230, ai: { kind: 'rush', delay: 3 } },
+      { type: 'warband', men: 210, x: 380, y: 300, ai: { kind: 'ambush', trigger: 260, maxDelay: 120 } },
+      { type: 'gaul_skirm', men: 90, x: 740, y: 330, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 50, x: 1260, y: 200, ai: { kind: 'flank', delay: 20 } }
     ],
-    reinforcements: [{ at: 150, msg: 'War horns sound from the forest - another warband joins the fray!', unit: { type: 'warband', men: 260, x: 300, y: 80, ai: { kind: 'rush', delay: 0 } } }],
+    reinforcements: [{ at: 150, msg: 'War horns sound from the forest - another warband joins the fray!', unit: { type: 'warband', men: 210, x: 300, y: 80, ai: { kind: 'rush', delay: 0 } } }],
     rewards: { gold: 260, supplies: 120, recruits: 60, xpBase: 30, officerXp: 35 }, rewardMult: 1, unlock: []
   },
   {
@@ -136,13 +136,13 @@ export const SCENARIOS = [
       { kind: 'forest', cx: 1250, cy: 760, rx: 200, ry: 110 }, { kind: 'hill', cx: 330, cy: 760, rx: 150, ry: 85 }, { kind: 'forest', cx: 1100, cy: 150, rx: 220, ry: 90 }
     ],
     enemy: [
-      { type: 'warband', men: 350, x: 560, y: 560, ai: { kind: 'ambush', trigger: 130, maxDelay: 90, quiet: true } },
-      { type: 'warband', men: 325, x: 760, y: 590, ai: { kind: 'ambush', trigger: 130, maxDelay: 90, quiet: true } },
-      { type: 'warband', men: 310, x: 960, y: 560, ai: { kind: 'ambush', trigger: 130, maxDelay: 95, quiet: true } },
-      { type: 'gaul_skirm', men: 135, x: 650, y: 520, ai: { kind: 'skirm' } },
-      { type: 'gaul_cav', men: 80, x: 1100, y: 620, ai: { kind: 'flank', delay: 35 } }
+      { type: 'warband', men: 320, x: 560, y: 560, ai: { kind: 'ambush', trigger: 130, maxDelay: 90, quiet: true } },
+      { type: 'warband', men: 300, x: 760, y: 590, ai: { kind: 'ambush', trigger: 130, maxDelay: 90, quiet: true } },
+      { type: 'warband', men: 285, x: 960, y: 560, ai: { kind: 'ambush', trigger: 130, maxDelay: 95, quiet: true } },
+      { type: 'gaul_skirm', men: 125, x: 650, y: 520, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 75, x: 1100, y: 620, ai: { kind: 'flank', delay: 35 } }
     ],
-    reinforcements: [{ at: 120, msg: 'Warbands from across the Arar wade back to rescue their kin!', unit: { type: 'gaul_elite', men: 260, x: 620, y: 300, ai: { kind: 'rush', delay: 0 } } }],
+    reinforcements: [{ at: 120, msg: 'Warbands from across the Arar wade back to rescue their kin!', unit: { type: 'gaul_elite', men: 240, x: 620, y: 300, ai: { kind: 'rush', delay: 0 } } }],
     rewards: { gold: 360, supplies: 160, recruits: 80, xpBase: 44, officerXp: 50 }, rewardMult: 1.1,
     unlock: [{ type: 'aux_cav', name: 'Allied Gallic Horse', men: 60, maxMen: 70, xp: 20, drill: 15, msg: 'Aeduan cavalry ride in to support Rome.' }]
   },
@@ -184,12 +184,12 @@ export const SCENARIOS = [
       { kind: 'water', x: 0, y: 620, w: 520, h: 40 }, { kind: 'water', x: 1080, y: 620, w: 520, h: 40 }
     ],
     enemy: [
-      { type: 'warband', men: 650, x: 700, y: 240, ai: { kind: 'ambush', trigger: 90, maxDelay: 140 } },
-      { type: 'warband', men: 650, x: 900, y: 240, ai: { kind: 'ambush', trigger: 90, maxDelay: 140 } },
-      { type: 'gaul_elite', men: 415, x: 800, y: 215, ai: { kind: 'ambush', trigger: 40, maxDelay: 200 } },
-      { type: 'gaul_skirm', men: 285, x: 640, y: 300, ai: { kind: 'skirm' } },
-      { type: 'gaul_skirm', men: 260, x: 960, y: 300, ai: { kind: 'skirm' } },
-      { type: 'gaul_cav', men: 130, x: 1300, y: 330, ai: { kind: 'flank', delay: 50 } }
+      { type: 'warband', men: 535, x: 700, y: 240, ai: { kind: 'ambush', trigger: 90, maxDelay: 140 } },
+      { type: 'warband', men: 535, x: 900, y: 240, ai: { kind: 'ambush', trigger: 90, maxDelay: 140 } },
+      { type: 'gaul_elite', men: 340, x: 800, y: 215, ai: { kind: 'ambush', trigger: 40, maxDelay: 200 } },
+      { type: 'gaul_skirm', men: 235, x: 640, y: 300, ai: { kind: 'skirm' } },
+      { type: 'gaul_skirm', men: 215, x: 960, y: 300, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 105, x: 1300, y: 330, ai: { kind: 'flank', delay: 50 } }
     ],
     reinforcements: [],
     rewards: { gold: 320, supplies: 140, recruits: 70, xpBase: 40, officerXp: 45 }, rewardMult: 1,

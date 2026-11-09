@@ -21,6 +21,9 @@ const COMBAT_PACE = 0.25;
 const RANGED_PACE = 0.55;
 // Friendly units never shove each other. A moving unit marches through friends at this fraction of its speed.
 const PASS_SPEED = 0.3;
+// Melee geometry. Fighting a unit head-on is a slow grind; hitting its side or rear, or surrounding it, is decisive.
+const FRONT_GRIND = 0.8, FLANK_DMG = 1.5, REAR_DMG = 2.2;
+const FLANK_MORALE = 1.0, REAR_MORALE = 2.0, SURROUND_MORALE = 1.2;
 let UID = 1;
 
 export class Unit {
@@ -134,7 +137,7 @@ export class Battle {
   angleMult(att, def) {
     const dx = att.x - def.x, dy = att.y - def.y, d = Math.hypot(dx, dy) || 1;
     const c = (dx * Math.cos(def.f) + dy * Math.sin(def.f)) / d;
-    return c > 0.6 ? { m: 1, c: 1 } : c > -0.35 ? { m: 1.4, c: 2 } : { m: 1.9, c: 3 };
+    return c > 0.6 ? { m: 1, c: 1, g: FRONT_GRIND } : c > -0.35 ? { m: 1.5, c: 2, g: FLANK_DMG } : { m: 2.2, c: 3, g: REAR_DMG };
   }
 
   // ---------- orders ----------
@@ -248,6 +251,7 @@ export class Battle {
     this._ai = (this._ai || 0) + dt;
     if (this._ai >= 0.4) { this._ai = 0; this.aiThink(); }
     this.computeContacts();
+    this.markExposure();
     for (const u of this.units) if (u.present) this.stepUnit(u, dt);
     this.separate(dt);
     for (const u of this.units) if (u.present) this.combat(u, dt);
@@ -265,6 +269,23 @@ export class Battle {
       if (a.side === b.side) continue;
       if (Math.abs(a.x - b.x) > 120 || Math.abs(a.y - b.y) > 120) continue;
       if (this.gap(a, b) <= 3) { a.contacts.push(b); b.contacts.push(a); }
+    }
+  }
+
+  // A unit is flanked when an enemy in contact stands at its side or rear, and surrounded when enemies press it from opposite sides.
+  markExposure() {
+    for (const u of this.units) {
+      u.flanked = 0; const was = u.surrounded; u.surrounded = false;
+      if (!u.present || u.state === 'routing') continue;
+      const act = u.contacts.filter(e => e.active);
+      for (const e of act) if (this.angleMult(e, u).c > 1) u.flanked++;
+      if (act.length >= 2) {
+        const br = act.map(e => Math.atan2(e.y - u.y, e.x - u.x)); let spread = 0;
+        for (let i = 0; i < br.length; i++) for (let j = i + 1; j < br.length; j++) spread = Math.max(spread, Math.abs(norm(br[i] - br[j])));
+        u.surrounded = spread > 2.0;
+      }
+      if (u.surrounded && !was && !u.notedSurround) { u.notedSurround = true; this.say(`${u.name} is surrounded!`, u.side === 'rome' ? 'bad' : 'good'); }
+      if (!u.surrounded) u.notedSurround = false;
     }
   }
 
@@ -453,7 +474,7 @@ export class Battle {
     return COMBAT_PACE * gear * (1 + 0.07 * u.lvl) * (1 + 0.12 * u.drill / 100) * moraleF * (1 - u.fatigue / 200) * off * terr * (u.formation === 'close' ? 0.6 : 1);
   }
   defOf(e, frontal) {
-    let d = e.type.def + e.lvl * 0.01 + (e.lvl >= 3 ? 0.02 : 0) + 0.06 * Math.min(MAX_TIER, e.upg.armour);
+    let d = e.type.def + e.lvl * 0.01 + (e.lvl >= 3 ? 0.02 : 0) + 0.06 * Math.min(MAX_TIER, e.upg.armour) - (e.surrounded ? 0.15 : 0);
     if (e.formation === 'close' && frontal) d += 0.2;
     return Math.min(0.88, d) ;
   }
@@ -532,8 +553,10 @@ export class Battle {
       }
       const routingMult = e.state === 'routing' ? 1.6 : 1;
       const def = e.state === 'routing' ? 0 : this.defOf(e, ang.c === 1);
-      u.pending += share * t.atk * dt * am * (1 - def) * routingMult * this.terr(e).def;
-      if (ang.c > 1 && e.state !== 'routing') e.morale -= (ang.c === 3 ? 1.6 : 0.8) * dt / targets.length;
+      // head-on is a grind; flank and rear hits are decisive; a unit hit from the side or behind, or surrounded, fights back less
+      const pressed = u.surrounded ? 0.7 : 1 - 0.15 * Math.min(3, u.flanked || 0);
+      u.pending += share * t.atk * dt * am * ang.g * pressed * (1 - def) * routingMult * this.terr(e).def;
+      if (ang.c > 1 && e.state !== 'routing') e.morale -= (ang.c === 3 ? REAR_MORALE : FLANK_MORALE) * dt / targets.length;
       if (u.side === 'rome' && ang.c > 1 && e.state !== 'routing') this.stats[ang.c === 3 ? 'rearTime' : 'flankTime'] += dt / targets.length;
     }
     // allocate the accumulated kills across targets evenly
@@ -551,6 +574,7 @@ export class Battle {
       this.floats.push({ x: u.x + (this.rand() - 0.5) * u.w * 0.6, y: u.y - 4, text: '-' + Math.round(u.floatAcc), side: u.side, life: 1.5, max: 1.5 });
       u.floatAcc = 0; u.floatCd = 0.9;
     }
+    if (u.surrounded && u.state !== 'routing') u.morale -= SURROUND_MORALE * dt;
     if (u.moralePending > 0) {
       u.morale -= u.moralePending; u.moralePending = 0;
     }

@@ -153,6 +153,8 @@ export class Renderer {
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - w / 2, y + 2, w, 3);
     ctx.fillStyle = m > 0.6 ? '#6fcf6f' : m > 0.35 ? '#e0c050' : '#d65a4a'; ctx.fillRect(x - w / 2, y + 2, w * m, 3);
     if (u.state === 'routing') { ctx.fillStyle = '#ffd36a'; ctx.fillText('ROUT', x, y - 20); }
+    else if (u.surrounded) { ctx.fillStyle = '#ff6a5a'; ctx.fillText('SURROUNDED', x, y - 20); }
+    else if (u.flanked) { ctx.fillStyle = '#ffd36a'; ctx.fillText('FLANKED', x, y - 20); }
     else if (rome && u.officer && this.cam.zoom > 0.6) { ctx.fillStyle = '#e8c36a'; ctx.font = `${Math.max(9, fs - 3)}px system-ui, sans-serif`; ctx.fillText(u.officer.name.split(' ').pop(), x, y - 21); }
     ctx.globalAlpha = 1;
   }
