@@ -262,17 +262,18 @@ export const PROLOGUE = {
   geo: { lat: 45.52, lon: 4.87, place: 'Vienna (Vienne) on the Rhone', note: 'Border of the Province, Allobroges country' },
   briefing: 'You have taken command of a legion on the edge of the Province. A small band of raiders has crossed the Rhone and is plundering farms within sight of your camp. Drive them off. This is an easy fight against a weak enemy, and hints will appear as you play to show you how things work.',
   objective: 'Drive off the raiders: break their warbands. You vastly outnumber them, so take your time and try the controls.',
-  timeLimit: 660, daysToPrepare: 0, deploy: { mode: 'line', cx: 800, cy: 880 },
+  timeLimit: 720, callDelay: 45, daysToPrepare: 0, deploy: { mode: 'line', cx: 800, cy: 880 },
   terrain: [{ kind: 'hill', cx: 1220, cy: 700, rx: 170, ry: 90 }, { kind: 'forest', cx: 300, cy: 330, rx: 160, ry: 90 }],
   enemy: [
     { type: 'warband', men: 130, x: 700, y: 300, ai: { kind: 'rush', delay: 30 } },
     { type: 'warband', men: 110, x: 900, y: 290, ai: { kind: 'rush', delay: 55 } }
   ],
   reinforcements: [
-    { at: 80, msg: 'A few more raiders wade across the river!', unit: { type: 'warband', men: 80, x: 780, y: 40, ai: { kind: 'rush', delay: 0 } } },
-    { at: 150, msg: 'Another band appears on the ridge.', unit: { type: 'warband', men: 80, x: 640, y: 40, ai: { kind: 'rush', delay: 0 } } },
-    { at: 220, msg: '', unit: { type: 'warband', men: 70, x: 900, y: 40, ai: { kind: 'rush', delay: 0 } } },
-    { at: 290, msg: 'The last raiders rush out of the woods!', unit: { type: 'warband', men: 70, x: 420, y: 120, ai: { kind: 'rush', delay: 0 } } }
+    { at: 70, msg: 'A few more raiders wade across the river!', unit: { type: 'warband', men: 80, x: 780, y: 40, ai: { kind: 'rush', delay: 0 } } },
+    { at: 130, msg: 'Another band appears on the ridge.', unit: { type: 'warband', men: 80, x: 640, y: 40, ai: { kind: 'rush', delay: 0 } } },
+    { at: 190, msg: '', unit: { type: 'warband', men: 80, x: 900, y: 40, ai: { kind: 'rush', delay: 0 } } },
+    { at: 250, msg: 'Raiders pour out of the woods on your left!', unit: { type: 'warband', men: 70, x: 340, y: 200, ai: { kind: 'rush', delay: 0 } } },
+    { at: 310, msg: 'The last raiders rush from the hills!', unit: { type: 'warband', men: 70, x: 1100, y: 160, ai: { kind: 'rush', delay: 0 } } }
   ],
   objectives: [], rule: null,
   rewards: { gold: 120, supplies: 60, recruits: 30, xpBase: 22, officerXp: 25 }, rewardMult: 1, unlock: []

@@ -61,7 +61,7 @@ shows on the unit card (`- hold`), on the field (`H` after the count) and in the
   countdown and a *Call next wave* button, so you never wait on an empty field.
 - **Movement:** friendly units never shove each other; a unit marching through a friend moves at 30% speed. Marching missile units stop
   to fire when an enemy is in range ahead (Ctrl+right-click overrides). Fall back (R) is an orderly walk backward facing the enemy. A competent bot takes 7-10 minutes on Act I.
-- The opening battle is deliberately short and easy: a hurried player can finish it in about a minute and a half, a careful one in about five.
+- The opening battle is easy and takes about five minutes (about 4:50 if you attack all-out, 6-7 minutes if you play carefully): a stream of small waves with a 45-second breather before each next wave, shown on a countdown. Press N to call a wave sooner.
 - Fatigue builds during long fights; press **R** to pull a tired unit back to rest and re-form.
 
 ## Army management depth

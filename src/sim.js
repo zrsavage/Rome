@@ -79,7 +79,7 @@ export class Battle {
     this.rand = mulberry32(opts.seed ?? (Date.now() & 0xffffff));
     this.t = 0; this.units = []; this.bodies = []; this.fx = []; this.log = [];
     this.result = null; this.endTimer = null; this.pendingOutcome = null;
-    this.clearT = 0; this.fieldClear = false;
+    this.clearT = 0; this.fieldClear = false; this.callDelay = scn.callDelay || 12;   // breather before the next wave comes on its own
     this.retreating = false; this.broken = { rome: false, gaul: false };
     this.reinf = (scn.reinforcements || []).map(r => ({ ...r, done: false }));
     this.floats = [];
@@ -244,7 +244,7 @@ export class Battle {
     if (this.pendingWaves().length && this.activeMen('gaul') === 0) {
       this.clearT += dt;
       if (!this.fieldClear && this.clearT > 1) { this.fieldClear = true; this.say('The field is clear. More enemies are on their way.', 'info'); }
-      if (this.clearT >= 12) this.callNextWave(true);
+      if (this.clearT >= this.callDelay) this.callNextWave(true);
     } else { this.clearT = 0; this.fieldClear = false; }
     this.updateObjectives(dt);
     this.floats = this.floats.filter(f => (f.life -= dt) > 0);
