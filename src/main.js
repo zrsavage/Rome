@@ -43,7 +43,7 @@ function refreshMenu() {
     const c = store.get(key(n)), d = document.createElement('div'); d.className = 'slot';
     if (c) {
       const scn = SCENARIOS[c.scenario];
-      d.innerHTML = `<div><b>Slot ${n}</b> - ${esc(DIFFICULTY[c.difficulty].name)}<small>${scn ? `Battle ${c.scenario + 1}/${SCENARIOS.length}: ${esc(scn.name)}` : 'Act I complete'} - ${totalMen(c)} men - day ${c.day}</small></div>
+      d.innerHTML = `<div><b>Slot ${n}</b> - ${esc(DIFFICULTY[c.difficulty].name)}<small>${scn ? `Battle ${c.scenario + 1}/${SCENARIOS.length}: ${esc(scn.name)}` : 'Act II complete'} - ${totalMen(c)} men - day ${c.day}</small></div>
         <div class="row"><button class="primary" data-a="load">Continue</button><button data-a="exp" title="Download this campaign as a file">Export</button><button data-a="bak" title="Rolling backups taken after each battle and at camp">Backups</button><button data-a="del">Delete</button></div>`;
       d.querySelector('[data-a=exp]').onclick = () => exportCampaign(c);
       d.querySelector('[data-a=bak]').onclick = () => showBackups(n);
@@ -92,6 +92,16 @@ function showMap() {
     march: () => marchGuard(),
     menu: () => toMenu()
   });
+  const cs = SCENARIOS[campaign.scenario];
+  if (cs && cs.act === 'II' && !(campaign.actsSeen || []).includes('II')) {
+    campaign.actsSeen = [...(campaign.actsSeen || []), 'II']; save();
+    inform('Act II: Ariovistus and the Suebi', [
+      'Gaul is quiet, but the Sequani and Aedui have begged Caesar for help against <b>Ariovistus</b>, the Suebian king who has settled his Germans on the west bank of the Rhine.',
+      'These are not the Gauls of Act I. There are few fortified places: the Germans <b>move fast</b>, their horse ride with foot runners at their stirrups, and they fight in tribal blocks.',
+      'Behind the line stand the <b>wagon laagers</b>, with the families on them. Men who have the wagons at their backs will not run, until the wagons fall.',
+      'Expect <b>cut supply lines</b>, raids from every side at once, and a battle where your left may be pressed while the right wins.'
+    ], 'To Germania');
+  }
   show('screen-map');
 }
 
@@ -154,7 +164,7 @@ function showResult(res, scn) {
     <div class="card" style="margin-top:12px"><h3>Spoils</h3>${o === 'defeat' ? 'None. The enemy keeps the field; you may try again.' : `+${s.gold} denarii, +${s.supplies} supplies, +${s.recruits} fresh recruits`}</div>
     ${picks.length ? `<div class="card" style="margin-top:12px"><h3>Choose a bonus <span class="pill">pick one</span></h3><div class="ocards">${picks.map((p, i) => `<button class="ocard" data-i="${i}"><b>${esc(p.name)}</b><span class="t">${esc(p.text)}</span></button>`).join('')}</div></div>` : ''}
     ${notes.length ? `<div class="card" style="margin-top:12px"><h3>Dispatches</h3>${notes.map(n => `<div>${esc(n)}</div>`).join('')}</div>` : ''}
-    <div class="row" style="margin-top:16px"><button class="primary" id="cont">${opening && o !== 'defeat' ? 'Continue to army management' : o !== 'defeat' && !next ? 'Finish Act I' : opening ? 'Try the opening battle again' : 'Return to the map'}</button></div></div>`;
+    <div class="row" style="margin-top:16px"><button class="primary" id="cont">${opening && o !== 'defeat' ? 'Continue to army management' : o !== 'defeat' && !next ? 'Finish Act II' : opening ? 'Try the opening battle again' : 'Return to the map'}</button></div></div>`;
   $('cont').onclick = () => { camp.msgs = []; if (opening && o === 'defeat') { const snap = store.get(preKey(c.slot)); if (snap) { campaign = snap; save(); } showBrief(PROLOGUE); return; } camp.note(`After the ${o}, the army makes camp.`); showMap(); if (opening && !c.introShown) { c.introShown = true; save(); showManagementIntro(); } };
   if (picks.length) {
     const cont = $('cont'); cont.disabled = true; cont.title = 'Choose a bonus first';

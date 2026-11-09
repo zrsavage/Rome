@@ -20,16 +20,15 @@ const PLACES = [
 ];
 const TRIBES = [
   ['Helvetii', 46.95, 7.7], ['Aedui', 46.55, 4.05], ['Sequani', 46.95, 5.55], ['Arverni', 45.35, 3.0], ['Allobroges', 45.35, 5.85], ['Lingones', 47.85, 5.1],
-  ['Belgae', 49.6, 3.3], ['Treveri', 49.95, 6.2], ['Carnutes', 48.2, 1.2], ['Veneti', 47.7, -2.6], ['Aquitani', 43.9, -0.6], ['Nervii', 50.45, 3.9], ['Boii', 48.7, 13.2]
+  ['Belgae', 49.6, 3.3], ['Treveri', 49.95, 6.2], ['Carnutes', 48.2, 1.2], ['Veneti', 47.7, -2.6], ['Aquitani', 43.9, -0.6], ['Nervii', 50.45, 3.9], ['Boii', 48.7, 13.2], ['Tribocci', 48.35, 7.4], ['Suebi', 47.7, 8.45]
 ];
 const REGIONS = [
   ['GALLIA', 46.6, 1.8], ['GERMANIA', 51.6, 9.8], ['BRITANNIA', 53.0, -1.8], ['HISPANIA', 40.0, -4.0], ['ITALIA', 43.7, 11.0], ['AFRICA', 33.5, 8.5], ['AEGYPTUS', 29.8, 27], ['ASIA', 38.8, 33], ['MACEDONIA', 40.9, 22.5],
   ['MARE NOSTRUM', 38.2, 16.5], ['OCEANUS', 44.5, -8.8], ['ALPES', 46.2, 8.6]
 ];
-const RIVERS = [['Rhodanus', 44.55, 4.95], ['Arar', 46.05, 5.15], ['Sequana', 48.35, 3.4], ['Liger', 47.35, 0.5], ['Rhenus', 50.4, 7.5], ['Danuvius', 48.4, 12.5], ['Tiberis', 42.6, 12.6], ['Garumna', 44.4, 0.3]];
+const RIVERS = [['Rhodanus', 44.55, 4.95], ['Arar', 46.05, 5.15], ['Sequana', 48.35, 3.4], ['Liger', 47.35, 0.5], ['Rhenus', 50.4, 7.5], ['Rhenus', 47.75, 7.62], ['Danuvius', 48.4, 12.5], ['Tiberis', 42.6, 12.6], ['Garumna', 44.4, 0.3]];
 
 const FUTURE = [
-  { act: 'II', name: 'Ariovistus', lat: 47.90, lon: 7.20, hint: 'Germania: the Suebi under Ariovistus, 58 BC' },
   { act: 'III', name: 'Britannia', lat: 51.82, lon: -0.29, hint: "A grinding slog: Cassivellaunus' stronghold, 54 BC" },
   { act: 'IV', name: 'Ilerda', lat: 41.62, lon: 0.62, hint: 'Hispania' },
   { act: 'IV', name: 'Thapsus', lat: 35.62, lon: 11.05, hint: 'Africa' },
@@ -37,16 +36,17 @@ const FUTURE = [
   { act: 'V', name: 'Pharsalus', lat: 39.29, lon: 22.38, hint: 'Civil war: Roman against Roman' },
   { act: 'VI', name: 'Rome', lat: 41.90, lon: 12.50, hint: 'The final battle', rome: true }
 ];
-const SHORT = ['Rhone Fords', 'Arar Crossing', "Foragers' Road", 'Vesontio', 'Morvan Ambush', 'Bibracte'];
-const LABEL_SIDE = ['below', 'below', 'right', 'above', 'left', 'below'];
+const SHORT = ['Rhone Fords', 'Arar Crossing', "Foragers' Road", 'Vesontio', 'Morvan Ambush', 'Bibracte', 'The Mound', 'Supply Line', 'Lesser Camp', 'Ariovistus', 'To the Rhine'];
+const LABEL_SIDE = ['below', 'below', 'right', 'above', 'left', 'below', 'above', 'left', 'left', 'right', 'right'];
+let curAct = 'I';
 const OUT = { victory: '#6fcf6f', draw: '#e8c36a', defeat: '#d65a4a' };
 
 let view = 'act'; // 'act' | 'all'
 
 function viewBox() {
   if (view === 'all') return { x: 0, y: 0, w: MAP.W, h: MAP.H };
-  const [cx, cy] = project(46.5, 5.0);
-  const w = 15 * MAP.s * rad(1), h = w * 0.8;
+  const II = curAct === 'II', [cx, cy] = II ? project(47.78, 7.12) : project(46.5, 5.0);
+  const w = (II ? 2.9 : 15) * MAP.s * rad(1), h = w * 0.8;
   return { x: cx - w / 2, y: cy - h / 2, w, h };
 }
 
@@ -60,6 +60,7 @@ function graticule(vb, k) {
 export function renderMap(root, c, api) {
   const diff = DIFFICULTY[c.difficulty];
   const idx = c.scenario, scn = SCENARIOS[idx];
+  curAct = (scn || SCENARIOS[SCENARIOS.length - 1]).act;
   const best = {}; (c.history || []).forEach(h => { if (h.outcome !== 'defeat' || !best[h.id]) best[h.id] = h.outcome; });
   const vb = viewBox(), k = vb.w / 700, inView = (x, y, pad = 0) => x > vb.x - pad && x < vb.x + vb.w + pad && y > vb.y - pad && y < vb.y + vb.h + pad;
   const big = view === 'all';
@@ -153,7 +154,7 @@ export function renderMap(root, c, api) {
   const future = futs.map(o => `<g class="fut" transform="translate(${o.x},${o.y})"><title>${esc(o.f.hint)}</title><circle r="${o.r}" fill="${o.f.rome ? '#7a2a22' : '#3b3120'}" stroke="#14100a" stroke-width="${2 * k}"/></g>`).join('');
 
   // scale bar (Mercator: km per px depends on latitude)
-  const midLat = (view === 'all') ? 45 : 47, pxPerKm = MAP.s * rad(1) / (111.32 * Math.cos(rad(midLat))), km = big ? 500 : 100, sbw = km * pxPerKm;
+  const midLat = (view === 'all') ? 45 : 47, pxPerKm = MAP.s * rad(1) / (111.32 * Math.cos(rad(midLat))), km = big ? 500 : curAct === 'II' ? 20 : 100, sbw = km * pxPerKm;
   const sbx = vb.x + 18 * k, sby = vb.y + vb.h - 34 * k;
   const scale = `<g><rect x="${sbx - 6 * k}" y="${sby - 16 * k}" width="${sbw + 12 * k}" height="${30 * k}" fill="rgba(10,8,4,0.6)"/><line x1="${sbx}" y1="${sby}" x2="${sbx + sbw}" y2="${sby}" stroke="#e8c36a" stroke-width="${2.5 * k}"/><line x1="${sbx}" y1="${sby - 5 * k}" x2="${sbx}" y2="${sby + 5 * k}" stroke="#e8c36a" stroke-width="${2 * k}"/><line x1="${sbx + sbw}" y1="${sby - 5 * k}" x2="${sbx + sbw}" y2="${sby + 5 * k}" stroke="#e8c36a" stroke-width="${2 * k}"/><text x="${sbx}" y="${sby - 7 * k}" class="gl" style="font-size:${10 * k}px;fill:#e8c36a">${km} km</text></g>`;
   const north = `<g transform="translate(${vb.x + vb.w - 28 * k},${vb.y + 34 * k})"><path d="M0 ${-16 * k} L${6 * k} ${8 * k} L0 ${3 * k} L${-6 * k} ${8 * k} Z" fill="#e8c36a"/><text y="${22 * k}" text-anchor="middle" class="gl" style="font-size:${11 * k}px;fill:#e8c36a">N</text></g>`;
@@ -168,7 +169,7 @@ export function renderMap(root, c, api) {
   const rose = `<g transform="translate(${vb.x + vb.w - 52 * k},${vb.y + vb.h - 58 * k})"><circle r="${30 * k}" fill="rgba(10,8,4,0.45)" stroke="#e8c36a" stroke-opacity=".6" stroke-width="${1 * k}"/>${[0, 90, 180, 270].map(a => `<polygon points="0,${-28 * k} ${4.5 * k},${-4.5 * k} 0,0 ${-4.5 * k},${-4.5 * k}" transform="rotate(${a})" fill="#e8c36a"/>`).join('')}${[45, 135, 225, 315].map(a => `<polygon points="0,${-18 * k} ${3 * k},${-3 * k} 0,0 ${-3 * k},${-3 * k}" transform="rotate(${a})" fill="#a88a45"/>`).join('')}<text y="${-33 * k}" text-anchor="middle" class="gl" style="font-size:${11 * k}px">N</text></g>`;
   const decor = `<rect x="${fx0}" y="${fy0}" width="${fw}" height="${fh}" class="frame" style="stroke-width:${2 * k}px"/><rect x="${fx0 + 4 * k}" y="${fy0 + 4 * k}" width="${fw - 8 * k}" height="${fh - 8 * k}" class="frame" style="stroke-width:${0.8 * k}px"/>`
     + [[fx0, fy0], [fx0 + fw, fy0], [fx0, fy0 + fh], [fx0 + fw, fy0 + fh]].map(([x, y]) => `<rect x="${x - 4 * k}" y="${y - 4 * k}" width="${8 * k}" height="${8 * k}" transform="rotate(45 ${x} ${y})" fill="#e8c36a"/>`).join('')
-    + `<g><rect x="${cx0 - cw / 2}" y="${cy0}" width="${cw}" height="${38 * k}" rx="${4 * k}" class="cart" style="stroke-width:${1.4 * k}px"/><text x="${cx0}" y="${cy0 + 19 * k}" class="cartt" style="font-size:${16 * k}px">${big ? 'ORBIS ROMANUS' : 'GALLIA TRANSALPINA'}</text><text x="${cx0}" y="${cy0 + 32 * k}" class="carts" style="font-size:${10.5 * k}px">${big ? 'The Roman world' : 'The Gallic campaigns, 58 BC'}</text></g>` + rose;
+    + `<g><rect x="${cx0 - cw / 2}" y="${cy0}" width="${cw}" height="${38 * k}" rx="${4 * k}" class="cart" style="stroke-width:${1.4 * k}px"/><text x="${cx0}" y="${cy0 + 19 * k}" class="cartt" style="font-size:${16 * k}px">${big ? 'ORBIS ROMANUS' : curAct === 'II' ? 'GALLIA ET GERMANIA' : 'GALLIA TRANSALPINA'}</text><text x="${cx0}" y="${cy0 + 32 * k}" class="carts" style="font-size:${10.5 * k}px">${big ? 'The Roman world' : 'The Gallic campaigns, 58 BC'}</text></g>` + rose;
   const done = idx >= SCENARIOS.length;
   const army = c.cohorts.map(h => `<li>${esc(h.name)} <span class="muted">- ${h.men}/${h.maxMen}</span></li>`).join('');
   const hrows = (c.history || []).slice(-6).reverse().map(h => { const s = [PROLOGUE, ...SCENARIOS].find(x => x.id === h.id); return `<div><span style="color:${OUT[h.outcome]}">${h.outcome.toUpperCase()}</span> - ${esc(s ? s.name : h.id)}</div>`; }).join('');
@@ -176,7 +177,7 @@ export function renderMap(root, c, api) {
   root.innerHTML = `<div class="camp mapscreen">
     <header><h2>The Road to Rome</h2><div class="res"><span>${icon('coin')} Denarii <b>${c.gold}</b></span><span>${icon('grain')} Supplies <b>${c.supplies}</b></span><span>${icon('helmet')} Army <b>${totalMen(c)}</b></span><span>${icon('day')} Day <b>${c.day}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
     <div class="card mapcard">
-      <div class="row maptools"><button id="v-act" class="${view === 'act' ? 'on' : ''}">Act I: Gaul</button><button id="v-all" class="${view === 'all' ? 'on' : ''}">Whole Roman world</button><span class="muted small">Coastlines, rivers and lakes: Natural Earth (public domain). Mercator; Roman place names as they stood in 58 BC (later foundations such as Lugdunum, Londinium and Augusta Treverorum are left off), positions approximate.</span></div>
+      <div class="row maptools"><button id="v-act" class="${view === 'act' ? 'on' : ''}">${curAct === 'II' ? 'Act II: Germania' : 'Act I: Gaul'}</button><button id="v-all" class="${view === 'all' ? 'on' : ''}">Whole Roman world</button><span class="muted small">Coastlines, rivers and lakes: Natural Earth (public domain). Mercator; Roman place names as they stood in 58 BC (later foundations such as Lugdunum, Londinium and Augusta Treverorum are left off), positions approximate.</span></div>
       <svg viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" id="mapsvg" role="img" aria-label="Campaign map of the Roman world">
         <defs><radialGradient id="seag" cx=".5" cy=".5" r=".75"><stop offset="0" stop-color="#27495c"/><stop offset="1" stop-color="#14262f"/></radialGradient>
           <filter id="mgrain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="${(0.55 / k).toFixed(3)}" numOctaves="3" seed="9" result="t"/><feColorMatrix in="t" values="0 0 0 0 .16  0 0 0 0 .12  0 0 0 0 .04  0 0 0 .75 -.18" result="g"/><feComposite in="g" in2="SourceGraphic" operator="in"/></filter></defs>
@@ -185,8 +186,8 @@ export function renderMap(root, c, api) {
         ${glyphs}${ships}${labelSvg}
         ${edges}${placeDots}${future}${nodes}${armyMark}${actLabel}${scale}${north}${decor}</svg></div>
     <div class="col">
-      <div class="card"><h3>${done ? 'Act I complete' : `Act ${scn.act} - battle ${idx + 1} of ${SCENARIOS.length}`}</h3>
-        ${done ? `<p>The Helvetii are broken and Gaul lies open before you. Acts II onward (Germania, Britannia, the civil war and Rome itself) are the next milestones.</p>`
+      <div class="card"><h3>${done ? `Act ${curAct} complete` : `Act ${scn.act} - battle ${idx + 1} of ${SCENARIOS.length}`}</h3>
+        ${done ? `<p>Ariovistus has fled across the Rhine and Gaul is free of the Germans and the Helvetii alike. Acts III onward (Britannia, the civil war and Rome itself) are the next milestones.</p>`
           : `<p><b>${esc(scn.name)}</b>${scn.kind === 'named' ? ' <span class="pill">Named battle</span>' : ''}${scn.rewardMult > 1.4 ? ' <span class="pill">Dangerous - rich spoils</span>' : ''}<br><span class="small muted">${esc(scn.geo.place)} (${scn.geo.lat.toFixed(2)}&deg;N, ${scn.geo.lon.toFixed(2)}&deg;E)</span><br><span class="muted">${esc(scn.briefing)}</span></p>
           <p class="small muted">${esc(scn.objective)}</p>
           <div class="row"><button class="primary" id="m-camp">Make camp</button><button id="m-march">March at once</button></div>

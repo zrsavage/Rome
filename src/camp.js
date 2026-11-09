@@ -32,7 +32,7 @@ const TRAINING_ADVICE = {
   bibracte: 'A long day with wave after wave of enemies. Build both skill and stamina, and keep the men fit.'
 };
 // What the next enemy is made of, in words the player can act on.
-const ENEMY_NAMES = { warband: 'warbands', gaul_elite: 'armoured champions', gaul_skirm: 'javelineers', gaul_cav: 'horsemen' };
+const ENEMY_NAMES = { warband: 'warbands', gaul_elite: 'armoured champions', gaul_skirm: 'javelineers', gaul_cav: 'horsemen', suebi: 'Suebi warbands', german_cav: 'Germanic horse and runners', laager: 'wagon laagers' };
 function enemyProfile(scn) {
   const all = [...scn.enemy, ...scn.reinforcements.filter(r => r.side !== 'rome').map(r => r.unit)], tot = all.reduce((a, e) => a + e.men, 0), by = {};
   all.forEach(e => { by[e.type] = (by[e.type] || 0) + e.men; });

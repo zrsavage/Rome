@@ -144,6 +144,7 @@ export function applyResult(c, result, scn) {
   const next = SCENARIOS[c.scenario];
   c.daysLeft = next ? next.daysToPrepare : 0;
   if (!next) c.over = true;
+  else if (scn && next.act !== scn.act && result.outcome !== 'defeat') notes.push(`Act ${scn.act} is won. Caesar now turns to the next threat: Act ${next.act}, ${next.theater}.`);
   return notes;
 }
 

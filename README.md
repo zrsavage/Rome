@@ -30,6 +30,21 @@ python3 -m http.server 8080   # then open http://localhost:8080
   flashes, dust trails, destination ghosts with facing arrows, control groups, objective HUD.
 - Officers level up and can die (not on Tiro). Cohorts keep XP, drill and condition across the campaign.
 
+## Later additions (v0.3)
+
+- **Act II: Ariovistus and the Suebi** (five battles, 58 BC): The Parley on the Mound, The Cut Supply Line, The Lesser Camp, the named **Battle Against
+  Ariovistus** (tribal blocks, a wagon laager behind them, Crassus' third line arrives as a scripted Roman reserve) and The Pursuit to the Rhine. New enemy
+  types: Suebi warbands, Germanic horse with foot runners, and immobile **wagon laagers** (men with wagons at their backs will not run until the wagons fall).
+  The map zooms to the Upper Rhine for Act II. Places and tribes are checked for 58 BC; battle sites in Alsace are approximate.
+- **Gaul/German AI**: feints, fighting withdrawals, champions that strike the weakest point of your line, extended lines when they outnumber you, and wings that
+  pick the flank their scouts found weaker.
+- **Deployment phase**: before the first move, right-click/right-drag places cohorts and the general anywhere in the gold zone (not on water).
+- **Weather** (clear, rain/mud, fog, storm with rising fords, hard frost): chosen per campaign battle (same every time you retry), shown in the briefing and HUD; all five are in Practice.
+- **Officers**: temperament (bold, rash, steady, cautious) with battle effects (a rash officer charges unordered), rivalry (Pullo and Vorenus) and promotions
+  (level 3 and 5) that make a cohort a rallying point and then immovable.
+- **Battle report** on the result screen: strength timeline, why each cohort broke, what decided the fight and short rule lessons.
+- **Save safety**: export a campaign as a file, import it, and keep six rolling backups per slot (after every battle and when you make camp).
+
 ## Balancing the camp
 
 `node tools/campbalance.mjs [seeds] [scenarios] [filter]` prices every camp option in denarii-equivalents (gold + 1.5 x supplies + 120 per

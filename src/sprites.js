@@ -241,6 +241,51 @@ function horseman(g, t, v, gaulish, noble) {
   if (gaulish && noble) { g.strokeStyle = '#d8c46a'; g.lineWidth = 1.7; g.beginPath(); g.arc(28, C, 7.4, 1.9, 4.3); g.stroke(); }
 }
 
+// ---- Act II: the Suebi and their wagons ----
+// A Suebian warrior: no armour, a wool cloak pinned at the shoulder, hair gathered in a knot at the side of the head, a painted board shield and the framea,
+// a short-bladed spear for thrusting.
+const TAWNY = ['#a8793a', '#8a5a2a', '#c49a50'];
+function german(g, t, v) {
+  const hair = TAWNY[v], skin = SKIN[v], cloak = ['#6a5a3a', '#5a6a44', '#7a4a30'][v], tunic = ['#b89a6a', '#a8946a', '#c2a878'][v];
+  shadow(g);
+  ell(g, 28, C, 11.2, 20.5, cloak, OUT, 1.2);
+  ell(g, 31, C, 9.6, 17.2, tunic, OUT);
+  ell(g, 30, 17.6, 1.3, 1.3, '#c9a24a', OUT, 0.6, 0, false);
+  arm(g, 36, 47, 0.2, 9, tunic); arm(g, 42, 49, 0.15, 8, skin);
+  line(g, 36, 53, 66, 44, WOOD, 2.4); poly(g, [[67.6, 43.6], [60.4, 40.4], [61.2, 47.8]], '#cfd4da', OUT, 0.5);
+  ell(g, 45, 24, 7, 13.8, shade(['#8a3a2a', '#3a5a7a', '#7a6a2a'][v], 1), OUT, 1.5); ell(g, 45, 24, 2.5, 2.5, '#d8dbe0', OUT, 0.8, 0, false); line(g, 45, 11.5, 45, 36.5, 'rgba(232,220,192,0.55)', 0.9);
+  arm(g, 36, 15, -0.45, 9, tunic);
+  ell(g, 31, C, 7.6, 7.8, hair, OUT, 1.3); ell(g, 33.5, C, 3.6, 4.4, shade(hair, 0.85), null, 0, 0, false);
+  ell(g, 28.5, C + 8.6, 3.2, 3.2, hair, OUT, 1.1); line(g, 27.6, C + 8.6, 29.6, C + 8.6, shade(hair, 0.7), 0.7);          // the Suebian knot
+}
+// A German rider with his runner: the horseman wears no armour and carries a spear and a small shield; beside the horse a light-armed foot runner
+// keeps pace with one hand in its mane, as Caesar describes (Gallic War I.48).
+function germanHorse(g, t, v) {
+  const skin = SKIN[v], hair = TAWNY[v];
+  shadow(g, true);
+  horse(g, v, false);
+  rect(g, 20, C - 6.6, 12, 13.2, '#cdbf9a', OUT, 1.1, 3);                                                                // a sheepskin pad: no saddle
+  ell(g, 25.5, C - 7.8, 5, 2.3, '#8a7a5a', OUT, 1, 0.1); ell(g, 25.5, C + 7.8, 5, 2.3, '#8a7a5a', OUT, 1, -0.1);
+  ell(g, 21.5, C, 6, 9.4, '#5a6a44', OUT, 1.2); ell(g, 27, C, 5, 8.2, '#b89a6a', OUT);
+  line(g, 31, C - 2, 56, C - 1.4, '#6b4a2a', 0.9); line(g, 31, C + 2, 56, C + 1.4, '#6b4a2a', 0.9);
+  arm(g, 29, C - 5, 0.1, 7, skin); arm(g, 29, C + 5.5, 0.1, 8, skin);
+  line(g, 24, C + 10, 63, C + 5.5, WOOD, 2.2); poly(g, [[64.8, C + 5], [58.4, C + 2.4], [58.8, C + 8.8]], '#d7dbe0', OUT, 0.5);
+  ell(g, 27, C - 14, 6.2, 6.2, shade('#7a3a2a', 1), OUT, 1.5); ell(g, 27, C - 14, 2.2, 2.2, '#d8dbe0', OUT, 0.8, 0, false);
+  ell(g, 28, C, 5.6, 5.8, hair, OUT, 1.2); ell(g, 27, C + 5.8, 2.6, 2.6, hair, OUT, 1);
+  ell(g, 34, C + 14.5, 3.2, 5.4, '#b89a6a', OUT, 1, 0.15); ell(g, 34.6, C + 14.6, 2.6, 2.6, hair, OUT, 1);               // the runner
+  line(g, 35, C + 10.6, 39, C + 5.8, skin, 1.5); line(g, 31, C + 18, 52, C + 14.6, WOOD, 1.2); ell(g, 31.5, C + 19, 3, 3, '#7a6a2a', OUT, 1);
+}
+// A wagon seen from above: four wheels, a plank bed, a hide cover over the families' goods and the draught pole forward.
+function wagon(g, t, v) {
+  shadow(g);
+  for (const x of [14, 44]) for (const y of [C - 15.5, C + 15.5]) rect(g, x - 5.5, y - 1.9, 11, 3.8, '#4a3220', OUT, 1, 1.4);
+  rect(g, 5, C - 12.5, 53, 25, '#9a7a4a', OUT, 1.5, 2);
+  for (let x = 9; x < 57; x += 5.5) line(g, x, C - 11.5, x, C + 11.5, 'rgba(60,40,20,0.4)', 0.9);
+  rect(g, 8, C - 10.5, 35, 21, ['#d8cba8', '#cdbf98', '#c8b890'][v], OUT, 1.3, 6);
+  for (const x of [16, 24, 32]) line(g, x, C - 10, x, C + 10, 'rgba(90,70,40,0.4)', 1.2);
+  line(g, 58, C, 63.5, C, WOOD, 3.2); line(g, 61.5, C - 4, 61.5, C + 4, WOOD, 2.2);
+}
+
 // ---- individuals who stand out in a unit ----
 function centurion(g, t, v) {
   roman(g, t, v, false);
@@ -276,6 +321,7 @@ const PAINT = {
   legionary: (g, t, v, a) => roman(g, t, v, a), aux_inf: (g, t, v) => aux(g, t, v), slinger: (g, t, v) => slinger(g, t, v), archer: (g, t, v) => archer(g, t, v),
   warband: (g, t, v) => gaul(g, t, v, 'warband'), gaul_elite: (g, t, v) => gaul(g, t, v, 'elite'), gaul_skirm: (g, t, v) => gaul(g, t, v, 'skirm'),
   equites: (g, t, v) => horseman(g, t, v, false, true), aux_cav: (g, t, v) => horseman(g, t, v, true, false), gaul_cav: (g, t, v) => horseman(g, t, v, true, true),
+  suebi: (g, t, v) => german(g, t, v), german_cav: (g, t, v) => germanHorse(g, t, v), laager: (g, t, v) => wagon(g, t, v),
   centurion: (g, t, v) => centurion(g, t, v), signifer: (g, t, v) => signifer(g, t, v), general: (g, t) => general(g, t)
 };
 

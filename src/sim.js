@@ -72,6 +72,7 @@ export class Unit {
   updateDims() {
     const t = this.type;
     const baseFront = Math.max(3, Math.sqrt(this.men * 3 * t.space)), wide = this.formation === 'normal' ? this.wide || 1 : 1;   // an extended line is wider and so thinner
+    if (t.wagon) { const nw = Math.max(1, Math.ceil(this.men / t.perDot)); this.baseW = this.w = nw * 34; this.d = 34; this.front = this.effFront = baseFront; return; }   // a row of wagons, each about thirty paces long
     this.baseW = Math.max(14, baseFront * 2.7); this.front = baseFront * wide; this.effFront = baseFront * (1 + 0.55 * (wide - 1));   // extra frontage helps, but with diminishing returns
     const rows = Math.max(1, this.men / this.front);
     this.w = Math.max(14, this.front * 2.7 * (this.formation === 'close' ? 0.8 : 1));
@@ -123,7 +124,7 @@ export class Battle {
   // bigger army meets more warbands, in ranks, not a handful of monsters. Returns the men spawned.
   spawnEnemy(e) {
     const total = Math.round(e.men * this.enemyScale * this.powerScale);
-    const cap = { warband: 520, gaul_elite: 330, gaul_skirm: 190, gaul_cav: 95 }[e.type] || 400, n = Math.max(1, Math.min(14, Math.ceil(total / cap)));
+    const cap = { warband: 520, gaul_elite: 330, gaul_skirm: 190, gaul_cav: 95, suebi: 520, german_cav: 95, laager: 210 }[e.type] || 400, n = Math.max(1, Math.min(14, Math.ceil(total / cap)));
     let spawned = 0;
     for (let i = 0; i < n; i++) {
       const men = Math.round(total / n), row = Math.floor(i / 8), per = Math.min(8, n - row * 8);
@@ -171,6 +172,16 @@ export class Battle {
     }
   }
   say(msg, kind = 'info') { this.log.push({ t: this.t, msg, kind }); }
+  // The wagons: men with the families and the wagons at their backs have nowhere to run, and fight on past the point where others would break.
+  // If the wagons fall, the host feels it at once.
+  updateLaager(dt) {
+    this.lgT = (this.lgT || 0) - dt; if (this.lgT > 0) return; this.lgT = 1;
+    const wag = this.units.filter(u => u.side === 'gaul' && u.type.wagon);
+    if (!wag.length) return;
+    const live = wag.filter(u => u.active);
+    for (const u of this.units) if (u.side === 'gaul' && !u.type.wagon) u.laagered = live.some(w => Math.hypot(w.x - u.x, w.y - u.y) < 340);
+    if (!live.length && !this._lgDown) { this._lgDown = true; for (const u of this.units) if (u.side === 'gaul' && u.active) u.morale -= 10; this.say('The wagon laager is overrun - the Germans have lost their last refuge!', 'good'); this.mark('laager', 'The wagon laager is overrun', 'gaul'); }
+  }
   // A storm raises the rivers: after a while the fords become deep and slow.
   updateWeather() {
     const w = this.wx; if (!w.floodAt) return;
@@ -389,7 +400,7 @@ export class Battle {
       if (u.side !== 'gaul' || !u.active || !u.ai || u.role || u.ai.kind !== 'rush') continue;
       if (u.type.cat !== 'inf') continue;
       if (u.ai.burst) { u.role = 'burst'; continue; }
-      if (u.typeKey === 'gaul_elite') u.role = 'reserve';
+      if (u.typeKey === 'gaul_elite' || u.ai.reserve) u.role = 'reserve';
       else { u.role = (++n % 4 === 0 && this.sumMen('gaul') > 600) ? 'wing' : 'line'; }
     }
     // a large host sends one nimble unit forward to feint: it engages, then breaks off and runs, to draw impatient cohorts out of your line
@@ -603,13 +614,17 @@ export class Battle {
   // ---------- main step ----------
   update(dt) {
     if (this.result) return;
-    this.t += dt; this.sampleReport(); this.updateOfficers(dt); this.updateWeather();
+    this.t += dt; this.sampleReport(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt);
     for (const r of this.reinf) if (!r.done && this.t >= r.at) {
       r.done = true;
       if (r.side === 'rome') {
-        const u = new Unit({ ...r.unit, side: 'rome', xp: r.unit.xp ?? 30, drill: 25, moraleBonus: this.romeBonus, stance: 'aggressive' });
-        this.units.push(u); this.startRome += u.men;
-        const n = this.nearestEnemy(u); if (n) this.setAttack(u, n.e);
+        // a bigger army has a bigger relief force: scripted help scales a little with your host, in cohorts of at most 480
+        const total = Math.round(r.unit.men * Math.max(1, Math.pow(this.powerScale, 0.6))), cnt = Math.min(6, Math.max(1, Math.ceil(total / 480)));
+        for (let i = 0; i < cnt; i++) {
+          const men = Math.round(total / cnt), u = new Unit({ ...r.unit, x: r.unit.x + (i - (cnt - 1) / 2) * 130, men, maxMen: Math.max(men, r.unit.maxMen || 0), name: cnt > 1 ? `${r.unit.name || 'Reserve'} ${i + 1}` : r.unit.name, side: 'rome', xp: r.unit.xp ?? 30, drill: 25, moraleBonus: this.romeBonus, stance: 'aggressive' });
+          this.units.push(u); this.startRome += u.men;
+          const n = this.nearestEnemy(u); if (n) this.setAttack(u, n.e);
+        }
         if (r.msg) this.say(r.msg, 'good');
       } else {
         this.startGaul += this.spawnEnemy(r.unit);
@@ -1041,7 +1056,8 @@ export class Battle {
     if (u.state === 'dead' || u.state === 'gone') return;
     if (u.state !== 'routing') {
       if (!u.contacts.some(e => e.active)) u.morale = Math.min(u.maxMorale, u.morale + (2.2 + (u.officer ? 0.35 * (u.officer.tactics || 0) : 0) + (u.perks.includes('inspire') ? 1.1 : 0)) * (u.auraT > this.t ? 1.25 : 1) * dt * (u.side === 'rome' ? (this.inCommand(u) ? 1.2 : 0.45) : 1));
-      if (u.morale <= (u.tier >= 2 ? Math.max(8, u.maxMorale * 0.14) : Math.max(12, u.maxMorale * 0.2))) {
+      if (u.type.wagon) u.morale = Math.max(u.morale, 30);                          // a laager cannot run: it is held until the last man falls
+      if (u.morale <= (u.laagered ? Math.max(6, u.maxMorale * 0.1) : u.tier >= 2 ? Math.max(8, u.maxMorale * 0.14) : Math.max(12, u.maxMorale * 0.2))) {
         u.state = 'routing'; u.order = { kind: 'none' }; this.stats.routs[u.side]++;
         this.addFx({ kind: 'ring', x: u.x, y: u.y, life: 1, max: 1, r: Math.max(u.w, u.d) });
         this.say(`${u.name} breaks and flees!`, u.side === 'rome' ? 'bad' : 'good');

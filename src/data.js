@@ -60,6 +60,22 @@ export const UNIT_TYPES = {
     name: 'Gallic Horse', side: 'gaul', cat: 'cav', perDot: 4, atk: 0.08, def: 0.22,
     speed: 56, turn: 2.5, morale: 56, charge: 1.7, space: 3.2, fragile: 1.1,
     color: '#2a4a8c', trim: '#d8d2b0', blurb: 'Noble horsemen, quick to hit your rear.'
+  },
+  // ----- Act II: Ariovistus and the Suebi (Germania) -----
+  suebi: {
+    name: 'Suebi Warband', side: 'gaul', cat: 'inf', perDot: 8, atk: 0.068, def: 0.14,
+    speed: 31, turn: 1.5, morale: 64, charge: 1.2, space: 1.2, fragile: 1.1,
+    color: '#7a5a2e', trim: '#d8d2b0', blurb: 'Tall, hard and quick on the march. They fight in a close mass behind their shields and long spears.'
+  },
+  german_cav: {
+    name: 'Germanic Horse and Runners', side: 'gaul', cat: 'cav', perDot: 4, atk: 0.085, def: 0.18,
+    speed: 54, turn: 2.4, morale: 60, charge: 1.5, space: 3.2, fragile: 1.05, antiCharge: 0.2,
+    color: '#6a4a2a', trim: '#d8d2b0', blurb: 'Each rider is paired with a fleet, light-armed foot runner who holds his horse\'s mane. They harry, raid and cut supply lines.'
+  },
+  laager: {
+    name: 'Wagon Laager', side: 'gaul', cat: 'inf', perDot: 26, atk: 0.018, def: 0.5, wagon: true,
+    speed: 0, turn: 0, morale: 95, charge: 0, space: 5, fragile: 0.5,
+    color: '#8a6a3a', trim: '#d8d2b0', blurb: 'The wagons and carts of the host, drawn up behind the line with the families on them. Nobody flees past them, and they cannot move.'
   }
 };
 
@@ -292,6 +308,135 @@ export const SCENARIOS = [
       { type: 'legionary', name: 'VI Cohort', men: 420, maxMen: 480, xp: 60, drill: 30, msg: 'Survivors and volunteers form the VI Cohort.' },
       { type: 'legionary', name: 'VII Cohort', men: 420, maxMen: 480, xp: 60, drill: 30, msg: 'The VII Cohort is raised from the veterans of the Helvetian war.' }
     ]
+  },
+  // ======================= ACT II: Ariovistus and the Suebi (Germania, 58 BC) =======================
+  // Fewer fortified places and more movement: Germanic horse mixed with runners, warbands in tribal blocks, and wagon laagers that nobody flees past.
+  {
+    id: 'parley', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Parley on the Mound', kind: 'skirmish',
+    geo: { lat: 47.62, lon: 7.28, place: 'The Upper Rhine plain (Alsace)', note: 'The mound where Caesar and Ariovistus met; the exact site is not known' },
+    briefing: 'Ariovistus has agreed to meet you on a broad mound in the open plain, each side bringing only mounted escorts. You do not trust German horse with your Gallic cavalry, so men of the Tenth have been put on their horses. The talks are short: German riders edge towards the mound, throwing stones and spears at your escort. Break off the parley, take the mound and hold it until your army is up.',
+    objective: 'Hold the mound (the gold marker) for 110 seconds against the German horse, or break their riders. Their horse is fast and they will go for your flanks.',
+    timeLimit: 540, daysToPrepare: 3,
+    deploy: { mode: 'line', cx: 800, cy: 840 },
+    objectives: [{ id: 'mound', name: 'The Mound', x: 800, y: 540, r: 85, owner: 'rome' }],
+    rule: { holdSecs: 110, attacker: 'gaul' },
+    terrain: [{ kind: 'hill', cx: 800, cy: 530, rx: 150, ry: 75, h: 40 }, { kind: 'forest', cx: 230, cy: 330, rx: 210, ry: 120 }, { kind: 'forest', cx: 1400, cy: 300, rx: 190, ry: 110 }],
+    enemy: [
+      { type: 'german_cav', men: 210, x: 520, y: 260, ai: { kind: 'raid', obj: 'mound', delay: 0 } },
+      { type: 'german_cav', men: 210, x: 1080, y: 250, ai: { kind: 'raid', obj: 'mound', delay: 6 } },
+      { type: 'german_cav', men: 160, x: 820, y: 180, ai: { kind: 'flank', delay: 25 } },
+      { type: 'suebi', men: 330, x: 640, y: 220, ai: { kind: 'ambush', trigger: 200, maxDelay: 110, quiet: true } },
+      { type: 'suebi', men: 330, x: 980, y: 210, ai: { kind: 'ambush', trigger: 200, maxDelay: 120, quiet: true } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 480, supplies: 220, recruits: 90, xpBase: 62, officerXp: 60 }, rewardMult: 1,
+    unlock: []
+  },
+  {
+    id: 'supply', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Cut Supply Line', kind: 'skirmish',
+    geo: { lat: 47.55, lon: 6.80, place: 'The gap between the Vosges and the Jura', note: 'The road from the Sequani; the exact place is illustrative' },
+    briefing: 'Ariovistus has camped behind you and his horse are cutting the road to the Sequani, from whom your grain comes. A column of wagons is coming up the road with a thin escort. The Germans ride fast and come in from every side at once: hold the wagons and the legion eats; lose them and it will not fight.',
+    objective: 'Keep the supply wagons (the gold marker) in Roman hands. If the Germans hold them for 100 seconds the grain is lost. Break the raiders to win.',
+    timeLimit: 480, daysToPrepare: 3,
+    deploy: { mode: 'line', cx: 800, cy: 760 },
+    objectives: [{ id: 'wagons', name: 'Supply Wagons', x: 800, y: 700, r: 75, owner: 'rome' }],
+    rule: { holdSecs: 100, attacker: 'gaul' },
+    terrain: [{ kind: 'forest', cx: 250, cy: 480, rx: 240, ry: 210 }, { kind: 'forest', cx: 1360, cy: 470, rx: 250, ry: 220 }, { kind: 'hill', cx: 800, cy: 310, rx: 170, ry: 80 }, { kind: 'forest', cx: 800, cy: 100, rx: 230, ry: 85 }],
+    enemy: [
+      { type: 'german_cav', men: 220, x: 430, y: 420, ai: { kind: 'raid', obj: 'wagons' } },
+      { type: 'german_cav', men: 220, x: 1180, y: 400, ai: { kind: 'raid', obj: 'wagons', delay: 8 } },
+      { type: 'german_cav', men: 150, x: 800, y: 260, ai: { kind: 'raid', obj: 'wagons', delay: 14 } },
+      { type: 'suebi', men: 380, x: 320, y: 420, ai: { kind: 'raid', obj: 'wagons', delay: 5 } },
+      { type: 'suebi', men: 380, x: 1280, y: 410, ai: { kind: 'raid', obj: 'wagons', delay: 10 } },
+      { type: 'suebi', men: 300, x: 700, y: 300, ai: { kind: 'ambush', trigger: 200, maxDelay: 110 } }
+    ],
+    reinforcements: [{ at: 110, msg: 'More German horse come thundering out of the northern woods!', unit: { type: 'german_cav', men: 190, x: 800, y: 60, ai: { kind: 'raid', obj: 'wagons' } } }],
+    rewards: { gold: 400, supplies: 420, recruits: 90, xpBase: 66, officerXp: 62 }, rewardMult: 1,
+    unlock: [{ type: 'legionary', name: 'VIII Cohort', men: 400, maxMen: 480, xp: 50, drill: 25, msg: 'The VIII Cohort marches up with the grain train.' }]
+  },
+  {
+    id: 'lessercamp', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Lesser Camp', kind: 'skirmish',
+    geo: { lat: 47.78, lon: 7.05, place: 'The Upper Rhine plain (Alsace)', note: 'The smaller German camp Caesar attacked; the place is approximate' },
+    briefing: 'Ariovistus will not come out to fight, so you go to him. You march past his main camp and assault the smaller one, ringed with wagons. The Germans must come out to save it: your scouts report warbands in the brush, horse on the flanks and the families waiting behind the wagons.',
+    objective: 'Capture the camp (the gold marker) by holding it for 100 seconds, or break the host. Wagons cannot move, and men who have the wagons behind them will not run.',
+    timeLimit: 600, daysToPrepare: 3,
+    deploy: { mode: 'line', cx: 800, cy: 900 },
+    objectives: [{ id: 'camp', name: 'The Lesser Camp', x: 800, y: 290, r: 105, owner: 'gaul' }],
+    rule: { holdSecs: 100, attacker: 'rome' },
+    terrain: [{ kind: 'forest', cx: 230, cy: 560, rx: 200, ry: 150 }, { kind: 'forest', cx: 1380, cy: 540, rx: 210, ry: 150 }, { kind: 'hill', cx: 800, cy: 640, rx: 220, ry: 60, h: 25 }],
+    enemy: [
+      { type: 'laager', men: 190, x: 640, y: 250, ai: { kind: 'idle' } },
+      { type: 'laager', men: 190, x: 960, y: 250, ai: { kind: 'idle' } },
+      { type: 'laager', men: 190, x: 800, y: 180, ai: { kind: 'idle' } },
+      { type: 'suebi', men: 420, x: 560, y: 330, ai: { kind: 'ambush', trigger: 130, maxDelay: 100, quiet: true } },
+      { type: 'suebi', men: 420, x: 800, y: 340, ai: { kind: 'ambush', trigger: 120, maxDelay: 90, quiet: true } },
+      { type: 'suebi', men: 420, x: 1040, y: 330, ai: { kind: 'ambush', trigger: 130, maxDelay: 100, quiet: true } },
+      { type: 'german_cav', men: 180, x: 1330, y: 440, ai: { kind: 'flank', delay: 50 } },
+      { type: 'german_cav', men: 150, x: 270, y: 450, ai: { kind: 'flank', delay: 70 } },
+      { type: 'gaul_skirm', men: 120, x: 700, y: 380, ai: { kind: 'skirm' } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 620, supplies: 300, recruits: 120, xpBase: 74, officerXp: 70 }, rewardMult: 1,
+    unlock: [{ type: 'legionary', name: 'IX Cohort', men: 400, maxMen: 480, xp: 55, drill: 25, msg: 'The IX Cohort is drawn from the camp guards.' }]
+  },
+  {
+    id: 'ariovistus', act: 'II', theater: 'Germania', year: '58 BC', name: 'The Battle Against Ariovistus', kind: 'named',
+    geo: { lat: 47.90, lon: 7.33, place: 'The Upper Rhine plain (Alsace)', note: 'Battlefield not securely identified; the plain between the Vosges and the Rhine' },
+    briefing: 'The Germans have been forced out. Ariovistus draws up his tribes in a line, the Harudes, Marcomanni, Tribocci, Vangiones, Nemetes, Sedusii and Suebi, and rings the whole host behind with wagons and carts so that no one can flee; the women stand on the wagons begging the men not to let them be taken as slaves. You have formed the legion in three lines. You lead the right, where the Germans are weakest. Young Publius Crassus commands the cavalry: watch your left, and when it is pressed, his third line will come.',
+    objective: 'Break the German host. Your left will be hard pressed and the third line will relieve it. A well-ordered withdrawal is only a draw.',
+    timeLimit: 960, daysToPrepare: 4,
+    deploy: { mode: 'line', cx: 800, cy: 880 },
+    objectives: [], rule: null,
+    terrain: [{ kind: 'hill', cx: 1240, cy: 520, rx: 220, ry: 90, h: 25 }, { kind: 'forest', cx: 170, cy: 560, rx: 190, ry: 150 }, { kind: 'forest', cx: 1480, cy: 330, rx: 150, ry: 110 }, { kind: 'forest', cx: 560, cy: 120, rx: 200, ry: 70 }],
+    enemy: [
+      { type: 'suebi', men: 360, x: 380, y: 330, ai: { kind: 'rush', delay: 0 } },
+      { type: 'suebi', men: 360, x: 520, y: 320, ai: { kind: 'rush', delay: 1 } },
+      { type: 'suebi', men: 360, x: 660, y: 310, ai: { kind: 'rush', delay: 2 } },
+      { type: 'suebi', men: 360, x: 800, y: 305, ai: { kind: 'rush', delay: 1 } },
+      { type: 'suebi', men: 360, x: 940, y: 310, ai: { kind: 'rush', delay: 2 } },
+      { type: 'suebi', men: 360, x: 1080, y: 320, ai: { kind: 'rush', delay: 1 } },
+      { type: 'suebi', men: 360, x: 1220, y: 330, ai: { kind: 'rush', delay: 3 } },
+      { type: 'suebi', men: 280, x: 800, y: 250, ai: { kind: 'rush', delay: 0, reserve: true } },
+      { type: 'laager', men: 170, x: 380, y: 170, ai: { kind: 'idle' } },
+      { type: 'laager', men: 170, x: 620, y: 150, ai: { kind: 'idle' } },
+      { type: 'laager', men: 170, x: 860, y: 140, ai: { kind: 'idle' } },
+      { type: 'laager', men: 170, x: 1100, y: 150, ai: { kind: 'idle' } },
+      { type: 'laager', men: 170, x: 1300, y: 180, ai: { kind: 'idle' } },
+      { type: 'german_cav', men: 190, x: 220, y: 380, ai: { kind: 'flank', delay: 30 } },
+      { type: 'german_cav', men: 190, x: 1400, y: 400, ai: { kind: 'flank', delay: 40 } },
+      { type: 'gaul_skirm', men: 130, x: 620, y: 400, ai: { kind: 'skirm' } },
+      { type: 'gaul_skirm', men: 130, x: 980, y: 400, ai: { kind: 'skirm' } }
+    ],
+    reinforcements: [
+      { at: 300, side: 'rome', msg: 'Young Publius Crassus has seen your left wing hard pressed: he sends the third line to its aid!', unit: { type: 'legionary', men: 420, x: 420, y: 1010, f: -1.5708, name: 'Third Line' } }
+    ],
+    rewards: { gold: 1100, supplies: 600, recruits: 300, xpBase: 110, officerXp: 120 }, rewardMult: 1,
+    unlock: [
+      { type: 'legionary', name: 'X Cohort', men: 440, maxMen: 480, xp: 80, drill: 30, msg: 'The Tenth sends a cohort to the army that beat Ariovistus.' }
+    ]
+  },
+  {
+    id: 'rhine', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Pursuit to the Rhine', kind: 'skirmish',
+    geo: { lat: 47.95, lon: 7.58, place: 'The left bank of the Rhine', note: 'The pursuit ran towards the Rhine; the point is illustrative' },
+    briefing: 'The German line has broken and the host is running for the Rhine, wagons and all. Ariovistus himself is across in a small boat. Your cavalry and light troops are on their heels: catch the wagons and the rearguard before they reach the water. A rearguard that has nowhere to go will stand and sell its life dearly.',
+    objective: 'Break the rearguard (reduce it below 25%) before the time runs out. Fresh cavalry are ruinous against men who are running.',
+    timeLimit: 420, daysToPrepare: 2,
+    deploy: { mode: 'line', cx: 800, cy: 900 },
+    terrain: [{ kind: 'water', x: 0, y: 110, w: 1600, h: 90 }, { kind: 'forest', cx: 240, cy: 540, rx: 220, ry: 150 }, { kind: 'forest', cx: 1380, cy: 600, rx: 220, ry: 160 }],
+    enemy: [
+      { type: 'laager', men: 160, x: 560, y: 330, ai: { kind: 'idle' } },
+      { type: 'laager', men: 160, x: 860, y: 320, ai: { kind: 'idle' } },
+      { type: 'laager', men: 160, x: 1120, y: 340, ai: { kind: 'idle' } },
+      { type: 'suebi', men: 400, x: 480, y: 420, ai: { kind: 'ambush', trigger: 160, maxDelay: 90, quiet: true } },
+      { type: 'suebi', men: 400, x: 720, y: 430, ai: { kind: 'ambush', trigger: 150, maxDelay: 80, quiet: true } },
+      { type: 'suebi', men: 400, x: 980, y: 430, ai: { kind: 'ambush', trigger: 160, maxDelay: 90, quiet: true } },
+      { type: 'suebi', men: 300, x: 1220, y: 410, ai: { kind: 'ambush', trigger: 170, maxDelay: 100, quiet: true } },
+      { type: 'german_cav', men: 170, x: 300, y: 380, ai: { kind: 'flank', delay: 40 } },
+      { type: 'gaul_skirm', men: 110, x: 840, y: 480, ai: { kind: 'skirm' } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 800, supplies: 320, recruits: 160, xpBase: 76, officerXp: 76 }, rewardMult: 1,
+    unlock: []
   }
 ];
 
@@ -324,7 +469,7 @@ PROLOGUE.enemy.push(...PROLOGUE.reinforcements.map(r => ({ ...r.unit, ai: { kind
 // Battles are all or nothing: the whole enemy host is on the field from the start. The only reinforcements are the ones authored
 // into a scenario as a deliberate surprise (a flank attack, an ambush party, allies arriving late).
 // ---------------------------------------------------------------------------
-const TIME_LIMITS = { ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500 };
+const TIME_LIMITS = { ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500, parley: 800, supply: 1080, lessercamp: 1200, ariovistus: 1800, rhine: 900 };
 for (const scn of SCENARIOS) scn.timeLimit = TIME_LIMITS[scn.id] || scn.timeLimit;
 
 // ---------------------------------------------------------------------------

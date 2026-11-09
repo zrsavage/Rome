@@ -10,7 +10,7 @@ const mkCohort = (id, name, type, men, maxMen, xp, drill, officerId = null) => (
 // ---------------- practice battle ----------------
 export const PRACTICE_OPTIONS = {
   army: { grand: 'Grand (70 units: the army you will have at the end)', small: 'Small (2 cohorts, slingers, cavalry)', medium: 'Medium (4 cohorts, slingers, archers, 2 cavalry)', large: 'Large (8 cohorts, 2 missile units, 2 cavalry)' },
-  enemy: { grand: 'Grand (70 units)', small: 'Small (about 900 men)', medium: 'Medium (about 1,800 men)', large: 'Large (about 3,200 men)', elite: 'Elite (champions and nobles)' },
+  enemy: { grand: 'Grand (70 units)', small: 'Small (about 900 men)', medium: 'Medium (about 1,800 men)', large: 'Large (about 3,200 men)', elite: 'Elite (champions and nobles)', germanic: 'Germanic host (Suebi, horse and runners, wagon laager)' },
   terrain: { open: 'Open field', ford: 'River ford', hill: 'Hill in the centre', forest: 'Forests on the flanks' },
   tactics: { rush: 'Rush: all-out charge', ambush: 'Ambush: waits until you approach', mixed: 'Mixed: skirmishers, flankers and a charge' },
   difficulty: { easy: 'Tiro', normal: 'Miles', hard: 'Centurion', legendary: 'Imperator' },
@@ -35,6 +35,7 @@ const ENEMIES = {
   elite: [['gaul_elite', 280], ['gaul_elite', 280], ['gaul_elite', 260], ['gaul_elite', 260], ['warband', 260], ['warband', 260], ['gaul_skirm', 120], ['gaul_cav', 80], ['gaul_cav', 70]]
 };
 ARMIES.grand = GRAND_ARMY; ENEMIES.grand = GRAND_ENEMY;
+ENEMIES.germanic = [['suebi', 360], ['suebi', 360], ['suebi', 360], ['suebi', 360], ['suebi', 360], ['suebi', 300], ['german_cav', 170], ['german_cav', 170], ['gaul_skirm', 110], ['laager', 170], ['laager', 170], ['laager', 170]];
 const TERRAINS = {
   open: [],
   ford: [{ kind: 'water', x: 0, y: 450, w: 650, h: 80 }, { kind: 'ford', x: 650, y: 450, w: 300, h: 80 }, { kind: 'water', x: 950, y: 450, w: 650, h: 80 }],
@@ -51,9 +52,10 @@ export function buildPractice(o) {
   const cav = c.cohorts.find(h => h.type === 'equites'); if (cav) cav.officerId = 4;
   const list = ENEMIES[opt.enemy], n = list.length, enemy = [], grand = opt.army === 'grand' || opt.enemy === 'grand';
   list.forEach(([type, men], i) => {
-    const x = n === 1 ? 800 : 220 + (1160 * i) / (n - 1), y = 180 + (i % 3) * 55 + (type === 'gaul_cav' ? -40 : 0), cat = type === 'gaul_skirm' ? 'skirm' : type === 'gaul_cav' ? 'cav' : 'inf';
+    const x = n === 1 ? 800 : 220 + (1160 * i) / (n - 1), y = 180 + (i % 3) * 55 + (type === 'gaul_cav' || type === 'german_cav' ? -40 : 0) + (type === 'laager' ? -110 : 0), cat = type === 'gaul_skirm' ? 'skirm' : (type === 'gaul_cav' || type === 'german_cav') ? 'cav' : type === 'laager' ? 'wagon' : 'inf';
     let ai;
     if (cat === 'skirm') ai = { kind: 'skirm' };
+    else if (cat === 'wagon') ai = { kind: 'idle' };
     else if (opt.tactics === 'rush') ai = { kind: 'rush', delay: 3 + (i % 4) * 3 };
     else if (opt.tactics === 'ambush') ai = { kind: 'ambush', trigger: 260, maxDelay: 400, quiet: true };
     else ai = cat === 'cav' ? { kind: 'flank', delay: 30 } : i % 3 === 0 ? { kind: 'ambush', trigger: 240, maxDelay: 120, quiet: true } : { kind: 'rush', delay: 5 + (i % 4) * 4 };
