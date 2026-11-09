@@ -316,3 +316,14 @@ input.mslide{width:100%;accent-color:#e8c36a;height:6px;cursor:pointer}
 .campstage #campsvg{position:absolute;inset:0;width:100%;height:100%}
 .campstage .bl{paint-order:stroke;stroke:#140c04;stroke-width:4px;stroke-linejoin:round}
 .campstage .bs{paint-order:stroke;stroke:#140c04;stroke-width:3px}
+
+/* background music control */
+.floatbtn{position:fixed;left:10px;bottom:10px;z-index:30;width:34px;height:34px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;opacity:.8}
+.floatbtn:hover{opacity:1}
+#btn-music{padding:6px 8px}
+#musicpanel{position:fixed;z-index:60;width:290px;background:var(--panel);border:1px solid var(--gold);border-radius:8px;padding:10px 12px;box-shadow:0 8px 28px #000a;display:flex;flex-direction:column;gap:8px;font-size:14px}
+#musicpanel .mp-head{display:flex;justify-content:space-between;align-items:center;color:var(--gold)}
+#musicpanel .mp-head button{padding:0 8px}
+#musicpanel .mp-row{display:flex;align-items:center;gap:8px}
+#musicpanel input[type=range]{flex:1}
+#musicpanel .mp-now{color:var(--muted);font-size:13px;min-height:2.6em}

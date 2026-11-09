@@ -43,6 +43,7 @@ python3 -m http.server 8080   # then open http://localhost:8080
 - **Officers**: temperament (bold, rash, steady, cautious) with battle effects (a rash officer charges unordered), rivalry (Pullo and Vorenus) and promotions
   (level 3 and 5) that make a cohort a rallying point and then immovable.
 - **Battle report** on the result screen: strength timeline, why each cohort broke, what decided the fight and short rule lessons.
+- **Music**: nine calm classical pieces for menu, map and camp and eight orchestral pieces for battle (Kevin MacLeod, CC BY 4.0), shuffled with crossfades; speaker button, volume, credits. See `docs/MUSIC.md`.
 - **Save safety**: export a campaign as a file, import it, and keep six rolling backups per slot (after every battle and when you make camp).
 
 ## Balancing the camp

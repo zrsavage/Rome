@@ -7,6 +7,7 @@ import { renderMap } from './map.js';
 import { artSrc, initArt } from './art.js';
 import { ask, inform } from './ui.js';
 import { reportHtml } from './report.js';
+import { music, mountMusicUI } from './music.js';
 import { pickWeather, WEATHER } from './weather.js';
 import { snapshot, backups, restoreBackup, clearBackups, exportCampaign, parseImport } from './saves.js';
 import { Coach } from './coach.js';
@@ -19,7 +20,12 @@ const PRAC_KEY = 'legio_practice_v1';
 const SLOTS = 3, key = (n) => `legio_slot_${n}_v2`, preKey = (n) => `legio_pre_${n}_v2`;
 let campaign = null;
 
-function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id)); }
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+  const battle = id === 'screen-battle'; music.setContext(battle ? 'battle' : 'calm');
+  const fb = document.getElementById('musicbtn'); if (fb) fb.classList.toggle('hidden', battle);
+}
+mountMusicUI([document.getElementById('musicbtn'), document.getElementById('btn-music')].filter(Boolean));
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } },
