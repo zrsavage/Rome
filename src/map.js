@@ -12,10 +12,10 @@ export const project = (lat, lon) => [MAP.s * rad(lon) + MAP.tx, MAP.ty - MAP.s 
 // [name, lat, lon, size] size: 2 = major city, 1 = town/site. Latin names with modern equivalents where helpful.
 const PLACES = [
   ['Roma', 41.90, 12.50, 2], ['Massilia', 43.30, 5.37, 1], ['Narbo', 43.18, 3.00, 1], ['Tolosa', 43.60, 1.44, 1], ['Burdigala', 44.84, -0.58, 1],
-  ['Lugdunum', 45.76, 4.84, 2], ['Genava', 46.20, 6.15, 1], ['Vesontio', 47.24, 6.02, 1], ['Bibracte', 46.93, 4.03, 1], ['Alesia', 47.54, 4.50, 1],
+  ['Vienna', 45.52, 4.87, 1], ['Condate', 45.76, 4.84, 1], ['Genava', 46.20, 6.15, 1], ['Vesontio', 47.24, 6.02, 1], ['Bibracte', 46.93, 4.03, 1], ['Alesia', 47.54, 4.50, 1],
   ['Gergovia', 45.71, 3.12, 1], ['Avaricum', 47.08, 2.40, 1], ['Cenabum', 47.90, 1.90, 1], ['Lutetia', 48.85, 2.35, 1], ['Durocortorum', 49.25, 4.03, 1],
-  ['Augusta Treverorum', 49.76, 6.64, 1], ['Colonia Agrippina', 50.94, 6.96, 1], ['Mediolanum', 45.46, 9.19, 1], ['Ravenna', 44.42, 12.20, 1],
-  ['Londinium', 51.51, -0.09, 1], ['Camulodunum', 51.89, 0.90, 1], ['Carthago', 36.85, 10.32, 2], ['Alexandria', 31.20, 29.92, 2], ['Antiochia', 36.20, 36.16, 2],
+  ['Portus Itius', 50.73, 1.62, 1], ['Mediolanum', 45.46, 9.19, 1], ['Ravenna', 44.42, 12.20, 1],
+  ['Utica', 36.98, 10.06, 2], ['Alexandria', 31.20, 29.92, 2], ['Antiochia', 36.20, 36.16, 2],
   ['Athenae', 37.98, 23.73, 1], ['Corduba', 37.89, -4.78, 1], ['Tarraco', 41.12, 1.26, 1]
 ];
 const TRIBES = [
@@ -29,11 +29,11 @@ const REGIONS = [
 const RIVERS = [['Rhodanus', 44.55, 4.95], ['Arar', 46.05, 5.15], ['Sequana', 48.35, 3.4], ['Liger', 47.35, 0.5], ['Rhenus', 50.4, 7.5], ['Danuvius', 48.4, 12.5], ['Tiberis', 42.6, 12.6], ['Garumna', 44.4, 0.3]];
 
 const FUTURE = [
-  { act: 'II', name: 'Teutoburg Forest', lat: 52.40, lon: 8.13, hint: 'Germania: forests and ambush' },
-  { act: 'III', name: 'Britannia', lat: 51.89, lon: 0.90, hint: 'A grinding slog (Camulodunum)' },
+  { act: 'II', name: 'Ariovistus', lat: 47.90, lon: 7.20, hint: 'Germania: the Suebi under Ariovistus, 58 BC' },
+  { act: 'III', name: 'Britannia', lat: 51.82, lon: -0.29, hint: "A grinding slog: Cassivellaunus' stronghold, 54 BC" },
   { act: 'IV', name: 'Ilerda', lat: 41.62, lon: 0.62, hint: 'Hispania' },
   { act: 'IV', name: 'Thapsus', lat: 35.62, lon: 11.05, hint: 'Africa' },
-  { act: 'IV', name: 'Carrhae', lat: 36.87, lon: 39.03, hint: 'The East: Parthian horse archers' },
+  { act: 'IV', name: 'Carrhae', lat: 36.87, lon: 39.03, hint: 'The East: Parthian horse archers (Carrhae, 53 BC)' },
   { act: 'V', name: 'Pharsalus', lat: 39.29, lon: 22.38, hint: 'Civil war: Roman against Roman' },
   { act: 'VI', name: 'Rome', lat: 41.90, lon: 12.50, hint: 'The final battle', rome: true }
 ];
@@ -176,7 +176,7 @@ export function renderMap(root, c, api) {
   root.innerHTML = `<div class="camp mapscreen">
     <header><h2>The Road to Rome</h2><div class="res"><span>${icon('coin')} Denarii <b>${c.gold}</b></span><span>${icon('grain')} Supplies <b>${c.supplies}</b></span><span>${icon('helmet')} Army <b>${totalMen(c)}</b></span><span>${icon('day')} Day <b>${c.day}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
     <div class="card mapcard">
-      <div class="row maptools"><button id="v-act" class="${view === 'act' ? 'on' : ''}">Act I: Gaul</button><button id="v-all" class="${view === 'all' ? 'on' : ''}">Whole Roman world</button><span class="muted small">Coastlines, rivers and lakes: Natural Earth (public domain). Mercator; Roman place names, positions approximate.</span></div>
+      <div class="row maptools"><button id="v-act" class="${view === 'act' ? 'on' : ''}">Act I: Gaul</button><button id="v-all" class="${view === 'all' ? 'on' : ''}">Whole Roman world</button><span class="muted small">Coastlines, rivers and lakes: Natural Earth (public domain). Mercator; Roman place names as they stood in 58 BC (later foundations such as Lugdunum, Londinium and Augusta Treverorum are left off), positions approximate.</span></div>
       <svg viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" id="mapsvg" role="img" aria-label="Campaign map of the Roman world">
         <defs><radialGradient id="seag" cx=".5" cy=".5" r=".75"><stop offset="0" stop-color="#27495c"/><stop offset="1" stop-color="#14262f"/></radialGradient>
           <filter id="mgrain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="${(0.55 / k).toFixed(3)}" numOctaves="3" seed="9" result="t"/><feColorMatrix in="t" values="0 0 0 0 .16  0 0 0 0 .12  0 0 0 0 .04  0 0 0 .75 -.18" result="g"/><feComposite in="g" in2="SourceGraphic" operator="in"/></filter></defs>

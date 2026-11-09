@@ -13,7 +13,7 @@ Each act: a few short minor fights, then a large named battle.
 | Act | Theatre | Notes |
 |---|---|---|
 | I | Gaul | Short, small skirmishes; ends with a named battle (e.g. Bibracte/Alesia-style). |
-| II | Germania | Forest/ambush terrain, Teutoburg-style set piece (Roman-defeat template -> larger rewards for win/draw). |
+| II | Germania | Forest/ambush terrain, the Atuatuca ambush of 54 BC (Sabinus and Cotta) as the forest-ambush set piece, and Ariovistus in 58 BC (Roman-defeat template -> larger rewards for win/draw). |
 | III | Britannia | **Longer, a slog**: more skirmishes, attrition, supply pressure, chariots, Watling Street finale. |
 | IV | Hispania / Africa / East | Elephants, Parthian horse archers, multi-legion armies. |
 | V | Civil war | Mirror matches, Pharsalus-style. |
