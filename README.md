@@ -172,3 +172,9 @@ docs/DESIGN.md   scope, roadmap, open questions
 
 Balance is first-pass: on Miles an aggressive plan with cavalry beats every scenario; passive defence usually loses; Centurion
 and Imperator scale enemy size and morale. Art is procedural placeholder; AI-generated art is planned. See `docs/DESIGN.md`.
+
+## The Gallic battle line
+Gallic infantry no longer converge on your army as a swarm. The host forms a **moving battle line**: each unit gets a slot side by side across the axis of advance (a second
+and third rank when the host is wide, the units nearest your army taking the front rank, each rank ordered by where its men stand so nobody crosses through a friend), the line
+front marches at the pace of its slowest unit and halts short of you, and the host surges together once most units are in their places. When it surges, targets are spread so units
+do not all pile onto the same cohort. Wings and the champions' reserve still act separately (`formLine` in `src/sim.js`).

@@ -340,6 +340,7 @@ export class Battle {
       if (e.formation !== 'normal') sc += 70;
       if (e.morale < e.maxMorale * 0.5) sc -= 40;
       sc += 60 * Math.max(0, hgt(this, e) - hgt(this, u));
+      sc += 70 * Math.max(0, ((this._tcount && this._tcount[e.id]) || 0) - 1);        // do not all pile onto one target
       if (sc < bs) { bs = sc; best = e; }
     }
     return best;
@@ -350,10 +351,11 @@ export class Battle {
     const dx = rc.x - u.x, dy = rc.y - u.y, d = Math.hypot(dx, dy) || 1, a = { x: dx / d, y: dy / d }, S = this.aiS;
     const attack = () => { const cur = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null; if (!cur || !cur.active) { const t = this.smartTarget(u); if (t) this.setAttack(u, t); } };
     if (u.role === 'line') {
-      if (S.surge) { attack(); return; }
-      const sp = { x: rc.x - a.x * 520, y: rc.y - a.y * 520 };
-      if (d > 600) { this.setMove(u, sp.x, sp.y, null, true); u.staged = false; if (S.t0 === null) S.t0 = this.t; }
-      else { if (u.order.kind === 'move') u.order = { kind: 'none' }; u.staged = true; }
+      if (S.surge || !u.slot) { attack(); return; }
+      // advance as one line: every unit holds its own place in a moving battle line, and the line marches at the pace of its slowest unit
+      const ds = Math.hypot(u.slot.x - u.x, u.slot.y - u.y);
+      if (ds > 36) this.setMove(u, u.slot.x, u.slot.y, S.fa, true); else { if (u.order.kind === 'move') u.order = { kind: 'none' }; this.faceSmooth(u, S.fa, 0.4, 1); }
+      u.staged = !!S.lineHalted && ds < 70;
     } else if (u.role === 'wing') {
       if (!u.wp) { const side = ((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x) >= 0 ? 1 : -1; u.wp = { x: rc.x - a.y * side * -1 * 0 + (-a.y) * side * 720 - a.x * 40, y: rc.y + a.x * side * 720 - a.y * 40 }; if (!this._wingSaid) { this._wingSaid = true; this.say('Gallic warbands are swinging wide around your flank!', 'warn'); } }
       if (Math.hypot(u.wp.x - u.x, u.wp.y - u.y) > 160 && !u.wpDone) this.setMove(u, u.wp.x, u.wp.y, null, true);
@@ -364,12 +366,39 @@ export class Battle {
       if (S.commit) { u.role = 'line'; }
     }
   }
+  // The Gallic battle line: units are given slots side by side across the axis of advance (a second and third rank if the host is wide), the line
+  // front marches toward a halt short of your army at the pace of its slowest unit, and every unit keeps its place in it.
+  formLine(lines) {
+    const S = this.aiS, rc = this.romeCentre(); if (!rc || !lines.length) return;
+    const gc = { x: lines.reduce((q, u) => q + u.x, 0) / lines.length, y: lines.reduce((q, u) => q + u.y, 0) / lines.length };
+    const dx = rc.x - gc.x, dy = rc.y - gc.y, dd = Math.hypot(dx, dy) || 1, a = { x: dx / dd, y: dy / dd }, perp = { x: -a.y, y: a.x };
+    S.fa = Math.atan2(a.y, a.x);
+    if (!S.F) S.F = { x: gc.x, y: gc.y };
+    const stage = { x: rc.x - a.x * 520, y: rc.y - a.y * 520 }, dF = Math.hypot(stage.x - S.F.x, stage.y - S.F.y);
+    if (dF > 10) { const v = Math.min(...lines.map(u => u.type.speed)) * 0.85 * 0.4; S.F.x += (stage.x - S.F.x) / dF * Math.min(dF, v); S.F.y += (stage.y - S.F.y) / dF * Math.min(dF, v); S.lineHalted = false; }
+    else { S.lineHalted = true; if (S.t0 === null) S.t0 = this.t; }
+    const slotW = Math.max(...lines.map(u => u.w)) + 24, depth = Math.max(...lines.map(u => u.d)) + 30, perRank = Math.max(1, Math.floor(1900 / slotW)), n = lines.length;
+    const sig = lines.map(u => u.id).sort((p1, p2) => p1 - p2).join();
+    if (sig !== S.sig || this.t > (S.resortT || 0)) {            // give the units nearest your army the front rank, then order each rank by where its men stand, so nobody has to cross through a friend
+      S.sig = sig; S.resortT = this.t + 5;
+      const fwd = (u) => (u.x - gc.x) * a.x + (u.y - gc.y) * a.y, lat = (u) => (u.x - gc.x) * perp.x + (u.y - gc.y) * perp.y;
+      const byFront = [...lines].sort((p1, p2) => fwd(p2) - fwd(p1));
+      for (let r = 0; r * perRank < n; r++) byFront.slice(r * perRank, (r + 1) * perRank).sort((p1, p2) => lat(p1) - lat(p2)).forEach((u, k) => { u.slotIdx = r * perRank + k; });
+    }
+    for (const u of lines) {
+      const i = u.slotIdx ?? 0, rank = Math.floor(i / perRank), k = i % perRank, cnt = Math.min(perRank, n - rank * perRank), off = (k - (cnt - 1) / 2) * slotW;
+      u.slot = { x: S.F.x + perp.x * off - a.x * rank * depth, y: S.F.y + perp.y * off - a.y * rank * depth };
+    }
+    // how many of our units are already going for each of your units (so the host spreads its attack instead of piling onto one)
+    this._tcount = {}; for (const u of this.units) if (u.side === 'gaul' && u.active && u.order.kind === 'attack') this._tcount[u.order.targetId] = (this._tcount[u.order.targetId] || 0) + 1;
+  }
   updateSurge() {
     const S = this.aiS; this.assignRoles();
     const lines = this.units.filter(u => u.side === 'gaul' && u.active && u.role === 'line');
+    this.formLine(lines);
     if (!S.surge) {
       const staged = lines.filter(u => u.staged || u.contacts.some(e => e.active)).length;
-      if (!lines.length || staged >= lines.length * 0.7 || (S.t0 !== null && this.t - S.t0 > 50)) { S.surge = true; S.surgeT = this.t; if (lines.length > 2) this.say('The Gallic line howls and surges forward!', 'warn'); }
+      if (!lines.length || (S.lineHalted && staged >= lines.length * 0.85) || (S.t0 !== null && this.t - S.t0 > 25)) { S.surge = true; S.surgeT = this.t; if (lines.length > 2) this.say('The Gallic line howls and surges forward!', 'warn'); }
     } else if (!S.commit) {
       const rs = this.units.filter(u => u.side === 'rome');
       const turned = this.stats.routs.gaul > 0 || this.stats.routs.rome > 0 || this.activeMen('rome') < this.startRome * 0.85;
