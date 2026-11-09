@@ -6,6 +6,7 @@ import { BattleUI } from './battleui.js';
 import { renderMap } from './map.js';
 import { artSrc, initArt } from './art.js';
 import { ask, inform } from './ui.js';
+import { snapshot, backups, restoreBackup, clearBackups, exportCampaign, parseImport } from './saves.js';
 import { Coach } from './coach.js';
 import { rewardOptions } from './rewards.js';
 import { buildPractice, PRACTICE_OPTIONS, PRACTICE_DEFAULTS } from './practice.js';
@@ -41,9 +42,11 @@ function refreshMenu() {
     if (c) {
       const scn = SCENARIOS[c.scenario];
       d.innerHTML = `<div><b>Slot ${n}</b> - ${esc(DIFFICULTY[c.difficulty].name)}<small>${scn ? `Battle ${c.scenario + 1}/${SCENARIOS.length}: ${esc(scn.name)}` : 'Act I complete'} - ${totalMen(c)} men - day ${c.day}</small></div>
-        <div class="row"><button class="primary" data-a="load">Continue</button><button data-a="del">Delete</button></div>`;
+        <div class="row"><button class="primary" data-a="load">Continue</button><button data-a="exp" title="Download this campaign as a file">Export</button><button data-a="bak" title="Rolling backups taken after each battle and at camp">Backups</button><button data-a="del">Delete</button></div>`;
+      d.querySelector('[data-a=exp]').onclick = () => exportCampaign(c);
+      d.querySelector('[data-a=bak]').onclick = () => showBackups(n);
       d.querySelector('[data-a=load]').onclick = () => openCampaign(c, n);
-      d.querySelector('[data-a=del]').onclick = async () => { if (await ask(`Delete the campaign in slot ${n}? This cannot be undone.`, 'Delete', 'Keep')) { store.del(key(n)); store.del(preKey(n)); refreshMenu(); } };
+      d.querySelector('[data-a=del]').onclick = async () => { if (await ask(`Delete the campaign in slot ${n}? This cannot be undone.`, 'Delete', 'Keep')) { store.del(key(n)); store.del(preKey(n)); clearBackups(n); refreshMenu(); } };
     } else {
       d.innerHTML = `<div><b>Slot ${n}</b><small>Empty</small></div><button class="primary" data-a="new">New Campaign</button>`;
       d.querySelector('[data-a=new]').onclick = () => showOrigins(n);
@@ -51,6 +54,30 @@ function refreshMenu() {
     el.appendChild(d);
   }
 }
+// A list of rolling backups for a slot, newest first, each restorable.
+function showBackups(n) {
+  const list = backups(n), el = $('confirm'); el.classList.remove('hidden');
+  const when = (t) => new Date(t).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  el.innerHTML = `<div class="box" style="text-align:left;max-width:560px"><h3 style="color:var(--gold);margin:0 0 6px">Backups: slot ${n}</h3><p class="muted small" style="margin:0 0 10px">A backup is kept after every battle and when you make camp (up to 6 are kept). Restoring replaces the slot's current campaign.</p>
+    ${list.length ? `<div style="max-height:320px;overflow:auto">${list.map(b => `<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0"><div><b>${esc(b.why)}</b><div class="small muted">${esc(when(b.t))} - ${esc(b.summary)}</div></div><button data-i="${b.i}">Restore</button></div>`).join('')}</div>` : '<p>No backups yet. They are made after your first campaign battle.</p>'}
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="primary" id="bk-close">Close</button></div></div>`;
+  el.querySelector('#bk-close').onclick = () => { el.classList.add('hidden'); el.innerHTML = ''; };
+  el.querySelectorAll('[data-i]').forEach(b => b.onclick = async () => {
+    const c = restoreBackup(n, +b.dataset.i); if (!c) return;
+    if (!(await ask(`Restore this backup into slot ${n}? The current campaign in the slot will be replaced.`, 'Restore', 'Cancel'))) { showBackups(n); return; }
+    store.set(key(n), c); el.classList.add('hidden'); el.innerHTML = ''; refreshMenu();
+  });
+}
+// Import a campaign file into the first empty slot (or a slot you choose to overwrite).
+async function importSave(file) {
+  let c; try { c = parseImport(await file.text()); } catch (e) { await inform('Could not import', [e.message]); return; }
+  let n = [1, 2, 3].find(i => !store.get(key(i)));
+  if (!n) { if (!(await ask('All three slots are in use. Import over slot 3?', 'Replace slot 3', 'Cancel'))) return; n = 3; }
+  c.slot = n; store.set(key(n), c); snapshot(n, c, 'Imported'); refreshMenu();
+  await inform('Campaign imported', [`Loaded into slot ${n}: ${(c.player && c.player.name) || 'your commander'}, battle ${Math.min(c.scenario + 1, SCENARIOS.length)}.`]);
+}
+$('btn-import').onclick = () => $('file-import').click();
+$('file-import').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importSave(f); };
 function openCampaign(c, n) { campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; if (c.prologueDone === false) showBrief(PROLOGUE); else showMap(); }
 function toMenu() { show('screen-menu'); refreshMenu(); }
 refreshMenu();
@@ -59,7 +86,7 @@ initArt().then(() => { /* real art, if any, is picked up on the next render */ }
 // ----- map -----
 function showMap() {
   renderMap($('screen-map'), campaign, {
-    camp: () => { camp.show(campaign); show('screen-camp'); },
+    camp: () => { snapshot(campaign.slot, campaign, 'Entering camp'); camp.show(campaign); show('screen-camp'); },
     march: () => marchGuard(),
     menu: () => toMenu()
   });
@@ -112,7 +139,7 @@ function showResult(res, scn) {
   res.spoils = { gold: Math.round(res.spoils.gold * sm), supplies: Math.round(res.spoils.supplies * sm), recruits: Math.round(res.spoils.recruits * sm) };
   const notes = applyResult(c, res, scn);
   c.cohorts.forEach(h => { h.condition = Math.max(35, h.condition); });
-  save();
+  save(); snapshot(c.slot, c, `After ${scn.name}: ${res.outcome}`);
   const o = res.outcome, title = { victory: 'VICTORY', draw: 'DRAW', defeat: 'DEFEAT' }[o];
   const flavour = { victory: 'The enemy breaks and scatters. The field is yours.', draw: 'Neither side can claim the field, but your legion marches away intact.', defeat: 'The line has broken. You live to fight another day, but the loss is bitter.' }[o];
   const rows = res.rows.map(r => `<tr><td>${esc(r.name)}</td><td>${r.startMen}</td><td>${r.endMen}</td><td>${r.casualties}</td><td>${r.kills}</td><td>+${r.xpGain}</td></tr>`).join('');
