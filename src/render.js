@@ -113,10 +113,16 @@ export class Renderer {
     this.clampCam();
   }
   fit() { this.resize(); this.cam.zoom = this.fitZoom; this.cam.x = WORLD.w / 2; this.cam.y = WORLD.h / 2; this.clampCam(); }
-  clampCam() {
+  // The range the camera centre may occupy so that the picture fills the screen (or is centred, when the whole field fits).
+  bounds() {
     const hw = this.vw / this.cam.zoom / 2, hh = this.vh / this.cam.zoom / 2;
-    this.cam.x = hw * 2 >= WORLD.w ? WORLD.w / 2 : Math.max(hw, Math.min(WORLD.w - hw, this.cam.x));
-    this.cam.y = hh * 2 >= WORLD.h ? WORLD.h / 2 : Math.max(hh, Math.min(WORLD.h - hh, this.cam.y));
+    return { minX: hw * 2 >= WORLD.w ? WORLD.w / 2 : hw, maxX: hw * 2 >= WORLD.w ? WORLD.w / 2 : WORLD.w - hw, minY: hh * 2 >= WORLD.h ? WORLD.h / 2 : hh, maxY: hh * 2 >= WORLD.h ? WORLD.h / 2 : WORLD.h - hh };
+  }
+  // margin (screen pixels) lets the camera drift a little past the edge; it springs back on its own (see BattleUI.pan)
+  clampCam(margin = 0) {
+    const b = this.bounds(), m = margin / this.cam.zoom;
+    this.cam.x = Math.max(b.minX - m, Math.min(b.maxX + m, this.cam.x));
+    this.cam.y = Math.max(b.minY - m, Math.min(b.maxY + m, this.cam.y));
   }
   toWorld(sx, sy) { return { x: (sx - this.vw / 2) / this.cam.zoom + this.cam.x, y: (sy - this.vh / 2) / this.cam.zoom + this.cam.y }; }
   toScreen(wx, wy) { return { x: (wx - this.cam.x) * this.cam.zoom + this.vw / 2, y: (wy - this.cam.y) * this.cam.zoom + this.vh / 2 }; }
@@ -132,7 +138,7 @@ export class Renderer {
   draw(b) {
     const ctx = this.ctx, z = this.cam.zoom;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.fillStyle = '#1b1a14'; ctx.fillRect(0, 0, this.vw, this.vh);
+    ctx.fillStyle = '#232b1d'; ctx.fillRect(0, 0, this.vw, this.vh);
     ctx.save();
     ctx.translate(this.vw / 2, this.vh / 2); ctx.scale(z, z); ctx.translate(-this.cam.x, -this.cam.y);
     if (b.shake > 0.05) ctx.translate((Math.random() - 0.5) * b.shake * 2, (Math.random() - 0.5) * b.shake * 2);   // the thud of a charge

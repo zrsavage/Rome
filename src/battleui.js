@@ -60,13 +60,28 @@ export class BattleUI {
     this.raf = requestAnimationFrame((t) => this.frame(t));
   }
 
+  // Camera movement is eased, never abrupt: speed builds up and fades away, slows smoothly on the way into an edge, can drift a little past it
+  // against growing resistance (a soft stop, never a hard wall), and settles back by itself.
   pan(dt) {
-    const k = this.keys, sp = 600 / this.r.cam.zoom * dt;
-    if (k.has('a') || k.has('arrowleft')) this.r.cam.x -= sp;
-    if (k.has('d') || k.has('arrowright')) this.r.cam.x += sp;
-    if (k.has('w') || k.has('arrowup')) this.r.cam.y -= sp;
-    if (k.has('s') || k.has('arrowdown')) this.r.cam.y += sp;
-    if (k.size) this.r.clampCam();
+    const k = this.keys, r = this.r, z = r.cam.zoom, M = 36 / z, SLOW = 240 / z;
+    let tx = 0, ty = 0;
+    if (k.has('a') || k.has('arrowleft')) tx -= 1; if (k.has('d') || k.has('arrowright')) tx += 1;
+    if (k.has('w') || k.has('arrowup')) ty -= 1; if (k.has('s') || k.has('arrowdown')) ty += 1;
+    this.cvx = this.cvx || 0; this.cvy = this.cvy || 0;
+    const sp = 700 / z, ease = Math.min(1, dt * 9);
+    this.cvx += (tx * sp - this.cvx) * ease; this.cvy += (ty * sp - this.cvy) * ease;
+    const b = r.bounds();
+    for (const [axis, vel, lo, hi] of [['x', 'cvx', b.minX, b.maxX], ['y', 'cvy', b.minY, b.maxY]]) {
+      let v = this[vel], c = r.cam[axis];
+      const toLo = c - lo, toHi = hi - c;                                    // distance to each edge (negative: already past it)
+      if (v < 0 && toLo < SLOW) v *= toLo <= 0 ? Math.max(0, 1 - (-toLo) / M) : 0.25 + 0.75 * (toLo / SLOW);   // slowing in, then resistance past the edge
+      if (v > 0 && toHi < SLOW) v *= toHi <= 0 ? Math.max(0, 1 - (-toHi) / M) : 0.25 + 0.75 * (toHi / SLOW);
+      c += v * dt;
+      if (!(this.pd) && !(axis === 'x' ? tx : ty)) {                       // no input on this axis: settle back inside the edge
+        const inside = Math.max(lo, Math.min(hi, c)); c += (inside - c) * Math.min(1, dt * 7);
+      }
+      r.cam[axis] = Math.max(lo - M, Math.min(hi + M, c));
+    }
   }
 
   // ----- selection / orders -----
@@ -117,7 +132,7 @@ export class BattleUI {
       c.style.cursor = hu && hu.side === 'gaul' && this.selected().length ? 'pointer' : 'crosshair';
       if (left && (Math.abs(p.x - left.x) > 6 || Math.abs(p.y - left.y) > 6)) this.r.box = { x0: left.x, y0: left.y, x1: p.x, y1: p.y };
       if (right && Math.hypot(p.x - right.x, p.y - right.y) > 14) { const a = this.r.toWorld(right.x, right.y); this.r.dragLine = { x0: a.x, y0: a.y, x1: w.x, y1: w.y }; }
-      if (this.pd) { this.r.cam.x = this.pd.cx - (p.x - this.pd.x) / this.r.cam.zoom; this.r.cam.y = this.pd.cy - (p.y - this.pd.y) / this.r.cam.zoom; this.r.clampCam(); }
+      if (this.pd) { this.r.cam.x = this.pd.cx - (p.x - this.pd.x) / this.r.cam.zoom; this.r.cam.y = this.pd.cy - (p.y - this.pd.y) / this.r.cam.zoom; this.r.clampCam(36); }
     });
     window.addEventListener('mouseup', (e) => {
       if (!this.b || !this.running) return; const p = pos(e), w = this.r.toWorld(p.x, p.y);
@@ -149,7 +164,7 @@ export class BattleUI {
     c.addEventListener('wheel', (e) => {
       e.preventDefault(); const p = pos(e), before = this.r.toWorld(p.x, p.y);
       this.r.cam.zoom = Math.max(this.r.minZoom, Math.min(2.4, this.r.cam.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
-      const after = this.r.toWorld(p.x, p.y); this.r.cam.x += before.x - after.x; this.r.cam.y += before.y - after.y; this.r.clampCam();
+      const after = this.r.toWorld(p.x, p.y); this.r.cam.x += before.x - after.x; this.r.cam.y += before.y - after.y; this.r.clampCam(0);
     }, { passive: false });
     window.addEventListener('keydown', (e) => {
       if (!this.running) return; const k = e.key.toLowerCase();
