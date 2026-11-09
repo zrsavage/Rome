@@ -57,6 +57,16 @@ export function romeSpecs(c, scn) {
     [...inf, ...ranged, ...cav].forEach((h, i) => { const col = i % d.cols, row = Math.floor(i / d.cols); mk(h, d.cx + (col - (d.cols - 1) / 2) * d.dx, d.cy + row * d.dy); });
     return specs;
   }
+  if (inf.length > 12 || ranged.length > 14 || cav.length > 8) {
+    // a big army deploys in ranks: infantry in rows of twelve, missile troops behind them, cavalry on the wings
+    const perRow = 12, sp = 100, n = inf.length, rowsI = Math.ceil(n / perRow), rowsR = Math.ceil(ranged.length / 14), depth = rowsI * 85 + rowsR * 70 + 60;
+    const worldH = (scn && scn.world && scn.world.h) || 1000; let cy = d.cy; if (cy + depth > worldH - 80) cy = worldH - 80 - depth;
+    inf.forEach((h, i) => { const r = Math.floor(i / perRow), k = i % perRow, cnt = Math.min(perRow, n - r * perRow); mk(h, d.cx + (k - (cnt - 1) / 2) * sp, cy + r * 85); });
+    ranged.forEach((h, i) => { const r = Math.floor(i / 14), k = i % 14, cnt = Math.min(14, ranged.length - r * 14); mk(h, d.cx + (k - (cnt - 1) / 2) * 80, cy + rowsI * 85 + 20 + r * 70); });
+    const half = (Math.min(perRow, n) - 1) / 2 * sp + 120;
+    cav.forEach((h, i) => { const side = i % 2 ? 1 : -1, idx = Math.floor(i / 2); mk(h, d.cx + side * (half + Math.floor(idx / 4) * 80), cy + 20 + (idx % 4) * 60); });
+    return specs;
+  }
   const sp = 100, n = inf.length, front = n <= 4 ? n : Math.ceil(n / 2), back = n - front;
   inf.forEach((h, i) => {
     const isBack = i >= front, k = isBack ? i - front : i, cnt = isBack ? back : front;

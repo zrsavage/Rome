@@ -190,6 +190,14 @@ export class BattleUI {
     this.lastGroup = n; this.lastGroupT = now; this.select(ids);
   }
 
+  // With a big army you select by kind, not by clicking seventy cards.
+  buildSelectors() {
+    const b = this.b, el = $('hud-sel'); el.innerHTML = '';
+    const rome = b.units.filter(u => u.side === 'rome'); if (rome.length < 9) return;
+    const by = (f) => () => this.select(rome.filter(u => u.active && f(u)).map(u => u.id));
+    const items = [['All  (Q)', by(() => true)], ['Infantry', by(u => u.type.cat === 'inf')], ['Missile troops', by(u => u.type.cat === 'ranged')], ['Cavalry', by(u => u.type.cat === 'cav')], ['Tired units', by(u => u.fatigue > 45)], ['Wavering units', by(u => u.morale < u.maxMorale * 0.5)], ['In melee', by(u => u.fighting)]];
+    for (const [label, fn] of items) { const btn = document.createElement('button'); btn.className = 'cmd'; btn.textContent = label; btn.onclick = fn; el.appendChild(btn); }
+  }
   // One place for every unit command, used by both the keyboard and the command bar.
   cmd(name) {
     const b = this.b, sel = this.selected(), inf = sel.filter(u => u.type.cat === 'inf');
@@ -230,6 +238,9 @@ export class BattleUI {
   // ----- HUD -----
   refreshBottom() {
     const el = $('hud-bottom'); el.innerHTML = '';
+    const nRome = this.b.units.filter(u => u.side === 'rome').length;
+    el.classList.toggle('many', nRome > 9); $('screen-battle').classList.toggle('huge', nRome > 24);   // past two dozen units the cards give way to the selection buttons
+    this.buildSelectors();
     if (this.b.general) { const d = document.createElement('div'); d.className = 'ucard'; d.dataset.gen = '1'; d.innerHTML = '<b>General (E)</b><div class="muted" style="font-size:12px">command ring</div>'; d.onclick = () => this.selectGeneral(); el.appendChild(d); }
     this.b.units.filter(u => u.side === 'rome').forEach(u => {
       const d = document.createElement('div'); d.className = 'ucard'; d.dataset.id = u.id;

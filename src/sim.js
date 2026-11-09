@@ -107,6 +107,7 @@ export class Battle {
     if (rs.length && opts.general !== false) this.general = { x: rs.reduce((a, u) => a + u.x, 0) / rs.length, y: Math.min(WORLD.h - 20, Math.max(...rs.map(u => u.y)) + 55), f: -Math.PI / 2, goal: null, wound: 0 };
     for (const e of scn.enemy) this.spawnEnemy(e);
     this.startRome = this.sumMen('rome'); this.startGaul = this.sumMen('gaul');
+    this.smartAI = scn.id !== 'prologue'; this.aiS = { surge: false, surgeT: 0, commit: false, t0: null };
     this.say('Your army deploys. Press SPACE to begin the battle; you may issue orders while paused.', 'info');
   }
 
@@ -291,26 +292,85 @@ export class Battle {
   }
 
   // ---------- AI ----------
+  // ---------- the Gallic commander ----------
+  // The host is not a swarm. Warbands form a line short of your army and surge together; a quarter swing wide to take your flank; the
+  // champions are held back as a reserve and thrown in once the fight turns. Every unit picks targets that hurt: missile troops,
+  // flanked cohorts, men who are wavering.
+  romeCentre() {
+    const rs = this.units.filter(u => u.side === 'rome' && u.active); if (!rs.length) return null;
+    const m = rs.reduce((a, u) => a + u.men, 0) || 1;
+    return { x: rs.reduce((a, u) => a + u.x * u.men, 0) / m, y: rs.reduce((a, u) => a + u.y * u.men, 0) / m };
+  }
+  assignRoles() {
+    let n = 0;
+    for (const u of this.units) {
+      if (u.side !== 'gaul' || !u.active || !u.ai || u.role || u.ai.kind !== 'rush') continue;
+      if (u.type.cat !== 'inf') continue;
+      if (u.ai.burst) { u.role = 'burst'; continue; }
+      if (u.typeKey === 'gaul_elite') u.role = 'reserve';
+      else { u.role = (++n % 4 === 0 && this.sumMen('gaul') > 600) ? 'wing' : 'line'; }
+    }
+  }
+  smartTarget(u) {
+    let best = null, bs = 1e9;
+    for (const e of this.units) {
+      if (e.side === u.side || !e.active) continue;
+      let sc = this.gap(u, e) + this.rand() * 30;
+      if (e.type.cat === 'ranged') sc -= 90;
+      if (e.flanked || e.surrounded) sc -= 60;
+      if (e.formation !== 'normal') sc += 70;
+      if (e.morale < e.maxMorale * 0.5) sc -= 40;
+      sc += 60 * Math.max(0, hgt(this, e) - hgt(this, u));
+      if (sc < bs) { bs = sc; best = e; }
+    }
+    return best;
+  }
+  smartMove(u) {
+    const rc = this.romeCentre(); if (!rc) return;
+    if (u.contacts.some(e => e.active)) return;                                    // fighting: let the melee run
+    const dx = rc.x - u.x, dy = rc.y - u.y, d = Math.hypot(dx, dy) || 1, a = { x: dx / d, y: dy / d }, S = this.aiS;
+    const attack = () => { const cur = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null; if (!cur || !cur.active) { const t = this.smartTarget(u); if (t) this.setAttack(u, t); } };
+    if (u.role === 'line') {
+      if (S.surge) { attack(); return; }
+      const sp = { x: rc.x - a.x * 520, y: rc.y - a.y * 520 };
+      if (d > 600) { this.setMove(u, sp.x, sp.y, null, true); u.staged = false; if (S.t0 === null) S.t0 = this.t; }
+      else { if (u.order.kind === 'move') u.order = { kind: 'none' }; u.staged = true; this.turnToward(u, { x: rc.x, y: rc.y }, 0.4, 0.6); }
+    } else if (u.role === 'wing') {
+      if (!u.wp) { const side = ((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x) >= 0 ? 1 : -1; u.wp = { x: rc.x - a.y * side * -1 * 0 + (-a.y) * side * 720 - a.x * 40, y: rc.y + a.x * side * 720 - a.y * 40 }; if (!this._wingSaid) { this._wingSaid = true; this.say('Gallic warbands are swinging wide around your flank!', 'warn'); } }
+      if (Math.hypot(u.wp.x - u.x, u.wp.y - u.y) > 160 && !u.wpDone) this.setMove(u, u.wp.x, u.wp.y, null, true);
+      else { u.wpDone = true; if (S.surge || this.t - (S.t0 ?? this.t) > 60) attack(); else if (u.order.kind === 'move') u.order = { kind: 'none' }; }
+    } else if (u.role === 'reserve') {
+      const rp = { x: rc.x - a.x * 800, y: rc.y - a.y * 800 };
+      if (d > 900) this.setMove(u, rp.x, rp.y, null, true); else if (u.order.kind === 'move') u.order = { kind: 'none' };
+      if (S.commit) { u.role = 'line'; }
+    }
+  }
+  updateSurge() {
+    const S = this.aiS; this.assignRoles();
+    const lines = this.units.filter(u => u.side === 'gaul' && u.active && u.role === 'line');
+    if (!S.surge) {
+      const staged = lines.filter(u => u.staged || u.contacts.some(e => e.active)).length;
+      if (!lines.length || staged >= lines.length * 0.7 || (S.t0 !== null && this.t - S.t0 > 50)) { S.surge = true; S.surgeT = this.t; if (lines.length > 2) this.say('The Gallic line howls and surges forward!', 'warn'); }
+    } else if (!S.commit) {
+      const rs = this.units.filter(u => u.side === 'rome');
+      const turned = this.stats.routs.gaul > 0 || this.stats.routs.rome > 0 || this.activeMen('rome') < this.startRome * 0.85;
+      if ((turned && this.t - S.surgeT > 20) || this.t - S.surgeT > 90) { S.commit = true; if (this.units.some(u => u.side === 'gaul' && u.active && u.role === 'reserve')) this.say('The Gallic champions are committed to the fight!', 'warn'); }
+    }
+  }
   aiThink() {
+    if (this.smartAI) this.updateSurge();
     for (const u of this.units) {
       if (u.side !== 'gaul' || !u.active || !u.ai) continue;
       const ai = u.ai;
       const near = this.nearestEnemy(u);
       if (!near) continue;
       if (ai.kind === 'ambush') {
-        if (near.gap < ai.trigger || this.t > ai.maxDelay) { ai.kind = 'rush'; ai.delay = this.t + 1 + this.rand() * 3; if (!u.alerted) { u.alerted = true; if (!ai.quiet) this.say('A Gallic warband bursts from the treeline!', 'warn'); } }
+        if (near.gap < ai.trigger || this.t > ai.maxDelay) { ai.kind = 'rush'; ai.burst = true; ai.delay = this.t + 1 + this.rand() * 3; if (!u.alerted) { u.alerted = true; if (!ai.quiet) this.say('A Gallic warband bursts from the treeline!', 'warn'); } }
       } else if (ai.kind === 'rush') {
         if (this.t < ai.delay) continue;
+        if (this.smartAI && u.role && u.role !== 'burst') { this.smartMove(u); continue; }
         const cur = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null;
-        if (!cur || !cur.active) {
-          // a host that outnumbers you tries to wrap your line instead of meeting it head on
-          if (!u.wrapped && u.type.cat === 'inf' && this.activeMen('gaul') > this.activeMen('rome') * 1.25 && this.rand() < 0.3) {
-            u.wrapped = true; u.ai = { kind: 'flank', delay: 0 };
-            if (!this._wrapSaid) { this._wrapSaid = true; this.say('Gallic warbands swing wide to wrap your line!', 'warn'); }
-            continue;
-          }
-          this.setAttack(u, this.pickTarget(u));
-        }
+        if (!cur || !cur.active) this.setAttack(u, this.smartAI ? this.smartTarget(u) : this.pickTarget(u));
       } else if (ai.kind === 'skirm') {
         const tgt = near.e;
         if (u.ammo <= 0) { ai.kind = 'rush'; ai.delay = 0; continue; }
@@ -322,7 +382,7 @@ export class Battle {
       } else if (ai.kind === 'raid') {
         if (this.t < (ai.delay || 0)) continue;
         const o = this.objectives.find(x => x.id === ai.obj);
-        if (near.gap < 70) { ai.kind = 'rush'; ai.delay = 0; continue; }
+        if (near.gap < 70) { ai.kind = 'rush'; ai.burst = true; ai.delay = 0; continue; }
         if (o && !u.fighting) { if (Math.hypot(u.x - o.x, u.y - o.y) > 25) this.setMove(u, o.x, o.y); else u.order = { kind: 'none' }; }
       } else if (ai.kind === 'flank') {
         if (this.t < ai.delay) continue;

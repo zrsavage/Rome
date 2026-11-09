@@ -83,6 +83,13 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 #hud-cmds .cmd{background:#241d13ee;border:1px solid var(--line);border-radius:5px;padding:4px 9px;font-size:13px;color:var(--ink);cursor:pointer}
 #hud-cmds .cmd kbd{margin-left:6px;font:600 11px var(--body);color:var(--gold);opacity:.9}
 #hud-cmds .cmd.on{border-color:var(--gold);background:#3a2f1c}
+#hud-sel{position:absolute;left:12px;bottom:200px;display:flex;flex-direction:column;gap:4px;z-index:3}
+#hud-sel .cmd{background:#241d13ee;border:1px solid var(--line);border-radius:5px;padding:3px 9px;font-size:12px;color:var(--ink);cursor:pointer;text-align:left}
+#hud-sel .cmd:hover{border-color:var(--gold)}
+#hud-bottom.many{flex-wrap:wrap;max-height:132px;overflow-y:auto;align-content:flex-end;pointer-events:auto}
+#hud-bottom.many .ucard{width:74px;padding:3px 4px;font-size:10px}
+#hud-bottom.many .ucard b{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#hud-bottom.many .ucard .uicon{width:26px;height:26px}
 #hud-bottom{position:absolute;left:0;right:0;bottom:0;display:flex;gap:6px;justify-content:center;padding:8px;background:linear-gradient(#0000,#000b);pointer-events:none}
 .ucard{pointer-events:auto;background:#241d13e6;border:1px solid var(--line);border-radius:5px;padding:5px 8px;width:140px;font-size:12px;cursor:pointer}
 .ucard.sel{border-color:var(--gold);background:#3a2e1b}
@@ -271,3 +278,14 @@ small,.eff,.kvl,.pres,.drlist td{font-size:inherit}
 table{font-size:15px}
 .act small,.ocard span.t,.regimen .t{font-size:14px}
 .ucard{font-size:13px}
+
+/* big armies */
+.ulist.scrolls{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:6px}
+.ulist.scrolls table{margin:0}
+.ulist.scrolls th{position:sticky;top:0;background:var(--panel2);z-index:1}
+tr.ugrp td{background:#3a2f1c;color:var(--gold);font-family:var(--head);letter-spacing:.06em;font-size:13px;padding:4px 8px}
+
+#screen-battle.huge #hud-bottom{display:none}
+#screen-battle.huge #hud-cmds{bottom:14px}
+#screen-battle.huge #hud-sel{bottom:14px}
+#screen-battle.huge #coach{bottom:70px}

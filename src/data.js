@@ -351,7 +351,7 @@ for (const scn of [PROLOGUE, ...SCENARIOS]) {
 // enemy, manoeuvre, and choose your ground. Heights grow more slowly than distances so slopes stay walkable.
 // ---------------------------------------------------------------------------
 export const MAP_SCALE = 2.5, PROLOGUE_SCALE = 1.8;
-function scaleScenario(scn, k) {
+export function scaleScenario(scn, k) {
   const S = (v) => Math.round(v * k), p = (o, ...keys) => { for (const key of keys) if (key in o) o[key] = S(o[key]); };
   for (const f of scn.terrain) {
     f.sc = k;

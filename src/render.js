@@ -177,7 +177,9 @@ export class Renderer {
     if (u.formation === 'orb') { ctx.strokeStyle = 'rgba(150,200,255,0.95)'; ctx.lineWidth = 1.6; ctx.strokeRect(-u.d / 2, -u.w / 2, u.d, u.w); }
     if (u.formation === 'close') { ctx.strokeStyle = 'rgba(232,195,106,0.9)'; ctx.lineWidth = 1.4; ctx.strokeRect(-u.d / 2, -u.w / 2, u.d, u.w); }
     // soldiers: front row at +x. Each is a little figure with a shield; a testudo is a roof of locked shields; routers scatter.
-    const n = Math.max(1, Math.ceil(u.men / t.perDot));
+    const lod = Math.max(u.w, u.d) * this.cam.zoom < 30;     // zoomed far out, a unit is one solid block rather than hundreds of figures
+    if (lod) { ctx.fillStyle = rome ? 'rgba(176,46,36,0.82)' : 'rgba(46,96,190,0.82)'; ctx.fillRect(-u.d / 2, -u.w / 2, u.d, u.w); ctx.fillStyle = t.trim; ctx.fillRect(u.d / 2 - 3, -u.w / 2, 3, u.w); }
+    const n = lod ? 0 : Math.max(1, Math.ceil(u.men / t.perDot));
     const cols = Math.max(1, Math.min(n, Math.round(Math.sqrt(n * u.w / Math.max(1, u.d))))), rows = Math.ceil(n / cols);
     const sx = u.d / rows, sy = u.w / cols, r = Math.max(1.1, Math.min(t.cat === 'cav' ? 3 : 2.3, Math.min(sx, sy) * 0.42));
     const now = b.t, roof = u.formation === 'close', helm = rome ? '#cfcfc4' : (u.typeKey === 'gaul_elite' ? '#e4c56a' : '#cfa96e');
@@ -223,6 +225,7 @@ export class Renderer {
   }
 
   drawLabel(ctx, u, placed = []) {
+    if (this.cam.zoom < 0.42 && !(this.selection.has(u.id) || this.hover === u.id || u.fighting || u.state === 'routing')) return;   // far out, label only what matters
     const p = this.toScreen(u.x, u.y - u.w / 2 - 4), z = this.cam.zoom;
     const yy = this.toScreen(u.x, u.y).y - Math.max(u.w, u.d) * z / 2 - 8;
     const rome = u.side === 'rome', fs = Math.max(10, Math.min(14, 11 * z + 3));
