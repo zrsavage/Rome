@@ -65,18 +65,34 @@ function unitIcon(key, w, h) {
 function officerPortrait(key, w, h, extra) {
   const name = extra.title || String(key), rank = extra.rank || '';
   const [c, g] = mk(w, h);
-  const grd = g.createLinearGradient(0, 0, 0, h); grd.addColorStop(0, '#4a3a22'); grd.addColorStop(1, '#1a140d');
+  let hs = 0; for (const ch of String(key) + name) hs = (hs * 31 + ch.charCodeAt(0)) >>> 0;
+  const skin = ['#d9b08a', '#c99c78', '#e2bb94'][hs % 3], beard = hs % 4 === 0, grey = hs % 5 === 0;
+  const grd = g.createLinearGradient(0, 0, 0, h); grd.addColorStop(0, '#4f3d24'); grd.addColorStop(1, '#17120b');
   g.fillStyle = grd; g.fillRect(0, 0, w, h);
-  const cx = w / 2, u = w / 100;
-  g.fillStyle = '#6b5638'; g.beginPath(); g.ellipse(cx, h * 0.98, 42 * u, 30 * u, 0, Math.PI, 0); g.fill();           // shoulders
-  const mail = /Centurion|Prefect/.test(rank) ? '#8a8f96' : '#b3261e';
-  g.fillStyle = mail; g.beginPath(); g.ellipse(cx, h * 0.98, 38 * u, 24 * u, 0, Math.PI, 0); g.fill();
-  g.fillStyle = '#c9a07a'; g.beginPath(); g.ellipse(cx, h * 0.5, 17 * u, 22 * u, 0, 0, 7); g.fill();                  // face
-  g.fillStyle = '#b08a3a'; g.beginPath(); g.ellipse(cx, h * 0.44, 20 * u, 17 * u, 0, Math.PI, 0); g.fill();           // helmet
-  g.fillRect(cx - 20 * u, h * 0.44, 40 * u, 4 * u);
-  g.fillStyle = /Tribune/.test(rank) ? '#b3261e' : /Centurion/.test(rank) ? '#d8d2b0' : '#2a2a2a';                       // crest
-  if (/Centurion/.test(rank)) g.fillRect(cx - 24 * u, h * 0.2, 48 * u, 9 * u); else { g.beginPath(); g.moveTo(cx - 5 * u, h * 0.29); g.lineTo(cx, h * 0.12); g.lineTo(cx + 5 * u, h * 0.29); g.fill(); }
-  g.fillStyle = '#2a1e12'; g.fillRect(cx - 9 * u, h * 0.5, 4 * u, 2 * u); g.fillRect(cx + 5 * u, h * 0.5, 4 * u, 2 * u);
+  const cx = w / 2, u = w / 100, ctr = /Centurion/.test(rank), trb = /Tribune/.test(rank), cav = /Prefect/.test(rank);
+  // red cloak and shoulders in mail with the doubled cape
+  g.fillStyle = '#8f2018'; g.beginPath(); g.ellipse(cx, h * 1.0, 47 * u, 31 * u, 0, Math.PI, 0); g.fill();
+  const mg = g.createLinearGradient(cx - 36 * u, 0, cx + 36 * u, 0); mg.addColorStop(0, '#9aa2ab'); mg.addColorStop(0.5, '#757d86'); mg.addColorStop(1, '#565d66');
+  g.fillStyle = trb ? '#c9a24a' : mg; g.beginPath(); g.ellipse(cx, h * 1.0, 39 * u, 25 * u, 0, Math.PI, 0); g.fill();                     // mail (a bronze muscled cuirass for the tribune)
+  g.save(); g.beginPath(); g.ellipse(cx, h * 1.0, 39 * u, 25 * u, 0, Math.PI, 0); g.clip(); g.strokeStyle = 'rgba(25,30,38,0.3)'; g.lineWidth = Math.max(0.6, u * 0.5);
+  for (let y = h * 0.75; y < h; y += 3 * u) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y + 2 * u); g.stroke(); } g.restore();
+  g.fillStyle = skin; g.beginPath(); g.rect(cx - 7 * u, h * 0.62, 14 * u, 10 * u); g.fill();                                              // neck
+  // face, with a little modelling
+  const fg = g.createRadialGradient(cx - 6 * u, h * 0.44, 2 * u, cx, h * 0.5, 24 * u); fg.addColorStop(0, '#fff3dc'); fg.addColorStop(0.35, skin); fg.addColorStop(1, '#8a6240');
+  g.fillStyle = fg; g.beginPath(); g.ellipse(cx, h * 0.5, 17 * u, 22 * u, 0, 0, 7); g.fill();
+  if (beard) { g.fillStyle = grey ? '#9a9a96' : '#4a3220'; g.beginPath(); g.ellipse(cx, h * 0.6, 14 * u, 11 * u, 0, 0, Math.PI); g.fill(); }
+  g.strokeStyle = '#3a2616'; g.lineWidth = Math.max(1, u * 1.4); g.beginPath(); g.moveTo(cx - 12 * u, h * 0.455); g.lineTo(cx - 5 * u, h * 0.465); g.moveTo(cx + 5 * u, h * 0.465); g.lineTo(cx + 12 * u, h * 0.455); g.stroke();   // brows
+  g.fillStyle = '#20150c'; g.beginPath(); g.ellipse(cx - 8.5 * u, h * 0.495, 2.4 * u, 1.4 * u, 0, 0, 7); g.ellipse(cx + 8.5 * u, h * 0.495, 2.4 * u, 1.4 * u, 0, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(80,50,30,0.55)'; g.lineWidth = Math.max(1, u * 1.2); g.beginPath(); g.moveTo(cx, h * 0.5); g.lineTo(cx - 2.2 * u, h * 0.57); g.lineTo(cx + 1.5 * u, h * 0.575); g.stroke();   // nose
+  g.strokeStyle = beard ? 'rgba(30,20,12,0.7)' : 'rgba(110,60,50,0.8)'; g.lineWidth = Math.max(1, u * 1.3); g.beginPath(); g.moveTo(cx - 5 * u, h * 0.62); g.lineTo(cx + 5 * u, h * 0.62); g.stroke();
+  // bronze Montefortino-type helmet with cheek-pieces; crest by rank
+  const hg = g.createLinearGradient(cx - 20 * u, 0, cx + 20 * u, 0); hg.addColorStop(0, '#e0b85a'); hg.addColorStop(0.45, '#b88a3a'); hg.addColorStop(1, '#7a5a22');
+  g.fillStyle = hg; g.beginPath(); g.ellipse(cx, h * 0.44, 20.5 * u, 18 * u, 0, Math.PI, 0); g.fill(); g.fillRect(cx - 20.5 * u, h * 0.435, 41 * u, 4 * u);
+  g.beginPath(); g.moveTo(cx - 20 * u, h * 0.45); g.lineTo(cx - 17 * u, h * 0.6); g.lineTo(cx - 11 * u, h * 0.6); g.lineTo(cx - 12 * u, h * 0.45); g.fill();
+  g.beginPath(); g.moveTo(cx + 20 * u, h * 0.45); g.lineTo(cx + 17 * u, h * 0.6); g.lineTo(cx + 11 * u, h * 0.6); g.lineTo(cx + 12 * u, h * 0.45); g.fill();      // cheek-pieces
+  g.fillStyle = '#e8cf86'; g.beginPath(); g.arc(cx, h * 0.27, 2.4 * u, 0, 7); g.fill();
+  if (ctr) { g.fillStyle = '#d8d2b0'; g.beginPath(); g.moveTo(cx - 26 * u, h * 0.28); g.quadraticCurveTo(cx, h * 0.12, cx + 26 * u, h * 0.28); g.lineTo(cx + 24 * u, h * 0.2); g.quadraticCurveTo(cx, h * 0.04, cx - 24 * u, h * 0.2); g.fill(); g.strokeStyle = '#8a8466'; g.lineWidth = 1; g.stroke(); }   // transverse crest
+  else { g.fillStyle = trb || cav ? '#b3261e' : '#2a2a2a'; g.beginPath(); g.moveTo(cx - 5 * u, h * 0.28); g.quadraticCurveTo(cx - 6 * u, h * 0.1, cx, h * 0.07); g.quadraticCurveTo(cx + 6 * u, h * 0.1, cx + 5 * u, h * 0.28); g.fill(); }
   g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, h * 0.82, w, h * 0.18);
   g.fillStyle = '#f0e4c8'; g.font = `bold ${Math.round(h * 0.07)}px Cinzel, Georgia, serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText(name.split(' ').slice(-1)[0], w / 2, h * 0.9);

@@ -60,3 +60,11 @@ Cavalry (accuracy pass): horses now have real proportions seen from above (a lon
 a tapering neck, a small head with ears, mane along the crest, tail), in bay, chestnut and dun. Riders sit on a four-horned saddle with no stirrups (the Celtic saddle the
 Romans adopted), legs hanging down both flanks, in mail with a spear, the Roman on a round parma equestris and the Gaul on a long oval shield along the horse's flank. A
 horse is drawn about four times as long as a man is wide, and a cavalry unit's footprint is correspondingly deeper (`updateDims`).
+
+### Face-lift pass
+Sprites are now painted at 96 px with soft north-west lighting. Roman kit: Montefortino/Coolus helmets (one in three with a feather plume), mail with the scalloped doubled cape,
+the plank-and-felt **scutum** with a wooden spine, bronze boss and winged blazon, the pilum with its lead weight, the gladius on the right hip. Gauls: planked long shields bound in iron
+with a spindle rib and a La Tene blazon, brooches, scabbards. Horses have harness phalerae and fringed saddle-cloths. New individuals: **centurion** (transverse crest, vitis), **signifer**
+(wolf-skin, signum), and the **general** on a grey horse (lorica musculata, paludamentum, vexillum). A testudo is drawn as a roof of real shields. The camp is redrawn with period buildings
+(goatskin tents with guy ropes, palus posts, a granary on posts, a smithy, a linen hospital tent under the staff of Aesculapius, a Gallic roundhouse with a carnyx) and the officer portraits
+are painted busts. `src/sprites.js` is the single source for all of it.
