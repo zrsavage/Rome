@@ -12,11 +12,11 @@ const pct = (v, m) => Math.max(0, Math.min(100, v / m * 100));
 export const totalMen = (c) => c.cohorts.reduce((a, h) => a + h.men, 0);
 // What to drill is a real decision: each regimen pays off differently and costs something.
 export const REGIMENS = {
-  formation: { name: 'Formation drill', text: 'Close order, wheeling and the testudo. Builds discipline and cohesion, and spares the men.', xp: 0.6, dr: 1.6, cond: -3, risk: 0, trait: 'drill', sup: 8,
+  formation: { name: 'Formation drill', text: 'Close order, wheeling and the testudo. Builds discipline and cohesion, and spares the men.', xp: 0.9, dr: 2.4, cond: -3, risk: 0, trait: 'drill', sup: 8,
     seq: [['Procedite!', 'Advance!', 'advance'], ['Sinistrorsum!', 'Wheel left!', 'left'], ['Testudinem formate!', 'Form the testudo!', 'testudo'], ['State!', 'Halt!', 'halt']] },
-  weapons: { name: 'Weapons practice', text: 'Pila, gladius and shield against stakes and each other. Builds experience fast, but it tires the men and some get hurt.', xp: 1.6, dr: 0.6, cond: -9, risk: 0.2, trait: 'tactics', sup: 8,
+  weapons: { name: 'Weapons practice', text: 'Pila, gladius and shield against stakes and each other. Builds experience fast, but it tires the men and some get hurt.', xp: 2.4, dr: 0.9, cond: -9, risk: 0.15, trait: 'tactics', sup: 8,
     seq: [['Pila mittite!', 'Throw pila!', 'volley'], ['Gladios stringite!', 'Draw swords!', 'jab'], ['Scuta!', 'Shields up!', 'testudo'], ['State!', 'Halt!', 'halt']] },
-  field: { name: 'Field exercises', text: 'A mock engagement across rough ground. A bit of everything, but it is the most tiring and costs extra supplies.', xp: 1.1, dr: 1.1, cond: -13, risk: 0.1, trait: 'tactics', sup: 14,
+  field: { name: 'Field exercises', text: 'A mock engagement across rough ground. A bit of everything, but it is the most tiring and costs extra supplies.', xp: 1.7, dr: 1.7, cond: -13, risk: 0.1, trait: 'tactics', sup: 14,
     seq: [['Procedite!', 'Advance!', 'advance'], ['Pila mittite!', 'Throw pila!', 'volley'], ['Dextrorsum!', 'Wheel right!', 'right'], ['State!', 'Halt!', 'halt']] }
 };
 // The centurion's advice for the next battle, so the choice is informed.
@@ -124,7 +124,12 @@ export class Camp {
     else { if (c.gold < 60) return; c.gold -= 60; c.favour = Math.min(3, c.favour + (hasPerk(c, 'allies') ? 2 : 1)); this.note('Gifts to friendly chieftains win goodwill; scouts and rivals speak in your favour.', 'good'); }
     this.endDay(); this.render();
   }
-  rest() { const c = this.c; if (!this.canAct()) return; c.cohorts.forEach(h => h.condition = Math.min(100, h.condition + 20)); this.note('The men rest and mend their kit.', 'good'); this.endDay(); this.render(); }
+  // Rest: everyone recovers condition, and the lightly wounded rejoin their units (15% of the men still missing).
+  rest() {
+    const c = this.c; if (!this.canAct()) return; let back = 0;
+    c.cohorts.forEach(h => { h.condition = Math.min(100, h.condition + 20); const n = Math.round((h.maxMen - h.men) * 0.15); h.men += n; back += n; });
+    this.note(`The men rest and mend their kit. ${back} lightly wounded rejoin the ranks.`, 'good'); this.endDay(); this.render();
+  }
   recruit() {
     const c = this.c, h = this.selected(); if (!this.canAct()) return;
     const add = Math.min(this.recruitN || 20, h.maxMen - h.men), cost = add * 3;
@@ -268,9 +273,9 @@ export class Camp {
           return card(`data-a="raise" data-m="${t}"`, `${esc(UNIT_TYPES[t].name)}${sug(t) ? ' <span class="pill">your army lacks this</span>' : ''}`, esc(TYPE_ROLE[t] || ''), [[`${r.men} men`, 'g'], [`${r.gold} denarii`, 'b'], [`${r.supplies} supplies`, '']], ok); }).join('');
         return `<div class="advicebox"><b>The camp prefect's advice.</b> ${esc(adv)}</div>${this.unitList(['str', 'cond'])}
           <h4 class="sect">Spend the day on...</h4><div class="regimens">
-          ${card('data-a="rest"', 'Rest the army', 'Everyone sleeps, eats and mends kit.', [['+20 condition, every unit', 'g'], [`${weary.length} unit${weary.length === 1 ? '' : 's'} below 75% would benefit`, '']], true)}
+          ${card('data-a="rest"', 'Rest the army', 'Everyone sleeps, eats and mends kit.', [['+20 condition, every unit', 'g'], [`about ${c.cohorts.reduce((x, u) => x + Math.round((u.maxMen - u.men) * 0.15), 0)} lightly wounded rejoin`, 'g'], [`${weary.length} unit${weary.length === 1 ? '' : 's'} below 75% would benefit`, '']], true)}
           ${card('data-a="recruit"', `Recruit for ${esc(h.name)}`, 'New men are green and dilute the unit\'s experience.', [[`${h.men} -> ${h.men + add} men`, 'g'], [`experience ${h.xp} -> ${newXp}`, 'b'], [`${cost} denarii`, '']], add > 0 && c.gold >= cost)}
-          ${card('data-a="fortify"', `Fortify the camp (level ${c.fort}/3)`, 'The men dig ditch and palisade. Two days of work make a level.', [['+2 battle morale per level', 'g'], [`withdrawal draw needs ${floor}% -> ${nextFloor}% of your army`, 'g'], ['10 supplies', '']], c.supplies >= 10 && c.fort < 3)}</div>
+          ${card('data-a="fortify"', `Fortify the camp (level ${c.fort}/3)`, 'The men dig ditch and palisade. Two days of work make a level.', [['+4 battle morale per level', 'g'], [`withdrawal draw needs ${floor}% -> ${nextFloor}% of your army`, 'g'], ['10 supplies', '']], c.supplies >= 10 && c.fort < 3)}</div>
           <div class="row small" style="margin-top:6px"><span class="muted">Recruit how many?</span><div class="chips">${[20, 40].map(k => `<button class="chip ${n === k ? 'sel' : ''}" data-recruitn="${k}">${k} men</button>`).join('')}</div></div>
           <h4 class="sect">Raise a unit <span class="pill">${c.cohorts.length}/${commandLimit(c)} units</span></h4><div class="small muted">Your command limit grows with every battle you win or draw.${room <= 0 ? ' <b>You are at the limit.</b>' : ''}</div><div class="regimens" style="margin-top:6px">${raise}</div>${note}`; }
       case 'officers': { const pts = offs.reduce((a, o) => a + (o.points || 0), 0);
@@ -285,11 +290,11 @@ export class Camp {
       case 'forge': { const cat = UNIT_TYPES[h.type].cat, names = UPGRADES[cat], lt = LEVEL_TRAITS[levelFor(h.xp)], u = { armour: 0, weapon: 0, ...(h.upg || {}) }, prof = enemyProfile(scn);
         const heavy = prof.parts.find(x => x[2] === 'warband') ? prof.parts.find(x => x[2] === 'warband')[1] : 0;
         const adv = `${enemyLine(prof)} ${heavy > 50 ? 'Warbands are lightly armoured and win by charging: armour blunts their charge, better weapons win the melee. ' : ''}Spend on the units that will take the brunt, usually the front line, not on every cohort.`;
-        const effect = { armour: `+3% armour per tier: every enemy blow does about 3% less damage`, weapon: `+6% attack per tier${cat === 'inf' ? '; tier 2 adds an extra pilum volley' : ''}` };
+        const effect = { armour: `+6% armour per tier: every enemy blow does about 6% less damage`, weapon: `+10% attack per tier${cat === 'inf' ? '; tier 2 adds an extra pilum volley' : ''}` };
         const gear = ['armour', 'weapon'].map(k => { const cost = upgradeCost(h, k), maxed = cost.tier >= MAX_TIER, ok = !maxed && c.gold >= cost.gold && c.supplies >= cost.supplies;
           return `<button class="regimen act" data-a="upgrade" data-m="${k}" ${act && ok ? '' : 'disabled'}><b>${esc(names[k])}: tier ${u[k]}/${MAX_TIER}</b><span class="t">${esc(effect[k])}</span><div class="eff">${maxed ? '<span class="g">Fully equipped</span>' : `<span class="g">tier ${u[k] + 1}</span><span class="b">${cost.gold} denarii</span><span>${cost.supplies} supplies, 1 day</span><span class="muted">${(cost.gold / Math.max(1, h.men)).toFixed(1)} denarii per man</span>`}</div></button>`; }).join('');
         return `<div class="advicebox"><b>The armourer's advice.</b> ${esc(adv)}</div><p class="muted">Pick a unit, then decide where its money goes.</p>${this.unitList(['str', 'gear'])}<h4 class="sect">Equip ${esc(h.name)}</h4><div class="small muted" style="margin-bottom:6px">${lt ? `Veteran trait: <b style="color:var(--gold)">${esc(lt.name)}</b> - ${esc(lt.text)}` : 'No veteran trait yet. Reach Veteran (level 2) for the first.'}</div><div class="regimens two">${gear}</div>${note}`; }
-      case 'hospital': { const hosp = c.hospital || 0, cost = 120 * (hosp + 1), cur = modsOf(c).recovery, nxt = cur / (1 + 0.12 * hosp) * (1 + 0.12 * (hosp + 1));
+      case 'hospital': { const hosp = c.hospital || 0, cost = 120 * (hosp + 1), cur = modsOf(c).recovery, nxt = cur / (1 + 0.3 * hosp) * (1 + 0.3 * (hosp + 1));
         const lost = c.lastLoss || 0, back = c.lastBack || 0, more = lost ? Math.round(back * nxt / Math.max(0.01, cur)) - back : 0;
         const adv = lost ? `In your last battle you lost ${lost} men and ${back} returned to the ranks. ${hosp < 3 ? `A level ${hosp + 1} hospital would have returned about ${more} more.` : 'The hospital is fully built.'} Weigh that against what else ${cost} denarii and a day could buy.` : 'You have not fought a campaign battle yet. A hospital pays off only after battles with heavy casualties.';
         return `<div class="advicebox"><b>The physician's advice.</b> ${esc(adv)}</div><div class="sumtiles"><div><b>${hosp}/3</b><span>Hospital level</span></div><div><b>${Math.round(cur * 100)}%</b><span>Wounded recovery</span></div><div><b>${lost}</b><span>Lost last battle</span></div><div><b>${back}</b><span>Returned</span></div></div>

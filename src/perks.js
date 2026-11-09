@@ -33,5 +33,5 @@ export const UPGRADES = {
 export const MAX_TIER = 3;
 export function upgradeCost(h, kind) {
   const t = (h.upg && h.upg[kind]) || 0;
-  return { gold: Math.round(h.men * 0.6 * (t + 1)), supplies: Math.round(h.men * 0.04 * (t + 1)), tier: t };
+  return { gold: Math.round(h.men * 0.45 * (t + 1)), supplies: Math.round(h.men * 0.04 * (t + 1)), tier: t };
 }

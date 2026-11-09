@@ -33,7 +33,7 @@ const VARIANTS = [
   { name: 'formation drill (x3)', mut: drill('formation'), cost: 3 * (8 * SUP + DAY) },
   { name: 'weapons practice (x3)', mut: drill('weapons'), cost: 3 * (8 * SUP + DAY) },
   { name: 'field exercises (x3)', mut: drill('field'), cost: 3 * (14 * SUP + DAY) },
-  { name: 'rest the army (+20 cond)', mut: (c) => c.cohorts.forEach(h => { h.condition = Math.min(100, h.condition + 20); }), cost: DAY },
+  { name: 'rest the army (+20 cond)', mut: (c) => c.cohorts.forEach(h => { h.condition = Math.min(100, h.condition + 20); h.men += Math.round((h.maxMen - h.men) * 0.15); }), cost: DAY },
   { name: 'fortify +1 level', mut: (c) => { c.fort = 1; }, cost: 2 * (10 * SUP + DAY) },
   { name: 'fortify +2 levels', mut: (c) => { c.fort = 2; }, cost: 4 * (10 * SUP + DAY) },
   { name: 'hospital level 1', mut: (c) => { c.hospital = 1; }, cost: 120 + 20 * SUP + DAY },

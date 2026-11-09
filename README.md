@@ -30,6 +30,14 @@ python3 -m http.server 8080   # then open http://localhost:8080
   flashes, dust trails, destination ghosts with facing arrows, control groups, objective HUD.
 - Officers level up and can die (not on Tiro). Cohorts keep XP, drill and condition across the campaign.
 
+## Balancing the camp
+
+`node tools/campbalance.mjs [seeds] [scenarios] [filter]` prices every camp option in denarii-equivalents (gold + 1.5 x supplies + 120 per
+day) and measures what it buys in battle with the tactician bot (men alive afterwards, win rate), starting each seed from a slightly
+different army so the result is not a coin-flip. Unit-targeted options are applied to three cohorts. Equipment: +6% armour, +10% attack per
+tier. Drills about +50% over the first pass. Rest also returns 15% of missing men. Fortify +4 morale per level. Hospital +30% recovery per
+level. Allied infantry 340 denarii, slingers 130.
+
 ## Stances
 
 Orders never change a unit's stance. A move order sets the unit's new **post**. Units on *Defend post* (the default) fight what

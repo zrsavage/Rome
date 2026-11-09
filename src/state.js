@@ -11,7 +11,7 @@ export function modsOf(c) {
   if (has('quartermaster')) m.supplyUse *= 0.9;
   if (has('forager')) m.forage *= 1.2;
   if (has('surgeon')) m.recovery *= 1.2;
-  m.recovery *= 1 + 0.12 * (c.hospital || 0);
+  m.recovery *= 1 + 0.30 * (c.hospital || 0);
   return m;
 }
 export const hasPerk = (c, id) => (c.officers || []).some(o => o.alive && (o.perks || []).includes(id));

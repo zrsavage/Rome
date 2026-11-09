@@ -89,7 +89,7 @@ export class Battle {
     const favMult = this.favour >= 2 ? 0.9 : this.favour <= -2 ? 1.1 : 1;
     this.enemyScale = this.diff.enemyMult * favMult;
     this.recoveryMult = opts.recovery ?? 1;
-    const rb = this.diff.romeMorale + Math.min(8, this.fortLevel * 2) + (opts.suppliesLow ? -8 : 0) + (opts.moraleBonus || 0);
+    const rb = this.diff.romeMorale + Math.min(12, this.fortLevel * 4) + (opts.suppliesLow ? -8 : 0) + (opts.moraleBonus || 0);
     this.romeBonus = rb;
     for (const s of romeSpecs) this.units.push(new Unit({ ...s, side: 'rome', moraleBonus: rb }));
     for (const e of scn.enemy) this.spawnEnemy(e);
@@ -449,11 +449,11 @@ export class Battle {
     const off = u.officer ? 1 + 0.03 * (u.officer.tactics || 0) : 1;
     const terr = tr.atk * (t.cat === 'cav' ? tr.cav : 1);
     const pk = (id) => u.perks.includes(id);
-    const gear = (1 + 0.06 * Math.min(MAX_TIER, u.upg.weapon)) * (u.lvl >= 4 ? 1.08 : 1) * (pk('shock') ? 1.05 : 1) * (pk('cadre') ? 1.1 : 1);
+    const gear = (1 + 0.10 * Math.min(MAX_TIER, u.upg.weapon)) * (u.lvl >= 4 ? 1.08 : 1) * (pk('shock') ? 1.05 : 1) * (pk('cadre') ? 1.1 : 1);
     return COMBAT_PACE * gear * (1 + 0.07 * u.lvl) * (1 + 0.12 * u.drill / 100) * moraleF * (1 - u.fatigue / 200) * off * terr * (u.formation === 'close' ? 0.6 : 1);
   }
   defOf(e, frontal) {
-    let d = e.type.def + e.lvl * 0.01 + (e.lvl >= 3 ? 0.02 : 0) + 0.03 * Math.min(MAX_TIER, e.upg.armour);
+    let d = e.type.def + e.lvl * 0.01 + (e.lvl >= 3 ? 0.02 : 0) + 0.06 * Math.min(MAX_TIER, e.upg.armour);
     if (e.formation === 'close' && frontal) d += 0.2;
     return Math.min(0.88, d) ;
   }

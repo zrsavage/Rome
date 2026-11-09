@@ -63,11 +63,11 @@ export const UNIT_TYPES = {
 // What it costs to raise a fresh unit of each Roman type at camp (and its full strength).
 export const RAISE = {
   legionary: { men: 300, max: 480, gold: 420, supplies: 40 },
-  slinger: { men: 100, max: 150, gold: 150, supplies: 10 },
+  slinger: { men: 120, max: 150, gold: 130, supplies: 10 },
   equites: { men: 50, max: 60, gold: 300, supplies: 20 },
   archer: { men: 100, max: 130, gold: 200, supplies: 12 },
   aux_cav: { men: 50, max: 70, gold: 240, supplies: 15 },
-  aux_inf: { men: 250, max: 350, gold: 260, supplies: 25 }
+  aux_inf: { men: 250, max: 350, gold: 340, supplies: 30 }
 };
 export const START_TYPES = ['legionary', 'slinger', 'equites'];
 export const TYPE_UNLOCKS = { arar: ['aux_cav'], convoy: ['archer'], oppidum: ['aux_inf'] };
