@@ -110,7 +110,7 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .slot{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin:8px 0}
 .slot small{display:block;color:var(--muted)}
 /* map */
-.mapscreen{grid-template-columns:1.6fr 1fr}
+.mapscreen{grid-template-columns:2.1fr 1fr}
 .mapcard{padding:8px;align-self:start}
 .maptools{margin-bottom:6px;gap:8px}
 .maptools button.on{border-color:var(--gold);color:var(--gold)}
@@ -304,3 +304,9 @@ tr.ugrp td{background:#3a2f1c;color:var(--gold);font-family:var(--head);letter-s
 .mval{font-variant-numeric:tabular-nums;text-align:right}
 input.mslide{width:100%;accent-color:#e8c36a;height:6px;cursor:pointer}
 @media (max-width:820px){.mrow{grid-template-columns:1fr 1fr}}
+
+.ico{vertical-align:-3px;margin-right:3px;flex:none}
+.res span{display:inline-flex;align-items:center;gap:2px}
+#hud-cmds .cmd{display:inline-flex;align-items:center;gap:3px}
+#hud-top button{display:inline-flex;align-items:center;gap:4px}
+.ucard .ico{color:var(--gold)}

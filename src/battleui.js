@@ -4,6 +4,7 @@ import { Renderer } from './render.js';
 import { WORLD, LEVEL_NAMES } from './data.js';
 import { artSrc } from './art.js';
 import { ask } from './ui.js';
+import { icon } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -12,6 +13,7 @@ export class BattleUI {
     this.canvas = $('canvas'); this.r = new Renderer(this.canvas);
     this.b = null; this.paused = true; this.speed = 1; this.running = false; this.keys = new Set();
     this.onEnd = null; this.ended = false; this.logShown = 0; this.groups = {}; this.listeners = []; this.frameHooks = [];
+    $('ico-retreat').innerHTML = icon('retreat', 15); $('btn-help').innerHTML = icon('help', 17);
     this.bindInput();
     window.addEventListener('resize', () => { if (this.running) this.r.resize(); });
   }
@@ -34,7 +36,7 @@ export class BattleUI {
 
   on(fn) { this.listeners.push(fn); }
   emit(name, data = {}) { for (const fn of this.listeners) fn(name, data); }
-  setPause(p) { const was = this.paused; this.paused = p; if (was !== p) this.emit('pause', { paused: p }); $('btn-pause').textContent = p ? 'Resume (Space)' : 'Pause (Space)'; }
+  setPause(p) { const was = this.paused; this.paused = p; if (was !== p) this.emit('pause', { paused: p }); $('btn-pause').innerHTML = p ? `${icon('play', 15)} Resume (Space)` : `${icon('pause', 15)} Pause (Space)`; }
   stepSpeed(d) { const L = [0.5, 1, 2, 4], i = Math.max(0, Math.min(L.length - 1, L.indexOf(this.speed) + d)); this.setSpeed(L[i]); }
   callWave() { if (this.b && this.b.callNextWave()) { this.showBanner('Next wave called', 800); this.setPause(false); } }
   setSpeed(s) { this.speed = s; this.emit('speed', { speed: s }); document.querySelectorAll('.spd').forEach(b => b.classList.toggle('on', +b.dataset.s === s)); }
@@ -227,7 +229,7 @@ export class BattleUI {
     if (sig === this.cmdSig) return; this.cmdSig = sig;
     el.innerHTML = ''; if (!sel.length && !this.genSel) return;
     for (const c of list) {
-      const btn = document.createElement('button'); btn.className = 'cmd'; btn.innerHTML = `${c.label}<kbd>${c.key}</kbd>`;
+      const btn = document.createElement('button'); btn.className = 'cmd'; btn.innerHTML = `${icon(c.id === 'defend' ? 'defend' : c.id, 15)}${c.label}<kbd>${c.key}</kbd>`;
       const on = (c.id === 'hold' && sel.length && sel.every(u => u.stance === 'hold')) || (c.id === 'defend' && sel.length && sel.every(u => u.stance !== 'hold')) || (c.id === 'testudo' && sel.some(u => u.formation === 'close')) || (c.id === 'wedge' && sel.some(u => u.formation === 'wedge')) || (c.id === 'orbis' && sel.some(u => u.formation === 'orb')) || (c.id === 'holdfire' && sel.some(u => u.holdFire));
       if (on) btn.classList.add('on');
       btn.onclick = () => this.cmd(c.id); el.appendChild(btn);
@@ -240,7 +242,7 @@ export class BattleUI {
     const nRome = this.b.units.filter(u => u.side === 'rome').length;
     el.classList.toggle('many', nRome > 9); $('screen-battle').classList.toggle('huge', nRome > 24);   // past two dozen units the cards give way to the selection buttons
     this.buildSelectors();
-    if (this.b.general) { const d = document.createElement('div'); d.className = 'ucard'; d.dataset.gen = '1'; d.innerHTML = '<b>General (E)</b><div class="muted" style="font-size:12px">command ring</div>'; d.onclick = () => this.selectGeneral(); el.appendChild(d); }
+    if (this.b.general) { const d = document.createElement('div'); d.className = 'ucard'; d.dataset.gen = '1'; d.innerHTML = `${icon('general', 14)} <b>General (E)</b><div class="muted" style="font-size:12px">command ring</div>`; d.onclick = () => this.selectGeneral(); el.appendChild(d); }
     this.b.units.filter(u => u.side === 'rome').forEach(u => {
       const d = document.createElement('div'); d.className = 'ucard'; d.dataset.id = u.id;
       d.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 52, 52)}"><b></b><div class="bar x"><i></i></div><div class="bar m" style="margin-top:3px"><i></i></div>`;

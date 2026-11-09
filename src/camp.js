@@ -6,6 +6,7 @@ import { officerById, modsOf, hasPerk, commandLimit, unlockedTypes } from './sta
 import { artSrc } from './art.js';
 import { inform } from './ui.js';
 import { DOCTRINES, winsOf } from './doctrine.js';
+import { icon } from './icons.js';
 import { BUILDINGS, sceneSvg, advice, unlockedBuildings } from './campscene.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -399,8 +400,8 @@ export class Camp {
     const visited = c.visitedBuildings = c.visitedBuildings || [], adv = advice(c, visited);
     const meta = this.open === 'praetorium' ? { name: 'Command Tent', sub: 'Your next battle and the march' } : BUILDINGS.find(b => b.id === this.open);
     const food = Math.ceil(totalMen(c) / 60 * modsOf(c).supplyUse);
-    const res = `<span>Denarii <b>${c.gold}</b></span>${(c.manpower || 0) > 0 ? `<span title="Assign them at the Barracks">Soldiers available <b class="poolN">${c.manpower}</b></span>` : ''}<span>Supplies <b>${c.supplies}</b> <span class="muted small">(-${food}/day)</span></span><span title="Each activity uses one day">Days left <b>${c.daysLeft}</b> <span class="muted small">(1 per activity)</span></span>`;
-    this.root.innerHTML = `<div class="camp2"><header><h2>Camp - ${esc(scn.theater)}, ${esc(scn.year)}</h2><div class="res">${res}<span>Fort <b>${c.fort}/3</b></span><span>Goodwill <b>${c.favour > 0 ? '+' : ''}${c.favour}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
+    const res = `<span>${icon('coin')} Denarii <b>${c.gold}</b></span>${(c.manpower || 0) > 0 ? `<span title="Assign them at the Barracks">${icon('helmet')} Soldiers available <b class="poolN">${c.manpower}</b></span>` : ''}<span>${icon('grain')} Supplies <b>${c.supplies}</b> <span class="muted small">(-${food}/day)</span></span><span title="Each activity uses one day">${icon('day')} Days left <b>${c.daysLeft}</b> <span class="muted small">(1 per activity)</span></span>`;
+    this.root.innerHTML = `<div class="camp2"><header><h2>Camp - ${esc(scn.theater)}, ${esc(scn.year)}</h2><div class="res">${res}<span>${icon('fort')} Fort <b>${c.fort}/3</b></span><span>${icon('laurel')} Goodwill <b>${c.favour > 0 ? '+' : ''}${c.favour}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
       <div class="advice">${adv.text}</div>
       <div class="scenewrap">${sceneSvg(c, { visited, focus: adv.focus })}</div>
       <div class="campbar"><div class="muted small">${unlockedBuildings(c).length} of ${BUILDINGS.length} buildings built. Win or draw battles to build more.</div><div class="row"><button class="primary" id="march">March to battle</button><button id="tomap">Back to map</button></div></div>

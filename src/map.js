@@ -3,6 +3,7 @@ import { SCENARIOS, DIFFICULTY, PROLOGUE } from './data.js';
 import { describe, picksNames } from './origins.js';
 import { totalMen } from './camp.js';
 import { MAP } from './mapdata.js';
+import { icon, iconPaths } from './icons.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const rad = (d) => d * Math.PI / 180;
@@ -96,8 +97,8 @@ export function renderMap(root, c, api) {
   occ.push(R(vb.x, vb.y + vb.h - 62 * k, vb.x + sbw0 + 40 * k, vb.y + vb.h));                                             // scale bar
 
   const pts = SCENARIOS.map(s => project(s.geo.lat, s.geo.lon));
-  const rN = (s, i) => (s.kind === 'named' ? 12 : 8.5) * k * (big ? 0.7 : 1);
-  pts.forEach(([x, y], i) => { if (inView(x, y, 40 * k)) dot(x, y, rN(SCENARIOS[i], i) + 9 * k); });
+  const rN = (s, i) => (s.kind === 'named' ? 15 : 11.5) * k * (big ? 0.7 : 1);
+  pts.forEach(([x, y], i) => { if (inView(x, y, 40 * k)) { dot(x, y, rN(SCENARIOS[i], i) + 9 * k); if (i === idx) dot(x - rN(SCENARIOS[i], i) - 8 * k, y - 8 * k, 16 * k); } });
   const futs = FUTURE.map(f => { const [x, y] = project(f.lat, f.lon); return { f, x, y, r: (f.rome ? 12 : 8) * k * (big ? 0.8 : 1) }; }).filter(o => inView(o.x, o.y, 30 * k));
   futs.forEach(o => dot(o.x, o.y, o.r + 3 * k));
   const placeList = PLACES.map(([n, lat, lon, sz]) => { const [x, y] = project(lat, lon); return { n, x, y, sz }; }).filter(p => inView(p.x, p.y) && !(big && p.sz < 2) && !['Bibracte', 'Vesontio', 'Genava'].includes(p.n));
@@ -110,19 +111,40 @@ export function renderMap(root, c, api) {
   if (!big) TRIBES.forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, 12, 'body', 'tribe', x, y, 0, ['center']); });
   if (!big) RIVERS.forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, 11.5, 'body', 'rivlab', x, y, 0, ['center']); });
   REGIONS.filter(r => big || !['AEGYPTUS', 'ASIA', 'MACEDONIA'].includes(r[0])).forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, big ? 30 : 17, 'head', 'region', x, y, 0, ['center']); });
-  const placeDots = placeList.map(p => `<circle cx="${p.x}" cy="${p.y}" r="${(p.sz === 2 ? 4.5 : 3) * k}" class="city"/>`).join('');
+  // towns and cities as little walled settlements (Roma with a temple front)
+  const settle = (p) => {
+    const q = p.sz === 2 ? 1.5 : 1, ink = '#2a1f0e', wall = '#ecdcb8';
+    const body = p.n === 'Roma'
+      ? `<polygon points="-7,-1 0,-7.5 7,-1" fill="${wall}" stroke="${ink}" stroke-width="1"/>${[-5, -1.7, 1.7, 5].map(x => `<rect x="${x - 0.8}" y="-1" width="1.6" height="6" fill="${wall}" stroke="${ink}" stroke-width=".6"/>`).join('')}<rect x="-8" y="5" width="16" height="1.8" fill="${wall}" stroke="${ink}" stroke-width=".8"/>`
+      : `<rect x="-4.2" y="-2.6" width="8.4" height="6" fill="${wall}" stroke="${ink}" stroke-width="1"/><rect x="-5.4" y="-5.2" width="2.8" height="3.4" fill="${wall}" stroke="${ink}" stroke-width=".9"/><rect x="2.6" y="-5.2" width="2.8" height="3.4" fill="${wall}" stroke="${ink}" stroke-width=".9"/><rect x="-1" y="0" width="2" height="3.6" fill="${ink}"/>`;
+    return `<g transform="translate(${p.x},${p.y}) scale(${q * k * 1.05})" class="city-g"><ellipse cx="1" cy="6" rx="8" ry="2" fill="rgba(0,0,0,.25)"/>${body}</g>`;
+  };
+  const placeDots = placeList.map(settle).join('');
 
-  const edges = SCENARIOS.slice(1).map((s, i) => `<line x1="${pts[i][0]}" y1="${pts[i][1]}" x2="${pts[i + 1][0]}" y2="${pts[i + 1][1]}" class="route ${i + 1 <= idx ? 'done' : ''}" style="stroke-width:${3 * k}px"/>`).join('');
+  // the route is a Roman road: a paved ribbon between dark kerbs once travelled, a faint dashed track ahead
+  const edges = SCENARIOS.slice(1).map((s, i) => { const [x1, y1] = pts[i], [x2, y2] = pts[i + 1], done = i + 1 <= idx;
+    return done ? `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2a1f0e" stroke-width="${6.2 * k}" stroke-linecap="round"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#e3d29c" stroke-width="${3.8 * k}" stroke-linecap="round"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#a89258" stroke-width="${0.9 * k}" stroke-dasharray="${4 * k} ${5 * k}"/>`
+      : `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#e8c36a" stroke-opacity=".55" stroke-width="${2.4 * k}" stroke-dasharray="${7 * k} ${7 * k}" stroke-linecap="round"/>`; }).join('');
+  const icoG = (name, r, col, sw = 2) => `<g transform="scale(${r / 12}) translate(-12,-12)" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${iconPaths[name]}</g>`;
   const nodes = SCENARIOS.map((s, i) => {
     const [x, y] = pts[i]; if (!inView(x, y, 40 * k)) return '';
-    const state = i < idx ? 'done' : i === idx ? 'current' : 'locked';
-    const col = state === 'done' ? OUT[best[s.id]] || '#6fcf6f' : state === 'current' ? '#e8c36a' : '#8a7a58';
-    const r = rN(s, i);
+    const state = i < idx ? 'done' : i === idx ? 'current' : 'locked', out = best[s.id];
+    const col = state === 'done' ? OUT[out] || '#6fcf6f' : state === 'current' ? '#e8c36a' : '#8a7a58';
+    const r = rN(s, i), named = s.kind === 'named';
     return `<g class="node ${state}" transform="translate(${x},${y})"><title>${esc(s.name)} - ${esc(s.geo.place)}. ${esc(s.geo.note)}</title>
       ${state === 'current' ? `<circle r="${r + 7 * k}" class="pulse" style="stroke-width:${2 * k}px"/>` : ''}
-      <circle r="${r}" fill="${col}" stroke="#14100a" stroke-width="${2.2 * k}"/>
-      ${s.kind === 'named' ? `<path d="M${-5.5 * k} ${3 * k} L0 ${-6.5 * k} L${5.5 * k} ${3 * k} Z" fill="#14100a"/>` : `<text y="${3.8 * k}" text-anchor="middle" class="nn" style="font-size:${11 * k}px">${i + 1}</text>`}</g>`;
+      ${state === 'done' ? `<g transform="scale(${(r * 2.7) / 24}) translate(-12,-12)" fill="none" stroke="${col}" stroke-width="${1.6 * 24 / (r * 2.7) * k * 0.9}" stroke-linecap="round">${iconPaths.laurel}</g>` : ''}
+      <circle r="${r}" fill="${state === 'locked' ? '#3a2f1c' : '#241a0c'}" stroke="${col}" stroke-width="${2.4 * k}"/>
+      <circle r="${r * 0.82}" fill="${state === 'locked' ? '#5a4a2a' : col}" fill-opacity="${state === 'locked' ? 1 : 0.22}"/>
+      ${icoG(named ? 'general' : 'swords', r * 0.74, state === 'locked' ? '#cdbb8a' : '#fff2cf', 2.1)}
+      <g transform="translate(${r * 0.78},${-r * 0.78})"><circle r="${4.6 * k}" fill="#14100a" stroke="${col}" stroke-width="${1 * k}"/><text y="${3.5 * k}" text-anchor="middle" class="nn" style="font-size:${9 * k}px;fill:#f0e4c8">${i + 1}</text></g></g>`;
   }).join('');
+  // the army: a legion's standard planted at the current battle (a silvered disc stack, a crossbar and a red pennant)
+  const armyMark = (() => { if (idx >= SCENARIOS.length) return ''; const [x, y] = pts[idx]; if (!inView(x, y, 40 * k)) return ''; const r = rN(SCENARIOS[idx], idx);
+    return `<g transform="translate(${x - r - 9 * k},${y + r * 0.3}) scale(${k})" class="armymark"><line x1="0" y1="0" x2="0" y2="-26" stroke="#3a2a14" stroke-width="2.4"/><circle cx="0" cy="-8" r="2.6" fill="#d6dae0" stroke="#14100a" stroke-width=".7"/><circle cx="0" cy="-14" r="2.6" fill="#d6dae0" stroke="#14100a" stroke-width=".7"/><rect x="-5" y="-21" width="10" height="2" fill="#e0bb55"/><path class="flag" d="M0 -26 l12 3 l-12 5z" fill="#b3261e" stroke="#14100a" stroke-width=".7"/><circle cx="0" cy="-28" r="2" fill="#e0bb55" stroke="#14100a" stroke-width=".6"/></g>`; })();
+  // triremes on the sea
+  const ships = [[43.0, 7.8, 0.3], [38.2, 14.5, -0.5], [44.4, -5.6, 0.9], [36.0, 26.0, 0.2], [35.6, 4.0, 2.7]].map(([lat, lon, an]) => { const [x, y] = project(lat, lon); if (!inView(x, y)) return '';
+    return `<g transform="translate(${x},${y}) rotate(${an * 57.3}) scale(${k * (big ? 0.8 : 1)})" opacity=".92"><path d="M-12 2 q12 7 24 0 l-3 -4 h-18z" fill="#6a4a2a" stroke="#14100a" stroke-width=".9"/><line x1="0" y1="-2" x2="0" y2="-14" stroke="#14100a" stroke-width="1"/><path d="M0 -14 q8 4 0 10z" fill="#e8dcc0" stroke="#14100a" stroke-width=".7"/>${[-8, -3, 2, 7].map(o => `<line x1="${o}" y1="1" x2="${o - 2}" y2="6" stroke="#cfc9a8" stroke-width=".7"/>`).join('')}<path d="M-14 6 q14 6 28 0" stroke="rgba(255,255,255,.35)" fill="none" stroke-width=".8"/></g>`; }).join('');
   const [gx, gy] = project(46.6, 5.0);
   const actLabel = big ? `<text x="${gx - 40 * k}" y="${gy - 26 * k}" text-anchor="end" class="nl" style="font-size:${13 * k}px">Act I: Gaul</text>` : '';
   const future = futs.map(o => `<g class="fut" transform="translate(${o.x},${o.y})"><title>${esc(o.f.hint)}</title><circle r="${o.r}" fill="${o.f.rome ? '#7a2a22' : '#3b3120'}" stroke="#14100a" stroke-width="${2 * k}"/></g>`).join('');
@@ -149,16 +171,16 @@ export function renderMap(root, c, api) {
   const hrows = (c.history || []).slice(-6).reverse().map(h => { const s = [PROLOGUE, ...SCENARIOS].find(x => x.id === h.id); return `<div><span style="color:${OUT[h.outcome]}">${h.outcome.toUpperCase()}</span> - ${esc(s ? s.name : h.id)}</div>`; }).join('');
 
   root.innerHTML = `<div class="camp mapscreen">
-    <header><h2>The Road to Rome</h2><div class="res"><span>Denarii <b>${c.gold}</b></span><span>Supplies <b>${c.supplies}</b></span><span>Army <b>${totalMen(c)}</b></span><span>Day <b>${c.day}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
+    <header><h2>The Road to Rome</h2><div class="res"><span>${icon('coin')} Denarii <b>${c.gold}</b></span><span>${icon('grain')} Supplies <b>${c.supplies}</b></span><span>${icon('helmet')} Army <b>${totalMen(c)}</b></span><span>${icon('day')} Day <b>${c.day}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
     <div class="card mapcard">
       <div class="row maptools"><button id="v-act" class="${view === 'act' ? 'on' : ''}">Act I: Gaul</button><button id="v-all" class="${view === 'all' ? 'on' : ''}">Whole Roman world</button><span class="muted small">Coastlines, rivers and lakes: Natural Earth (public domain). Mercator; Roman place names, positions approximate.</span></div>
       <svg viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" id="mapsvg" role="img" aria-label="Campaign map of the Roman world">
         <defs><radialGradient id="seag" cx=".5" cy=".5" r=".75"><stop offset="0" stop-color="#27495c"/><stop offset="1" stop-color="#14262f"/></radialGradient>
           <filter id="mgrain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="${(0.55 / k).toFixed(3)}" numOctaves="3" seed="9" result="t"/><feColorMatrix in="t" values="0 0 0 0 .16  0 0 0 0 .12  0 0 0 0 .04  0 0 0 .75 -.18" result="g"/><feComposite in="g" in2="SourceGraphic" operator="in"/></filter></defs>
-        <rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" class="sea"/>
+        <rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" class="sea"/><pattern id="wv" width="${34 * k}" height="${20 * k}" patternUnits="userSpaceOnUse"><path d="M0 ${8 * k} q${4 * k} ${-4 * k} ${8 * k} 0 t${8 * k} 0" stroke="#9ccbe0" stroke-opacity=".16" fill="none" stroke-width="${0.9 * k}"/></pattern><rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" fill="url(#wv)"/>
         <g class="geo">${graticule(vb, k)}<path d="${MAP.land}" class="shore" style="stroke-width:${16 * k}px"/><path d="${MAP.land}" class="shore s2" style="stroke-width:${8 * k}px"/><path d="${MAP.land}" class="land" style="stroke-width:${1.6 * k}px"/><path d="${MAP.land}" fill="#000" filter="url(#mgrain)"/><path d="${MAP.lakes}" class="lake" style="stroke-width:${1 * k}px"/><path d="${MAP.rivers}" class="river" style="stroke-width:${1.5 * k}px"/></g>
-        ${glyphs}${labelSvg}
-        ${placeDots}${edges}${future}${nodes}${actLabel}${scale}${north}${decor}</svg></div>
+        ${glyphs}${ships}${labelSvg}
+        ${edges}${placeDots}${future}${nodes}${armyMark}${actLabel}${scale}${north}${decor}</svg></div>
     <div class="col">
       <div class="card"><h3>${done ? 'Act I complete' : `Act ${scn.act} - battle ${idx + 1} of ${SCENARIOS.length}`}</h3>
         ${done ? `<p>The Helvetii are broken and Gaul lies open before you. Acts II onward (Germania, Britannia, the civil war and Rome itself) are the next milestones.</p>`

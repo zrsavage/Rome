@@ -68,3 +68,8 @@ with a spindle rib and a La Tene blazon, brooches, scabbards. Horses have harnes
 (wolf-skin, signum), and the **general** on a grey horse (lorica musculata, paludamentum, vexillum). A testudo is drawn as a roof of real shields. The camp is redrawn with period buildings
 (goatskin tents with guy ropes, palus posts, a granary on posts, a smithy, a linen hospital tent under the staff of Aesculapius, a Gallic roundhouse with a carnyx) and the officer portraits
 are painted busts. `src/sprites.js` is the single source for all of it.
+
+### Campaign map and HUD icons
+`src/icons.js` is a line-icon set (coin, grain, sun, helmet, palisade, laurel, shield, chevrons, bow, shield-roof, wedge, banner...) used in the camp and map headers, the battle top bar
+and the command bar. The campaign map now has Roman roads (paved ribbon between kerbs once travelled), walled towns and a temple-fronted Roma, battle badges with crossed swords (a
+general's star for the named battle) ringed with a laurel once won, a legion's standard planted at the current battle, triremes and wave marks on the sea.
