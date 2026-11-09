@@ -74,7 +74,9 @@ export function renderMap(root, c, api) {
   // try each side in turn; returns true when placed. `force` places at the first side even if it collides (battle names must show).
   const label = (txt, size, face, cls, x, y, rad, sides, force = false) => {
     const fs = size * k, w = txt.length * fs * WF[face] + 5 * k, h = fs * 1.15, gap = 4 * k;
-    for (const side of sides) {
+    const rectFor = (side) => { const x0 = side === 'right' ? x + rad + gap : side === 'left' ? x - rad - gap - w : x - w / 2, y0 = side === 'above' ? y - rad - gap - h : side === 'below' ? y + rad + gap : y - h / 2; return R(x0, y0, x0 + w, y0 + h); };
+    const order = force ? [...sides.filter(sd => { const r0 = rectFor(sd); return free(r0); }), ...sides] : sides;
+    for (const side of order) {
       const x0 = side === 'right' ? x + rad + gap : side === 'left' ? x - rad - gap - w : x - w / 2;
       const y0 = side === 'above' ? y - rad - gap - h : side === 'below' ? y + rad + gap : y - h / 2;
       const r = R(x0, y0, x0 + w, y0 + h);
@@ -96,24 +98,25 @@ export function renderMap(root, c, api) {
   occ.push(R(vb.x + vb.w - 46 * k, vb.y + 8 * k, vb.x + vb.w, vb.y + 64 * k));                                            // north arrow
   occ.push(R(vb.x, vb.y + vb.h - 62 * k, vb.x + sbw0 + 40 * k, vb.y + vb.h));                                             // scale bar
 
-  const pts = SCENARIOS.map(s => project(s.geo.lat, s.geo.lon));
-  const rN = (s, i) => (s.kind === 'named' ? 15 : 11.5) * k * (big ? 0.7 : 1);
-  pts.forEach(([x, y], i) => { if (inView(x, y, 40 * k)) { dot(x, y, rN(SCENARIOS[i], i) + 9 * k); if (i === idx) dot(x - rN(SCENARIOS[i], i) - 8 * k, y - 8 * k, 16 * k); } });
+  const NUDGE = { silva: [-34, -16], bibracte: [-22, 24] };      // Morvan and Bibracte are the same spot on the map: pull the two badges apart
+  const pts = SCENARIOS.map(s => { const [x, y] = project(s.geo.lat, s.geo.lon), n = NUDGE[s.id] || [0, 0]; return [x + n[0] * k * (big ? 0.5 : 1), y + n[1] * k * (big ? 0.5 : 1)]; });
+  const rN = (s, i) => (s.kind === 'named' ? 18 : 14) * k * (big ? 0.7 : 1);
+  pts.forEach(([x, y], i) => { if (inView(x, y, 40 * k)) { dot(x, y, rN(SCENARIOS[i], i) + 9 * k); if (i === idx) dot(x + rN(SCENARIOS[i], i) + 8 * k, y - 4 * k, 22 * k); } });
   const futs = FUTURE.map(f => { const [x, y] = project(f.lat, f.lon); return { f, x, y, r: (f.rome ? 12 : 8) * k * (big ? 0.8 : 1) }; }).filter(o => inView(o.x, o.y, 30 * k));
   futs.forEach(o => dot(o.x, o.y, o.r + 3 * k));
   const placeList = PLACES.map(([n, lat, lon, sz]) => { const [x, y] = project(lat, lon); return { n, x, y, sz }; }).filter(p => inView(p.x, p.y) && !(big && p.sz < 2) && !['Bibracte', 'Vesontio', 'Genava'].includes(p.n));
-  placeList.forEach(p => dot(p.x, p.y, (p.sz === 2 ? 4.5 : 3) * k + 2 * k));
+  placeList.forEach(p => dot(p.x, p.y, (p.sz === 2 ? 10 : 7) * k));
 
   // 1. the battles (always shown), 2. the future acts, 3. cities, 4. towns, 5. tribes, 6. rivers, 7. regions
-  if (!big) SCENARIOS.forEach((s, i) => { const [x, y] = pts[i]; if (inView(x, y, 40 * k)) { const first = LABEL_SIDE[i], order = [first, ...OTHERS.concat(['above']).filter(z => z !== first)]; label(SHORT[i], 13, 'node', 'nl', x, y, rN(s, i) + 3 * k, order, true); } });
+  if (!big) SCENARIOS.forEach((s, i) => { const [x, y] = pts[i]; if (inView(x, y, 40 * k)) { const first = LABEL_SIDE[i], order = [first, ...OTHERS.concat(['above']).filter(z => z !== first)]; label(SHORT[i], 14, 'node', 'nl', x, y, rN(s, i) + 7 * k, order, true); } });
   futs.forEach(o => label(`Act ${o.f.act}: ${o.f.name}`, 12, 'body', 'fl', o.x, o.y, o.r + 2 * k, ['above', 'below', 'right', 'left']));
-  for (const sz of [2, 1]) placeList.filter(p => p.sz === sz).forEach(p => label(p.n, sz === 2 ? 13.5 : 12, 'body', 'pl', p.x, p.y, (sz === 2 ? 4.5 : 3) * k, OTHERS));
+  for (const sz of [2, 1]) placeList.filter(p => p.sz === sz).forEach(p => label(p.n, sz === 2 ? 14.5 : 13, 'body', 'pl', p.x, p.y, (sz === 2 ? 10 : 7) * k, OTHERS));
   if (!big) TRIBES.forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, 12, 'body', 'tribe', x, y, 0, ['center']); });
   if (!big) RIVERS.forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, 11.5, 'body', 'rivlab', x, y, 0, ['center']); });
   REGIONS.filter(r => big || !['AEGYPTUS', 'ASIA', 'MACEDONIA'].includes(r[0])).forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, big ? 30 : 17, 'head', 'region', x, y, 0, ['center']); });
   // towns and cities as little walled settlements (Roma with a temple front)
   const settle = (p) => {
-    const q = p.sz === 2 ? 1.5 : 1, ink = '#2a1f0e', wall = '#ecdcb8';
+    const q = p.sz === 2 ? 2.3 : 1.6, ink = '#2a1f0e', wall = '#ecdcb8';
     const body = p.n === 'Roma'
       ? `<polygon points="-7,-1 0,-7.5 7,-1" fill="${wall}" stroke="${ink}" stroke-width="1"/>${[-5, -1.7, 1.7, 5].map(x => `<rect x="${x - 0.8}" y="-1" width="1.6" height="6" fill="${wall}" stroke="${ink}" stroke-width=".6"/>`).join('')}<rect x="-8" y="5" width="16" height="1.8" fill="${wall}" stroke="${ink}" stroke-width=".8"/>`
       : `<rect x="-4.2" y="-2.6" width="8.4" height="6" fill="${wall}" stroke="${ink}" stroke-width="1"/><rect x="-5.4" y="-5.2" width="2.8" height="3.4" fill="${wall}" stroke="${ink}" stroke-width=".9"/><rect x="2.6" y="-5.2" width="2.8" height="3.4" fill="${wall}" stroke="${ink}" stroke-width=".9"/><rect x="-1" y="0" width="2" height="3.6" fill="${ink}"/>`;
@@ -137,14 +140,14 @@ export function renderMap(root, c, api) {
       <circle r="${r}" fill="${state === 'locked' ? '#3a2f1c' : '#241a0c'}" stroke="${col}" stroke-width="${2.4 * k}"/>
       <circle r="${r * 0.82}" fill="${state === 'locked' ? '#5a4a2a' : col}" fill-opacity="${state === 'locked' ? 1 : 0.22}"/>
       ${icoG(named ? 'general' : 'swords', r * 0.74, state === 'locked' ? '#cdbb8a' : '#fff2cf', 2.1)}
-      <g transform="translate(${r * 0.78},${-r * 0.78})"><circle r="${4.6 * k}" fill="#14100a" stroke="${col}" stroke-width="${1 * k}"/><text y="${3.5 * k}" text-anchor="middle" class="nn" style="font-size:${9 * k}px;fill:#f0e4c8">${i + 1}</text></g></g>`;
+      <g transform="translate(${r * 0.78},${-r * 0.78})"><circle r="${6.2 * k}" fill="#14100a" stroke="${col}" stroke-width="${1 * k}"/><text y="${4.6 * k}" text-anchor="middle" class="nn" style="font-size:${12 * k}px;fill:#f0e4c8">${i + 1}</text></g></g>`;
   }).join('');
   // the army: a legion's standard planted at the current battle (a silvered disc stack, a crossbar and a red pennant)
   const armyMark = (() => { if (idx >= SCENARIOS.length) return ''; const [x, y] = pts[idx]; if (!inView(x, y, 40 * k)) return ''; const r = rN(SCENARIOS[idx], idx);
-    return `<g transform="translate(${x - r - 9 * k},${y + r * 0.3}) scale(${k})" class="armymark"><line x1="0" y1="0" x2="0" y2="-26" stroke="#3a2a14" stroke-width="2.4"/><circle cx="0" cy="-8" r="2.6" fill="#d6dae0" stroke="#14100a" stroke-width=".7"/><circle cx="0" cy="-14" r="2.6" fill="#d6dae0" stroke="#14100a" stroke-width=".7"/><rect x="-5" y="-21" width="10" height="2" fill="#e0bb55"/><path class="flag" d="M0 -26 l12 3 l-12 5z" fill="#b3261e" stroke="#14100a" stroke-width=".7"/><circle cx="0" cy="-28" r="2" fill="#e0bb55" stroke="#14100a" stroke-width=".6"/></g>`; })();
+    return `<g transform="translate(${x + r + 8 * k},${y + r * 0.9}) scale(${k * 1.35})" class="armymark"><line x1="0" y1="0" x2="0" y2="-26" stroke="#3a2a14" stroke-width="2.4"/><circle cx="0" cy="-8" r="2.6" fill="#d6dae0" stroke="#14100a" stroke-width=".7"/><circle cx="0" cy="-14" r="2.6" fill="#d6dae0" stroke="#14100a" stroke-width=".7"/><rect x="-5" y="-21" width="10" height="2" fill="#e0bb55"/><path class="flag" d="M0 -26 l12 3 l-12 5z" fill="#b3261e" stroke="#14100a" stroke-width=".7"/><circle cx="0" cy="-28" r="2" fill="#e0bb55" stroke="#14100a" stroke-width=".6"/></g>`; })();
   // triremes on the sea
   const ships = [[43.0, 7.8, 0.3], [38.2, 14.5, -0.5], [44.4, -5.6, 0.9], [36.0, 26.0, 0.2], [35.6, 4.0, 2.7]].map(([lat, lon, an]) => { const [x, y] = project(lat, lon); if (!inView(x, y)) return '';
-    return `<g transform="translate(${x},${y}) rotate(${an * 57.3}) scale(${k * (big ? 0.8 : 1)})" opacity=".92"><path d="M-12 2 q12 7 24 0 l-3 -4 h-18z" fill="#6a4a2a" stroke="#14100a" stroke-width=".9"/><line x1="0" y1="-2" x2="0" y2="-14" stroke="#14100a" stroke-width="1"/><path d="M0 -14 q8 4 0 10z" fill="#e8dcc0" stroke="#14100a" stroke-width=".7"/>${[-8, -3, 2, 7].map(o => `<line x1="${o}" y1="1" x2="${o - 2}" y2="6" stroke="#cfc9a8" stroke-width=".7"/>`).join('')}<path d="M-14 6 q14 6 28 0" stroke="rgba(255,255,255,.35)" fill="none" stroke-width=".8"/></g>`; }).join('');
+    return `<g transform="translate(${x},${y}) rotate(${an * 57.3}) scale(${k * (big ? 1.2 : 1.7)})" opacity=".92"><path d="M-12 2 q12 7 24 0 l-3 -4 h-18z" fill="#6a4a2a" stroke="#14100a" stroke-width=".9"/><line x1="0" y1="-2" x2="0" y2="-14" stroke="#14100a" stroke-width="1"/><path d="M0 -14 q8 4 0 10z" fill="#e8dcc0" stroke="#14100a" stroke-width=".7"/>${[-8, -3, 2, 7].map(o => `<line x1="${o}" y1="1" x2="${o - 2}" y2="6" stroke="#cfc9a8" stroke-width=".7"/>`).join('')}<path d="M-14 6 q14 6 28 0" stroke="rgba(255,255,255,.35)" fill="none" stroke-width=".8"/></g>`; }).join('');
   const [gx, gy] = project(46.6, 5.0);
   const actLabel = big ? `<text x="${gx - 40 * k}" y="${gy - 26 * k}" text-anchor="end" class="nl" style="font-size:${13 * k}px">Act I: Gaul</text>` : '';
   const future = futs.map(o => `<g class="fut" transform="translate(${o.x},${o.y})"><title>${esc(o.f.hint)}</title><circle r="${o.r}" fill="${o.f.rome ? '#7a2a22' : '#3b3120'}" stroke="#14100a" stroke-width="${2 * k}"/></g>`).join('');
@@ -156,8 +159,8 @@ export function renderMap(root, c, api) {
   const north = `<g transform="translate(${vb.x + vb.w - 28 * k},${vb.y + 34 * k})"><path d="M0 ${-16 * k} L${6 * k} ${8 * k} L0 ${3 * k} L${-6 * k} ${8 * k} Z" fill="#e8c36a"/><text y="${22 * k}" text-anchor="middle" class="gl" style="font-size:${11 * k}px;fill:#e8c36a">N</text></g>`;
 
   // hand-drawn relief: mountain ranges and great forests, then a ruled frame, a cartouche and a compass rose
-  const mt = (lat, lon, sz = 1) => { const [x, y] = project(lat, lon); if (!inView(x, y)) return ''; const a = 7 * k * sz * (big ? 0.7 : 1); return `<g transform="translate(${x},${y})"><path d="M${-a} ${a * 0.6} L0 ${-a} L${a} ${a * 0.6} Z" fill="#8c7c58" stroke="#2a2112" stroke-width="${0.9 * k}" stroke-linejoin="round"/><path d="M0 ${-a} L${a} ${a * 0.6} L${a * 0.2} ${a * 0.6} Z" fill="#5b4d30" opacity=".6"/><path d="M${-a * 0.32} ${-a * 0.4} L0 ${-a} L${a * 0.32} ${-a * 0.4} L${a * 0.1} ${-a * 0.55} L${-a * 0.1} ${-a * 0.35} Z" fill="#f4ecd6" opacity=".9"/></g>`; };
-  const tr = (lat, lon) => { const [x, y] = project(lat, lon); if (!inView(x, y)) return ''; const a = 4.2 * k * (big ? 0.7 : 1); return `<g transform="translate(${x},${y})"><circle cx="${a * 0.3}" cy="${a * 0.4}" r="${a}" fill="#1c2a14" opacity=".35"/><circle r="${a}" fill="#4a6a34" stroke="#1c2a14" stroke-width="${0.7 * k}"/><circle cx="${-a * 0.3}" cy="${-a * 0.3}" r="${a * 0.5}" fill="#6d8f4a" opacity=".8"/></g>`; };
+  const mt = (lat, lon, sz = 1) => { const [x, y] = project(lat, lon); if (!inView(x, y)) return ''; const a = 9.5 * k * sz * (big ? 0.8 : 1); return `<g transform="translate(${x},${y})"><path d="M${-a} ${a * 0.6} L0 ${-a} L${a} ${a * 0.6} Z" fill="#8c7c58" stroke="#2a2112" stroke-width="${0.9 * k}" stroke-linejoin="round"/><path d="M0 ${-a} L${a} ${a * 0.6} L${a * 0.2} ${a * 0.6} Z" fill="#5b4d30" opacity=".6"/><path d="M${-a * 0.32} ${-a * 0.4} L0 ${-a} L${a * 0.32} ${-a * 0.4} L${a * 0.1} ${-a * 0.55} L${-a * 0.1} ${-a * 0.35} Z" fill="#f4ecd6" opacity=".9"/></g>`; };
+  const tr = (lat, lon) => { const [x, y] = project(lat, lon); if (!inView(x, y)) return ''; const a = 5.6 * k * (big ? 0.8 : 1); return `<g transform="translate(${x},${y})"><circle cx="${a * 0.3}" cy="${a * 0.4}" r="${a}" fill="#1c2a14" opacity=".35"/><circle r="${a}" fill="#4a6a34" stroke="#1c2a14" stroke-width="${0.7 * k}"/><circle cx="${-a * 0.3}" cy="${-a * 0.3}" r="${a * 0.5}" fill="#6d8f4a" opacity=".8"/></g>`; };
   const glyphs = [[46.3, 7.2], [46.1, 8.2, 1.2], [46.4, 9.3], [45.9, 6.6], [46.6, 10.4], [45.7, 7.5, 0.9], [46.9, 8.8, 1.1], [45.4, 7.0], [46.0, 9.8], [42.7, 0.5], [42.7, -0.7], [42.6, 1.6], [42.8, 2.4, 0.8], [45.2, 2.7, 0.8], [44.9, 3.3, 0.8], [48.2, 7.0, 0.8], [46.8, 6.1, 0.8], [47.0, 6.8, 0.8], [44.3, 6.7, 0.9], [44.0, 11.3, 0.9], [43.2, 12.8, 0.9], [41.9, 13.9, 0.9]].map(m => mt(...m)).join('')
     + [[50.0, 5.3], [49.8, 5.8], [50.2, 5.0], [49.6, 5.5], [48.0, 8.2], [48.4, 8.3], [47.7, 8.1], [50.0, 10.5], [50.6, 11.2], [51.1, 10.2], [50.3, 9.6], [52.4, 8.9], [52.7, 8.4], [52.2, 9.4], [49.0, 12.0]].map(f => tr(...f)).join('');
   const f6 = 6 * k, fx0 = vb.x + f6, fy0 = vb.y + f6, fw = vb.w - 2 * f6, fh = vb.h - 2 * f6;
