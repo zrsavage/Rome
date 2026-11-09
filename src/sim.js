@@ -25,7 +25,7 @@ const PASS_SPEED = 0.3;
 const FRONT_GRIND = 0.8, FLANK_DMG = 1.5, REAR_DMG = 2.2;
 const FLANK_MORALE = 1.0, REAR_MORALE = 2.0, SURROUND_MORALE = 1.2;
 // Command: the general's banner sets a radius inside which Roman cohorts recover and rally well. Charges need fresh, steady men.
-const CMD_R = 240, GEN_SPEED = 75, ALL_ORDERS = ['testudo', 'sprint', 'guard', 'rally', 'relieve', 'pursue', 'orbis'];
+const CMD_R = 240, GEN_SPEED = 75, ALL_ORDERS = ['hold', 'fallback', 'holdfire', 'testudo', 'sprint', 'guard', 'rally', 'relieve', 'pursue', 'wedge', 'orbis'];
 const hgt = (b, u) => elevAt(b.scn, u.x, u.y) / 40;   // height in 'hill units': 1 is an ordinary hilltop
 const SIGHT = 520, SPRINT = 1.45;
 let UID = 1;
@@ -72,6 +72,7 @@ export class Unit {
     const rows = Math.max(1, this.men / this.front);
     this.w = Math.max(14, this.front * 2.7 * (this.formation === 'close' ? 0.8 : 1));
     this.d = Math.max(12, rows * 3.6 * (this.formation === 'close' ? 1.25 : 1));
+    if (this.formation === 'wedge') { this.w *= 0.72; this.d *= 1.35; }
     if (this.formation === 'orb') { const q = Math.sqrt(this.w * this.d) * 1.05; this.w = q; this.d = q; }   // a hollow square: no front, no flank
   }
   fwd() { return [Math.cos(this.f), Math.sin(this.f)]; }
@@ -197,7 +198,8 @@ export class Battle {
     if (def.formation === 'orb') return { m: 1, c: 1, g: FRONT_GRIND };
     const dx = att.x - def.x, dy = att.y - def.y, d = Math.hypot(dx, dy) || 1;
     const c = (dx * Math.cos(def.f) + dy * Math.sin(def.f)) / d;
-    return c > 0.6 ? { m: 1, c: 1, g: FRONT_GRIND } : c > -0.35 ? { m: 1.5, c: 2, g: FLANK_DMG } : { m: 2.2, c: 3, g: REAR_DMG };
+    const wv = def.formation === 'wedge' ? 1.25 : 1;                                   // a wedge is exposed on its flanks
+    return c > 0.6 ? { m: 1, c: 1, g: FRONT_GRIND } : c > -0.35 ? { m: 1.5 * wv, c: 2, g: FLANK_DMG * wv } : { m: 2.2 * wv, c: 3, g: REAR_DMG * wv };
   }
 
   // ---------- orders ----------
@@ -209,6 +211,11 @@ export class Battle {
   toggleFormation(u) {
     if (!u.active || u.type.cat !== 'inf' || !this.orders.has('testudo')) return;
     u.formation = u.formation === 'close' ? 'normal' : 'close';
+    u.updateDims();
+  }
+  toggleWedge(u) {
+    if (!u.active || u.type.cat !== 'inf' || !this.orders.has('wedge')) return;
+    u.formation = u.formation === 'wedge' ? 'normal' : 'wedge';
     u.updateDims();
   }
   toggleOrbis(u) {
@@ -638,7 +645,7 @@ export class Battle {
     const terr = u.type.cat === 'cav' ? tr.cav : tr.speed;
     const e0 = elevAt(this.scn, u.x, u.y), grade = (elevAt(this.scn, u.x + Math.cos(u.f) * 12, u.y + Math.sin(u.f) * 12) - e0) / 12;   // uphill slows, downhill helps
     const slope = clamp(1 - (u.type.cat === 'cav' ? 2.2 : 1.5) * grade, 0.5, 1.15);
-    return u.type.speed * terr * slope * (1 - u.fatigue / 250) * (u.formation === 'close' ? 0.55 : u.formation === 'orb' ? 0.4 : 1);
+    return u.type.speed * terr * slope * (1 - u.fatigue / 250) * (u.formation === 'close' ? 0.55 : u.formation === 'orb' ? 0.4 : u.formation === 'wedge' ? 0.92 : 1);
   }
   // Turning with a dead zone: small errors are ignored, so units settle instead of trembling.
   faceSmooth(u, ang, dt, k = 1) {
@@ -800,7 +807,7 @@ export class Battle {
       const ang = this.angleMult(u, e);
       // impact on new contact
       if (!u.prevIds.has(e.id) && e.state !== 'routing' && u.runT > 1.2 && t.charge > 0.3) {
-        let imp = u.men * t.charge * 0.035 * ang.m * (u.disrupted > 0 ? 0.5 : 1) * (u.perks.includes('shock') ? 1.25 : 1);
+        let imp = u.men * t.charge * 0.035 * ang.m * (u.formation === 'wedge' ? 1.4 : 1) * (u.disrupted > 0 ? 0.5 : 1) * (u.perks.includes('shock') ? 1.25 : 1);
         imp *= e.formation === 'close' && ang.c === 1 ? 0.7 : 1;
         imp *= 1 - (e.type.antiCharge || 0) * (e.state === 'idle' || e.stance === 'hold' ? 1 : 0.4);
         imp *= this.terr(e).def;

@@ -54,7 +54,11 @@ a warband held by a cohort about 50 s. Tuning constants: `FRONT_GRIND`, `FLANK_D
 - **High ground.** Defenders on hills lose 15% less morale from casualties; charging downhill hits 20% harder and uphill 20% softer; missile fire from above is 12% stronger.
 - **Frontage.** Only three units can fight fully on one front. Extra frontal attackers fight at a reduced rate, so flanking is how you bring numbers to bear. A host that outnumbers you by 25% sends some warbands wide to wrap your line.
 - **Pursuit.** Cavalry on "defend post" ride down routers within 220 units and kill them at 2.2x. Routs are where most real losses happen.
-- **Orders are learned in camp** (Training Ground, "Battle orders"), one at a time, each needing victories and an officer who can teach it: Testudo `T` (1 win, drill 1), Rally `F` (2 wins, tactics 2), Relief of the Line `Y` (3 wins, drill 3), Orbis `O` (4 wins, drill 4). A new player begins with move, attack, hold, defend post and fall back. The list lives in `src/doctrine.js`.
+- **Every order beyond marching and attacking is learned in camp** (Training Ground, "Battle orders"), a pair at a time as the campaign goes on, each
+  from an officer who can teach it: Standing Orders `H`/`G` and Orderly Withdrawal `R` (1 win), Double-time and Fire Discipline `J` (2), Testudo `T`
+  and Guard (3), Rally `F` and Pursuit `P` (4), Relief `Y` and the Wedge `U` (5), Orbis `O` (6). Battle controls, the command bar and the help panel show
+  only what you have learned; practice battles have everything. The list lives in `src/doctrine.js`. (Campaigns saved before this change start
+  with no orders learned.)
 
 ## Height and sight
 - **A real height map.** Hills are smooth, irregular bumps (`elevAt` in `src/data.js`, metres, per-hill `h`), not flat patches. The battlefield is drawn with hillshading and contour lines from the same data.

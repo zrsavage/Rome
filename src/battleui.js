@@ -24,7 +24,7 @@ export class BattleUI {
     this.r.buildBackground(scn); this.r.fit();
     { const rs = this.b.units.filter(u => u.side === 'rome'); if (rs.length) { this.r.cam.zoom = Math.max(this.r.minZoom, Math.min(0.9, this.r.cam.zoom * 3)); this.r.cam.x = rs.reduce((a, u) => a + u.x, 0) / rs.length; this.r.cam.y = rs.reduce((a, u) => a + u.y, 0) / rs.length - 160 / this.r.cam.zoom; this.r.clampCam(); } }
     this.refreshBottom(); this.setPause(true); this.setSpeed(1);
-    $('help-orders').innerHTML = [['sprint', '<b>Shift+right-click</b> sprint / charge'], ['guard', '<b>right-click a friendly unit</b> to guard it'], ['testudo', '<b>T</b> testudo'], ['orbis', '<b>O</b> orbis (hollow square)'], ['relieve', '<b>Y</b> relieve a tired cohort'], ['pursue', '<b>P</b> cavalry pursue routers'], ['rally', '<b>F</b> rally the line']].filter(([id]) => this.b.orders.has(id)).map(x => x[1]).join(' &middot; ');
+    $('help-orders').innerHTML = [['hold', '<b>H</b> hold position &middot; <b>G</b> defend post'], ['fallback', '<b>R</b> fall back and rest'], ['holdfire', '<b>J</b> hold fire (missile troops)'], ['wedge', '<b>U</b> wedge'], ['sprint', '<b>Shift+right-click</b> sprint / charge'], ['guard', '<b>right-click a friendly unit</b> to guard it'], ['testudo', '<b>T</b> testudo'], ['orbis', '<b>O</b> orbis (hollow square)'], ['relieve', '<b>Y</b> relieve a tired cohort'], ['pursue', '<b>P</b> cavalry pursue routers'], ['rally', '<b>F</b> rally the line']].filter(([id]) => this.b.orders.has(id)).map(x => x[1]).join(' &middot; ');
     $('btn-retreat').disabled = false;
     this.showBanner('DEPLOYMENT - press SPACE', 2500);
     this.last = performance.now(); this.acc = 0; this.hudT = 0;
@@ -159,7 +159,7 @@ export class BattleUI {
       if (k === 'v') { this.r.showRange = !this.r.showRange; this.emit('range', { on: this.r.showRange }); }
       if (/^[1-9]$/.test(k) && !e.altKey) this.controlGroup(+k, e.ctrlKey || e.metaKey);
       if (['a', 'w', 's', 'd', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k) && !e.ctrlKey) this.keys.add(k);
-      const keyCmd = { h: 'hold', g: 'defend', r: 'fallback', t: 'testudo', o: 'orbis', y: 'relieve', p: 'pursue', j: 'holdfire', f: 'rally' }[k];
+      const keyCmd = { h: 'hold', g: 'defend', r: 'fallback', t: 'testudo', o: 'orbis', u: 'wedge', y: 'relieve', p: 'pursue', j: 'holdfire', f: 'rally' }[k];
       if (keyCmd && !e.ctrlKey && !e.metaKey) this.cmd(keyCmd);
       if (k === 'e') this.selectGeneral();
       if (k === 'escape') this.select([]);
@@ -201,14 +201,15 @@ export class BattleUI {
     const b = this.b, sel = this.selected(), inf = sel.filter(u => u.type.cat === 'inf');
     const need = (id) => { if (b.orders.has(id)) return true; if (sel.length || id === 'rally') this.showBanner('You have not learned that order yet. Train it at camp.', 1400); return false; };
     switch (name) {
-      case 'hold': sel.forEach(u => b.setHold(u)); if (sel.length) { this.emit('hold', { count: sel.length }); this.showBanner('Hold position', 600); } break;
-      case 'defend': sel.forEach(u => b.setEngage(u)); if (sel.length) { this.emit('engage', { count: sel.length }); this.showBanner('Defend post', 600); } break;
-      case 'fallback': sel.forEach(u => b.fallBack(u)); if (sel.length) this.emit('fallback', { count: sel.length }); break;
+      case 'hold': if (!need('hold')) break; sel.forEach(u => b.setHold(u)); if (sel.length) { this.emit('hold', { count: sel.length }); this.showBanner('Hold position', 600); } break;
+      case 'defend': if (!need('hold')) break; sel.forEach(u => b.setEngage(u)); if (sel.length) { this.emit('engage', { count: sel.length }); this.showBanner('Defend post', 600); } break;
+      case 'fallback': if (!need('fallback')) break; sel.forEach(u => b.fallBack(u)); if (sel.length) this.emit('fallback', { count: sel.length }); break;
       case 'testudo': if (need('testudo') && inf.length) { inf.forEach(u => b.toggleFormation(u)); this.emit('formation', { count: inf.length }); } break;
+      case 'wedge': if (need('wedge') && inf.length) { inf.forEach(u => b.toggleWedge(u)); this.emit('formation', { count: inf.length }); } break;
       case 'orbis': if (need('orbis') && inf.length) { inf.forEach(u => b.toggleOrbis(u)); this.emit('formation', { count: inf.length }); } break;
       case 'relieve': if (need('relieve') && inf.length) inf.forEach(u => b.relieve(u)); break;
       case 'pursue': if (need('pursue')) sel.filter(u => u.type.cat === 'cav').forEach(u => b.pursue(u)); break;
-      case 'holdfire': sel.filter(u => u.type.cat === 'ranged').forEach(u => b.toggleHoldFire(u)); if (sel.some(u => u.type.cat === 'ranged')) this.showBanner(sel.find(u => u.type.cat === 'ranged').holdFire ? 'Hold fire' : 'Fire at will', 700); break;
+      case 'holdfire': if (!need('holdfire')) break; sel.filter(u => u.type.cat === 'ranged').forEach(u => b.toggleHoldFire(u)); if (sel.some(u => u.type.cat === 'ranged')) this.showBanner(sel.find(u => u.type.cat === 'ranged').holdFire ? 'Hold fire' : 'Fire at will', 700); break;
       case 'rally': if (!need('rally')) break; if (b.rallyCd > 0) this.showBanner(`The line was just rallied (${Math.ceil(b.rallyCd)}s)`, 900); else if (b.rally()) this.showBanner('Rally!', 700); break;
     }
     this.cmdSig = null;
@@ -217,9 +218,9 @@ export class BattleUI {
   refreshCmds() {
     const b = this.b, sel = this.selected(), el = $('hud-cmds');
     const has = (c) => sel.some(u => u.type.cat === c);
-    const list = [['hold', 'Hold', 'H', true], ['defend', 'Defend post', 'G', true], ['fallback', 'Fall back', 'R', true],
-      ['testudo', 'Testudo', 'T', b.orders.has('testudo') && has('inf')], ['orbis', 'Orbis', 'O', b.orders.has('orbis') && has('inf')], ['relieve', 'Relieve', 'Y', b.orders.has('relieve') && has('inf')],
-      ['pursue', 'Pursue', 'P', b.orders.has('pursue') && has('cav')], ['holdfire', 'Hold fire', 'J', has('ranged')]]
+    const list = [['hold', 'Hold', 'H', b.orders.has('hold')], ['defend', 'Defend post', 'G', b.orders.has('hold')], ['fallback', 'Fall back', 'R', b.orders.has('fallback')],
+      ['testudo', 'Testudo', 'T', b.orders.has('testudo') && has('inf')], ['wedge', 'Wedge', 'U', b.orders.has('wedge') && has('inf')], ['orbis', 'Orbis', 'O', b.orders.has('orbis') && has('inf')], ['relieve', 'Relieve', 'Y', b.orders.has('relieve') && has('inf')],
+      ['pursue', 'Pursue', 'P', b.orders.has('pursue') && has('cav')], ['holdfire', 'Hold fire', 'J', b.orders.has('holdfire') && has('ranged')]]
       .filter(x => x[3]).map(x => ({ id: x[0], label: x[1], key: x[2] }));
     if (this.genSel && b.orders.has('rally')) list.push({ id: 'rally', label: 'Rally', key: 'F' });
     const sig = (sel.length || this.genSel ? list.map(x => x.id).join() : '') + '|' + sel.map(u => (u.holdFire ? 'f' : '') + u.formation + u.stance).join();
@@ -227,7 +228,7 @@ export class BattleUI {
     el.innerHTML = ''; if (!sel.length && !this.genSel) return;
     for (const c of list) {
       const btn = document.createElement('button'); btn.className = 'cmd'; btn.innerHTML = `${c.label}<kbd>${c.key}</kbd>`;
-      const on = (c.id === 'hold' && sel.length && sel.every(u => u.stance === 'hold')) || (c.id === 'defend' && sel.length && sel.every(u => u.stance !== 'hold')) || (c.id === 'testudo' && sel.some(u => u.formation === 'close')) || (c.id === 'orbis' && sel.some(u => u.formation === 'orb')) || (c.id === 'holdfire' && sel.some(u => u.holdFire));
+      const on = (c.id === 'hold' && sel.length && sel.every(u => u.stance === 'hold')) || (c.id === 'defend' && sel.length && sel.every(u => u.stance !== 'hold')) || (c.id === 'testudo' && sel.some(u => u.formation === 'close')) || (c.id === 'wedge' && sel.some(u => u.formation === 'wedge')) || (c.id === 'orbis' && sel.some(u => u.formation === 'orb')) || (c.id === 'holdfire' && sel.some(u => u.holdFire));
       if (on) btn.classList.add('on');
       btn.onclick = () => this.cmd(c.id); el.appendChild(btn);
     }
@@ -281,14 +282,14 @@ export class BattleUI {
     const L = $('hud-left');
     if (this.genSel && b.general) { const g = b.general; L.innerHTML = `<h3>Your general</h3><div class="muted">The gold ring is your command radius. Cohorts inside it recover morale and rally faster and charge with full force; outside it they are slow to recover. Right-click to move the general.</div>` + (g.wound > 0 ? `<div class="kv"><span>Wounded</span><span>${Math.ceil(g.wound)}s</span></div>` : '') + (b.orders.has('rally') ? `<div class="kv"><span>Rally (F)</span><span>${b.rallyCd > 0 ? Math.ceil(b.rallyCd) + 's' : 'ready'}</span></div>` : ''); return; }
     if (!sel.length && !ins) { L.innerHTML = '<h3>No selection</h3><div class="muted">Click a cohort, or drag a box. Right-click to order. Press ? for controls.</div>'; return; }
-    if (sel.length > 1) { L.innerHTML = `<h3>${sel.length} units selected</h3><div class="muted">Right-click to move in a line; right-drag to set a battle line and facing. H to hold.</div>`; return; }
+    if (sel.length > 1) { L.innerHTML = `<h3>${sel.length} units selected</h3><div class="muted">Right-click to move in a line; right-drag to set a battle line and facing.</div>`; return; }
     if (!u) return;
     const t = u.type, lvl = LEVEL_NAMES[u.lvl];
     const kv = (a, v) => `<div class="kv"><span>${a}</span><span>${v}</span></div>`;
     L.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 88, 88)}"><h3>${u.name}</h3><div class="muted">${t.blurb}</div>` +
       kv('Men', `${u.men} / ${u.maxMen}`) + kv('Morale', `${Math.round(u.morale)} / ${Math.round(u.maxMorale)}`) + kv('Fatigue', Math.round(u.fatigue) + '%') +
       kv('Experience', lvl) + kv('Drill', Math.round(u.drill)) +
-      (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics})` : 'none') + kv('Stance', u.stance === 'hold' ? 'Hold (never leaves)' : 'Defend post') + kv('Formation', u.formation === 'close' ? 'Testudo' : u.formation === 'orb' ? 'Orbis' : 'Normal') + kv('Command', b.inCommand(u) ? 'in command' : 'OUT OF COMMAND') : '') +
+      (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics})` : 'none') + kv('Stance', u.stance === 'hold' ? 'Hold (never leaves)' : 'Defend post') + kv('Formation', u.formation === 'close' ? 'Testudo' : u.formation === 'orb' ? 'Orbis' : u.formation === 'wedge' ? 'Wedge' : 'Normal') + kv('Command', b.inCommand(u) ? 'in command' : 'OUT OF COMMAND') : '') +
       (t.pilum ? kv('Pila volleys', u.pilumLeft) : '') + (t.range ? kv('Ammo', Math.max(0, Math.round(u.ammo / t.ammo * 100)) + '%') : '') +
       kv('State', u.state);
   }

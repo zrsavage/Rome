@@ -304,7 +304,7 @@ export class Camp {
       const why = !t ? `needs an officer with ${d.trait} ${d.req}` : c.gold < d.gold ? 'not enough denarii' : '';
       return `<button class="act" data-a="doctrine" data-m="${d.id}" ${act && !why ? '' : 'disabled'}>${esc(d.name)}<small>${esc(d.text)}</small><small>${d.gold} denarii, 1 day. ${t ? `Taught by ${esc(t.name)}.` : esc(why)}</small></button>`; }).join('');
     if (!learned && !cards && !next) return '';
-    return `<h4 class="sect">Battle orders</h4><div class="small muted">New formation orders are learned here as the campaign goes on. Your army knows move, attack, hold, defend post and fall back.</div>
+    return `<h4 class="sect">Battle orders</h4><div class="small muted">New formation orders are learned here as the campaign goes on. At first your army knows only how to march and attack; even holding a position has to be taught.</div>
       ${learned ? `<div class="row" style="margin:6px 0">${learned}</div>` : ''}${cards ? `<div class="actions">${cards}</div>` : ''}
       ${next ? `<div class="small muted" style="margin-top:6px">Another order will be ready to learn after ${next.wins - wins} more victor${next.wins - wins === 1 ? 'y' : 'ies'}.</div>` : ''}`;
   }

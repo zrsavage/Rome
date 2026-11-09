@@ -174,6 +174,7 @@ export class Renderer {
     ctx.fillStyle = (rome ? 'rgba(190,40,30,' : 'rgba(40,90,190,') + (sel ? 0.3 : 0.17) + ')';
     ctx.fillRect(-u.d / 2, -u.w / 2, u.d, u.w);
     if (rome && b.general && u.state !== 'routing' && !b.inCommand(u)) { ctx.strokeStyle = 'rgba(190,190,190,0.55)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.strokeRect(-u.d / 2 - 2, -u.w / 2 - 2, u.d + 4, u.w + 4); ctx.setLineDash([]); }
+    if (u.formation === 'wedge') { ctx.strokeStyle = 'rgba(255,176,70,0.95)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(u.d / 2 + 6, 0); ctx.lineTo(-u.d / 2, -u.w / 2 - 2); ctx.lineTo(-u.d / 2, u.w / 2 + 2); ctx.closePath(); ctx.stroke(); }
     if (u.formation === 'orb') { ctx.strokeStyle = 'rgba(150,200,255,0.95)'; ctx.lineWidth = 1.6; ctx.strokeRect(-u.d / 2, -u.w / 2, u.d, u.w); }
     if (u.formation === 'close') { ctx.strokeStyle = 'rgba(232,195,106,0.9)'; ctx.lineWidth = 1.4; ctx.strokeRect(-u.d / 2, -u.w / 2, u.d, u.w); }
     // soldiers: front row at +x. Each is a little figure with a shield; a testudo is a roof of locked shields; routers scatter.
