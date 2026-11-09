@@ -140,8 +140,10 @@ export class Camp {
   // Rest: everyone recovers condition, and the lightly wounded rejoin their units (15% of the men still missing).
   rest() {
     const c = this.c; if (!this.canAct()) return; let back = 0;
-    c.cohorts.forEach(h => { h.condition = Math.min(100, h.condition + 20); const n = Math.round((h.maxMen - h.men) * 0.15); h.men += n; back += n; });
-    this.note(`The men rest and mend their kit. ${back} lightly wounded rejoin the ranks.`, 'good'); this.endDay(); this.render();
+    c.cohorts.forEach(h => { h.condition = Math.min(100, h.condition + 20); back += Math.round((h.maxMen - h.men) * 0.15); });
+    back = Math.min(back, Math.max(0, c.cohorts.reduce((a, h) => a + h.maxMen - h.men, 0) - (c.manpower || 0)));   // places already covered by waiting soldiers cannot be filled twice
+    c.manpower = (c.manpower || 0) + back;                      // the lightly wounded go back into the pool; you decide where they serve
+    this.note(`The men rest and mend their kit. ${back} lightly wounded are fit to serve again and join the pool of available soldiers.`, 'good'); this.endDay(); this.render();
   }
   // Hiring volunteers puts men into the pool of available soldiers; you place them with the sliders.
   hire() {
@@ -353,7 +355,7 @@ export class Camp {
           return card(`data-a="raise" data-m="${t}"`, `${esc(UNIT_TYPES[t].name)}${sug(t) ? ' <span class="pill">your army lacks this</span>' : ''}`, esc(TYPE_ROLE[t] || ''), [[`${r.men * rk} men${rk > 1 ? ` in ${rk} units` : ''}`, 'g'], [`${r.gold * rk} denarii`, 'b'], [`${r.supplies * rk} supplies`, '']], ok); }).join('');
         return `<div class="advicebox"><b>The camp prefect's advice.</b> ${esc(adv)}</div><h4 class="sect">Muster roll</h4>${this.musterHtml(act)}
           <h4 class="sect">Spend the day on...</h4><div class="regimens">
-          ${card('data-a="rest"', 'Rest the army', 'Everyone sleeps, eats and mends kit.', [['+20 condition, every unit', 'g'], [`about ${c.cohorts.reduce((x, u) => x + Math.round((u.maxMen - u.men) * 0.15), 0)} lightly wounded rejoin`, 'g'], [`${weary.length} unit${weary.length === 1 ? '' : 's'} below 75% would benefit`, '']], true)}
+          ${card('data-a="rest"', 'Rest the army', 'Everyone sleeps, eats and mends kit.', [['+20 condition, every unit', 'g'], [`about ${Math.min(c.cohorts.reduce((x, u) => x + Math.round((u.maxMen - u.men) * 0.15), 0), Math.max(0, c.cohorts.reduce((x, u) => x + u.maxMen - u.men, 0) - (c.manpower || 0)))} lightly wounded return to the pool`, 'g'], [`${weary.length} unit${weary.length === 1 ? '' : 's'} below 75% would benefit`, '']], true)}
           ${card('data-a="hire"', `Hire ${hn} volunteers`, 'Men sign on for pay. They join the pool of available soldiers; you place them with the sliders.', [[`+${hn} soldiers available`, 'g'], [`${hcost} denarii`, 'b'], ['takes a day', '']], c.gold >= hcost)}
           ${card('data-a="fortify"', `Fortify the camp (level ${c.fort}/3)`, 'The men dig ditch and palisade. Two days of work make a level.', [['+4 battle morale per level', 'g'], [`withdrawal draw needs ${floor}% -> ${nextFloor}% of your army`, 'g'], ['10 supplies', '']], c.supplies >= 10 && c.fort < 3)}</div>
           <div class="row small" style="margin-top:6px"><span class="muted">Hire how many?</span><div class="chips">${[20, 50, 100, 200].map(k => `<button class="chip ${hn === k ? 'sel' : ''}" data-hiren="${k}">${k} men</button>`).join('')}</div></div>

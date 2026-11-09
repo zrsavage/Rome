@@ -120,8 +120,8 @@ export function applyResult(c, result, scn) {
   if (manual) { c.manpower += recruits; pooled += recruits; } else for (const h of c.cohorts) { const add = Math.min(recruits, h.maxMen - h.men); h.men += add; recruits -= add; }
   // Every unit's missing men come forward at a quarter, and nothing ever falls below 35% (no soft-locks).
   for (const h of c.cohorts) {
-    const before = h.men, levy = Math.round((h.maxMen - h.men) * 0.25 * modsOf(c).levy);
-    if (manual) { c.manpower += levy; pooled += levy; } else h.men = Math.min(h.maxMen, h.men + levy);
+    const before = h.men; let levy = Math.round((h.maxMen - h.men) * 0.25 * modsOf(c).levy);
+    if (manual) { levy = Math.min(levy, Math.max(0, c.cohorts.reduce((a, x) => a + x.maxMen - x.men, 0) - c.manpower)); c.manpower += levy; pooled += levy; } else h.men = Math.min(h.maxMen, h.men + levy);   // never more waiting men than empty places
     const floor = Math.ceil(h.maxMen * 0.35);
     if (h.men < floor) { notes.push(`${h.name} is reduced to a remnant; the governor sends replacements.`); h.men = floor; }
     if (h.men > before && before > 0) h.xp = Math.round(h.xp * (0.6 + 0.4 * before / h.men));
