@@ -1,5 +1,5 @@
 // Canvas renderer for the battle: terrain, soldier dots, effects, order lines.
-import { WORLD, elevAt } from './data.js';
+import { WORLD, elevAt, terrainAt, forestIn, riverShift, vnoise } from './data.js';
 import { mulberry32 } from './sim.js';
 
 // Hillshading and contour lines from the real height map, lit from the north-west.
@@ -46,26 +46,42 @@ export function paintTerrain(g, scn) {
   for (let i = 0; i < 70; i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 2 + rnd() * 3.5; g.fillStyle = 'rgba(40,38,30,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, r, r * 0.6, 0, 0, 7); g.fill(); g.fillStyle = '#a7a396'; g.beginPath(); g.ellipse(x, y, r, r * 0.65, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.ellipse(x - 0.8, y - 0.8, r * 0.5, r * 0.3, 0, 0, 7); g.fill(); }
   const trees = [];
   for (const f of scn.terrain) {
+    // a river is a wandering strip: its banks follow riverShift, the same function the sim uses to decide where the water is
+    const strip = (f, pad) => {
+      const top = [], bot = [];
+      for (let x = f.x; x <= f.x + f.w + 0.1; x += 10) { const sh = riverShift(f, x), wob = (vnoise(x / 55 + f.y, f.y) - 0.5) * 6; top.push([x, f.y + sh - pad + wob]); bot.push([x, f.y + f.h + sh + pad - wob * 0.7]); }
+      g.beginPath(); g.moveTo(top[0][0], top[0][1]); for (const q of top) g.lineTo(q[0], q[1]); for (let i = bot.length - 1; i >= 0; i--) g.lineTo(bot[i][0], bot[i][1]); g.closePath();
+    };
     if (f.kind === 'water') {
-      const gr = g.createLinearGradient(0, f.y, 0, f.y + f.h); gr.addColorStop(0, '#4d7f9e'); gr.addColorStop(0.5, '#2f6288'); gr.addColorStop(1, '#4d7f9e');
-      g.fillStyle = 'rgba(112,92,52,0.55)'; g.fillRect(f.x, f.y - 7, f.w, f.h + 14);          // muddy banks
-      g.fillStyle = gr; g.fillRect(f.x, f.y, f.w, f.h);
+      const gr = g.createLinearGradient(0, f.y - 30, 0, f.y + f.h + 30); gr.addColorStop(0, '#4d7f9e'); gr.addColorStop(0.5, '#2f6288'); gr.addColorStop(1, '#4d7f9e');
+      g.fillStyle = 'rgba(112,92,52,0.55)'; strip(f, 7); g.fill();          // muddy banks
+      g.fillStyle = gr; strip(f, 0); g.fill();
       g.strokeStyle = 'rgba(205,232,244,0.3)'; g.lineWidth = 1.2;
-      for (let i = 0; i < f.w / 14; i++) { const x = f.x + rnd() * f.w, y = f.y + 5 + rnd() * (f.h - 10), l = 8 + rnd() * 20; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - 1.8, x + l, y); g.stroke(); }
+      for (let i = 0; i < f.w / 14; i++) { const x = f.x + rnd() * f.w, y = f.y + riverShift(f, x) + 5 + rnd() * (f.h - 10), l = 8 + rnd() * 20; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - 1.8, x + l, y); g.stroke(); }
       g.strokeStyle = 'rgba(70,96,40,0.85)'; g.lineWidth = 1.2;
-      for (let i = 0; i < f.w / 9; i++) { const x = f.x + rnd() * f.w, up = rnd() > 0.5, y = up ? f.y - 1 : f.y + f.h + 1; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 3, y + (up ? -6 : 6) * (0.6 + rnd() * 0.7)); g.stroke(); }
+      for (let i = 0; i < f.w / 9; i++) { const x = f.x + rnd() * f.w, up = rnd() > 0.5, y = (up ? f.y - 1 : f.y + f.h + 1) + riverShift(f, x); g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 3, y + (up ? -6 : 6) * (0.6 + rnd() * 0.7)); g.stroke(); }
     } else if (f.kind === 'ford') {
-      g.fillStyle = 'rgba(112,92,52,0.5)'; g.fillRect(f.x, f.y - 7, f.w, f.h + 14);
-      g.fillStyle = '#86adbd'; g.fillRect(f.x, f.y, f.w, f.h);
-      for (let i = 0; i < 70; i++) { const x = f.x + rnd() * f.w, y = f.y + rnd() * f.h, rx = 3.5 + rnd() * 5, ry = 2.5 + rnd() * 3; g.fillStyle = 'rgba(40,60,70,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, rx, ry, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(196,184,150,0.8)'; g.beginPath(); g.ellipse(x, y, rx * 0.8, ry * 0.8, rnd() * 3, 0, 7); g.fill(); }
+      g.fillStyle = 'rgba(112,92,52,0.5)'; strip(f, 7); g.fill();
+      g.fillStyle = '#86adbd'; strip(f, 0); g.fill();
+      for (let i = 0; i < 70; i++) { const x = f.x + rnd() * f.w, y = f.y + riverShift(f, x) + rnd() * f.h, rx = 3.5 + rnd() * 5, ry = 2.5 + rnd() * 3; g.fillStyle = 'rgba(40,60,70,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, rx, ry, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(196,184,150,0.8)'; g.beginPath(); g.ellipse(x, y, rx * 0.8, ry * 0.8, rnd() * 3, 0, 7); g.fill(); }
     } else if (f.kind === 'forest') {
-      g.fillStyle = 'rgba(24,46,24,0.5)'; g.beginPath(); g.ellipse(f.cx, f.cy, f.rx, f.ry, 0, 0, 7); g.fill();
-      const n = Math.round(f.rx * f.ry / 95);
-      for (let i = 0; i < n; i++) { const a = rnd() * 7, rr = Math.sqrt(rnd()); trees.push({ x: f.cx + Math.cos(a) * f.rx * rr * 0.97, y: f.cy + Math.sin(a) * f.ry * rr * 0.97, r: 7 + rnd() * 6.5, k: rnd(), edge: rr }); }
+      // trees are scattered inside the ragged woodland shape, with smaller outliers straggling past its edge
+      const n = Math.round(Math.PI * f.rx * f.ry * 0.8 / 95);
+      let placed = 0, tries = 0;
+      while (placed < n && tries++ < n * 8) { const x = f.cx + (rnd() * 2 - 1) * f.rx * 1.25, y = f.cy + (rnd() * 2 - 1) * f.ry * 1.25; if (!forestIn(f, x, y)) continue; placed++; trees.push({ x, y, r: 6.5 + rnd() * 7.5, k: rnd(), under: true }); }
+      const out = Math.round(n * 0.07); placed = 0; tries = 0;
+      while (placed < out && tries++ < out * 30) { const x = f.cx + (rnd() * 2 - 1) * f.rx * 1.5, y = f.cy + (rnd() * 2 - 1) * f.ry * 1.5; if (forestIn(f, x, y) || !forestIn(f, f.cx + (x - f.cx) * 0.8, f.cy + (y - f.cy) * 0.8)) continue; placed++; trees.push({ x, y, r: 4.5 + rnd() * 4, k: rnd() }); }
     }
   }
   paintRelief(g, scn);
   // trees last, far to near, so canopies overlap properly and stand over the hillshade
+  for (let i = 0; i < 70; i++) {               // lone trees and thickets out in the open
+    const x = rnd() * WORLD.w, y = rnd() * WORLD.h, kind = terrainAt(scn, x, y).kind, k = rnd(), sz = 4 + rnd() * 5, cl = rnd() < 0.4 ? 3 : 1;
+    if (kind !== 'grass') continue;
+    for (let j = 0; j < cl; j++) trees.push({ x: x + (rnd() - 0.5) * 22 * (cl > 1), y: y + (rnd() - 0.5) * 16 * (cl > 1), r: sz * (0.7 + rnd() * 0.5), k });
+  }
+  for (let i = 0; i < 260; i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h; if (terrainAt(scn, x, y).kind !== 'grass') continue; g.fillStyle = 'rgba(52,84,34,0.55)'; g.beginPath(); g.ellipse(x, y, 3 + rnd() * 4, 2 + rnd() * 2.5, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(120,150,70,0.35)'; g.beginPath(); g.ellipse(x - 1, y - 1, 1.8, 1.2, 0, 0, 7); g.fill(); }
+  for (const t of trees) if (t.under) { g.fillStyle = 'rgba(18,34,16,0.13)'; g.beginPath(); g.arc(t.x, t.y, t.r * 2.1, 0, 7); g.fill(); }   // the dark floor of a wood
   trees.sort((a, b) => a.y - b.y);
   for (const t of trees) {
     g.fillStyle = 'rgba(8,20,8,0.3)'; g.beginPath(); g.ellipse(t.x + t.r * 0.4, t.y + t.r * 0.55, t.r * 1.05, t.r * 0.7, 0, 0, 7); g.fill();

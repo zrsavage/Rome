@@ -85,6 +85,18 @@ export const DIFFICULTY = {
 const hash2 = (ix, iy) => { let h = Math.imul(ix, 374761393) + Math.imul(iy, 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 const vnoise = (x, y) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
   const a = hash2(ix, iy), b = hash2(ix + 1, iy), c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1); return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy; };
+export { vnoise };
+// Woods are ragged blobs with clearings, not ovals; rivers wander. Terrain tests and drawing share these so what you see is what the sim uses.
+export function forestIn(f, x, y) {
+  const nx = (x - f.cx) / f.rx, ny = (y - f.cy) / f.ry, r = Math.hypot(nx, ny);
+  if (r > 1.25) return false;
+  const a = Math.atan2(ny, nx), sd = f.cx * 0.013 + f.cy * 0.007;
+  const edge = 0.86 + 0.3 * vnoise(Math.cos(a) * 1.7 + sd, Math.sin(a) * 1.7 + sd * 1.3) + 0.2 * vnoise(Math.cos(a) * 4.1 + sd * 2, Math.sin(a) * 4.1 - sd) - 0.08;
+  if (r >= edge) return false;
+  if (r > 0.38 && vnoise(x / 52 + sd, y / 52 - sd) < 0.2) return false;     // a glade
+  return true;
+}
+export function riverShift(f, x) { return (vnoise(x / 150 + f.y * 0.013, f.y * 0.031) - 0.5) * 2 * 26 + Math.sin(x / 210 + f.y * 0.02) * 12; }
 export function elevAt(scn, x, y) {
   if (!scn || !scn.terrain) return 0;
   let e = 0;
@@ -106,8 +118,9 @@ export function terrainAt(scn, x, y) {
   for (const f of scn.terrain) {
     let inside;
     if (f.kind === 'hill') continue;                                   // hills come from the height map below
-    if (f.rx) inside = ((x - f.cx) / f.rx) ** 2 + ((y - f.cy) / f.ry) ** 2 <= 1;
-    else inside = x >= f.x && x <= f.x + f.w && y >= f.y && y <= f.y + f.h;
+    if (f.kind === 'forest') inside = forestIn(f, x, y);
+    else if (f.rx) inside = ((x - f.cx) / f.rx) ** 2 + ((y - f.cy) / f.ry) ** 2 <= 1;
+    else { const sh = f.kind === 'water' || f.kind === 'ford' ? riverShift(f, x) : 0; inside = x >= f.x && x <= f.x + f.w && y - sh >= f.y && y - sh <= f.y + f.h; }
     if (!inside) continue;
     if (f.kind === 'water')  r = { speed: 0.35, def: 1.0, atk: 0.8, cav: 0.5, kind: 'water' };
     if (f.kind === 'ford')   r = { speed: 0.8,  def: 1.0, atk: 0.9, cav: 0.8, kind: 'ford' };
