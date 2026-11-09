@@ -87,6 +87,10 @@ modifiers for wounded recovery, replacements, food use, spoils, experience, fora
 **opening battle** (First Blood at the Border) and only afterwards reach the campaign map and army management, with a one-time
 explanation of what to do there. Defeat in the opening battle simply lets you try again.
 
+## Typography
+
+Titles and labels use **Cinzel** (capitals modelled on Roman inscriptions such as Trajan's Column); body text uses **Cardo** (a serif made for classicists and Latin). Both load from Google Fonts with Palatino/Georgia fallbacks, so the game still reads offline.
+
 ## Learning the game (no tutorial mode)
 
 - **No separate tutorial:** the opening battle is a small, easy fight (First Blood at the Border) with contextual hints that appear when they matter: advancing, an enemy approaching, flanks, morale, fatigue, waves.

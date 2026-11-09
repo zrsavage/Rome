@@ -6,6 +6,8 @@ import { paintTerrain } from './render.js';
 
 let manifest = {};
 const cache = new Map();
+// Placeholders are drawn once and cached; redraw them once the web fonts have loaded.
+if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) document.fonts.ready.then(() => cache.clear());
 
 export async function initArt() {
   if (typeof window !== 'undefined' && window.__LEGIO_ART__) { manifest = window.__LEGIO_ART__; return; }
@@ -74,7 +76,7 @@ function unitIcon(key, w, h) {
   }
   g.restore();
   g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, h * 0.8, w, h * 0.2);
-  g.fillStyle = '#f0e4c8'; g.font = `bold ${Math.round(h * 0.085)}px Georgia, serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#f0e4c8'; g.font = `bold ${Math.round(h * 0.085)}px Cinzel, Georgia, serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText((UNIT_TYPES[key] ? UNIT_TYPES[key].name : key).replace('Cohort', '').replace('(Cavalry Turma)', '').trim().slice(0, 22), w / 2, h * 0.9);
   tag(g, w, h * 0.8);
   return c.toDataURL();
@@ -97,7 +99,7 @@ function officerPortrait(key, w, h, extra) {
   if (/Centurion/.test(rank)) g.fillRect(cx - 24 * u, h * 0.2, 48 * u, 9 * u); else { g.beginPath(); g.moveTo(cx - 5 * u, h * 0.29); g.lineTo(cx, h * 0.12); g.lineTo(cx + 5 * u, h * 0.29); g.fill(); }
   g.fillStyle = '#2a1e12'; g.fillRect(cx - 9 * u, h * 0.5, 4 * u, 2 * u); g.fillRect(cx + 5 * u, h * 0.5, 4 * u, 2 * u);
   g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, h * 0.82, w, h * 0.18);
-  g.fillStyle = '#f0e4c8'; g.font = `bold ${Math.round(h * 0.07)}px Georgia, serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#f0e4c8'; g.font = `bold ${Math.round(h * 0.07)}px Cinzel, Georgia, serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText(name.split(' ').slice(-1)[0], w / 2, h * 0.9);
   g.strokeStyle = 'rgba(232,195,106,0.5)'; g.lineWidth = 2; g.strokeRect(2, 2, w - 4, h - 4);
   tag(g, w, h * 0.82);
@@ -114,9 +116,9 @@ function scenarioBanner(key, w, h, extra) {
   }
   const grd = g.createLinearGradient(0, 0, 0, h); grd.addColorStop(0, 'rgba(0,0,0,0.05)'); grd.addColorStop(1, 'rgba(10,8,4,0.88)');
   g.fillStyle = grd; g.fillRect(0, 0, w, h);
-  g.fillStyle = '#e8c36a'; g.font = `${Math.round(h * 0.16)}px Georgia, serif`; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.fillStyle = '#e8c36a'; g.font = `${Math.round(h * 0.16)}px Cinzel, Georgia, serif`; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
   g.fillText(scn ? scn.name : key, w * 0.03, h * 0.82);
-  g.fillStyle = '#d9cba8'; g.font = `${Math.round(h * 0.075)}px Georgia, serif`;
+  g.fillStyle = '#d9cba8'; g.font = `${Math.round(h * 0.075)}px Cinzel, Georgia, serif`;
   g.fillText(scn ? `${scn.theater}, ${scn.year}` : '', w * 0.03, h * 0.93);
   g.strokeStyle = 'rgba(232,195,106,0.6)'; g.lineWidth = 3; g.strokeRect(2, 2, w - 4, h - 4);
   tag(g, w, h);

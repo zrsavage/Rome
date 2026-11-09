@@ -1,23 +1,28 @@
 :root{
   color-scheme:dark;
+  /* Cinzel: capitals modelled on Roman inscriptions (Trajan's Column). Cardo: a serif made for classicists and Latin. */
+  --head:'Cinzel','Trajan Pro','Palatino Linotype',Georgia,serif;
+  --body:'Cardo','Palatino Linotype','Book Antiqua',Georgia,serif;
   --bg:#17130d; --panel:#241d13; --panel2:#2f261a; --ink:#f0e4c8; --muted:#a8987a; --gold:#e8c36a; --red:#b3261e;
   --green:#6fcf6f; --blue:#7fb3e6; --line:#4a3d28;
 }
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:Georgia,'Palatino Linotype',serif}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px}
 button,select,input{font:inherit}
 #app{position:fixed;inset:0}
 .screen{position:absolute;inset:0;display:none;overflow:auto}
 .screen.active{display:block}
 .hidden{display:none!important}
-.muted{color:var(--muted)} .small{font-size:12px}
+.muted{color:var(--muted)} .small{font-size:14px}
 button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);padding:7px 14px;border-radius:4px;cursor:pointer}
 button:hover:not(:disabled){border-color:var(--gold);color:#fff}
 button:disabled{opacity:.45;cursor:not-allowed}
 button.primary{background:var(--red);border-color:#d6463c;font-weight:bold}
 button.danger{border-color:#8c2a22;color:#f0b6ac}
 select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);padding:5px 8px;border-radius:4px}
-h1,h2,h3{font-weight:normal;letter-spacing:.06em;margin:.2em 0}
+h1,h2,h3{font-family:var(--head);font-weight:600;letter-spacing:.07em;margin:.2em 0}
+h1,h2{font-weight:700}
+.big{font-family:var(--head)}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 
 #screen-menu{background:radial-gradient(ellipse at center,#3a2d1a 0%,#14100a 75%)}
@@ -103,17 +108,17 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .river{fill:none;stroke:#4f83a3;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
 .grat{stroke:#ffffff;stroke-opacity:.07;stroke-width:1}
 .gl{fill:#d9cba8;opacity:.55;font-family:system-ui,sans-serif}
-.region{fill:#2a2112;opacity:.5;letter-spacing:.3em;font-family:Georgia,serif}
-.tribe{fill:#2a2112;opacity:.62;font-style:italic;font-family:Georgia,serif}
-.rivlab{fill:#a9cfe6;opacity:.8;font-style:italic;font-family:Georgia,serif}
+.region{fill:#2a2112;opacity:.5;letter-spacing:.3em;font-family:var(--head)}
+.tribe{fill:#2a2112;opacity:.62;font-style:italic;font-family:var(--body)}
+.rivlab{fill:#a9cfe6;opacity:.8;font-style:italic;font-family:var(--body)}
 .city{fill:#f0e4c8;stroke:#14100a;stroke-width:1.2}
-.pl{fill:#f0e4c8;font-family:Georgia,serif;paint-order:stroke;stroke:#1b150b;stroke-width:3px;stroke-linejoin:round}
+.pl{fill:#f0e4c8;font-family:var(--body);paint-order:stroke;stroke:#1b150b;stroke-width:3px;stroke-linejoin:round}
 .route{stroke:#e8c36a66;stroke-dasharray:8 7;fill:none}
 .route.done{stroke:#e8c36add;stroke-dasharray:none}
 .node{cursor:default}
-.nn{font-weight:bold;font-family:Georgia,serif;fill:#14100a}
-.nl{fill:#fff5dc;font-family:Georgia,serif;font-weight:bold;paint-order:stroke;stroke:#14100a;stroke-width:3.5px;stroke-linejoin:round}
-.fl{fill:#e6d9b6;opacity:.9;font-family:Georgia,serif;paint-order:stroke;stroke:#14100a;stroke-width:3px;text-anchor:middle}
+.nn{font-weight:bold;font-family:var(--head);fill:#14100a}
+.nl{fill:#fff5dc;font-family:var(--head);font-weight:600;paint-order:stroke;stroke:#14100a;stroke-width:3.5px;stroke-linejoin:round}
+.fl{fill:#e6d9b6;opacity:.9;font-family:var(--body);paint-order:stroke;stroke:#14100a;stroke-width:3px;text-anchor:middle}
 .pulse{fill:none;stroke:#e8c36a;animation:pulse 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
 @keyframes pulse{0%{opacity:.9;transform:scale(.8)}100%{opacity:0;transform:scale(1.5)}}
 .armylist{margin:0;padding-left:18px;columns:2;font-size:14px}
@@ -180,7 +185,7 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .wiz .main{display:flex;flex-direction:column;gap:12px}
 .wiz .stepbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
 .wiz .dot{width:11px;height:11px;border-radius:50%;background:#0006;border:1px solid var(--line)}.wiz .dot.done{background:var(--gold);border-color:var(--gold)}.wiz .dot.now{border-color:var(--gold);box-shadow:0 0 0 3px #e8c36a33}
-.wiz .q{font-size:22px;color:var(--gold);letter-spacing:.04em;margin:0}
+.wiz .q{font-family:var(--head);font-weight:600;font-size:21px;color:var(--gold);letter-spacing:.05em;margin:0}
 .wiz .ocards{grid-template-columns:1fr;gap:10px}
 .wiz .ocard{padding:14px 16px;font-size:15px}.wiz .ocard ul{font-size:13.5px;margin-top:4px}
 .wiz .nav{display:flex;justify-content:space-between;gap:10px;margin-top:4px}
@@ -200,10 +205,10 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 #campsvg{display:block;width:100%;height:auto}
 .bld{cursor:pointer;outline:none}.bld .hit{fill:transparent;stroke:transparent;stroke-width:3}
 .bld:hover .hit,.bld:focus-visible .hit{stroke:var(--gold);fill:#e8c36a1c}
-.bl{font:bold 17px Georgia,serif;fill:#fff5dc;paint-order:stroke;stroke:#14100a;stroke-width:4px;stroke-linejoin:round}
-.bs{font:13px Georgia,serif;fill:#e6d9b6;paint-order:stroke;stroke:#14100a;stroke-width:3px}
+.bl{font:600 16px var(--head);fill:#fff5dc;paint-order:stroke;stroke:#14100a;stroke-width:4px;stroke-linejoin:round}
+.bs{font:14px var(--body);fill:#e6d9b6;paint-order:stroke;stroke:#14100a;stroke-width:3px}
 .newb{font:bold 8px system-ui,sans-serif;fill:#2a1a08}
-.plotq{font:bold 40px Georgia,serif;fill:#e8c36a;opacity:.25}
+.plotq{font:700 40px var(--head);fill:#e8c36a;opacity:.25}
 .pulsebox{fill:none;stroke:#ffe9a8;stroke-width:4;animation:pulsebox 1.3s ease-in-out infinite}
 @keyframes pulsebox{50%{stroke-opacity:.2}}
 .campbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
@@ -218,7 +223,7 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 #modal .box.drill{width:min(580px,94vw);text-align:center}
 #modal .box.drill canvas{width:100%;height:auto;border-radius:6px;border:1px solid var(--line);display:block;margin:8px 0}
 .drlist{margin:8px auto;border-collapse:collapse;text-align:left}.drlist td{padding:3px 12px;font-size:14px}
-#dr-cmd{font:bold 30px Georgia,serif;color:var(--gold);letter-spacing:.04em;margin-top:4px}
+#dr-cmd{font:700 28px var(--head);color:var(--gold);letter-spacing:.04em;margin-top:4px}
 #dr-en{min-height:20px}
 .drbar{height:8px;background:#000a;border-radius:4px;overflow:hidden;margin:10px 0}.drbar i{display:block;height:100%;width:100%;background:var(--gold)}
 .drbtn{min-width:96px;padding:10px 12px}.drbtn small{display:block;color:var(--muted);font-size:11px}
@@ -240,3 +245,9 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 
 .regimen{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch}
 .regimen .pill{align-self:flex-start;margin:2px 0}
+
+/* Cardo has a small x-height: nudge secondary text up so it stays readable */
+small,.eff,.kvl,.pres,.drlist td{font-size:inherit}
+table{font-size:15px}
+.act small,.ocard span.t,.regimen .t{font-size:14px}
+.ucard{font-size:13px}

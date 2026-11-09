@@ -20,6 +20,7 @@ const artScript = `<script>window.__LEGIO_ART__=${JSON.stringify(art)};</script>
 
 mkdirSync('dist', { recursive: true });
 const title = 'Legio Campaign';
-writeFileSync('dist/legio.html', `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title><style>${css}</style></head><body>${body}${artScript}<script>${js}</script></body></html>`);
-writeFileSync('dist/legio.artifact.html', `<title>${title}</title>\n<style>${css}\nhtml,body{height:100%;margin:0;overflow:hidden}</style>\n${body}\n${artScript}\n<script>${js}</script>\n`);
+const fonts = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&family=Cinzel:wght@400;600;700&display=swap">';
+writeFileSync('dist/legio.html', `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${fonts}<style>${css}</style></head><body>${body}${artScript}<script>${js}</script></body></html>`);
+writeFileSync('dist/legio.artifact.html', `<title>${title}</title>\n${fonts}\n<style>${css}\nhtml,body{height:100%;margin:0;overflow:hidden}</style>\n${body}\n${artScript}\n<script>${js}</script>\n`);
 console.log('built dist/legio.html and dist/legio.artifact.html', (js.length / 1024).toFixed(0) + 'KB js');
