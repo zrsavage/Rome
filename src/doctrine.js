@@ -11,6 +11,8 @@ export const DOCTRINES = [
     text: 'March at the run. Units move about 45% faster but tire fast. Shift+right-click the ground to sprint, or an enemy to charge.' },
   { id: 'holdfire', name: 'Fire Discipline', key: 'J', wins: 2, trait: 'tactics', req: 1, gold: 50,
     text: 'Missile troops stop shooting on command (to save their ammunition for the right moment) and start again. Press J.' },
+  { id: 'extend', name: 'The Extended Line', key: 'L, or Alt+right-drag', wins: 2, trait: 'drill', req: 2, gold: 90,
+    text: 'Stretch a cohort into a thinner, wider line (press L to cycle, or hold Alt while drawing a battle line to fill it). More men fight at once and it covers more ground, but with no depth behind it casualties shake it faster and charges bite deeper.' },
   { id: 'testudo', name: 'The Testudo', key: 'T', wins: 3, trait: 'drill', req: 1, gold: 80,
     text: 'Locked shields, every way. Missiles glance off and charges bite less, but the cohort crawls and fights weakly. Press T.' },
   { id: 'guard', name: 'Guard and Escort', key: 'right-click a friend', wins: 3, trait: 'tactics', req: 1, gold: 80,

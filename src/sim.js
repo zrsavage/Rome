@@ -25,7 +25,7 @@ const PASS_SPEED = 0.3;
 const FRONT_GRIND = 0.8, FLANK_DMG = 1.5, REAR_DMG = 2.2;
 const FLANK_MORALE = 1.0, REAR_MORALE = 2.0, SURROUND_MORALE = 1.2;
 // Command: the general's banner sets a radius inside which Roman cohorts recover and rally well. Charges need fresh, steady men.
-const CMD_R = 240, GEN_SPEED = 75, ALL_ORDERS = ['hold', 'fallback', 'holdfire', 'testudo', 'sprint', 'guard', 'rally', 'relieve', 'pursue', 'wedge', 'orbis'];
+const CMD_R = 240, GEN_SPEED = 75, ALL_ORDERS = ['hold', 'fallback', 'holdfire', 'extend', 'testudo', 'sprint', 'guard', 'rally', 'relieve', 'pursue', 'wedge', 'orbis'];
 const hgt = (b, u) => elevAt(b.scn, u.x, u.y) / 40;   // height in 'hill units': 1 is an ordinary hilltop
 const SIGHT = 520, SPRINT = 1.45;
 let UID = 1;
@@ -68,7 +68,8 @@ export class Unit {
   get present() { return this.state !== 'gone' && this.state !== 'dead'; }
   updateDims() {
     const t = this.type;
-    this.front = Math.max(3, Math.sqrt(this.men * 3 * t.space));
+    const baseFront = Math.max(3, Math.sqrt(this.men * 3 * t.space)), wide = this.formation === 'normal' ? this.wide || 1 : 1;   // an extended line is wider and so thinner
+    this.baseW = Math.max(14, baseFront * 2.7); this.front = baseFront * wide; this.effFront = baseFront * (1 + 0.55 * (wide - 1));   // extra frontage helps, but with diminishing returns
     const rows = Math.max(1, this.men / this.front);
     this.w = Math.max(14, this.front * 2.7 * (this.formation === 'close' ? 0.8 : 1));
     this.d = Math.max(12, rows * 3.6 * (t.cat === 'cav' ? 2.3 : 1) * (this.formation === 'close' ? 1.25 : 1));   // a horse is about four times as long as a man is wide
@@ -210,17 +211,25 @@ export class Battle {
   setEngage(u) { if (!u.active) return; u.stance = 'aggressive'; if (u.order.kind === 'none') u.post = { x: u.x, y: u.y }; }
   toggleFormation(u) {
     if (!u.active || u.type.cat !== 'inf' || !this.orders.has('testudo')) return;
-    u.formation = u.formation === 'close' ? 'normal' : 'close';
+    u.formation = u.formation === 'close' ? 'normal' : 'close'; u.wide = 1;
     u.updateDims();
   }
+  // Extended line: the same men spread over more frontage, so more of them fight at once (more damage) and the unit covers more ground, but it is
+  // thinner in depth: casualties shake it more, and charges bite deeper into it. `w` runs from 1 (normal) to 2.4.
+  setWide(u, w) {
+    if (!u.active || u.type.cat !== 'inf' || !this.orders.has('extend')) return false;
+    if (u.formation !== 'normal') u.formation = 'normal';
+    u.wide = clamp(Math.round(w * 20) / 20, 1, 2.4); u.updateDims(); return true;
+  }
+  cycleWide(u) { const L = [1, 1.6, 2.2], i = L.findIndex(v => Math.abs(v - (u.wide || 1)) < 0.12); return this.setWide(u, L[(i + 1) % L.length]); }
   toggleWedge(u) {
     if (!u.active || u.type.cat !== 'inf' || !this.orders.has('wedge')) return;
-    u.formation = u.formation === 'wedge' ? 'normal' : 'wedge';
+    u.formation = u.formation === 'wedge' ? 'normal' : 'wedge'; u.wide = 1;
     u.updateDims();
   }
   toggleOrbis(u) {
     if (!u.active || u.type.cat !== 'inf' || !this.orders.has('orbis')) return;
-    u.formation = u.formation === 'orb' ? 'normal' : 'orb';
+    u.formation = u.formation === 'orb' ? 'normal' : 'orb'; u.wide = 1;
     u.updateDims();
   }
   // ---------- command ----------
@@ -674,7 +683,7 @@ export class Battle {
     const terr = u.type.cat === 'cav' ? tr.cav : tr.speed;
     const e0 = elevAt(this.scn, u.x, u.y), grade = (elevAt(this.scn, u.x + Math.cos(u.f) * 12, u.y + Math.sin(u.f) * 12) - e0) / 12;   // uphill slows, downhill helps
     const slope = clamp(1 - (u.type.cat === 'cav' ? 2.2 : 1.5) * grade, 0.5, 1.15);
-    return u.type.speed * terr * slope * (1 - u.fatigue / 250) * (u.formation === 'close' ? 0.55 : u.formation === 'orb' ? 0.4 : u.formation === 'wedge' ? 0.92 : 1);
+    return u.type.speed * terr * slope * (1 - u.fatigue / 250) * (u.formation === 'close' ? 0.55 : u.formation === 'orb' ? 0.4 : u.formation === 'wedge' ? 0.92 : 1) * (1 - 0.06 * ((u.wide || 1) - 1));
   }
   // Turning with a dead zone: small errors are ignored, so units settle instead of trembling.
   faceSmooth(u, ang, dt, k = 1) {
@@ -779,6 +788,7 @@ export class Battle {
     if (def.officer) loss *= 1 - 0.04 * (def.officer.tactics || 0);
     if (def.perks.includes('steadfast')) loss *= 0.8;
     loss *= 1 - 0.15 * clamp(hgt(this, def), 0, 1.3);          // men on high ground hold their nerve
+    { const th = (def.wide || 1) - 1; loss *= 1 + 0.7 * th + 0.6 * th * th; }                  // a thin line has no depth to absorb its losses: casualties shake it harder
     if (def.lvl >= 2) loss *= 0.9;
     def.moralePending += loss;
     def.bodyAcc += n / def.type.perDot;
@@ -827,7 +837,7 @@ export class Battle {
     if (!u.fighting || !u.contacts.length) return;
     const targets = u.contacts.filter(e => e.present);
     if (!targets.length) return;
-    const fighters = Math.min(u.men, u.front * 2.4) * (t.cat === 'ranged' ? 0.5 : 1);
+    const fighters = Math.min(u.men, u.effFront * 2.4) * (t.cat === 'ranged' ? 0.5 : 1);
     const share = fighters / targets.length;
     const am = this.atkMult(u);
     u.sparkCd = (u.sparkCd || 0) - dt;
@@ -838,7 +848,8 @@ export class Battle {
       if (!u.prevIds.has(e.id) && e.state !== 'routing' && u.runT > 1.2 && t.charge > 0.3) {
         let imp = u.men * t.charge * 0.035 * ang.m * (u.formation === 'wedge' ? 1.4 : 1) * (u.disrupted > 0 ? 0.5 : 1) * (u.perks.includes('shock') ? 1.25 : 1);
         imp *= e.formation === 'close' && ang.c === 1 ? 0.7 : 1;
-        imp *= 1 - (e.type.antiCharge || 0) * (e.state === 'idle' || e.stance === 'hold' ? 1 : 0.4);
+        imp *= 1 - Math.max(0, (e.type.antiCharge || 0) * (1 - 0.35 * ((e.wide || 1) - 1))) * (e.state === 'idle' || e.stance === 'hold' ? 1 : 0.4);
+        imp *= 1 + 0.3 * ((e.wide || 1) - 1);                    // a charge into a thin line goes deeper
         imp *= this.terr(e).def;
         imp *= 1 + 0.3 * clamp(hgt(this, u) - hgt(this, e), -1, 1);   // charging downhill hits harder, uphill softer
         if (u.morale < u.maxMorale * 0.5 || u.fatigue > 60) {        // spent or shaken men cannot deliver a charge
@@ -856,8 +867,8 @@ export class Battle {
       const def = e.state === 'routing' ? 0 : this.defOf(e, ang.c === 1);
       // head-on is a grind; flank and rear hits are decisive; a unit hit from the side or behind, or surrounded, fights back less
       const pressed = u.surrounded ? 0.7 : 1 - 0.15 * Math.min(3, u.flanked || 0);
-      const room = ang.c === 1 ? Math.min(1, 3 / Math.max(1, e.frontCount || 1)) : 1;   // only so many men can fight on one front
-      u.pending += share * t.atk * dt * am * ang.g * room * pressed * (1 - def) * routingMult * this.terr(e).def;
+      const room = ang.c === 1 ? Math.min(1, 3 * (e.wide || 1) / Math.max(1, e.frontCount || 1)) : 1;   // only so many men can fight on one front
+      u.pending += share * (1 + 0.25 * ((e.wide || 1) - 1)) * t.atk * dt * am * ang.g * room * pressed * (1 - def) * routingMult * this.terr(e).def;
       if (ang.c > 1 && e.state !== 'routing') e.morale -= (ang.c === 3 ? REAR_MORALE : FLANK_MORALE) * dt / targets.length;
       if (u.side === 'rome' && ang.c > 1 && e.state !== 'routing') this.stats[ang.c === 3 ? 'rearTime' : 'flankTime'] += dt / targets.length;
     }

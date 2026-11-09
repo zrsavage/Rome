@@ -27,7 +27,7 @@ export class BattleUI {
     this.r.buildBackground(scn); this.r.fit();
     { const rs = this.b.units.filter(u => u.side === 'rome'); if (rs.length) { this.r.cam.zoom = Math.max(this.r.minZoom, Math.min(0.9, this.r.cam.zoom * 3)); this.r.cam.x = rs.reduce((a, u) => a + u.x, 0) / rs.length; this.r.cam.y = rs.reduce((a, u) => a + u.y, 0) / rs.length - 160 / this.r.cam.zoom; this.r.clampCam(); } }
     this.refreshBottom(); this.setPause(true); this.setSpeed(1);
-    $('help-orders').innerHTML = [['hold', '<b>H</b> hold position &middot; <b>G</b> defend post'], ['fallback', '<b>R</b> fall back and rest'], ['holdfire', '<b>J</b> hold fire (missile troops)'], ['wedge', '<b>U</b> wedge'], ['sprint', '<b>Shift+right-click</b> sprint / charge'], ['guard', '<b>right-click a friendly unit</b> to guard it'], ['testudo', '<b>T</b> testudo'], ['orbis', '<b>O</b> orbis (hollow square)'], ['relieve', '<b>Y</b> relieve a tired cohort'], ['pursue', '<b>P</b> cavalry pursue routers'], ['rally', '<b>F</b> rally the line']].filter(([id]) => this.b.orders.has(id)).map(x => x[1]).join(' &middot; ');
+    $('help-orders').innerHTML = [['hold', '<b>H</b> hold position &middot; <b>G</b> defend post'], ['fallback', '<b>R</b> fall back and rest'], ['holdfire', '<b>J</b> hold fire (missile troops)'], ['extend', '<b>L</b> extend the line (thinner, wider); <b>Alt+right-drag</b> fills a drawn line'], ['wedge', '<b>U</b> wedge'], ['sprint', '<b>Shift+right-click</b> sprint / charge'], ['guard', '<b>right-click a friendly unit</b> to guard it'], ['testudo', '<b>T</b> testudo'], ['orbis', '<b>O</b> orbis (hollow square)'], ['relieve', '<b>Y</b> relieve a tired cohort'], ['pursue', '<b>P</b> cavalry pursue routers'], ['rally', '<b>F</b> rally the line']].filter(([id]) => this.b.orders.has(id)).map(x => x[1]).join(' &middot; ');
     $('btn-retreat').disabled = false;
     this.showBanner('DEPLOYMENT - press SPACE', 2500);
     this.last = performance.now(); this.acc = 0; this.hudT = 0;
@@ -89,7 +89,7 @@ export class BattleUI {
   selectGeneral() { if (!this.b.general) return; this.r.selection.clear(); this.genSel = true; this.r.genSel = true; this.refreshBottom(); this.refreshHud(); this.emit('general-select'); }
   select(ids, add = false) { this.genSel = false; this.r.genSel = false; if (!add) this.r.selection.clear(); ids.forEach(i => this.r.selection.add(i)); this.refreshBottom(); this.refreshHud(); this.emit('select', { ids }); }
 
-  issueMove(wx, wy, drag, ignore = false, sprint = false) {
+  issueMove(wx, wy, drag, ignore = false, sprint = false, fill = false) {
     if (this.genSel && this.b.general) { const g = drag ? { x: (drag.x0 + drag.x1) / 2, y: (drag.y0 + drag.y1) / 2 } : { x: wx, y: wy }; this.b.moveGeneral(g.x, g.y); this.emit('general-move'); return; }
     const us = this.selected(); if (!us.length) return;
     const b = this.b;
@@ -99,7 +99,8 @@ export class BattleUI {
     let ang, pts = [];
     us.sort((a, c) => (a.x - c.x));
     if (drag) {
-      const lay = dragLayout(us, drag); ang = lay.ang;                      // the line faces to the left of the way it was drawn
+      const lay = dragLayout(us, drag, fill && b.orders.has('extend')); ang = lay.ang;                      // the line faces to the left of the way it was drawn
+      if (fill && b.orders.has('extend')) lay.pts.forEach(p => b.setWide(p.u, p.wide));                      // Alt: stretch each unit to cover its share of the line
       lay.pts.forEach(p => b.setMove(p.u, Math.max(8, Math.min(WORLD.w - 8, p.x)), Math.max(8, Math.min(WORLD.h - 8, p.y)), ang, ignore, sprint));
       this.showBanner(`Line faces ${compass(ang)}`, 900); this.emit('move', { drag: true, count: us.length }); return;
     } else {
@@ -131,7 +132,7 @@ export class BattleUI {
       this.r.hover = hu ? hu.id : null;
       c.style.cursor = hu && hu.side === 'gaul' && this.selected().length ? 'pointer' : 'crosshair';
       if (left && (Math.abs(p.x - left.x) > 6 || Math.abs(p.y - left.y) > 6)) this.r.box = { x0: left.x, y0: left.y, x1: p.x, y1: p.y };
-      if (right && Math.hypot(p.x - right.x, p.y - right.y) > 14) { const a = this.r.toWorld(right.x, right.y); this.r.dragLine = { x0: a.x, y0: a.y, x1: w.x, y1: w.y }; }
+      if (right && Math.hypot(p.x - right.x, p.y - right.y) > 14) { const a = this.r.toWorld(right.x, right.y); this.r.dragLine = { x0: a.x, y0: a.y, x1: w.x, y1: w.y, fill: e.altKey && this.b.orders.has('extend') }; }
       if (this.pd) { this.r.cam.x = this.pd.cx - (p.x - this.pd.x) / this.r.cam.zoom; this.r.cam.y = this.pd.cy - (p.y - this.pd.y) / this.r.cam.zoom; this.r.clampCam(36); }
     });
     window.addEventListener('mouseup', (e) => {
@@ -151,7 +152,7 @@ export class BattleUI {
         this.r.box = null; left = null;
       } else if (e.button === 2 && right) {
         const dl = this.r.dragLine;
-        if (dl) this.issueMove(0, 0, dl, e.ctrlKey, e.shiftKey);
+        if (dl) this.issueMove(0, 0, dl, e.ctrlKey, e.shiftKey, e.altKey);
         else {
           const u = this.r.unitAt(this.b, w.x, w.y);
           if (u && u.side === 'gaul' && !this.genSel) this.issueAttack(u, e.shiftKey);
@@ -174,7 +175,7 @@ export class BattleUI {
       if (k === 'v') { this.r.showRange = !this.r.showRange; this.emit('range', { on: this.r.showRange }); }
       if (/^[1-9]$/.test(k) && !e.altKey) this.controlGroup(+k, e.ctrlKey || e.metaKey);
       if (['a', 'w', 's', 'd', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k) && !e.ctrlKey) this.keys.add(k);
-      const keyCmd = { h: 'hold', g: 'defend', r: 'fallback', t: 'testudo', o: 'orbis', u: 'wedge', y: 'relieve', p: 'pursue', j: 'holdfire', f: 'rally' }[k];
+      const keyCmd = { h: 'hold', g: 'defend', r: 'fallback', t: 'testudo', o: 'orbis', u: 'wedge', y: 'relieve', p: 'pursue', j: 'holdfire', f: 'rally', l: 'extend' }[k];
       if (keyCmd && !e.ctrlKey && !e.metaKey) this.cmd(keyCmd);
       if (k === 'e') this.selectGeneral();
       if (k === 'escape') this.select([]);
@@ -220,6 +221,7 @@ export class BattleUI {
       case 'defend': if (!need('hold')) break; sel.forEach(u => b.setEngage(u)); if (sel.length) { this.emit('engage', { count: sel.length }); this.showBanner('Defend post', 600); } break;
       case 'fallback': if (!need('fallback')) break; sel.forEach(u => b.fallBack(u)); if (sel.length) this.emit('fallback', { count: sel.length }); break;
       case 'testudo': if (need('testudo') && inf.length) { inf.forEach(u => b.toggleFormation(u)); this.emit('formation', { count: inf.length }); } break;
+      case 'extend': if (need('extend') && inf.length) { inf.forEach(u => b.cycleWide(u)); const w = inf[0].wide || 1; this.showBanner(w > 1 ? `Extended line x${w.toFixed(1)}: more men fight, but it is thin` : 'Normal depth', 1000); this.emit('formation', { count: inf.length }); } break;
       case 'wedge': if (need('wedge') && inf.length) { inf.forEach(u => b.toggleWedge(u)); this.emit('formation', { count: inf.length }); } break;
       case 'orbis': if (need('orbis') && inf.length) { inf.forEach(u => b.toggleOrbis(u)); this.emit('formation', { count: inf.length }); } break;
       case 'relieve': if (need('relieve') && inf.length) inf.forEach(u => b.relieve(u)); break;
@@ -234,7 +236,7 @@ export class BattleUI {
     const b = this.b, sel = this.selected(), el = $('hud-cmds');
     const has = (c) => sel.some(u => u.type.cat === c);
     const list = [['hold', 'Hold', 'H', b.orders.has('hold')], ['defend', 'Defend post', 'G', b.orders.has('hold')], ['fallback', 'Fall back', 'R', b.orders.has('fallback')],
-      ['testudo', 'Testudo', 'T', b.orders.has('testudo') && has('inf')], ['wedge', 'Wedge', 'U', b.orders.has('wedge') && has('inf')], ['orbis', 'Orbis', 'O', b.orders.has('orbis') && has('inf')], ['relieve', 'Relieve', 'Y', b.orders.has('relieve') && has('inf')],
+      ['extend', 'Extend', 'L', b.orders.has('extend') && has('inf')], ['testudo', 'Testudo', 'T', b.orders.has('testudo') && has('inf')], ['wedge', 'Wedge', 'U', b.orders.has('wedge') && has('inf')], ['orbis', 'Orbis', 'O', b.orders.has('orbis') && has('inf')], ['relieve', 'Relieve', 'Y', b.orders.has('relieve') && has('inf')],
       ['pursue', 'Pursue', 'P', b.orders.has('pursue') && has('cav')], ['holdfire', 'Hold fire', 'J', b.orders.has('holdfire') && has('ranged')]]
       .filter(x => x[3]).map(x => ({ id: x[0], label: x[1], key: x[2] }));
     if (this.genSel && b.orders.has('rally')) list.push({ id: 'rally', label: 'Rally', key: 'F' });
@@ -243,7 +245,7 @@ export class BattleUI {
     el.innerHTML = ''; if (!sel.length && !this.genSel) return;
     for (const c of list) {
       const btn = document.createElement('button'); btn.className = 'cmd'; btn.innerHTML = `${icon(c.id === 'defend' ? 'defend' : c.id, 15)}${c.label}<kbd>${c.key}</kbd>`;
-      const on = (c.id === 'hold' && sel.length && sel.every(u => u.stance === 'hold')) || (c.id === 'defend' && sel.length && sel.every(u => u.stance !== 'hold')) || (c.id === 'testudo' && sel.some(u => u.formation === 'close')) || (c.id === 'wedge' && sel.some(u => u.formation === 'wedge')) || (c.id === 'orbis' && sel.some(u => u.formation === 'orb')) || (c.id === 'holdfire' && sel.some(u => u.holdFire));
+      const on = (c.id === 'hold' && sel.length && sel.every(u => u.stance === 'hold')) || (c.id === 'defend' && sel.length && sel.every(u => u.stance !== 'hold')) || (c.id === 'testudo' && sel.some(u => u.formation === 'close')) || (c.id === 'extend' && sel.some(u => (u.wide || 1) > 1.05)) || (c.id === 'wedge' && sel.some(u => u.formation === 'wedge')) || (c.id === 'orbis' && sel.some(u => u.formation === 'orb')) || (c.id === 'holdfire' && sel.some(u => u.holdFire));
       if (on) btn.classList.add('on');
       btn.onclick = () => this.cmd(c.id); el.appendChild(btn);
     }
@@ -304,7 +306,7 @@ export class BattleUI {
     L.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 88, 88)}"><h3>${u.name}</h3><div class="muted">${t.blurb}</div>` +
       kv('Men', `${u.men} / ${u.maxMen}`) + kv('Morale', `${Math.round(u.morale)} / ${Math.round(u.maxMorale)}`) + kv('Fatigue', Math.round(u.fatigue) + '%') +
       kv('Experience', lvl) + kv('Drill', Math.round(u.drill)) +
-      (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics})` : 'none') + kv('Stance', u.stance === 'hold' ? 'Hold (never leaves)' : 'Defend post') + kv('Formation', u.formation === 'close' ? 'Testudo' : u.formation === 'orb' ? 'Orbis' : u.formation === 'wedge' ? 'Wedge' : 'Normal') + kv('Command', b.inCommand(u) ? 'in command' : 'OUT OF COMMAND') : '') +
+      (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics})` : 'none') + kv('Stance', u.stance === 'hold' ? 'Hold (never leaves)' : 'Defend post') + kv('Formation', u.formation === 'close' ? 'Testudo' : u.formation === 'orb' ? 'Orbis' : u.formation === 'wedge' ? 'Wedge' : 'Normal') + kv('Line', (u.wide || 1) > 1.05 ? `Extended x${u.wide.toFixed(1)}` : 'Normal depth') + kv('Command', b.inCommand(u) ? 'in command' : 'OUT OF COMMAND') : '') +
       (t.pilum ? kv('Pila volleys', u.pilumLeft) : '') + (t.range ? kv('Ammo', Math.max(0, Math.round(u.ammo / t.ammo * 100)) + '%') : '') +
       kv('State', u.state);
   }

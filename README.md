@@ -173,6 +173,13 @@ docs/DESIGN.md   scope, roadmap, open questions
 Balance is first-pass: on Miles an aggressive plan with cavalry beats every scenario; passive defence usually loses; Centurion
 and Imperator scale enemy size and morale. Art is procedural placeholder; AI-generated art is planned. See `docs/DESIGN.md`.
 
+## The extended line
+A cohort can be stretched into a **thinner, wider line** (the *Extended Line* doctrine, taught at the training ground after two wins). Press `L` to cycle normal, x1.6 and x2.2, or hold
+`Alt` while right-dragging a battle line to stretch every selected unit to cover its share of it (the preview shows the wider, shallower ghosts). Effects: more frontage so more men fight at once
+(with diminishing returns: +55% of the extra width counts), and room for more attackers; but with no depth to absorb losses, casualties shake it more (morale loss x(1 + 0.7t + 0.6t^2) for stretch t),
+a charge into it goes deeper (+30% per unit of stretch) and an extended unit takes a little more damage and moves a little slower. The unit panel shows "Extended x1.6".
+Balance note: in practice-battle tests it makes fights decisively faster (about 40% shorter) but with more routs at x1.6; results are noisy, so treat the numbers as a first pass.
+
 ## Facing a battle line
 Right-drag draws a battle line and the units form along it. **The line faces to the left of the way you draw it**, like walking along it: left to right faces north,
 right to left south, top to bottom east, bottom to top west. While you drag you see a ghost of each selected unit in its place, an arrow showing the facing and a

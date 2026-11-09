@@ -294,14 +294,15 @@ export class Renderer {
   drawDragPreview(ctx, b) {
     const d = this.dragLine; if (!d) return;
     const us = [...this.selection].map(id => b.byId(id)).filter(u => u && u.active && u.side === 'rome'); if (!us.length) return;
-    const lay = dragLayout(us, d), ca = Math.cos(lay.ang), sa = Math.sin(lay.ang), z = this.cam.zoom;
+    const lay = dragLayout(us, d, d.fill), ca = Math.cos(lay.ang), sa = Math.sin(lay.ang), z = this.cam.zoom;
     ctx.save(); ctx.strokeStyle = 'rgba(232,195,106,0.9)'; ctx.lineWidth = 2.4 / z; ctx.setLineDash([9 / z, 7 / z]); ctx.beginPath(); ctx.moveTo(d.x0, d.y0); ctx.lineTo(d.x1, d.y1); ctx.stroke(); ctx.setLineDash([]);
-    for (const p of lay.pts) { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(lay.ang); ctx.fillStyle = 'rgba(255,233,168,0.16)'; ctx.strokeStyle = 'rgba(255,233,168,0.8)'; ctx.lineWidth = 1.4 / z; ctx.fillRect(-p.u.d / 2, -p.u.w / 2, p.u.d, p.u.w); ctx.strokeRect(-p.u.d / 2, -p.u.w / 2, p.u.d, p.u.w);
-      ctx.beginPath(); ctx.moveTo(p.u.d / 2 + 2 / z, 0); ctx.lineTo(p.u.d / 2 + 14 / z, 0); ctx.stroke(); ctx.restore(); }
+    for (const p of lay.pts) { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(lay.ang); ctx.fillStyle = 'rgba(255,233,168,0.16)'; ctx.strokeStyle = 'rgba(255,233,168,0.8)'; ctx.lineWidth = 1.4 / z; const gw = (p.u.baseW || p.u.w) * (p.wide || 1), gd = p.u.d * (p.u.wide || 1) / (p.wide || 1);       // an extended unit is wider and shallower
+      ctx.fillRect(-gd / 2, -gw / 2, gd, gw); ctx.strokeRect(-gd / 2, -gw / 2, gd, gw);
+      ctx.beginPath(); ctx.moveTo(gd / 2 + 2 / z, 0); ctx.lineTo(gd / 2 + 14 / z, 0); ctx.stroke(); ctx.restore(); }
     const mx = (d.x0 + d.x1) / 2, my = (d.y0 + d.y1) / 2, L = 46 / z, tipx = mx + ca * L, tipy = my + sa * L;
     ctx.strokeStyle = '#ffe9a8'; ctx.fillStyle = '#ffe9a8'; ctx.lineWidth = 3 / z; ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(tipx, tipy); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(tipx + ca * 9 / z, tipy + sa * 9 / z); ctx.lineTo(tipx - sa * 7 / z, tipy + ca * 7 / z); ctx.lineTo(tipx + sa * 7 / z, tipy - ca * 7 / z); ctx.closePath(); ctx.fill();
-    ctx.font = `${13 / z}px Cardo, Georgia, serif`; ctx.textAlign = 'center'; ctx.lineWidth = 3 / z; ctx.strokeStyle = 'rgba(20,14,6,0.9)'; ctx.strokeText(`faces ${compass(lay.ang)}`, mx + ca * (L + 20 / z), my + sa * (L + 20 / z)); ctx.fillText(`faces ${compass(lay.ang)}`, mx + ca * (L + 20 / z), my + sa * (L + 20 / z));
+    ctx.font = `${13 / z}px Cardo, Georgia, serif`; ctx.textAlign = 'center'; ctx.lineWidth = 3 / z; ctx.strokeStyle = 'rgba(20,14,6,0.9)'; ctx.strokeText(`faces ${compass(lay.ang)}${d.fill ? ' (extended)' : ''}`, mx + ca * (L + 20 / z), my + sa * (L + 20 / z)); ctx.fillText(`faces ${compass(lay.ang)}${d.fill ? ' (extended)' : ''}`, mx + ca * (L + 20 / z), my + sa * (L + 20 / z));
     ctx.restore();
   }
 
