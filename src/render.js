@@ -214,9 +214,9 @@ export class Renderer {
     const x = p.x; let y = yy;
     const box = (yy2) => ({ x0: x - w / 2 - 2, x1: x + w / 2 + 2, y0: yy2 - 26, y1: yy2 + 7 });
     const clash = (b1) => placed.some(o => o.x0 < b1.x1 && o.x1 > b1.x0 && o.y0 < b1.y1 && o.y1 > b1.y0);
-    for (let tries = 0; tries < 10 && clash(box(y)); tries++) y -= 17;                 // nudge up until clear
+    for (const off of [0, -17, 17, -34, 34, -51]) { if (!clash(box(yy + off))) { y = yy + off; break; } }   // nudge to the nearest clear slot, never far
     placed.push(box(y));
-    if (yy - y > 8) { ctx.strokeStyle = 'rgba(240,230,200,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x, yy + 6); ctx.stroke(); }
+    if (Math.abs(yy - y) > 8) { ctx.strokeStyle = 'rgba(240,230,200,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x, yy + 6); ctx.stroke(); }
     ctx.globalAlpha = u.state === 'routing' ? 0.7 : 1;
     ctx.fillStyle = 'rgba(15,12,8,0.78)'; ctx.fillRect(x - w / 2, y - 13, w, 15);
     ctx.fillStyle = rome ? '#f0d9a8' : '#bcd6f2'; ctx.font = `bold ${fs}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
