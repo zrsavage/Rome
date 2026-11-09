@@ -47,3 +47,11 @@ top-down-shooter sprite.
 The daily ZeroGPU quota (about eight generations) ran out before the full set could be made. Prompts for the remaining unit types are in
 `docs/ART_SHOTLIST.md`; use the Qwen-Image-Fast style line "Chibi game sprite, high-angle view from above, ..., bold dark outlines, flat colors,
 solid pure white background".
+
+### Historical accuracy of the sprites (58 BC)
+`src/sprites.js` documents its sources in its header. Corrections made after review: legionaries wear the **mail shirt (lorica hamata) with doubled
+shoulder cape** and a **bronze Montefortino helmet** (no crest; segmentata is a century too late), carry the curved oblong **scutum with spindle boss** and
+the **pilum** (shown in hand until thrown, then the gladius). Gauls have **long oval shields with a spindle rib** (the round shield is a British type), common
+warriors are **bareheaded with lime-stiffened hair** and checked woollen tunics, nobles wear mail, a bronze helmet and a gold torc, and there is **no
+blue body-paint** (woad is a British story; the blue is only the team colour of dyed cloth). Standards: a Roman cohort **signum** (silver discs on a pole),
+and a Gallic **boar standard**.

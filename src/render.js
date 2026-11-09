@@ -200,13 +200,19 @@ export class Renderer {
         }
         // each man is a real top-down figure (see sprites.js): helmet or hair, shoulders, shield and weapon, facing the way the unit faces
         const cav = t.cat === 'cav', sz = cav ? Math.min(Math.max(sx * 1.5, 9), 26) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
-        ctx.drawImage(soldierSprite(u.typeKey, (k * 7 + u.id) % 3), xx - sz / 2, y - sz / 2, sz, sz);
+        ctx.drawImage(soldierSprite(u.typeKey, (k * 7 + u.id) % 3, u.typeKey !== 'legionary' || u.pilumLeft > 0), xx - sz / 2, y - sz / 2, sz, sz);   // a legionary who has thrown his pila draws the gladius
       }
     }
-    // standard: pole, crossbar, discs and a pennant (a gilded eagle-bearer for Rome, a boar standard for the Gauls)
-    ctx.fillStyle = '#3a2a18'; ctx.fillRect(-u.d / 2 - 12, -0.9, 12, 1.8);
-    if (rome) { ctx.fillStyle = '#e0bb55'; ctx.fillRect(-u.d / 2 - 12, -3.4, 1.8, 6.8); ctx.beginPath(); ctx.arc(-u.d / 2 - 9, 0, 1.6, 0, 7); ctx.arc(-u.d / 2 - 6, 0, 1.6, 0, 7); ctx.fill(); ctx.fillStyle = t.color; ctx.fillRect(-u.d / 2 - 6, 1.6, 5, 4.6); }
-    else { ctx.fillStyle = t.color; ctx.beginPath(); ctx.moveTo(-u.d / 2 - 12, -5); ctx.lineTo(-u.d / 2 - 2, 0); ctx.lineTo(-u.d / 2 - 12, 5); ctx.closePath(); ctx.fill(); ctx.fillStyle = t.trim; ctx.fillRect(-u.d / 2 - 9, -1, 4, 2); }
+    // standard: a Roman cohort's signum (pole hung with silver discs, a crossbar and a small hand or spearhead on top), or a Gallic boar standard
+    ctx.fillStyle = '#4a3418'; ctx.fillRect(-u.d / 2 - 12, -0.9, 12, 1.8);
+    if (rome) {
+      ctx.fillStyle = '#cfd4da'; for (const dx of [-10.5, -7, -3.5]) { ctx.beginPath(); ctx.arc(-u.d / 2 + dx, 0, 1.9, 0, 7); ctx.fill(); }
+      ctx.fillStyle = '#e0bb55'; ctx.fillRect(-u.d / 2 - 12.5, -3.4, 1.6, 6.8); ctx.fillRect(-u.d / 2 - 8.5, -3, 1.2, 6);
+      ctx.fillStyle = t.color; ctx.fillRect(-u.d / 2 - 6, 1.8, 4.6, 4);
+    } else {
+      ctx.fillStyle = '#d8c46a'; ctx.beginPath(); ctx.moveTo(-u.d / 2 - 12.5, 0); ctx.lineTo(-u.d / 2 - 15, -3.4); ctx.lineTo(-u.d / 2 - 11, -2); ctx.closePath(); ctx.fill();   // a boar's head
+      ctx.fillStyle = t.color; ctx.beginPath(); ctx.moveTo(-u.d / 2 - 9, 0); ctx.lineTo(-u.d / 2 - 1, 4.5); ctx.lineTo(-u.d / 2 - 1, -4.5); ctx.closePath(); ctx.fill(); ctx.fillStyle = t.trim; ctx.fillRect(-u.d / 2 - 6, -0.9, 3.5, 1.8);
+    }
     if (sel) { ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 2.2; ctx.strokeRect(-u.d / 2 - 2, -u.w / 2 - 2, u.d + 4, u.w + 4); }
     else if (this.hover === u.id) { ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(-u.d / 2 - 1, -u.w / 2 - 1, u.d + 2, u.w + 2); }
     if (u.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(0.4, u.flash / 0.22 * 0.4)})`; ctx.fillRect(-u.d / 2, -u.w / 2, u.d, u.w); }
