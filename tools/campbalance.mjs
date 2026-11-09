@@ -3,6 +3,7 @@
 // the tactician bot: the army's size after the battle (including wounded who return) and the win rate, against a baseline.
 // Unit-targeted options are applied to all three legion cohorts and the cost is multiplied by three, to lift the effect out of the noise.
 import { play } from './simtest.mjs';
+import { mulberry32 } from '../src/sim.js';
 import { planDrill } from '../src/camp.js';
 import { RAISE } from '../src/data.js';
 import { upgradeCost } from '../src/perks.js';
@@ -13,7 +14,9 @@ const FILTER = process.argv[4] || '';
 const DAY = 120, SUP = 1.5;
 const inf = (c) => c.cohorts.filter(h => h.type === 'legionary');
 const each = (c, f) => inf(c).forEach(f);
-const base = (c) => { c.cohorts.forEach(h => { h.condition = 70; }); c.fort = 0; c.hospital = 0; };
+// Every seed starts from a slightly different army (unit sizes, experience, drill, condition). Without this the battles are nearly
+// deterministic and flip between 'always wins' and 'always loses' on tiny changes, which makes any measurement meaningless.
+const base = (c, seed) => { const r = mulberry32(seed * 7 + 3); c.cohorts.forEach(h => { h.men = Math.round(h.maxMen * (0.78 + 0.22 * r())); h.xp += Math.round(r() * 40); h.drill = Math.min(100, h.drill + Math.round(r() * 12)); h.condition = Math.round(60 + r() * 20); }); c.fort = 0; c.hospital = 0; };
 const recruit = (n) => (c) => each(c, h => { const add = Math.min(n, h.maxMen - h.men), old = h.men; h.men += add; h.xp = Math.round(h.xp * old / h.men); });
 const gear = (kind) => (c) => each(c, h => { h.upg = { armour: 0, weapon: 0, ...(h.upg || {}) }; h.upg[kind]++; });
 const drill = (key) => (c) => each(c, h => { const p = planDrill(c, h, key, 'self'); h.xp += p.xp; h.drill = Math.min(100, h.drill + p.dr); h.condition = Math.max(25, h.condition + p.cond); h.men -= Math.round(p.risk * 0.015 * h.men); });
@@ -48,7 +51,7 @@ for (const v of VARIANTS) {
   const S = [], W = [];
   for (const i of SCENS) for (let n = 0; n < SEEDS; n++) {
     let baseStart = 0;
-    const r = play('tactician', i, 'normal', 1000 + n, (c) => { base(c); baseStart = c.cohorts.reduce((a, h) => a + h.men, 0); v.mut(c); });
+    const r = play('tactician', i, 'normal', 1000 + n, (c, seed) => { base(c, seed); baseStart = c.cohorts.reduce((a, h) => a + h.men, 0); v.mut(c); });
     S.push(r.rows.filter(x => x.cohortId != null).reduce((a, x) => a + x.endMen, 0) - baseStart); W.push(r.outcome === 'victory' ? 100 : 0);
   }
   res[v.name] = { S: stats(S), W: stats(W), cost: v.cost, n: S.length };

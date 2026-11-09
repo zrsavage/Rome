@@ -22,7 +22,7 @@ function campaignAt(i, difficulty) {
 export { campaignAt };
 export function play(strategy, i, difficulty, seed, mutate = null) {
   const scn = SCENARIOS[i], c = campaignAt(i, difficulty);
-  if (mutate) mutate(c);   // camp decisions applied before the battle (used by tools/campbalance.mjs)
+  if (mutate) mutate(c, seed);   // camp decisions applied before the battle (used by tools/campbalance.mjs)
   const m = modsOf(c);
   const b = new Battle(scn, romeSpecs(c, scn), { difficulty, seed, fort: c.fort, recovery: m.recovery, moraleBonus: m.morale });
   const rome = b.units.filter(u => u.side === 'rome');
