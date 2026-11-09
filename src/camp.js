@@ -10,15 +10,33 @@ import { BUILDINGS, sceneSvg, advice, unlockedBuildings } from './campscene.js';
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pct = (v, m) => Math.max(0, Math.min(100, v / m * 100));
 export const totalMen = (c) => c.cohorts.reduce((a, h) => a + h.men, 0);
+// What to drill is a real decision: each regimen pays off differently and costs something.
+export const REGIMENS = {
+  formation: { name: 'Formation drill', text: 'Close order, wheeling and the testudo. Builds discipline and cohesion, and spares the men.', xp: 0.6, dr: 1.6, cond: -3, risk: 0, trait: 'drill', sup: 8,
+    seq: [['Procedite!', 'Advance!', 'advance'], ['Sinistrorsum!', 'Wheel left!', 'left'], ['Testudinem formate!', 'Form the testudo!', 'testudo'], ['State!', 'Halt!', 'halt']] },
+  weapons: { name: 'Weapons practice', text: 'Pila, gladius and shield against stakes and each other. Builds experience fast, but it tires the men and some get hurt.', xp: 1.6, dr: 0.6, cond: -9, risk: 0.2, trait: 'tactics', sup: 8,
+    seq: [['Pila mittite!', 'Throw pila!', 'volley'], ['Gladios stringite!', 'Draw swords!', 'jab'], ['Scuta!', 'Shields up!', 'testudo'], ['State!', 'Halt!', 'halt']] },
+  field: { name: 'Field exercises', text: 'A mock engagement across rough ground. A bit of everything, but it is the most tiring and costs extra supplies.', xp: 1.1, dr: 1.1, cond: -13, risk: 0.1, trait: 'tactics', sup: 14,
+    seq: [['Procedite!', 'Advance!', 'advance'], ['Pila mittite!', 'Throw pila!', 'volley'], ['Dextrorsum!', 'Wheel right!', 'right'], ['State!', 'Halt!', 'halt']] }
+};
+// The centurion's advice for the next battle, so the choice is informed.
+const TRAINING_ADVICE = {
+  ford: 'Warbands will test the fords and hit hard. A steady, well-drilled line decides this fight.',
+  arar: 'You will catch them strung out. Experienced men cut them down fast and lose fewer of their own.',
+  convoy: 'Raiders will strike from several sides at once. Cohesion matters more than killing power.',
+  oppidum: 'Fighting uphill is costly. Seasoned troops matter, but do not send exhausted men up that slope.',
+  silva: 'You will be ambushed on both flanks. A century that can turn and re-form quickly will survive it.',
+  bibracte: 'A long day with wave after wave of enemies. Build both skill and stamina, and keep the men fit.'
+};
 const bestOfficer = (c, trait) => Math.max(0, ...c.officers.filter(o => o.alive).map(o => o[trait]));
 
 export class Camp {
-  constructor(root, api) { this.root = root; this.api = api; this.sel = 1; this.c = null; this.msgs = []; this.open = null;
+  constructor(root, api) { this.root = root; this.api = api; this.sel = 1; this.c = null; this.msgs = []; this.open = null; this.regimen = null; this.leader = 'self';
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.open && this.root.classList.contains('active') && document.getElementById('modal').classList.contains('hidden') && document.getElementById('confirm').classList.contains('hidden')) { this.open = null; this.render(); } });
   }
 
   show(c) {
-    this.c = c; this.open = null; if (!c.cohorts.find(h => h.id === this.sel)) this.sel = c.cohorts[0].id;
+    this.c = c; this.open = null; this.regimen = null; if (!c.cohorts.find(h => h.id === this.sel)) this.sel = c.cohorts[0].id;
     this.render();
     // Drip-fed buildings: introduce each new one once, in plain words.
     const seen = c.seenBuildings = c.seenBuildings || [], fresh = unlockedBuildings(c).filter(b => !seen.includes(b.id));
@@ -47,21 +65,25 @@ export class Camp {
   selected() { return this.c.cohorts.find(h => h.id === this.sel); }
 
   // ----- actions -----
-  // Leading the drill yourself gives a reliable good result (a little better if you rose through the ranks).
-  selfQuality() { const p = this.c.player && this.c.player.picks; return p && p.career === 'ranks' ? 0.9 : 0.8; }
-  drill(mode) {
-    const c = this.c, h = this.selected();
-    if (!this.canAct() || c.supplies < 8) return;
-    const leader = mode === 'self' ? null : officerById(c, +mode);
-    const quality = leader ? 0.45 + 0.1 * leader.drill : this.selfQuality();
-    const who = leader ? `${leader.rank} ${leader.name}` : 'You';
-    const attached = officerById(c, h.officerId);
+  // Leading a drill yourself is the generalist choice: decent at everything (a little better if you rose through the ranks), but a specialist officer beats you at their own drill.
+  // An officer is judged on the trait the regimen needs: drill for formation work, tactics for weapons and field work.
+  selfQuality() { const p = this.c.player && this.c.player.picks; return p && p.career === 'ranks' ? 0.75 : 0.65; }
+  drillPlan(h, key, leaderId) {
+    const c = this.c, r = REGIMENS[key], leader = leaderId && leaderId !== 'self' ? officerById(c, +leaderId) : null;
+    const q = leader ? 0.45 + 0.1 * leader[r.trait] : this.selfQuality(), attached = officerById(c, h.officerId);
     const bonus = (1 + (attached ? 0.05 * attached.drill : 0)) * (leader && (leader.perks || []).includes('drillmaster') ? 1.25 : 1);
-    const xp = Math.round(24 * (0.6 + quality) * bonus), dr = Math.round(7 * (0.5 + quality) * bonus);
-    this.drillScene(h, leader, { xp, dr }, () => {
-      c.supplies -= 8; h.xp += xp; h.drill = Math.min(100, h.drill + dr); h.condition = Math.max(25, h.condition - 7);
-      this.note(`${who} drilled ${h.name}: +${xp} XP, +${dr} drill.`, 'good');
-      this.endDay(); this.render();
+    return { r, leader, quality: q, xp: Math.round(24 * (0.6 + q) * r.xp * bonus), dr: Math.round(7 * (0.5 + q) * r.dr * bonus), cond: r.cond, risk: r.risk, sup: r.sup };
+  }
+  runDrill() {
+    const c = this.c, h = this.selected(), key = this.regimen; if (!key) return;
+    const p = this.drillPlan(h, key, this.leader || 'self');
+    if (!this.canAct() || c.supplies < p.sup) return;
+    const who = p.leader ? `${p.leader.rank} ${p.leader.name}` : 'You';
+    this.drillScene(h, p, () => {
+      c.supplies -= p.sup; h.xp += p.xp; h.drill = Math.min(100, h.drill + p.dr); h.condition = Math.max(25, h.condition + p.cond);
+      let hurt = ''; if (p.risk && Math.random() < p.risk) { const n = Math.max(2, Math.round(h.men * (0.01 + Math.random() * 0.02))); h.men = Math.max(10, h.men - n); hurt = ` ${n} men were hurt in the practice.`; }
+      this.note(`${who} ran ${p.r.name.toLowerCase()} for ${h.name}: +${p.xp} XP, +${p.dr} drill.${hurt}`, hurt ? '' : 'good');
+      this.regimen = null; this.endDay(); this.render();
     });
   }
   forage(wide) {
@@ -131,35 +153,35 @@ export class Camp {
     h.officerId = oid || null; this.api.save(); this.render();
   }
 
-  // ----- a short scene of the drill being run, by you or by the officer you chose (click or press a key to skip) -----
-  drillScene(h, leader, gains, done) {
-    const c = this.c, modal = document.getElementById('modal'); modal.classList.remove('hidden');
+  // ----- a short scene of the chosen drill being run, by you or by the officer you chose (click or press a key to skip) -----
+  drillScene(h, plan, done) {
+    const c = this.c, modal = document.getElementById('modal'), leader = plan.leader; modal.classList.remove('hidden');
     const who = leader ? `${leader.rank} ${leader.name}` : (c.player && c.player.name) || 'You';
     const portrait = leader ? artSrc('officer', leader.id, 80, 100, { title: leader.name, rank: leader.rank }) : artSrc('officer', 'player', 80, 100, { title: (c.player && c.player.name) || 'You', rank: 'Legate' });
-    const SEQ = [
-      { t: 0.0, latin: 'Procedite!', en: 'Advance!', kind: 'advance' }, { t: 1.0, latin: 'Sinistrorsum!', en: 'Wheel left!', kind: 'left' },
-      { t: 2.0, latin: 'Testudinem formate!', en: 'Form the testudo!', kind: 'testudo' }, { t: 3.0, latin: 'State!', en: 'Halt!', kind: 'halt' }
-    ], END = 4.0, TOTAL = 5.0;
-    modal.innerHTML = `<div class="box drill" id="sc-box"><div class="cellflex" style="justify-content:center;gap:10px"><img class="portrait" alt="" src="${portrait}"><div style="text-align:left"><h2 style="margin:0">${esc(h.name)} drills</h2><div class="muted small">${leader ? `${esc(who)} runs the drill` : `${esc(who)} leads the drill in person`}</div></div></div>
+    const SEQ = plan.r.seq.map(([latin, en, kind], i) => ({ t: i, latin, en, kind })), END = 4.0, TOTAL = 5.0;
+    modal.innerHTML = `<div class="box drill" id="sc-box"><div class="cellflex" style="justify-content:center;gap:10px"><img class="portrait" alt="" src="${portrait}"><div style="text-align:left"><h2 style="margin:0">${esc(plan.r.name)}: ${esc(h.name)}</h2><div class="muted small">${leader ? `${esc(who)} runs the drill` : `${esc(who)} leads the drill in person`}</div></div></div>
       <canvas id="dr-cv" width="520" height="190"></canvas><div id="dr-cmd">&nbsp;</div><div id="dr-en" class="muted">&nbsp;</div>
-      <div class="drbar"><i id="dr-t"></i></div><div class="small muted" id="sc-hint">Click or press any key to skip</div></div>`;
-    const cv = modal.querySelector('#dr-cv'), g = cv.getContext('2d'), bar = modal.querySelector('#dr-t');
+      <div class="drbar"><i id="dr-t"></i></div><div class="small muted">Click or press any key to skip</div></div>`;
+    const g = modal.querySelector('#dr-cv').getContext('2d'), bar = modal.querySelector('#dr-t');
     const dots = []; for (let r = 0; r < 5; r++) for (let f = 0; f < 12; f++) dots.push({ r, f });
-    const pose = { y: 0, rot: 0, compact: 0 }, ease = (t) => 1 - (1 - t) * (1 - t), t0 = performance.now(); let raf = 0, finished = false, flash = 0;
+    const ease = (t) => 1 - (1 - t) * (1 - t), t0 = performance.now(); let raf = 0, finished = false;
     const draw = (t) => {
-      // scripted poses, each easing in over 0.6 s from the previous order
-      const step = SEQ.filter(s => t >= s.t).pop(), p = step ? Math.min(1, (t - step.t) / 0.6) : 0, e = ease(p);
-      pose.y = t < 1 ? -34 * (step ? e : 0) : -34; pose.rot = t < 1 ? 0 : t < 2 ? -0.5 * e : -0.5; pose.compact = t < 2 ? 0 : t < 3 ? e : 1; flash = step && step.kind === 'halt' ? 1 - e : 0;
-      if (t >= END) { pose.y *= 0.9; pose.rot *= 0.9; pose.compact *= 0.9; }
+      // fold the sequence into a pose: each order eases in over 0.6 s and later orders build on earlier ones
+      let y = 0, rot = 0, comp = 0, flash = 0, volley = 0, jab = 0;
+      SEQ.forEach(st => { const p = Math.max(0, Math.min(1, (t - st.t) / 0.6)), e = ease(p); if (t < st.t) return;
+        if (st.kind === 'advance') y -= 30 * e; else if (st.kind === 'left') rot -= 0.5 * e; else if (st.kind === 'right') rot += 0.5 * e; else if (st.kind === 'testudo') comp = e;
+        else if (st.kind === 'halt') flash = t - st.t < 0.6 ? 1 - e : 0; else if (st.kind === 'volley') volley = (t - st.t) < 0.9 ? (t - st.t) / 0.9 : 0; else if (st.kind === 'jab') jab = (t - st.t) < 1 ? Math.sin((t - st.t) * 18) : 0; });
+      if (t >= END) { const k = Math.max(0, 1 - (t - END) / 0.8); y *= k; rot *= k; comp *= k; }
       g.clearRect(0, 0, 520, 190); g.fillStyle = '#5c5230'; g.fillRect(0, 0, 520, 190); g.fillStyle = '#6b6038'; for (let i = 0; i < 18; i++) g.fillRect(i * 31 % 520, (i * 53) % 190, 22, 3);
       g.strokeStyle = 'rgba(255,255,255,.18)'; g.setLineDash([6, 6]); g.beginPath(); g.moveTo(10, 34); g.lineTo(510, 34); g.stroke(); g.setLineDash([]);
-      // the leader stands to the side with a vine staff and a crest
+      if (plan.r.seq.some(x => x[2] === 'volley' || x[2] === 'jab')) { g.fillStyle = '#7a5a2a'; for (const x of [150, 270, 390]) { g.fillRect(x - 2, 20, 4, 24); g.fillStyle = '#c9b27a'; g.beginPath(); g.arc(x, 20, 5, 0, 7); g.fill(); g.fillStyle = '#7a5a2a'; } }   // practice stakes
       g.save(); g.translate(46, 150); g.fillStyle = '#3a2a14'; g.fillRect(9, -22, 3, 40); g.fillStyle = leader ? '#a8322a' : '#e8c36a'; g.beginPath(); g.arc(0, 0, 9, 0, 7); g.fill();
       g.fillStyle = '#c9a07a'; g.beginPath(); g.arc(0, -9, 5, 0, 7); g.fill(); g.fillStyle = leader ? '#d8d2b0' : '#e8c36a'; g.fillRect(-9, -17, 18, 5); g.restore();
-      g.save(); g.translate(270, 112 + pose.y); g.rotate(pose.rot);
-      const sx = 17 - 7 * pose.compact, sy = 17 - 6 * pose.compact;
-      if (pose.compact > 0.35) { g.fillStyle = `rgba(232,195,106,${0.16 * pose.compact})`; g.fillRect(-6 * sx - 8, -2.5 * sy - 8, 12 * sx + 16, 5 * sy + 16); g.strokeStyle = `rgba(232,195,106,${0.9 * pose.compact})`; g.lineWidth = 2; g.strokeRect(-6 * sx - 8, -2.5 * sy - 8, 12 * sx + 16, 5 * sy + 16); }
-      for (const d of dots) { const x = (d.f - 5.5) * sx, y = (d.r - 2) * sy; g.fillStyle = pose.compact > 0.5 ? '#d8a03a' : '#b3261e'; g.beginPath(); g.arc(x, y, 4.4, 0, 7); g.fill(); g.fillStyle = '#e8c36a'; g.fillRect(x, y - 1.6, 3.4, 3.2); }
+      g.save(); g.translate(270, 112 + y); g.rotate(rot);
+      const sx = 17 - 7 * comp, sy = 17 - 6 * comp;
+      if (comp > 0.35) { g.fillStyle = `rgba(232,195,106,${0.16 * comp})`; g.fillRect(-6 * sx - 8, -2.5 * sy - 8, 12 * sx + 16, 5 * sy + 16); g.strokeStyle = `rgba(232,195,106,${0.9 * comp})`; g.lineWidth = 2; g.strokeRect(-6 * sx - 8, -2.5 * sy - 8, 12 * sx + 16, 5 * sy + 16); }
+      for (const d of dots) { const x = (d.f - 5.5) * sx, yy = (d.r - 2) * sy - (d.r === 0 ? jab * 6 : 0); g.fillStyle = comp > 0.5 ? '#d8a03a' : '#b3261e'; g.beginPath(); g.arc(x, yy, 4.4, 0, 7); g.fill(); g.fillStyle = '#e8c36a'; g.fillRect(x, yy - 1.6, 3.4, 3.2); }
+      if (volley > 0) { g.strokeStyle = '#2a1a0a'; g.lineWidth = 1.5; for (let f = 0; f < 12; f += 1) { const x = (f - 5.5) * sx, yy = -2 * sy - 10 - volley * 90 - (f % 3) * 8; g.beginPath(); g.moveTo(x, yy); g.lineTo(x, yy - 9); g.stroke(); } }
       g.restore();
       if (flash > 0.05) { g.fillStyle = `rgba(255,255,255,${flash * 0.25})`; g.fillRect(0, 0, 520, 190); }
     };
@@ -168,7 +190,7 @@ export class Camp {
       draw(t); bar.style.width = Math.min(100, t / TOTAL * 100) + '%';
       const step = SEQ.filter(s => t >= s.t).pop(), cmd = modal.querySelector('#dr-cmd'), en = modal.querySelector('#dr-en');
       if (t < END && step) { cmd.textContent = step.latin; en.textContent = step.en; }
-      else if (t >= END) { cmd.textContent = 'Dismissed.'; cmd.style.fontSize = '22px'; en.textContent = `+${gains.xp} experience, +${gains.dr} drill`; en.style.color = '#9be09b'; }
+      else if (t >= END) { cmd.textContent = 'Dismissed.'; cmd.style.fontSize = '22px'; en.textContent = `+${plan.xp} experience, +${plan.dr} drill${plan.cond < 0 ? `, condition ${plan.cond}` : ''}`; en.style.color = '#9be09b'; }
       if (t >= TOTAL) return end(); raf = requestAnimationFrame(frame);
     };
     const end = () => { if (finished) return; finished = true; cancelAnimationFrame(raf); window.removeEventListener('keydown', skip, true); modal.classList.add('hidden'); modal.innerHTML = ''; done(); };
@@ -197,9 +219,17 @@ export class Camp {
         <h4 class="sect">Your army</h4>${this.unitList(['str', 'cond'])}`;
       case 'training': {
         const drillers = offs.filter(o => o.drill >= 1), insOpts = '<option value="">- none -</option>' + drillers.map(o => `<option value="${o.id}" ${h.instructorId === o.id ? 'selected' : ''}>${esc(o.name)} (drill ${o.drill})</option>`).join('');
-        return `<p class="muted">1. Pick a cohort. 2. Choose who runs the drill. Each drill uses a day and 8 supplies.</p>${this.unitList(['str', 'exp', 'drill'])}
-          <h4 class="sect">Drill ${esc(h.name)}</h4><div class="actions">${btn('data-a="drill" data-m="self"', 'Lead the drill yourself', 'You shout the orders. A reliable good result.', c.supplies >= 8)}${drillers.map(o => btn(`data-a="drill" data-m="${o.id}"`, `Let ${esc(o.name)} do it`, `Drill ${o.drill}: ${o.drill >= 4 ? 'an excellent' : o.drill >= 2 ? 'a steady' : 'a modest'} result.`, c.supplies >= 8)).join('')}</div>
-          <h4 class="sect">Instructor</h4><div class="row small"><span class="muted">Trains ${esc(h.name)} automatically every day for 2 supplies:</span><select id="instr">${insOpts}</select></div>${note}`;
+        const lead = this.leader || 'self', adv = TRAINING_ADVICE[scn.id] || 'Decide what your men need most.';
+        const cards = Object.entries(REGIMENS).map(([k, r]) => { const p = this.drillPlan(h, k, lead), ok = c.supplies >= r.sup;
+          return `<button class="regimen ${this.regimen === k ? 'sel' : ''}" data-regimen="${k}" ${act && ok ? '' : 'disabled'}><b>${r.name}</b><span class="t">${esc(r.text)}</span>
+            <div class="eff"><span class="g">+${p.xp} experience</span><span class="g">+${p.dr} drill</span><span class="${r.cond <= -9 ? 'b' : ''}">condition ${r.cond}</span><span class="${r.risk ? 'b' : ''}">${r.risk ? `${Math.round(r.risk * 100)}% risk of hurt men` : 'no risk'}</span><span>${r.sup} supplies</span></div></button>`; }).join('');
+        const leaders = [['self', 'You', 'a decent all-rounder']].concat(offs.map(o => [String(o.id), `${o.rank} ${o.name}`, this.regimen ? `${REGIMENS[this.regimen].trait} ${o[REGIMENS[this.regimen].trait]}` : `drill ${o.drill}, tactics ${o.tactics}`]));
+        const chips = leaders.map(([id, n, sub]) => `<button class="chip ${String(lead) === id ? 'sel' : ''}" data-leader="${id}">${esc(n)}<small>${esc(sub)}</small></button>`).join('');
+        return `<div class="advicebox"><b>The centurion's advice.</b> ${esc(adv)}</div><p class="muted">Each drill uses one day. You cannot do everything, so decide what ${esc(h.name)} needs most.</p>${this.unitList(['str', 'exp', 'drill', 'cond'])}
+          <h4 class="sect">1. What should ${esc(h.name)} practise?</h4><div class="regimens">${cards}</div>
+          <h4 class="sect">2. Who leads it?</h4><div class="chips">${chips}</div><div class="small muted" style="margin-top:4px">${this.regimen ? `For ${REGIMENS[this.regimen].name.toLowerCase()}, an officer is judged on ${REGIMENS[this.regimen].trait}.` : 'Officers are better at some drills than others.'}</div>
+          <div class="row" style="margin-top:12px"><button class="primary" id="run-drill" ${act && this.regimen ? '' : 'disabled'}>${this.regimen ? 'Run the drill' : 'Choose a drill first'}</button></div>
+          <h4 class="sect">Instructor</h4><div class="row small"><span class="muted">Trains ${esc(h.name)} automatically every day for 2 supplies (a modest, steady gain):</span><select id="instr">${insOpts}</select></div>${note}`;
       }
       case 'depot': { const food = Math.ceil(totalMen(c) / 60 * modsOf(c).supplyUse), lg = bestOfficer(c, 'logistics');
         return `<div class="sumtiles"><div><b>${c.supplies}</b><span>Supplies</span></div><div><b>${food}</b><span>Eaten per day</span></div><div><b>${Math.floor(c.supplies / Math.max(1, food))}</b><span>Days of food</span></div></div>
@@ -248,9 +278,12 @@ export class Camp {
     if (q('#instr')) q('#instr').onchange = (e) => this.setInstructor(e.target.value ? +e.target.value : null);
     if (q('#assign')) q('#assign').onchange = (e) => this.assign(e.target.value ? +e.target.value : null);
     if (q('#assign-unit')) q('#assign-unit').onchange = (e) => { this.sel = +e.target.value; this.render(); };
+    R.querySelectorAll('[data-regimen]').forEach(b => b.onclick = () => { this.regimen = b.dataset.regimen; this.render(); });
+    R.querySelectorAll('[data-leader]').forEach(b => b.onclick = () => { this.leader = b.dataset.leader; this.render(); });
+    if (q('#run-drill')) q('#run-drill').onclick = () => this.runDrill();
     R.querySelectorAll('.act').forEach(b => b.onclick = () => {
       const a = b.dataset.a, m = b.dataset.m;
-      if (a === 'drill') this.drill(m); else if (a === 'forage') this.forage(m === '1'); else if (a === 'learn') this.learn(m); else if (a === 'upgrade') this.upgrade(m); else if (a === 'raise') this.raise(m);
+      if (a === 'forage') this.forage(m === '1'); else if (a === 'learn') this.learn(m); else if (a === 'upgrade') this.upgrade(m); else if (a === 'raise') this.raise(m);
       else if (a === 'tribute') this.tribute(m === '1'); else this[a]();
     });
     q('#march').onclick = () => this.api.march(); q('#tomap').onclick = () => this.api.map();

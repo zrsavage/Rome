@@ -223,3 +223,13 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .drbar{height:8px;background:#000a;border-radius:4px;overflow:hidden;margin:10px 0}.drbar i{display:block;height:100%;width:100%;background:var(--gold)}
 .drbtn{min-width:96px;padding:10px 12px}.drbtn small{display:block;color:var(--muted);font-size:11px}
 #dr-msg{min-height:20px;margin-top:8px}
+
+/* training decision */
+.advicebox{background:#3a2e1b;border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:4px;padding:8px 12px;margin-bottom:10px;line-height:1.4}
+.regimens{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.regimen{text-align:left;padding:12px;white-space:normal;line-height:1.35}
+.regimen b{display:block;color:var(--ink);margin-bottom:2px}.regimen .t{display:block;color:var(--muted);font-size:13px;margin-bottom:8px}
+.regimen.sel{border-color:var(--gold);background:#3a2e1b}
+.eff{display:flex;flex-direction:column;gap:2px;font-size:13px;color:#d9cba8}.eff .g{color:#9be09b}.eff .b{color:#ee9a8e}
+.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{text-align:left;padding:6px 12px}.chip small{display:block;color:var(--muted);font-size:11px}.chip.sel{border-color:var(--gold);background:#3a2e1b}
+@media (max-width:760px){.regimens{grid-template-columns:1fr}}
