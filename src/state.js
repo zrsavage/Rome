@@ -39,7 +39,7 @@ export const unlockedTypes = (c) => c.unlockedTypes || START_TYPES;
 
 export function newCampaign(difficulty = 'normal') {
   return {
-    version: 3, difficulty, hospital: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, daysLeft: SCENARIOS[0].daysToPrepare,
+    version: 3, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, daysLeft: SCENARIOS[0].daysToPrepare,
     gold: 300, supplies: 160, fort: 0, favour: 0, scouted: false, log: [], over: false,
     cohorts: [
       { id: 1, name: 'I Cohort',   type: 'legionary', men: 400, maxMen: 480, xp: 60, drill: 30, condition: 90, officerId: 1 },
@@ -112,16 +112,21 @@ export function applyResult(c, result, scn) {
   }
   c.lastLoss = result.rows.reduce((x, r) => x + r.casualties, 0); c.lastBack = result.rows.reduce((x, r) => x + Math.max(0, r.endMen - (r.startMen - r.casualties)), 0);
   c.gold += result.spoils.gold; c.supplies += result.spoils.supplies;
-  let recruits = result.spoils.recruits;
-  for (const h of c.cohorts) { const add = Math.min(recruits, h.maxMen - h.men); h.men += add; recruits -= add; }
-  // Provincial levies: every cohort regains a quarter of its missing men, and nothing ever falls below 35% (no soft-locks).
+  // Volunteers and provincial levies go into a pool of available soldiers; once the barracks is built you assign them to units with
+  // sliders. Until then (the very first camp) they are assigned automatically so a new player is not left with an unexplained pool.
+  const wonCampaign = (c.history || []).filter(h => h.id !== 'prologue' && h.outcome !== 'defeat').length + (scn.id !== 'prologue' && result.outcome !== 'defeat' ? 1 : 0);
+  const manual = wonCampaign >= 1; c.manpower = c.manpower || 0;
+  let recruits = result.spoils.recruits, pooled = 0;
+  if (manual) { c.manpower += recruits; pooled += recruits; } else for (const h of c.cohorts) { const add = Math.min(recruits, h.maxMen - h.men); h.men += add; recruits -= add; }
+  // Every unit's missing men come forward at a quarter, and nothing ever falls below 35% (no soft-locks).
   for (const h of c.cohorts) {
-    const before = h.men;
-    h.men = Math.min(h.maxMen, h.men + Math.round((h.maxMen - h.men) * 0.25 * modsOf(c).levy));
+    const before = h.men, levy = Math.round((h.maxMen - h.men) * 0.25 * modsOf(c).levy);
+    if (manual) { c.manpower += levy; pooled += levy; } else h.men = Math.min(h.maxMen, h.men + levy);
     const floor = Math.ceil(h.maxMen * 0.35);
     if (h.men < floor) { notes.push(`${h.name} is reduced to a remnant; the governor sends replacements.`); h.men = floor; }
     if (h.men > before && before > 0) h.xp = Math.round(h.xp * (0.6 + 0.4 * before / h.men));
   }
+  if (manual && pooled > 0) notes.push(`${pooled} soldiers are available to reinforce your units. Assign them at the Barracks with the sliders.`);
   c.history = c.history || [];
   c.history.push({ id: scn.id, outcome: result.outcome, day: c.day });
   if (scn.id === 'prologue') { if (result.outcome !== 'defeat') c.prologueDone = true; return notes; }

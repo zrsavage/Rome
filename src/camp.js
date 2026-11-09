@@ -52,12 +52,12 @@ const roman = (n) => { const m = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1,
 const bestOfficer = (c, trait) => Math.max(0, ...c.officers.filter(o => o.alive).map(o => o[trait]));
 
 export class Camp {
-  constructor(root, api) { this.root = root; this.api = api; this.sel = 1; this.c = null; this.msgs = []; this.open = null; this.regimen = null; this.leader = 'self'; this.recruitN = 20; this.scope = 'one'; this.raiseN = 1;
+  constructor(root, api) { this.root = root; this.api = api; this.sel = 1; this.c = null; this.msgs = []; this.open = null; this.regimen = null; this.leader = 'self'; this.recruitN = 20; this.hireN = 50; this.snap = null; this.scope = 'one'; this.raiseN = 1;
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.open && this.root.classList.contains('active') && document.getElementById('modal').classList.contains('hidden') && document.getElementById('confirm').classList.contains('hidden')) { this.open = null; this.render(); } });
   }
 
   show(c) {
-    this.c = c; this.open = null; this.regimen = null; if (!c.cohorts.find(h => h.id === this.sel)) this.sel = c.cohorts[0].id;
+    this.c = c; this.open = null; this.snap = null; this.regimen = null; if (!c.cohorts.find(h => h.id === this.sel)) this.sel = c.cohorts[0].id;
     this.render();
     // Drip-fed buildings: introduce each new one once, in plain words.
     const seen = c.seenBuildings = c.seenBuildings || [], fresh = unlockedBuildings(c).filter(b => !seen.includes(b.id));
@@ -143,14 +143,50 @@ export class Camp {
     c.cohorts.forEach(h => { h.condition = Math.min(100, h.condition + 20); const n = Math.round((h.maxMen - h.men) * 0.15); h.men += n; back += n; });
     this.note(`The men rest and mend their kit. ${back} lightly wounded rejoin the ranks.`, 'good'); this.endDay(); this.render();
   }
-  recruit() {
-    const c = this.c, h = this.selected(); if (!this.canAct()) return;
-    const tg = this.targets(h), plan = tg.map(x => ({ x, add: Math.min(this.recruitN || 20, x.maxMen - x.men) })), tot = plan.reduce((a, q) => a + q.add, 0), cost = tot * 3;
-    if (tot <= 0 || c.gold < cost) return;
-    c.gold -= cost; for (const { x, add } of plan) { const old = x.men; x.men += add; if (add) x.xp = Math.round(x.xp * old / x.men); }
-    this.note(`${tot} recruits join ${tg.length > 1 ? `${tg.length} units` : h.name} (new men dilute experience).`, ''); this.endDay(); this.render();
+  // Hiring volunteers puts men into the pool of available soldiers; you place them with the sliders.
+  hire() {
+    const c = this.c, n = this.hireN || 50, cost = n * 3; if (!this.canAct() || c.gold < cost) return;
+    c.gold -= cost; c.manpower = (c.manpower || 0) + n;
+    this.note(`${n} volunteers sign on. Assign them to units with the sliders.`, 'good'); this.endDay(); this.render();
   }
-
+  // ----- the muster roll: sliders move soldiers between the pool and your units (free, no day) -----
+  onSlide(id, val) {
+    const c = this.c, h = c.cohorts.find(x => x.id === id); if (!h) return;
+    this.snap = this.snap || { pool: c.manpower || 0, u: {} };
+    const sn = this.snap.u[id] || (this.snap.u[id] = { men0: h.men, xp0: h.xp }), cur = c.manpower || 0;
+    let v = Math.min(h.maxMen, Math.max(Math.min(30, h.men), Math.round(val)));
+    if (v - h.men > cur) v = h.men + cur;                       // you cannot assign men you do not have
+    c.manpower = cur - (v - h.men); h.men = v;
+    h.xp = v > sn.men0 ? Math.round(sn.xp0 * sn.men0 / v) : sn.xp0;   // new men are raw and dilute experience; taking men away does not cost the rest their training
+    const row = this.root.querySelector(`.mrow[data-id="${id}"]`);
+    if (row) { row.querySelector('input').value = v; row.querySelector('.mval').textContent = `${v}/${h.maxMen}`; const lv = levelFor(h.xp); row.querySelector('.mxp').innerHTML = `${LEVEL_NAMES[lv]}${h.xp < sn.xp0 ? ` <span class="b">(diluted by ${Math.round((1 - h.xp / Math.max(1, sn.xp0)) * 100)}%)</span>` : ''}`; row.classList.toggle('chg', v !== sn.men0); }
+    for (const el of this.root.querySelectorAll('.poolN')) el.textContent = c.manpower;
+  }
+  fillEvenly() {
+    const c = this.c, need = c.cohorts.filter(h => h.men < h.maxMen), M = need.reduce((a, h) => a + (h.maxMen - h.men), 0), pool = c.manpower || 0; if (!M || !pool) return;
+    let left = pool; const plan = need.map(h => ({ h, add: pool >= M ? h.maxMen - h.men : Math.floor(pool * (h.maxMen - h.men) / M) }));
+    left -= plan.reduce((a, q) => a + q.add, 0); for (const q of plan.sort((a, b) => (b.h.maxMen - b.h.men) - (a.h.maxMen - a.h.men))) { if (left <= 0) break; if (q.h.men + q.add < q.h.maxMen) { q.add++; left--; } }
+    for (const q of plan) this.onSlide(q.h.id, q.h.men + q.add);
+    this.api.save(); this.render();
+  }
+  undoMuster() {
+    if (!this.snap) return; const c = this.c;
+    for (const [id, sn] of Object.entries(this.snap.u)) { const h = c.cohorts.find(x => x.id === +id); if (h) { h.men = sn.men0; h.xp = sn.xp0; } }
+    c.manpower = this.snap.pool; this.snap = null; this.api.save(); this.render();
+  }
+  musterHtml(act) {
+    const c = this.c, pool = c.manpower || 0, big = c.cohorts.length > 8;
+    const rank = (x) => ({ inf: 0, ranged: 1, cav: 2 }[UNIT_TYPES[x.type].cat] ?? 3) * 10 + (x.type === 'legionary' ? 0 : 1);
+    const list = big ? [...c.cohorts].sort((a, b) => rank(a) - rank(b) || a.id - b.id) : c.cohorts; let last = null;
+    const rows = list.map(h => {
+      const sn = this.snap && this.snap.u[h.id], lv = levelFor(h.xp), grp = big && h.type !== last ? `<div class="mgrp">${esc(UNIT_TYPES[h.type].name)}</div>` : ''; last = h.type;
+      return grp + `<div class="mrow ${sn && sn.men0 !== h.men ? 'chg' : ''}" data-id="${h.id}"><div class="mname"><img class="uicon" alt="" src="${artSrc('unit', h.type, 40, 40)}"><div>${esc(h.name)}<div class="muted small">${esc(UNIT_TYPES[h.type].name)}</div></div></div>
+        <input class="mslide" type="range" min="${Math.min(30, h.men)}" max="${h.maxMen}" step="1" value="${h.men}" data-id="${h.id}" aria-label="Men in ${esc(h.name)}"><div class="mval">${h.men}/${h.maxMen}</div><div class="mxp small">${LEVEL_NAMES[lv]}${sn && h.xp < sn.xp0 ? ` <span class="b">(diluted by ${Math.round((1 - h.xp / Math.max(1, sn.xp0)) * 100)}%)</span>` : ''}</div><div class="mcond small muted">${Math.round(h.condition)}% fit</div></div>`;
+    }).join('');
+    const missing = c.cohorts.reduce((a, h) => a + (h.maxMen - h.men), 0);
+    return `<div class="muster"><div class="mhead"><div><b class="poolN big2">${pool}</b> <span>soldiers available</span><div class="small muted">Volunteers and levies arrive after battles; you can also hire more. Drag a slider right to send men to a unit, left to take them back. New men are raw and dilute experience. ${missing} places are empty across the army.</div></div>
+      <div class="row"><button id="m-fill" ${pool > 0 && missing > 0 ? '' : 'disabled'}>Fill evenly</button><button id="m-undo" ${this.snap ? '' : 'disabled'}>Undo changes</button></div></div><div class="mlist">${rows}</div></div>`;
+  }
   scout() { const c = this.c, free = hasPerk(c, 'spymaster'); if ((!free && !this.canAct()) || c.scouted) return; c.scouted = true; this.note(free ? 'Your spies report the enemy dispositions (no day spent).' : 'Scouts report the enemy dispositions.', 'good'); if (free) this.api.save(); else this.endDay(); this.render(); }
   // ----- management depth -----
   learn(spec) {
@@ -308,19 +344,19 @@ export class Camp {
       case 'barracks': {
         const prof = enemyProfile(scn), weary = c.cohorts.filter(x => x.condition < 75), thin = c.cohorts.slice().sort((a, b2) => a.men / a.maxMen - b2.men / b2.maxMen)[0];
         const adv = `${enemyLine(prof)} ${weary.length ? `${weary.length} unit${weary.length === 1 ? ' is' : 's are'} below 75% condition and will fight badly. ` : 'Your men are in good condition. '}${thin.men < thin.maxMen * 0.85 ? `${thin.name} is the thinnest at ${thin.men}/${thin.maxMen}.` : ''}`;
-        const room = commandLimit(c) - c.cohorts.length, n = this.recruitN || 20, tgs = this.targets(h), add = Math.min(n, h.maxMen - h.men), addAll = tgs.reduce((a, x) => a + Math.min(n, x.maxMen - x.men), 0), cost = addAll * 3, newXp = Math.round(h.xp * h.men / Math.max(1, h.men + add)), rk = Math.max(1, Math.min(this.raiseN || 1, room));
+        const room = commandLimit(c) - c.cohorts.length, hn = this.hireN || 50, hcost = hn * 3, rk = Math.max(1, Math.min(this.raiseN || 1, room));
         const floor = Math.round((0.45 - 0.05 * c.fort) * 100), nextFloor = Math.round((0.45 - 0.05 * Math.min(3, c.fort + 1)) * 100);
         const card = (attrs, name, text, effs, ok) => `<button class="regimen act" ${attrs} ${act && ok ? '' : 'disabled'}><b>${name}</b><span class="t">${text}</span><div class="eff">${effs.map(([x, cl]) => `<span class="${cl}">${x}</span>`).join('')}</div></button>`;
         const have = { ranged: c.cohorts.filter(x => UNIT_TYPES[x.type].cat === 'ranged').length, cav: c.cohorts.filter(x => UNIT_TYPES[x.type].cat === 'cav').length, inf: c.cohorts.filter(x => UNIT_TYPES[x.type].cat === 'inf').length };
         const sug = (t) => { const cat = UNIT_TYPES[t].cat; return (cat === 'ranged' && have.ranged < 1) || (cat === 'cav' && have.cav < 2) || (cat === 'inf' && have.inf < 4); };
         const raise = unlockedTypes(c).map(t => { const r = RAISE[t], ok = room > 0 && c.gold >= r.gold * rk && c.supplies >= r.supplies * rk;
           return card(`data-a="raise" data-m="${t}"`, `${esc(UNIT_TYPES[t].name)}${sug(t) ? ' <span class="pill">your army lacks this</span>' : ''}`, esc(TYPE_ROLE[t] || ''), [[`${r.men * rk} men${rk > 1 ? ` in ${rk} units` : ''}`, 'g'], [`${r.gold * rk} denarii`, 'b'], [`${r.supplies * rk} supplies`, '']], ok); }).join('');
-        return `<div class="advicebox"><b>The camp prefect's advice.</b> ${esc(adv)}</div>${this.unitList(['str', 'cond'])}
+        return `<div class="advicebox"><b>The camp prefect's advice.</b> ${esc(adv)}</div><h4 class="sect">Muster roll</h4>${this.musterHtml(act)}
           <h4 class="sect">Spend the day on...</h4><div class="regimens">
           ${card('data-a="rest"', 'Rest the army', 'Everyone sleeps, eats and mends kit.', [['+20 condition, every unit', 'g'], [`about ${c.cohorts.reduce((x, u) => x + Math.round((u.maxMen - u.men) * 0.15), 0)} lightly wounded rejoin`, 'g'], [`${weary.length} unit${weary.length === 1 ? '' : 's'} below 75% would benefit`, '']], true)}
-          ${card('data-a="recruit"', `Recruit for ${esc(tgs.length > 1 ? `${tgs.length} units` : h.name)}`, 'New men are green and dilute the unit\'s experience.', [[tgs.length > 1 ? `+${addAll} men in total` : `${h.men} -> ${h.men + add} men`, 'g'], [`experience ${h.xp} -> ${newXp}`, 'b'], [`${cost} denarii`, '']], addAll > 0 && c.gold >= cost)}
+          ${card('data-a="hire"', `Hire ${hn} volunteers`, 'Men sign on for pay. They join the pool of available soldiers; you place them with the sliders.', [[`+${hn} soldiers available`, 'g'], [`${hcost} denarii`, 'b'], ['takes a day', '']], c.gold >= hcost)}
           ${card('data-a="fortify"', `Fortify the camp (level ${c.fort}/3)`, 'The men dig ditch and palisade. Two days of work make a level.', [['+4 battle morale per level', 'g'], [`withdrawal draw needs ${floor}% -> ${nextFloor}% of your army`, 'g'], ['10 supplies', '']], c.supplies >= 10 && c.fort < 3)}</div>
-          ${this.scopeChips(h)}<div class="row small" style="margin-top:6px"><span class="muted">Recruit how many each?</span><div class="chips">${[20, 40].map(k => `<button class="chip ${n === k ? 'sel' : ''}" data-recruitn="${k}">${k} men</button>`).join('')}</div></div>
+          <div class="row small" style="margin-top:6px"><span class="muted">Hire how many?</span><div class="chips">${[20, 50, 100, 200].map(k => `<button class="chip ${hn === k ? 'sel' : ''}" data-hiren="${k}">${k} men</button>`).join('')}</div></div>
           <h4 class="sect">Raise a unit <span class="pill">${c.cohorts.length}/${commandLimit(c)} units</span></h4><div class="small muted">Your command limit grows with every battle you win or draw.${room <= 0 ? ' <b>You are at the limit.</b>' : ''}</div>${room > 1 ? `<div class="row small" style="margin-top:6px"><span class="muted">Raise how many at once?</span><div class="chips">${[1, 5, 10].filter(k => k <= room || k === 1).map(k => `<button class="chip ${rk === k ? 'sel' : ''}" data-raisen="${k}">${k} unit${k > 1 ? 's' : ''}</button>`).join('')}</div></div>` : ''}<div class="regimens" style="margin-top:6px">${raise}</div>${note}`; }
       case 'officers': { const pts = offs.reduce((a, o) => a + (o.points || 0), 0);
         const rows = c.officers.map(o => `<tr class="${o.alive ? '' : 'dead'}"><td><div class="cellflex"><img class="portrait" alt="" src="${artSrc('officer', o.id, 80, 100, { title: o.name, rank: o.rank })}"><div>${esc(o.rank)} ${esc(o.name)}<div class="muted small">${esc(o.bio)}</div></div></div></td><td>L${o.level}</td><td class="small">Tac ${o.tactics}<br>Drl ${o.drill}</td><td class="small">Log ${o.logistics}<br>Dip ${o.diplomacy}</td></tr>`).join('');
@@ -361,7 +397,7 @@ export class Camp {
     const visited = c.visitedBuildings = c.visitedBuildings || [], adv = advice(c, visited);
     const meta = this.open === 'praetorium' ? { name: 'Command Tent', sub: 'Your next battle and the march' } : BUILDINGS.find(b => b.id === this.open);
     const food = Math.ceil(totalMen(c) / 60 * modsOf(c).supplyUse);
-    const res = `<span>Denarii <b>${c.gold}</b></span><span>Supplies <b>${c.supplies}</b> <span class="muted small">(-${food}/day)</span></span><span title="Each activity uses one day">Days left <b>${c.daysLeft}</b> <span class="muted small">(1 per activity)</span></span>`;
+    const res = `<span>Denarii <b>${c.gold}</b></span>${(c.manpower || 0) > 0 ? `<span title="Assign them at the Barracks">Soldiers available <b class="poolN">${c.manpower}</b></span>` : ''}<span>Supplies <b>${c.supplies}</b> <span class="muted small">(-${food}/day)</span></span><span title="Each activity uses one day">Days left <b>${c.daysLeft}</b> <span class="muted small">(1 per activity)</span></span>`;
     this.root.innerHTML = `<div class="camp2"><header><h2>Camp - ${esc(scn.theater)}, ${esc(scn.year)}</h2><div class="res">${res}<span>Fort <b>${c.fort}/3</b></span><span>Goodwill <b>${c.favour > 0 ? '+' : ''}${c.favour}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
       <div class="advice">${adv.text}</div>
       <div class="scenewrap">${sceneSvg(c, { visited, focus: adv.focus })}</div>
@@ -369,7 +405,7 @@ export class Camp {
       ${this.open && meta ? `<div class="overlay" id="ov"><div class="panel" role="dialog" aria-label="${esc(meta.name)}"><div class="phead"><div><h2>${esc(meta.name)}</h2><div class="muted small">${esc(meta.sub)}</div></div><div class="pres">${res}</div><button id="p-close">Back to camp</button></div><div class="pbody">${this.panelBody(this.open)}</div>${this.msgs.length ? `<div class="plog">${this.msgs.slice(0, 3).map(m => `<div class="${m.kind}">${esc(m.msg)}</div>`).join('')}</div>` : ''}</div></div>` : ''}</div>`;
     const R = this.root, q = (s) => R.querySelector(s);
     R.querySelectorAll('.bld').forEach(g => { const open = () => { this.open = g.dataset.b; if (!visited.includes(this.open) && this.open !== 'praetorium') { visited.push(this.open); this.api.save(); } this.render(); }; g.onclick = open; g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }; });
-    if (q('#ov')) { q('#ov').onclick = (e) => { if (e.target.id === 'ov') { this.open = null; this.render(); } }; q('#p-close').onclick = () => { this.open = null; this.render(); }; }
+    if (q('#ov')) { q('#ov').onclick = (e) => { if (e.target.id === 'ov') { this.open = null; this.snap = null; this.render(); } }; q('#p-close').onclick = () => { this.open = null; this.snap = null; this.render(); }; }
     R.querySelectorAll('tr.clickable').forEach(tr => tr.onclick = () => { this.sel = +tr.dataset.id; this.render(); });
     if (q('#instr')) q('#instr').onchange = (e) => this.setInstructor(e.target.value ? +e.target.value : null);
     if (q('#assign')) q('#assign').onchange = (e) => this.assign(e.target.value ? +e.target.value : null);
@@ -377,7 +413,9 @@ export class Camp {
     R.querySelectorAll('[data-forage]').forEach(b => b.onclick = () => this.forageDo(b.dataset.forage));
     R.querySelectorAll('[data-scope]').forEach(b => b.onclick = () => { this.scope = b.dataset.scope; this.render(); });
     R.querySelectorAll('[data-raisen]').forEach(b => b.onclick = () => { this.raiseN = +b.dataset.raisen; this.render(); });
-    R.querySelectorAll('[data-recruitn]').forEach(b => b.onclick = () => { this.recruitN = +b.dataset.recruitn; this.render(); });
+    R.querySelectorAll('[data-hiren]').forEach(b => b.onclick = () => { this.hireN = +b.dataset.hiren; this.render(); });
+    R.querySelectorAll('input.mslide').forEach(inp => { inp.oninput = () => this.onSlide(+inp.dataset.id, +inp.value); inp.onchange = () => this.api.save(); });
+    if (q('#m-fill')) q('#m-fill').onclick = () => this.fillEvenly(); if (q('#m-undo')) q('#m-undo').onclick = () => this.undoMuster();
     R.querySelectorAll('[data-regimen]').forEach(b => b.onclick = () => { this.regimen = b.dataset.regimen; this.render(); });
     R.querySelectorAll('[data-leader]').forEach(b => b.onclick = () => { this.leader = b.dataset.leader; this.render(); });
     if (q('#run-drill')) q('#run-drill').onclick = () => this.runDrill();

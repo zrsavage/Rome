@@ -79,6 +79,14 @@ shows on the unit card (`- hold`), on the field (`H` after the count) and in the
 - The opening battle is easy and short (a few minutes): all the raiders are out there, coming from different distances.
 - Fatigue builds during long fights; press **R** to pull a tired unit back to rest and re-form.
 
+## Muster roll (soldiers and sliders)
+After the first campaign victory, volunteers (battle spoils) and provincial levies no longer drop into units automatically. They go into a
+**pool of available soldiers** shown at the top of the camp screen. Open the **Barracks** and use the sliders on the muster roll: drag a unit's
+slider right to send men to it, left to take men back to the pool (free, no day). New men are raw and dilute experience; taking men away
+does not. *Fill evenly* spreads the pool over the emptiest units and *Undo changes* restores the roll as it was when you opened it. You can
+also **hire** volunteers (3 denarii each, one day) into the pool. Marching with unassigned soldiers asks for confirmation. (The very first camp
+still fills units automatically so a new player is not left with an unexplained pool.)
+
 ## Army management depth
 
 - **Officer skill trees:** each level earns a skill point; 12 perks across tactics, drill, logistics and diplomacy (attached

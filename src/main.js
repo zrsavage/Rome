@@ -24,7 +24,8 @@ const store = {
 };
 const save = () => { if (campaign) store.set(key(campaign.slot), campaign); };
 
-const camp = new Camp($('screen-camp'), { save, map: () => showMap(), march: () => showBrief() });
+const marchGuard = async () => { const n = (campaign && campaign.manpower) || 0; if (n > 0 && !(await ask(`You have ${n} soldiers waiting at camp who are not assigned to any unit. March without them?`, 'March anyway', 'Assign them first'))) return; showBrief(); };
+const camp = new Camp($('screen-camp'), { save, map: () => showMap(), march: () => marchGuard() });
 const battle = new BattleUI();
 
 // ----- menu with save slots -----
@@ -59,7 +60,7 @@ initArt().then(() => { /* real art, if any, is picked up on the next render */ }
 function showMap() {
   renderMap($('screen-map'), campaign, {
     camp: () => { camp.show(campaign); show('screen-camp'); },
-    march: () => showBrief(),
+    march: () => marchGuard(),
     menu: () => toMenu()
   });
   show('screen-map');
