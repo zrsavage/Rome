@@ -233,3 +233,10 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .eff{display:flex;flex-direction:column;gap:2px;font-size:13px;color:#d9cba8}.eff .g{color:#9be09b}.eff .b{color:#ee9a8e}
 .chips{display:flex;gap:8px;flex-wrap:wrap}.chip{text-align:left;padding:6px 12px}.chip small{display:block;color:var(--muted);font-size:11px}.chip.sel{border-color:var(--gold);background:#3a2e1b}
 @media (max-width:760px){.regimens{grid-template-columns:1fr}}
+
+.regimens.two{grid-template-columns:repeat(2,1fr)}
+.regimen.act{display:block;width:100%}
+@media (max-width:760px){.regimens.two{grid-template-columns:1fr}}
+
+.regimen{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch}
+.regimen .pill{align-self:flex-start;margin:2px 0}

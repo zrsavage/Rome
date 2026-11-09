@@ -51,6 +51,7 @@ shows on the unit card (`- hold`), on the field (`H` after the count) and in the
 - **Officer skill trees:** each level earns a skill point; 12 perks across tactics, drill, logistics and diplomacy (attached
   officers help their unit, others help the whole army).
 - **Equipment:** upgrade armour and weapons per cohort (3 tiers, denarii + supplies + a day).
+- **Every building is a decision, not a checkbox:** each opens with an adviser's note tied to your army and the next enemy (quartermaster, camp prefect, armourer, physician, interpreter), live previews of what each choice does, and a real tradeoff. Foraging has four options (cautious, wide, requisition for goodwill, buy for coin); the Barracks weighs rest against recruiting (which dilutes experience) against fortifying; the Armourer shows per-man cost and effect; the Hospital shows how many men it would actually have saved last battle; the Hall shows what goodwill does to the enemy's size; scouting reveals reinforcement timing in the briefing.
 - **Instructors:** assign an officer to train a cohort automatically every day.
 - **Field hospital:** up to 3 levels, better wound recovery.
 - **Raise units:** build new cohorts, slingers, archers and cavalry; the command limit grows with each battle won or drawn;

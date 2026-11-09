@@ -81,6 +81,7 @@ export function applyResult(c, result, scn) {
       }
     }
   }
+  c.lastLoss = result.rows.reduce((x, r) => x + r.casualties, 0); c.lastBack = result.rows.reduce((x, r) => x + Math.max(0, r.endMen - (r.startMen - r.casualties)), 0);
   c.gold += result.spoils.gold; c.supplies += result.spoils.supplies;
   let recruits = result.spoils.recruits;
   for (const h of c.cohorts) { const add = Math.min(recruits, h.maxMen - h.men); h.men += add; recruits -= add; }

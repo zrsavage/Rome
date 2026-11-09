@@ -77,12 +77,16 @@ function showBrief(scnArg) {
   const total = Object.values(groups).reduce((a, b) => a + b, 0);
   const rnd = (n) => Math.max(0, Math.round(n / 50) * 50);
   const list = Object.entries(groups).map(([t, n]) => c.scouted ? `<li>${UNIT_TYPES[t].name}: <b>${Math.round(n)}</b> men</li>` : `<li>${UNIT_TYPES[t].name}: roughly <b>${rnd(n * 0.75)}-${rnd(n * 1.35)}</b></li>`).join('');
+  const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`;
+  const waveMap = {}; scn.reinforcements.filter(r => r.side !== 'rome').forEach(r => { const k = Math.round(r.at / 10) * 10; waveMap[k] = (waveMap[k] || 0) + Math.round(r.unit.men * scale); });
+  const waveKeys = Object.keys(waveMap).map(Number).sort((x, y) => x - y);
+  const waveText = waveKeys.length ? `<div class="small" style="margin-top:6px"><b>Scouts report reinforcements:</b><br>${waveKeys.map(k => `about ${mmss(k)}: ~${Math.round(waveMap[k] / 10) * 10} men`).join('<br>')}<br><span class="muted">If you clear the field early, the next wave comes sooner.</span></div>` : '<div class="muted small">Scouts report no reinforcements.</div>';
   const rome = totalMen(c);
   $('screen-brief').innerHTML = `<div class="panel-page"><div class="muted">${opening ? 'Opening battle' : `Act ${scn.act} - ${esc(scn.theater)}, ${esc(scn.year)} - Battle ${c.scenario + 1} of ${SCENARIOS.length}${scn.kind === 'named' ? ' - NAMED BATTLE' : ''}`}</div>
     <h2>${esc(scn.name)}</h2><img class="banner" alt="" src="${artSrc('scenario', scn.id, 800, 240, { scn })}"><p>${esc(scn.briefing)}</p>
     <div class="card"><h3>Objective</h3>${esc(scn.objective)}<br><span class="muted small">Time limit ${Math.round(scn.timeLimit / 60)} minutes. A well-ordered withdrawal (keeping at least ${Math.round((0.45 - 0.05 * c.fort) * 100)}% of your men; fortifications lower this) counts as a draw and earns partial spoils.${scn.rewardMult > 1.4 ? ' Historically a dark day for Rome: survival or victory pays handsomely.' : ''}</span></div>
     <div class="row" style="align-items:flex-start;margin-top:12px"><div class="card" style="flex:1"><h3>Your force (${rome} men)</h3><ul>${c.cohorts.map(h => `<li>${esc(h.name)} - ${h.men}</li>`).join('')}</ul></div>
-    <div class="card" style="flex:1"><h3>Enemy${c.scouted ? ' (scouted)' : ' (estimated)'} ~${c.scouted ? Math.round(total) : '?'}</h3><ul>${list}</ul>${c.scouted ? '<div class="muted small">Scouts warn that reinforcements may arrive during the battle.</div>' : '<div class="muted small">Without scouts, expect surprises.</div>'}</div></div>
+    <div class="card" style="flex:1"><h3>Enemy${c.scouted ? ' (scouted)' : ' (estimated)'} ~${c.scouted ? Math.round(total) : '?'}</h3><ul>${list}</ul>${c.scouted ? waveText : '<div class="muted small">Without scouts, expect surprises: you will not know how many reinforcements come, or when.</div>'}</div></div>
     <p class="muted small">Goodwill ${c.favour}. Fort ${c.fort}. Supplies ${c.supplies}${c.supplies < totalMen(c) / 60 * 2 ? ' - LOW, morale will suffer' : ''}.</p>
     ${opening ? '<p class="small" style="color:var(--gold)">After this fight you will see your army management screen, where you spend days between battles.</p>' : ''}
     <div class="row"><button class="primary" id="go">Deploy</button>${opening ? '<button id="back">Main menu</button>' : '<button id="back">Back to map</button>'}</div></div>`;
