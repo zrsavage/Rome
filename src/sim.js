@@ -91,7 +91,8 @@ export class Battle {
     this.retreating = false; this.broken = { rome: false, gaul: false };
     this.reinf = (scn.reinforcements || []).map(r => ({ ...r, done: false }));
     this.floats = [];
-    this.stats = { flankTime: 0, rearTime: 0, rangedKills: 0, pilum: 0, routs: { rome: 0, gaul: 0 } };
+    this.stats = { flankTime: 0, rearTime: 0, rangedKills: 0, pilum: 0, routs: { rome: 0, gaul: 0 }, outCmd: 0, engaged: 0, k: { rome: {}, gaul: {} }, rallied: 0, relieved: 0 };
+    this.rep = { series: [], events: [], nextSample: 0 };      // battle report: army strength over time and the moments that mattered
     this.objectives = (scn.objectives || []).map(o => ({ ...o, contested: false, presence: { rome: false, gaul: false } }));
     this.rule = scn.rule || null; this.hold = { rome: 0, gaul: 0 };
     this.fortLevel = opts.fort || 0; this.scouted = !!opts.scouted; this.shake = 0;
@@ -166,6 +167,15 @@ export class Battle {
     }
   }
   say(msg, kind = 'info') { this.log.push({ t: this.t, msg, kind }); }
+  mark(kind, text, side, extra) { if (this.rep.events.length < 120) this.rep.events.push({ t: this.t, kind, text, side, ...extra }); }
+  mloss(u, cause, v) { if (v > 0) { u.mc = u.mc || {}; u.mc[cause] = (u.mc[cause] || 0) + v; } }
+  sampleReport() {
+    if (this.t < this.rep.nextSample) return;
+    this.rep.nextSample = this.t + 6;
+    let rr = 0, gr = 0;
+    for (const u of this.units) if (u.state === 'routing') { if (u.side === 'rome') rr++; else gr++; }
+    this.rep.series.push({ t: Math.round(this.t), rome: Math.round(this.activeMen('rome')), gaul: Math.round(this.activeMen('gaul')), rr, gr });
+  }
   sumMen(side) { return this.units.filter(u => u.side === side).reduce((a, u) => a + u.men, 0); }
   activeMen(side) { return this.units.filter(u => u.side === side && u.active).reduce((a, u) => a + u.men, 0); }
   byId(id) { return this.units.find(u => u.id === id); }
@@ -256,9 +266,10 @@ export class Battle {
       if (u.state === 'routing') { u.morale = Math.max(u.morale, u.maxMorale * 0.58); this.rallyUnit(u); }
       else if (u.active) { u.morale = Math.min(u.maxMorale, u.morale + u.maxMorale * 0.18); u.disrupted = 0; }
     }
-    this.rallyCd = 90; this.say('The general rides the line - the cohorts steady!', 'good'); return true;
+    this.rallyCd = 90; this.say('The general rides the line - the cohorts steady!', 'good'); this.mark('rally', 'The general rides the line', 'rome'); this.stats.rallied++; return true;
   }
   rallyUnit(u) {
+    u.mc = {}; this.mark('unitrally', u.name, u.side);
     u.state = 'idle'; u.stance = 'hold'; u.fatigue = Math.max(u.fatigue, 40);
     if (u.side === 'rome') u.order = { kind: 'move', x: u.post.x, y: u.post.y, tf: null };
     else { u.order = { kind: 'none' }; u.post = { x: u.x, y: u.y }; }
@@ -280,7 +291,7 @@ export class Battle {
     const ux = u.x, uy = u.y, uf = u.f, bx = best.x, by = best.y;
     this.setMove(best, ux, uy, uf, true); best.stance = u.stance === 'hold' ? 'hold' : 'aggressive';
     this.setMove(u, bx, by, uf, true); u.order.back = true; u.stance = 'hold';
-    this.say(`${best.name} relieves ${u.name}.`, 'info'); return true;
+    this.say(`${best.name} relieves ${u.name}.`, 'info'); this.mark('relieve', `${best.name} relieves ${u.name}`, 'rome'); this.stats.relieved++; return true;
   }
   // Pursuit is an order, never a reflex: cavalry only ride down routers when you tell them to.
   pursue(u) {
@@ -366,7 +377,7 @@ export class Battle {
       if (ds > 36) this.setMove(u, u.slot.x, u.slot.y, S.fa, true); else { if (u.order.kind === 'move') u.order = { kind: 'none' }; this.faceSmooth(u, S.fa, 0.4, 1); }
       u.staged = !!S.lineHalted && ds < 70;
     } else if (u.role === 'wing') {
-      if (!u.wp) { const side = ((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x) >= 0 ? 1 : -1; u.wp = { x: rc.x - a.y * side * -1 * 0 + (-a.y) * side * 720 - a.x * 40, y: rc.y + a.x * side * 720 - a.y * 40 }; if (!this._wingSaid) { this._wingSaid = true; this.say('Gallic warbands are swinging wide around your flank!', 'warn'); } }
+      if (!u.wp) { const side = ((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x) >= 0 ? 1 : -1; u.wp = { x: rc.x - a.y * side * -1 * 0 + (-a.y) * side * 720 - a.x * 40, y: rc.y + a.x * side * 720 - a.y * 40 }; if (!this._wingSaid) { this._wingSaid = true; this.say('Gallic warbands are swinging wide around your flank!', 'warn'); this.mark('wing', 'Gallic warbands swing wide round your flank', 'gaul'); } }
       if (Math.hypot(u.wp.x - u.x, u.wp.y - u.y) > 160 && !u.wpDone) this.setMove(u, u.wp.x, u.wp.y, null, true);
       else { u.wpDone = true; if (S.surge || this.t - (S.t0 ?? this.t) > 60) attack(); else if (u.order.kind === 'move') u.order = { kind: 'none' }; }
     } else if (u.role === 'reserve') {
@@ -407,11 +418,11 @@ export class Battle {
     this.formLine(lines);
     if (!S.surge) {
       const staged = lines.filter(u => u.staged || u.contacts.some(e => e.active)).length;
-      if (!lines.length || (S.lineHalted && staged >= lines.length * 0.85) || (S.t0 !== null && this.t - S.t0 > 25)) { S.surge = true; S.surgeT = this.t; if (lines.length > 2) this.say('The Gallic line howls and surges forward!', 'warn'); }
+      if (!lines.length || (S.lineHalted && staged >= lines.length * 0.85) || (S.t0 !== null && this.t - S.t0 > 25)) { S.surge = true; S.surgeT = this.t; if (lines.length > 2) this.say('The Gallic line howls and surges forward!', 'warn'); this.mark('surge', 'The Gallic line surges forward', 'gaul'); }
     } else if (!S.commit) {
       const rs = this.units.filter(u => u.side === 'rome');
       const turned = this.stats.routs.gaul > 0 || this.stats.routs.rome > 0 || this.activeMen('rome') < this.startRome * 0.85;
-      if ((turned && this.t - S.surgeT > 20) || this.t - S.surgeT > 90) { S.commit = true; if (this.units.some(u => u.side === 'gaul' && u.active && u.role === 'reserve')) this.say('The Gallic champions are committed to the fight!', 'warn'); }
+      if ((turned && this.t - S.surgeT > 20) || this.t - S.surgeT > 90) { S.commit = true; if (this.units.some(u => u.side === 'gaul' && u.active && u.role === 'reserve')) this.say('The Gallic champions are committed to the fight!', 'warn'); this.mark('commit', 'The Gallic champions are committed', 'gaul'); }
     }
   }
   aiThink() {
@@ -464,7 +475,7 @@ export class Battle {
   // ---------- main step ----------
   update(dt) {
     if (this.result) return;
-    this.t += dt;
+    this.t += dt; this.sampleReport();
     for (const r of this.reinf) if (!r.done && this.t >= r.at) {
       r.done = true;
       if (r.side === 'rome') {
@@ -779,9 +790,11 @@ export class Battle {
     return Math.min(0.88, d) ;
   }
 
-  hit(att, def, n, ranged = false) {
+  hit(att, def, n, ranged = false, cause = null) {
     n = Math.min(n, def.men);
     if (n <= 0) return;
+    cause = cause || (ranged ? 'missile' : 'frontal');
+    const kk = this.stats.k[att.side]; kk[cause] = (kk[cause] || 0) + n;
     if (ranged && att.side === 'rome') this.stats.rangedKills += n;
     def.men -= n; def.casualties += n; att.kills += n; def.flash = 0.22; def.floatAcc = (def.floatAcc || 0) + n;
     let loss = n / def.maxMen * 130 * def.type.fragile * (ranged ? 0.55 : 1);
@@ -790,7 +803,7 @@ export class Battle {
     loss *= 1 - 0.15 * clamp(hgt(this, def), 0, 1.3);          // men on high ground hold their nerve
     { const th = (def.wide || 1) - 1; loss *= 1 + 0.7 * th + 0.6 * th * th; }                  // a thin line has no depth to absorb its losses: casualties shake it harder
     if (def.lvl >= 2) loss *= 0.9;
-    def.moralePending += loss;
+    def.moralePending += loss; this.mloss(def, cause, loss);
     def.bodyAcc += n / def.type.perDot;
     while (def.bodyAcc >= 1) {
       def.bodyAcc -= 1;
@@ -798,7 +811,7 @@ export class Battle {
       const c = Math.cos(def.f), sn = Math.sin(def.f);
       if (this.bodies.length < 1800) this.bodies.push({ x: def.x + c * dep - sn * lat, y: def.y + sn * dep + c * lat, side: def.side, a: this.rand() * 3.14 });
     }
-    if (def.men <= 0) { def.men = 0; def.state = 'dead'; this.say(`${def.name} is annihilated.`, def.side === 'rome' ? 'bad' : 'good'); }
+    if (def.men <= 0) { def.men = 0; def.state = 'dead'; this.mark('dead', def.name, def.side); this.say(`${def.name} is annihilated.`, def.side === 'rome' ? 'bad' : 'good'); }
   }
 
   combat(u, dt) {
@@ -828,7 +841,7 @@ export class Battle {
         u.pilumLeft--; u.pilumCd = 3; if (u.side === 'rome') this.stats.pilum++;
         const ang = this.angleMult(u, n.e);
         const kills = Math.round(u.men * 0.05 * (this.atkMult(u) / COMBAT_PACE) * (1 - n.e.type.def * 0.5) * (n.e.formation === 'close' ? 0.5 : 1));
-        this.hit(u, n.e, kills); n.e.moralePending += 3; n.e.disrupted = 6;
+        this.hit(u, n.e, kills, false, 'pilum'); n.e.moralePending += 3; this.mloss(n.e, 'pilum', 3); n.e.disrupted = 6;
         for (let i = 0; i < 8; i++) this.fx.push({ x1: u.x + (this.rand() - 0.5) * u.w, y1: u.y, x2: n.e.x + (this.rand() - 0.5) * n.e.w, y2: n.e.y + (this.rand() - 0.5) * n.e.d, life: 0.45, max: 0.45, kind: 'pilum' });
         if (u.side === 'rome') this.say(`${u.name} hurls its pila!`, 'info');
       }
@@ -857,9 +870,9 @@ export class Battle {
           if (u.side === 'rome' && !u.notedFalter) { u.notedFalter = true; this.say(`${u.name}'s charge falters - the men are spent.`, 'warn'); }
         } else u.notedFalter = false;
         if (!this.inCommand(u)) imp *= 0.7;                          // out of the general's sight, a charge goes in ragged
-        this.hit(u, e, Math.round(imp));
+        this.hit(u, e, Math.round(imp), false, 'charge');
         if (imp > 6) { this.addFx({ kind: 'clash', x: (u.x + e.x) / 2, y: (u.y + e.y) / 2, life: 0.6, max: 0.6, r: clamp(imp / 5, 9, 30) }); this.shake = Math.max(this.shake, Math.min(3, imp / 25)); }
-        e.moralePending += t.charge * 3 * ang.m;
+        e.moralePending += t.charge * 3 * ang.m; this.mloss(e, 'charge', t.charge * 3 * ang.m);
         if (u.side === 'gaul' && e.side === 'rome' && imp > 8) this.say(`${u.name} crashes into ${e.name}!`, 'warn');
         u.runT = 0;
       }
@@ -869,14 +882,15 @@ export class Battle {
       const pressed = u.surrounded ? 0.7 : 1 - 0.15 * Math.min(3, u.flanked || 0);
       const room = ang.c === 1 ? Math.min(1, 3 * (e.wide || 1) / Math.max(1, e.frontCount || 1)) : 1;   // only so many men can fight on one front
       u.pending += share * (1 + 0.25 * ((e.wide || 1) - 1)) * t.atk * dt * am * ang.g * room * pressed * (1 - def) * routingMult * this.terr(e).def;
-      if (ang.c > 1 && e.state !== 'routing') e.morale -= (ang.c === 3 ? REAR_MORALE : FLANK_MORALE) * dt / targets.length;
+      if (ang.c > 1 && e.state !== 'routing') { const ml = (ang.c === 3 ? REAR_MORALE : FLANK_MORALE) * dt / targets.length; e.morale -= ml; this.mloss(e, ang.c === 3 ? 'rear' : 'flank', ml); }
       if (u.side === 'rome' && ang.c > 1 && e.state !== 'routing') this.stats[ang.c === 3 ? 'rearTime' : 'flankTime'] += dt / targets.length;
     }
     // allocate the accumulated kills across targets evenly
     while (u.pending >= 1) {
       u.pending -= 1;
       const e = targets[Math.floor(this.rand() * targets.length)];
-      this.hit(u, e, 1);
+      const ac = this.angleMult(u, e).c;
+      this.hit(u, e, 1, false, ac === 3 ? 'rear' : ac === 2 ? 'flank' : 'frontal');
     }
   }
 
@@ -887,7 +901,8 @@ export class Battle {
       this.floats.push({ x: u.x + (this.rand() - 0.5) * u.w * 0.6, y: u.y - 4, text: '-' + Math.round(u.floatAcc), side: u.side, life: 1.5, max: 1.5 });
       u.floatAcc = 0; u.floatCd = 0.9;
     }
-    if (u.surrounded && u.state !== 'routing') u.morale -= SURROUND_MORALE * dt;
+    if (u.surrounded && u.state !== 'routing') { u.morale -= SURROUND_MORALE * dt; this.mloss(u, 'surround', SURROUND_MORALE * dt); }
+    if (u.side === 'rome' && u.state !== 'routing' && u.contacts.some(e => e.active)) { this.stats.engaged += dt; if (!this.inCommand(u)) this.stats.outCmd += dt; }
     if (u.moralePending > 0) {
       u.morale -= u.moralePending; u.moralePending = 0;
     }
@@ -899,9 +914,10 @@ export class Battle {
         u.state = 'routing'; u.order = { kind: 'none' }; this.stats.routs[u.side]++;
         this.addFx({ kind: 'ring', x: u.x, y: u.y, life: 1, max: 1, r: Math.max(u.w, u.d) });
         this.say(`${u.name} breaks and flees!`, u.side === 'rome' ? 'bad' : 'good');
+        { const mc = u.mc || {}, tot = Object.values(mc).reduce((a, b) => a + b, 0) || 1; const top = Object.entries(mc).sort((a, b) => b[1] - a[1]); this.mark('rout', u.name, u.side, { x: u.x, y: u.y, men: u.men, cause: top.length ? top[0][0] : 'frontal', share: top.length ? top[0][1] / tot : 1, cause2: top[1] ? top[1][0] : null, cmd: this.inCommand(u), neigh: !!u.mc && (u.mc.neighbour || 0) / tot > 0.25 }); }
         for (const o of this.units) {
           if (!o.active || o === u) continue;
-          if (Math.hypot(o.x - u.x, o.y - u.y) < 170) o.morale += o.side === u.side ? -4 : 3;   // a rout shakes its neighbours, but does not guarantee a cascade
+          if (Math.hypot(o.x - u.x, o.y - u.y) < 170) { o.morale += o.side === u.side ? -4 : 3; if (o.side === u.side) this.mloss(o, 'neighbour', 4); }   // a rout shakes its neighbours, but does not guarantee a cascade
         }
       }
     }
@@ -928,7 +944,7 @@ export class Battle {
       if (this.activeMen(side) < start * 0.4) {
         this.broken[side] = true;
         for (const u of this.units) if (u.side === side && u.active) u.morale -= 5;
-        this.say(side === 'rome' ? 'Your army wavers - the line is cracking!' : 'The Gallic host wavers!', side === 'rome' ? 'bad' : 'good');
+        this.say(side === 'rome' ? 'Your army wavers - the line is cracking!' : 'The Gallic host wavers!', side === 'rome' ? 'bad' : 'good'); this.mark('waver', side === 'rome' ? 'Your army wavers' : 'The Gallic host wavers', side);
       }
     }
   }
@@ -996,8 +1012,9 @@ export class Battle {
     }
     const mult = outcome === 'victory' ? 1 : outcome === 'draw' ? 0.45 : 0;
     const rewardMult = (this.scn.rewardMult || 1) * dm.reward * this.rewardScale;
+    this.sampleReport(); this.rep.nextSample = 0; this.rep.series.push({ t: Math.round(this.t), rome: Math.round(this.activeMen('rome')), gaul: Math.round(this.activeMen('gaul')), rr: 0, gr: 0 });
     this.result = {
-      outcome, time: this.t, rows, enemyDead, enemyStart,
+      outcome, time: this.t, rows, enemyDead, enemyStart, report: { series: this.rep.series, events: this.rep.events, stats: this.stats, startRome: this.startRome, startGaul: this.startGaul },
       spoils: {
         gold: Math.round(rw.gold * mult * rewardMult),
         supplies: Math.round(rw.supplies * mult * rewardMult),
