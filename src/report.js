@@ -105,6 +105,12 @@ export function reportHtml(res) {
   if (ev.some(e => e.kind === 'rival')) out.push('<b>Rivals fought side by side:</b> two officers who dislike each other each fought harder to avoid being outdone.');
 
   // 6. what the Gauls tried
+  const first = (k) => ev.find(e => e.kind === k);
+  if (first('feint')) out.push(`At ${mmss(first('feint').t)} a Gallic unit ran at your flank and then broke off and fled. That is a <b>feint</b>: it is meant to draw cohorts out of line so the host can fall on them. Hold your post (H) and do not chase.`);
+  if (first('extend')) out.push(`At ${mmss(first('extend').t)} the Gallic host <b>stretched its line</b>, because it outnumbered you. A longer line overlaps yours and curls round your ends: anchor a flank on a river or wood, or extend your own line (L) to match.`);
+  if (first('champ')) out.push(`At ${mmss(first('champ').t)} the champions struck: <b>${esc(first('champ').text.replace('The champions charge ', ''))}</b> was judged the weakest point of your line (shaken, flanked, isolated or lightly armed). Keep wounded or unsupported cohorts out of the front, or have a reserve ready behind them.`);
+  if (first('scout')) out.push(`The Gauls scouted your flanks first (${esc(first('scout').text.toLowerCase())}). A weak or open end of your line is found and used.`);
+  const wd = ev.filter(e => e.kind === 'withdraw').length; if (wd) out.push(`${wd} Gallic unit${wd > 1 ? 's' : ''} fell back in good order instead of breaking. Pursue them while they are tired, or they will return rested.`);
   for (const e of ev) {
     if (e.kind === 'wing') out.push(`At ${mmss(e.t)} a Gallic warband swung wide to take you in the flank. Watch for a wing that moves away from the main line: it is going round you.`);
     else if (e.kind === 'commit') { out.push(`At ${mmss(e.t)} the Gallic champions were thrown in. They are held back until the fight is already turning, so a line that holds until then usually wins.`); break; }
@@ -112,8 +118,8 @@ export function reportHtml(res) {
   if (!out.length) out.push('A short, one-sided fight: there is little to learn beyond what the casualty table already shows.');
 
   // key moments list
-  const keys = ev.filter(e => ['rout', 'dead', 'waver', 'surge', 'commit', 'wing', 'rally', 'relieve', 'rash', 'rival', 'flood'].includes(e.kind));
-  const label = (e) => ({ rout: `${esc(e.text)} ${e.side === 'rome' ? '<b style="color:#e0614f">breaks</b>' : 'breaks (enemy)'}${e.cause ? ` &mdash; ${esc((CAUSE[e.cause] || e.cause))}` : ''}`, dead: `${esc(e.text)} destroyed${e.side === 'rome' ? '' : ' (enemy)'}`, waver: esc(e.text), surge: esc(e.text), commit: esc(e.text), wing: esc(e.text), rally: esc(e.text), relieve: esc(e.text), rash: esc(e.text), rival: esc(e.text), flood: esc(e.text) }[e.kind]);
+  const keys = ev.filter(e => ['rout', 'dead', 'waver', 'surge', 'commit', 'wing', 'rally', 'relieve', 'rash', 'rival', 'flood', 'feint', 'champ', 'extend', 'withdraw', 'scout'].includes(e.kind));
+  const label = (e) => ({ rout: `${esc(e.text)} ${e.side === 'rome' ? '<b style="color:#e0614f">breaks</b>' : 'breaks (enemy)'}${e.cause ? ` &mdash; ${esc((CAUSE[e.cause] || e.cause))}` : ''}`, dead: `${esc(e.text)} destroyed${e.side === 'rome' ? '' : ' (enemy)'}`, waver: esc(e.text), surge: esc(e.text), commit: esc(e.text), wing: esc(e.text), rally: esc(e.text), relieve: esc(e.text), rash: esc(e.text), rival: esc(e.text), flood: esc(e.text), feint: esc(e.text), champ: esc(e.text), extend: esc(e.text), withdraw: esc(e.text), scout: esc(e.text) }[e.kind]);
   const shown = keys.length > 12 ? keys.filter((e, i) => e.kind !== 'rout' || e.side === 'rome' || i < 4).slice(0, 12) : keys;
   const moments = shown.length ? `<div class="muted small" style="margin-top:10px"><b>Key moments</b></div><div class="small" style="columns:2 280px;column-gap:24px;margin-top:2px">${shown.map(e => `<div style="break-inside:avoid"><span class="muted">${mmss(e.t)}</span> ${label(e)}</div>`).join('')}</div>` : '';
 

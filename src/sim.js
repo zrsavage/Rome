@@ -259,7 +259,7 @@ export class Battle {
     u.x = x; u.y = y; if (f != null) u.f = f; u.post = { x, y }; u.order = { kind: 'none' }; u.updateDims(); return true;
   }
   setMove(u, x, y, tf = null, ignore = false, sprint = false) { if (this.deploying && u.side === 'rome') { this.deployAt(u, x, y, tf); return; } if (!u.active) return; u.order = { kind: 'move', x, y, tf, ignore, sprint: sprint && this.orders.has('sprint') }; u.post = { x, y }; }
-  setAttack(u, tgt, sprint = false) { if (!u.active) return; u.order = { kind: 'attack', targetId: tgt.id, sprint: sprint && this.orders.has('sprint') }; }
+  setAttack(u, tgt, sprint = false) { if (!u.active) return; u.order = { kind: 'attack', targetId: tgt.id, sprint: sprint && (u.side === 'gaul' || this.orders.has('sprint')) }; }
   setHold(u) { if (!u.active) return; u.order = { kind: 'none' }; u.stance = 'hold'; u.post = { x: u.x, y: u.y }; }
   setEngage(u) { if (!u.active) return; u.stance = 'aggressive'; if (u.order.kind === 'none') u.post = { x: u.x, y: u.y }; }
   toggleFormation(u) {
@@ -392,6 +392,61 @@ export class Battle {
       if (u.typeKey === 'gaul_elite') u.role = 'reserve';
       else { u.role = (++n % 4 === 0 && this.sumMen('gaul') > 600) ? 'wing' : 'line'; }
     }
+    // a large host sends one nimble unit forward to feint: it engages, then breaks off and runs, to draw impatient cohorts out of your line
+    const S = this.aiS;
+    if (!S.feintPicked && this.t < 40) {
+      const lines = this.units.filter(u => u.side === 'gaul' && u.active && u.role === 'line' && u.type.cat === 'inf');
+      if (lines.length >= 5) { S.feintPicked = true; const f = lines.sort((p1, p2) => p1.men - p2.men)[0]; f.role = 'feint'; f.fp = 'go'; }
+    }
+  }
+  // Which flank of your line looks weaker, judged only from what Gallic units have actually come close enough to see.
+  flankIntel() {
+    const rc = this.romeCentre(), gs = this.units.filter(u => u.side === 'gaul' && u.active), rs = this.units.filter(u => u.side === 'rome' && u.active);
+    if (!rc || !gs.length || rs.length < 2) return null;
+    const gx = gs.reduce((q, u) => q + u.x, 0) / gs.length, gy = gs.reduce((q, u) => q + u.y, 0) / gs.length, dx = rc.x - gx, dy = rc.y - gy, dd = Math.hypot(dx, dy) || 1;
+    const a = { x: dx / dd, y: dy / dd }, perp = { x: -a.y, y: a.x }, lat = (u) => (u.x - rc.x) * perp.x + (u.y - rc.y) * perp.y;
+    const side = { 1: { str: 0, seen: false, n: 0 }, '-1': { str: 0, seen: false, n: 0 } };
+    for (const r of rs) {
+      if (Math.abs(lat(r)) < 100) continue;
+      const s = side[lat(r) >= 0 ? 1 : -1]; s.n++;
+      s.str += r.men * (0.4 + 0.6 * r.morale / r.maxMorale) * (r.type.cat === 'inf' ? 1 : 0.5) * (r.formation === 'close' || r.formation === 'orb' ? 1.2 : 1);
+      if (gs.some(g => Math.hypot(g.x - r.x, g.y - r.y) < (g.type.cat === 'cav' ? 650 : 420))) s.seen = true;
+    }
+    return { side, a, perp, rc };
+  }
+  // The feint: one unit runs at your flank, trades blows for a few seconds, then breaks off and runs for the Gallic line.
+  feint(u, rc) {
+    const S = this.aiS;
+    if (u.fp === 'go') {
+      if (this.t < 10) return;
+      let tg = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null;
+      if (!tg || !tg.active) {
+        const intel = this.flankIntel(); let best = null, bs = 1e9;
+        for (const e of this.units) { if (e.side !== 'rome' || !e.active) continue; const g = this.gap(u, e) - (e.type.cat === 'ranged' ? 120 : 0) + (intel && Math.abs(((e.x - rc.x) * -intel.a.y + (e.y - rc.y) * intel.a.x)) > 150 ? -100 : 0); if (g < bs) { bs = g; best = e; } }
+        if (best) this.setAttack(u, best, true);
+      }
+      if (u.contacts.some(e => e.active)) { u.fpC = (u.fpC || 0) + 1; }
+      if ((u.fpC || 0) >= 4 || (u.contacts.some(e => e.active) && u.morale < u.maxMorale * 0.75)) {                       // ai ticks about 0.4 s apart; about 4 ticks of contact, or shaken
+        const n = this.nearestEnemy(u); const dx = n ? u.x - n.e.x : 0, dy = n ? u.y - n.e.y : 1, d = Math.hypot(dx, dy) || 1;
+        const gx = this.units.filter(q => q.side === 'gaul' && q.active && q !== u && q.role === 'line'); const bx = gx.length ? gx.reduce((q, w) => q + w.x, 0) / gx.length : u.x + dx / d * 600, by = gx.length ? gx.reduce((q, w) => q + w.y, 0) / gx.length : u.y + dy / d * 600;
+        this.setMove(u, clamp(bx, 20, WORLD.w - 20), clamp(by, 20, WORLD.h - 20), null, true, true); u.order.ignore = true;
+        u.fp = 'run'; u.fpT = this.t;
+        this.say(`${u.name} breaks off and runs - is it a feint?`, 'warn'); this.mark('feint', `${u.name} feints and runs`, 'gaul');
+      }
+    } else if (u.fp === 'run') {
+      if (this.t - u.fpT > 16 || (u.order.kind !== 'move')) { u.fp = null; u.role = 'line'; u.order = { kind: 'none' }; }
+    }
+  }
+  // The weakest point of your line, for the champions: shaken, flanked, isolated or lightly armed units attract them.
+  weakPoint(from) {
+    let best = null, bs = -1e9;
+    for (const e of this.units) {
+      if (e.side !== 'rome' || !e.active) continue;
+      const friends = this.units.filter(o => o !== e && o.side === 'rome' && o.active && Math.hypot(o.x - e.x, o.y - e.y) < 230).length;
+      const sc = (1 - e.morale / e.maxMorale) * 100 + (e.flanked ? 60 : 0) + (e.surrounded ? 80 : 0) + (e.type.cat === 'ranged' ? 60 : e.type.cat === 'cav' ? 20 : 0) + (friends === 0 ? 50 : friends === 1 ? 20 : 0) - (e.formation === 'close' || e.formation === 'orb' ? 40 : 0) - 0.04 * Math.hypot(e.x - from.x, e.y - from.y);
+      if (sc > bs) { bs = sc; best = e; }
+    }
+    return best;
   }
   smartTarget(u) {
     let best = null, bs = 1e9;
@@ -402,6 +457,7 @@ export class Battle {
       if (e.flanked || e.surrounded) sc -= 60;
       if (e.formation !== 'normal') sc += 70;
       if (e.morale < e.maxMorale * 0.5) sc -= 40;
+      if (e.side === 'rome' && e.post && Math.hypot(e.x - e.post.x, e.y - e.post.y) > 170 && e.order && (e.order.kind === 'attack' || e.order.kind === 'none')) sc -= 70;   // a cohort that has chased too far from its post is punished
       sc += 60 * Math.max(0, hgt(this, e) - hgt(this, u));
       sc += 70 * Math.max(0, ((this._tcount && this._tcount[e.id]) || 0) - 1);        // do not all pile onto one target
       if (sc < bs) { bs = sc; best = e; }
@@ -410,6 +466,12 @@ export class Battle {
   }
   smartMove(u) {
     const rc = this.romeCentre(); if (!rc) return;
+    if (u.role === 'feint') { this.feint(u, rc); return; }
+    if (u.role === 'champion') {
+      let tg = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null;
+      if (!tg || !tg.active) { tg = this.weakPoint(u); if (tg) { this.setAttack(u, tg, true); if (!this.aiS.champSaid) { this.aiS.champSaid = true; this.say(`The Gallic champions charge ${tg.name} - the weakest point of your line!`, 'warn'); this.mark('champ', `The champions charge ${tg.name}`, 'gaul'); } } }
+      return;
+    }
     if (u.contacts.some(e => e.active)) return;                                    // fighting: let the melee run
     const dx = rc.x - u.x, dy = rc.y - u.y, d = Math.hypot(dx, dy) || 1, a = { x: dx / d, y: dy / d }, S = this.aiS;
     const attack = () => { const cur = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null; if (!cur || !cur.active) { const t = this.smartTarget(u); if (t) this.setAttack(u, t); } };
@@ -420,13 +482,18 @@ export class Battle {
       if (ds > 36) this.setMove(u, u.slot.x, u.slot.y, S.fa, true); else { if (u.order.kind === 'move') u.order = { kind: 'none' }; this.faceSmooth(u, S.fa, 0.4, 1); }
       u.staged = !!S.lineHalted && ds < 70;
     } else if (u.role === 'wing') {
-      if (!u.wp) { const side = ((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x) >= 0 ? 1 : -1; u.wp = { x: rc.x - a.y * side * -1 * 0 + (-a.y) * side * 720 - a.x * 40, y: rc.y + a.x * side * 720 - a.y * 40 }; if (!this._wingSaid) { this._wingSaid = true; this.say('Gallic warbands are swinging wide around your flank!', 'warn'); this.mark('wing', 'Gallic warbands swing wide round your flank', 'gaul'); } }
+      if (!u.wp) {
+        const intel = this.flankIntel(), own = ((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x) >= 0 ? 1 : -1;
+        if (!(intel && (intel.side[1].seen || intel.side[-1].seen)) && this.t < 22) return;          // wait for riders and skirmishers to look at your flanks first
+        let side = own;
+        if (intel) { const A = intel.side[1], B = intel.side[-1], weak = (A.seen && B.seen) ? (A.str < B.str ? 1 : -1) : A.seen ? 1 : B.seen ? -1 : own; const lateral = Math.abs((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x); if (weak !== own && lateral < 520) side = weak; if (!S.scoutSaid && (A.seen || B.seen)) { S.scoutSaid = true; this.mark('scout', `Gallic scouts have found your ${weak === 1 ? 'left' : 'right'} flank the weaker`, 'gaul'); } }
+        u.wp = { x: rc.x - a.y * side * -1 * 0 + (-a.y) * side * 720 - a.x * 40, y: rc.y + a.x * side * 720 - a.y * 40 }; if (!this._wingSaid) { this._wingSaid = true; this.say('Gallic warbands are swinging wide around your flank!', 'warn'); this.mark('wing', 'Gallic warbands swing wide round your flank', 'gaul'); } }
       if (Math.hypot(u.wp.x - u.x, u.wp.y - u.y) > 160 && !u.wpDone) this.setMove(u, u.wp.x, u.wp.y, null, true);
       else { u.wpDone = true; if (S.surge || this.t - (S.t0 ?? this.t) > 60) attack(); else if (u.order.kind === 'move') u.order = { kind: 'none' }; }
     } else if (u.role === 'reserve') {
       const rp = { x: rc.x - a.x * 800, y: rc.y - a.y * 800 };
       if (d > 900) this.setMove(u, rp.x, rp.y, null, true); else if (u.order.kind === 'move') u.order = { kind: 'none' };
-      if (S.commit) { u.role = 'line'; }
+      if (S.commit) { u.role = 'champion'; }
     }
   }
   // The Gallic battle line: units are given slots side by side across the axis of advance (a second and third rank if the host is wide), the line
@@ -459,6 +526,17 @@ export class Battle {
     const S = this.aiS; this.assignRoles();
     const lines = this.units.filter(u => u.side === 'gaul' && u.active && u.role === 'line');
     this.formLine(lines);
+    // outnumbering you, the host stretches its line to overlap yours (thinner, but more men fight at once and the ends curl round your flanks)
+    if (this.t >= (S.extT || 0)) {
+      S.extT = this.t + 5;
+      const ratio = this.activeMen('gaul') / Math.max(1, this.activeMen('rome')), want = ratio > 1.8 ? 2.0 : ratio > 1.35 ? 1.6 : 1;
+      for (const u of lines) {
+        if (u.type.cat !== 'inf' || u.typeKey === 'gaul_elite') continue;
+        if (Math.abs((u.wide || 1) - want) < 0.05 || (want > 1 && u.contacts.some(e => e.active))) continue;
+        u.wide = want; u.updateDims();
+        if (want > 1 && !S.extSaid) { S.extSaid = true; this.say('The Gallic host spreads wide to outflank your line!', 'warn'); this.mark('extend', 'The Gallic line stretches to outflank you', 'gaul'); }
+      }
+    }
     if (!S.surge) {
       const staged = lines.filter(u => u.staged || u.contacts.some(e => e.active)).length;
       if (!lines.length || (S.lineHalted && staged >= lines.length * 0.85) || (S.t0 !== null && this.t - S.t0 > 25)) { S.surge = true; S.surgeT = this.t; if (lines.length > 2) this.say('The Gallic line howls and surges forward!', 'warn'); this.mark('surge', 'The Gallic line surges forward', 'gaul'); }
@@ -479,6 +557,13 @@ export class Battle {
         if (near.gap < ai.trigger || this.t > ai.maxDelay) { ai.kind = 'rush'; ai.burst = true; ai.delay = this.t + 1 + this.rand() * 3; if (!u.alerted) { u.alerted = true; if (!ai.quiet) this.say('A Gallic warband bursts from the treeline!', 'warn'); } }
       } else if (ai.kind === 'rush') {
         if (this.t < ai.delay) continue;
+        if (this.smartAI && this.aiS.surge && (u.role === 'line' || u.role === 'wing') && u.type.cat === 'inf') {       // a fighting withdrawal: shaken men step back to catch their breath instead of waiting to break
+          if (u.wdUntil) { if (this.t > u.wdUntil) { u.wdUntil = null; u.stance = 'aggressive'; u.order = { kind: 'none' }; u.wdCd = this.t + 60; } else continue; }
+          else if (u.morale < u.maxMorale * 0.4 && u.contacts.some(e => e.active) && this.t > (u.wdCd || 0)) {
+            if (u.wdPlan === undefined) u.wdPlan = this.rand() < 0.45;
+            if (u.wdPlan) { u.wdPlan = undefined; this.fallBack(u); u.wdUntil = this.t + 14; if (this.t > (this._wdSaid || 0)) { this._wdSaid = this.t + 25; this.say(`${u.name} falls back in good order to catch its breath.`, 'info'); } this.mark('withdraw', `${u.name} withdraws in order`, 'gaul'); continue; }
+          }
+        }
         if (this.smartAI && u.role && u.role !== 'burst') { this.smartMove(u); continue; }
         const cur = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null;
         if (!cur || !cur.active) this.setAttack(u, this.smartAI ? this.smartTarget(u) : this.pickTarget(u));
