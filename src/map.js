@@ -4,6 +4,7 @@ import { describe, picksNames } from './origins.js';
 import { totalMen } from './camp.js';
 import { MAP } from './mapdata.js';
 import { icon, iconPaths } from './icons.js';
+import { routePending, ROUTES, canSkip, currentScn } from './campaign.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const rad = (d) => d * Math.PI / 180;
@@ -29,6 +30,7 @@ const REGIONS = [
 const RIVERS = [['Rhodanus', 44.55, 4.95], ['Arar', 46.05, 5.15], ['Sequana', 48.35, 3.4], ['Liger', 47.35, 0.5], ['Rhenus', 50.4, 7.5], ['Rhenus', 47.75, 7.62], ['Danuvius', 48.4, 12.5], ['Tiberis', 42.6, 12.6], ['Garumna', 44.4, 0.3]];
 
 const FUTURE = [
+  { act: 'II', name: 'Ariovistus', lat: 47.90, lon: 7.33, hint: 'Germania: the Suebi under Ariovistus, 58 BC' },
   { act: 'III', name: 'Britannia', lat: 51.82, lon: -0.29, hint: "A grinding slog: Cassivellaunus' stronghold, 54 BC" },
   { act: 'IV', name: 'Ilerda', lat: 41.62, lon: 0.62, hint: 'Hispania' },
   { act: 'IV', name: 'Thapsus', lat: 35.62, lon: 11.05, hint: 'Africa' },
@@ -59,9 +61,9 @@ function graticule(vb, k) {
 
 export function renderMap(root, c, api) {
   const diff = DIFFICULTY[c.difficulty];
-  const idx = c.scenario, scn = SCENARIOS[idx];
+  const idx = c.scenario, scn = currentScn(c) || SCENARIOS[idx];
   curAct = (scn || SCENARIOS[SCENARIOS.length - 1]).act;
-  const best = {}; (c.history || []).forEach(h => { if (h.outcome !== 'defeat' || !best[h.id]) best[h.id] = h.outcome; });
+  const best = {}; (c.history || []).forEach(h => { if ((h.outcome !== 'defeat' && h.outcome !== 'skipped') || !best[h.id]) best[h.id] = h.outcome; });
   const vb = viewBox(), k = vb.w / 700, inView = (x, y, pad = 0) => x > vb.x - pad && x < vb.x + vb.w + pad && y > vb.y - pad && y < vb.y + vb.h + pad;
   const big = view === 'all';
 
@@ -102,14 +104,15 @@ export function renderMap(root, c, api) {
   const NUDGE = { silva: [-34, -16], bibracte: [-22, 24] };      // Morvan and Bibracte are the same spot on the map: pull the two badges apart
   const pts = SCENARIOS.map(s => { const [x, y] = project(s.geo.lat, s.geo.lon), n = NUDGE[s.id] || [0, 0]; return [x + n[0] * k * (big ? 0.5 : 1), y + n[1] * k * (big ? 0.5 : 1)]; });
   const rN = (s, i) => (s.kind === 'named' ? 18 : 14) * k * (big ? 0.7 : 1);
-  pts.forEach(([x, y], i) => { if (inView(x, y, 40 * k)) { dot(x, y, rN(SCENARIOS[i], i) + 9 * k); if (i === idx) dot(x + rN(SCENARIOS[i], i) + 8 * k, y - 4 * k, 22 * k); } });
-  const futs = FUTURE.map(f => { const [x, y] = project(f.lat, f.lon); return { f, x, y, r: (f.rome ? 12 : 8) * k * (big ? 0.8 : 1) }; }).filter(o => inView(o.x, o.y, 30 * k));
+  const mine = (i) => SCENARIOS[i].act === curAct;          // only this act's battles are drawn; the others are a single marker each
+  pts.forEach(([x, y], i) => { if (mine(i) && inView(x, y, 40 * k)) { dot(x, y, rN(SCENARIOS[i], i) + 9 * k); if (i === idx) dot(x + rN(SCENARIOS[i], i) + 8 * k, y - 4 * k, 22 * k); } });
+  const futs = FUTURE.filter(f => f.act !== curAct && !(curAct === 'II' && f.act === 'I')).map(f => { const [x, y] = project(f.lat, f.lon); return { f, x, y, r: (f.rome ? 12 : 8) * k * (big ? 0.8 : 1) }; }).filter(o => inView(o.x, o.y, 30 * k));
   futs.forEach(o => dot(o.x, o.y, o.r + 3 * k));
   const placeList = PLACES.map(([n, lat, lon, sz]) => { const [x, y] = project(lat, lon); return { n, x, y, sz }; }).filter(p => inView(p.x, p.y) && !(big && p.sz < 2) && !['Bibracte', 'Vesontio', 'Genava'].includes(p.n));
   placeList.forEach(p => dot(p.x, p.y, (p.sz === 2 ? 10 : 7) * k));
 
   // 1. the battles (always shown), 2. the future acts, 3. cities, 4. towns, 5. tribes, 6. rivers, 7. regions
-  if (!big) SCENARIOS.forEach((s, i) => { const [x, y] = pts[i]; if (inView(x, y, 40 * k)) { const first = LABEL_SIDE[i], order = [first, ...OTHERS.concat(['above']).filter(z => z !== first)]; label(SHORT[i], 14, 'node', 'nl', x, y, rN(s, i) + 7 * k, order, true); } });
+  if (!big) SCENARIOS.forEach((s, i) => { const [x, y] = pts[i]; if (mine(i) && inView(x, y, 40 * k)) { const first = LABEL_SIDE[i], order = [first, ...OTHERS.concat(['above']).filter(z => z !== first)]; label(SHORT[i], 14, 'node', 'nl', x, y, rN(s, i) + 7 * k, order, true); } });
   futs.forEach(o => label(`Act ${o.f.act}: ${o.f.name}`, 12, 'body', 'fl', o.x, o.y, o.r + 2 * k, ['above', 'below', 'right', 'left']));
   for (const sz of [2, 1]) placeList.filter(p => p.sz === sz).forEach(p => label(p.n, sz === 2 ? 14.5 : 13, 'body', 'pl', p.x, p.y, (sz === 2 ? 10 : 7) * k, OTHERS));
   if (!big) TRIBES.forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, 12, 'body', 'tribe', x, y, 0, ['center']); });
@@ -126,12 +129,12 @@ export function renderMap(root, c, api) {
   const placeDots = placeList.map(settle).join('');
 
   // the route is a Roman road: a paved ribbon between dark kerbs once travelled, a faint dashed track ahead
-  const edges = SCENARIOS.slice(1).map((s, i) => { const [x1, y1] = pts[i], [x2, y2] = pts[i + 1], done = i + 1 <= idx;
+  const edges = SCENARIOS.slice(1).map((s, i) => { if (!mine(i + 1)) return ''; const [x1, y1] = pts[i], [x2, y2] = pts[i + 1], done = i + 1 <= idx;
     return done ? `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2a1f0e" stroke-width="${6.2 * k}" stroke-linecap="round"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#e3d29c" stroke-width="${3.8 * k}" stroke-linecap="round"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#a89258" stroke-width="${0.9 * k}" stroke-dasharray="${4 * k} ${5 * k}"/>`
       : `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#e8c36a" stroke-opacity=".55" stroke-width="${2.4 * k}" stroke-dasharray="${7 * k} ${7 * k}" stroke-linecap="round"/>`; }).join('');
   const icoG = (name, r, col, sw = 2) => `<g transform="scale(${r / 12}) translate(-12,-12)" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${iconPaths[name]}</g>`;
   const nodes = SCENARIOS.map((s, i) => {
-    const [x, y] = pts[i]; if (!inView(x, y, 40 * k)) return '';
+    const [x, y] = pts[i]; if (!mine(i) || !inView(x, y, 40 * k)) return '';
     const state = i < idx ? 'done' : i === idx ? 'current' : 'locked', out = best[s.id];
     const col = state === 'done' ? OUT[out] || '#6fcf6f' : state === 'current' ? '#e8c36a' : '#8a7a58';
     const r = rN(s, i), named = s.kind === 'named';
@@ -188,9 +191,10 @@ export function renderMap(root, c, api) {
     <div class="col">
       <div class="card"><h3>${done ? `Act ${curAct} complete` : `Act ${scn.act} - battle ${idx + 1} of ${SCENARIOS.length}`}</h3>
         ${done ? `<p>Ariovistus has fled across the Rhine and Gaul is free of the Germans and the Helvetii alike. Acts III onward (Britannia, the civil war and Rome itself) are the next milestones.</p>`
-          : `<p><b>${esc(scn.name)}</b>${scn.kind === 'named' ? ' <span class="pill">Named battle</span>' : ''}${scn.rewardMult > 1.4 ? ' <span class="pill">Dangerous - rich spoils</span>' : ''}<br><span class="small muted">${esc(scn.geo.place)} (${scn.geo.lat.toFixed(2)}&deg;N, ${scn.geo.lon.toFixed(2)}&deg;E)</span><br><span class="muted">${esc(scn.briefing)}</span></p>
+          : `<p><b>${esc(scn.name)}</b>${scn.kind === 'named' ? ' <span class="pill">Named battle</span>' : ''}${scn.phaseCount ? ` <span class="pill">stage ${scn.phaseIdx + 1} of ${scn.phaseCount}</span>` : ''}${scn.rewardMult > 1.4 ? ' <span class="pill">Dangerous - rich spoils</span>' : ''}<br><span class="small muted">${esc(scn.geo.place)} (${scn.geo.lat.toFixed(2)}&deg;N, ${scn.geo.lon.toFixed(2)}&deg;E)</span><br><span class="muted">${esc(scn.briefing)}</span></p>
           <p class="small muted">${esc(scn.objective)}</p>
-          <div class="row"><button class="primary" id="m-camp">Make camp</button><button id="m-march">March at once</button></div>
+          ${routePending(c) ? `<div class="decision"><div class="dhead"><div><b>Choose your line of march</b><div class="small muted">How you come to this fight decides how well fed and how rested you arrive. One choice; it cannot be changed.</div></div></div>${ROUTES.map(r => `<button class="regimen" data-route="${r.id}" style="width:100%;text-align:left;margin-top:6px"><b>${r.name}</b><span class="t">${r.text}</span><div class="eff">${r.effects.map(e => `<span>${e}</span>`).join('')}</div></button>`).join('')}</div>`
+            : `<div class="row"><button class="primary" id="m-camp">Make camp</button><button id="m-march">${c.phase > 0 ? 'Back into the battle' : 'March at once'}</button>${canSkip(c) ? '<button id="m-skip" title="An optional fight: you may pass it by">March past</button>' : ''}</div>${scn.optional ? '<div class="small muted" style="margin-top:6px">This is a side fight. Winning it helps in the named battle to come; you may also march past it.</div>' : ''}`}
           <div class="small muted" style="margin-top:6px">You have <b>${c.daysLeft} day${c.daysLeft === 1 ? '' : 's'}</b> before the enemy moves. Every camp activity (a drill, foraging, a purchase) takes one day, so you can do about ${c.daysLeft} thing${c.daysLeft === 1 ? '' : 's'}. Marching at once saves them but you fight as you are.</div>`}
         <div class="row" style="margin-top:8px"><button id="m-menu">Main menu</button></div></div>
       <div class="card"><h3>${esc((c.player && c.player.name) || 'Your command')}</h3><div class="small muted">${esc(picksNames(c).join(' - ') || 'Veteran commander')}</div>${describe(c).lines.map(([a, b]) => `<div class="kvl"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}</div>
@@ -201,6 +205,8 @@ export function renderMap(root, c, api) {
   if (q('#m-camp')) q('#m-camp').onclick = () => api.camp();
   if (q('#m-march')) q('#m-march').onclick = () => api.march();
   q('#m-menu').onclick = () => api.menu();
+  root.querySelectorAll('[data-route]').forEach(b => b.onclick = () => api.route(b.dataset.route));
+  if (q('#m-skip')) q('#m-skip').onclick = () => api.skip();
   q('#v-act').onclick = () => { view = 'act'; renderMap(root, c, api); };
   q('#v-all').onclick = () => { view = 'all'; renderMap(root, c, api); };
 }

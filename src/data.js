@@ -61,6 +61,17 @@ export const UNIT_TYPES = {
     speed: 56, turn: 2.5, morale: 56, charge: 1.7, space: 3.2, fragile: 1.1,
     color: '#2a4a8c', trim: '#d8d2b0', blurb: 'Noble horsemen, quick to hit your rear.'
   },
+  // ----- the Roman train and detachments -----
+  baggage: {
+    name: 'Baggage Train', side: 'rome', cat: 'train', perDot: 20, atk: 0.012, def: 0.3, wagon: true,
+    speed: 15, turn: 1.2, morale: 70, charge: 0, space: 5, fragile: 0.6,
+    color: '#8a6a3a', trim: '#e8c36a', blurb: 'The legion\'s wagons: spare pila, sling-shot and arrows. Units beside it refill. Lose it and you lose supplies.'
+  },
+  antesignani: {
+    name: 'Antesignani', side: 'rome', cat: 'ranged', perDot: 8, atk: 0.042, def: 0.22,
+    speed: 31, turn: 2.4, morale: 64, charge: 0.4, range: 50, rate: 0.022, ammo: 32, space: 1.5, fragile: 1,
+    color: '#b3261e', trim: '#e8c36a', blurb: 'Picked legionaries who fight in front of the standards as a light screen, then fall back into their cohort.'
+  },
   // ----- Act II: Ariovistus and the Suebi (Germania) -----
   suebi: {
     name: 'Suebi Warband', side: 'gaul', cat: 'inf', perDot: 8, atk: 0.068, def: 0.14,
@@ -159,7 +170,7 @@ export function terrainAt(scn, x, y) {
 // ---------------------------------------------------------------------------
 export const SCENARIOS = [
   {
-    id: 'ford', act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Fords of the Rhone', kind: 'skirmish',
+    id: 'ford', chief: { name: "Nammeius", style: 'cautious' }, act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Fords of the Rhone', kind: 'skirmish',
     geo: { lat: 46.20, lon: 6.15, place: 'Genava (Geneva)', note: 'Fords of the Rhone, where the Helvetii tried to cross' },
     briefing: 'The Helvetii mean to cross the Rhone near Genava and march west through the Province. Your legion has cut the bridge and holds the river line. A few shallow fords are the only easy crossings, and warbands are probing them. Beat them back, or bloody them enough that they look for another road.',
     objective: 'Break the Gallic host (reduce it below 25%), or withdraw in good order with at least 45% of your men.',
@@ -180,7 +191,7 @@ export const SCENARIOS = [
     rewards: { gold: 260, supplies: 120, recruits: 60, xpBase: 30, officerXp: 35 }, rewardMult: 1, unlock: []
   },
   {
-    id: 'arar', fog: true, act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Crossing of the Arar', kind: 'skirmish',
+    id: 'arar', chief: { name: "Divico", style: 'stubborn' }, fog: true, act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Crossing of the Arar', kind: 'skirmish',
     geo: { lat: 45.94, lon: 4.77, place: 'The Arar (Saone) near Trevoux', note: 'Site of the Tigurini crossing is approximate' },
     briefing: 'The Helvetii are crossing the Arar, and the Tigurini clan is still on your bank, strung out and unready. Strike hard before the rest can return. The river is deep: only the ford and the banks allow easy movement, and the warbands across the water are watching.',
     objective: 'Destroy the stragglers (reduce the host below 25%), or withdraw with at least 45% of your men.',
@@ -202,7 +213,7 @@ export const SCENARIOS = [
     unlock: [{ type: 'aux_cav', name: 'Allied Gallic Horse', men: 60, maxMen: 70, xp: 20, drill: 15, msg: 'Aeduan cavalry ride in to support Rome.' }]
   },
   {
-    id: 'convoy', act: 'I', theater: 'Gaul', year: '58 BC', name: "The Foragers' Road", kind: 'skirmish',
+    id: 'convoy', chief: { name: "Verucloetius", style: 'cunning' }, act: 'I', theater: 'Gaul', year: '58 BC', name: "The Foragers' Road", kind: 'skirmish',
     geo: { lat: 46.78, lon: 4.85, place: 'Cabillonum (Chalon-sur-Saone)', note: 'Aeduan country; the road is illustrative' },
     briefing: 'Your supply train is crawling along a forest road when scouts report raiders closing in. The wagons carry the legion\'s grain. Hold the wagons and drive the raiders off, because if the Gauls seize them and hold them, the campaign starves.',
     objective: 'Keep the supply wagons (the gold marker) in Roman hands. If the Gauls hold them for 90 seconds the convoy is lost. Break the raiders to win.',
@@ -226,7 +237,7 @@ export const SCENARIOS = [
     unlock: [{ type: 'archer', name: 'Cretan Archers', men: 100, maxMen: 130, xp: 25, drill: 20, msg: 'Cretan mercenary archers join your column.' }]
   },
   {
-    id: 'oppidum', fog: true, act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Hill Fort of the Sequani', kind: 'skirmish',
+    id: 'oppidum', chief: { name: "Casticus of the Sequani", style: 'stubborn' }, optional: true, fog: true, act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Hill Fort of the Sequani', kind: 'skirmish',
     geo: { lat: 47.24, lon: 6.02, place: 'Vesontio (Besancon)', note: 'Great oppidum of the Sequani on a loop of the Doubs' },
     briefing: 'A local chieftain has fortified a hilltop and refuses to supply your army. The slopes are steep and the defenders are dug in. Soften them with missiles, lure them down, or storm the crest.',
     objective: 'Capture the hill fort summit by holding it for 150 seconds, or break the defenders. Fighting uphill is costly.',
@@ -251,7 +262,7 @@ export const SCENARIOS = [
     unlock: [{ type: 'legionary', name: 'IV Cohort', men: 360, maxMen: 480, xp: 10, drill: 15, msg: 'Fresh legionaries of the IV Cohort arrive from Cisalpine Gaul.' }]
   },
   {
-    id: 'silva', fog: true, act: 'I', theater: 'Gaul', year: '58 BC', name: 'Ambush in the Silva', kind: 'skirmish',
+    id: 'silva', chief: { name: "Dumnorix's partisans", style: 'cunning' }, fog: true, act: 'I', theater: 'Gaul', year: '58 BC', name: 'Ambush in the Silva', kind: 'skirmish',
     geo: { lat: 47.15, lon: 4.00, place: 'Forests of the Morvan', note: 'Illustrative ambush site' },
     briefing: 'Dense forest closes around your column. The Gauls know every path; you are caught in a clearing with enemies on both flanks. This is the sort of day that has broken Roman armies before. Hold together, survive until your rearguard arrives, and the spoils of a hard-won escape will be rich.',
     objective: 'Survive until the relief column arrives and the Gauls withdraw: break the host, or hold on until the time runs out with at least 45% of your army.',
@@ -276,10 +287,15 @@ export const SCENARIOS = [
     unlock: [{ type: 'legionary', name: 'V Cohort', men: 380, maxMen: 480, xp: 25, drill: 20, msg: 'The V Cohort joins your legion, impressed by your escape.' }]
   },
   {
-    id: 'bibracte', act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Battle of Bibracte', kind: 'named',
+    id: 'bibracte', chief: { name: "the Helvetian war council", style: 'aggressive' }, act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Battle of Bibracte', kind: 'named',
     geo: { lat: 46.93, lon: 4.03, place: 'Bibracte (Mont Beuvray)', note: 'Oppidum of the Aedui' },
     briefing: 'The Helvetii turn and attack your column near Bibracte. You hold the slope with the legion in triplex acies; the enemy mass on the ridge beyond, thousands strong, with elite retinues in the van. Break their assault with pila and the gladius, and be ready: their allies, the Boii and Tulingi, will fall on your flank and rear when the fight is at its height.',
     objective: 'Break the Helvetii host. Hold the line, keep your reserve fresh, and survive the flank attack. A well-ordered withdrawal still counts as a draw.',
+    links: [
+      { from: 'silva', scale: { gaul_elite: 0.65 }, text: 'Their champions fell in the forest ambush: fewer nobles stand in the line.' },
+      { from: 'oppidum', scale: { gaul_skirm: 0.6 }, text: 'The Sequani hill fort is yours: fewer javelin men have joined the Helvetii.' },
+      { from: 'convoy', morale: 3, text: 'The grain got through: the army is well fed (+3 morale).' }
+    ],
     timeLimit: 780, daysToPrepare: 4,
     deploy: { mode: 'line', cx: 780, cy: 860 },
     objectives: [{ id: 'ridge', name: 'The Ridge', x: 800, y: 420, r: 110, owner: 'gaul' }],
@@ -303,6 +319,54 @@ export const SCENARIOS = [
       { at: 240, msg: 'The Boii and Tulingi appear on your flank and rear!', unit: { type: 'warband', men: 405, x: 1500, y: 700, ai: { kind: 'rush', delay: 0 } } },
       { at: 245, msg: '', unit: { type: 'gaul_elite', men: 215, x: 1560, y: 820, ai: { kind: 'rush', delay: 0 } } }
     ],
+    // The day was fought in three stages with no rest between them: losses carry from one into the next.
+    phases: [
+      {
+        phaseName: 'The Assault on the Hill',
+        briefing: 'The Helvetii turn on your column near Bibracte. You have drawn the legion up on a hill in three lines, with the baggage behind; they come on in a dense mass, shields overlapping, up the slope at you. Break the first assault with pila from the high ground and the sword after.',
+        objective: 'Break the assault (reduce it below 25%). Stay on the hill: charges uphill are weak and your pila hit harder from above.',
+        timeLimit: 600, deploy: { mode: 'line', cx: 800, cy: 790 }, objectives: [], rule: null,
+        terrain: [{ kind: 'hill', cx: 800, cy: 260, rx: 520, ry: 190, h: 60 }, { kind: 'hill', cx: 800, cy: 790, rx: 440, ry: 130, h: 40 }, { kind: 'forest', cx: 160, cy: 470, rx: 180, ry: 140 }, { kind: 'forest', cx: 1460, cy: 480, rx: 150, ry: 130 }, { kind: 'water', x: 0, y: 620, w: 330, h: 50 }],
+        enemy: [
+          { type: 'warband', men: 350, x: 520, y: 300, ai: { kind: 'rush', delay: 0 } }, { type: 'warband', men: 350, x: 680, y: 280, ai: { kind: 'rush', delay: 2 } },
+          { type: 'warband', men: 350, x: 920, y: 280, ai: { kind: 'rush', delay: 1 } }, { type: 'warband', men: 350, x: 1080, y: 300, ai: { kind: 'rush', delay: 3 } },
+          { type: 'gaul_skirm', men: 150, x: 640, y: 380, ai: { kind: 'skirm' } }, { type: 'gaul_skirm', men: 150, x: 960, y: 380, ai: { kind: 'skirm' } },
+          { type: 'gaul_cav', men: 80, x: 1350, y: 330, ai: { kind: 'flank', delay: 60 } }
+        ],
+        reinforcements: []
+      },
+      {
+        phaseName: 'The Boii and the Tulingi',
+        briefing: 'The Helvetii give ground to a ridge a mile off, and you follow. As your lines climb, fifteen thousand Boii and Tulingi, the rearguard of their column, come up on your open right flank and rear. The Helvetii on the ridge see it and press forward again. Your third line must turn about and face the new enemy while the first two fight uphill.',
+        objective: 'Take the ridge (hold the gold marker for 150 seconds) or break the host. Keep a reserve: the Boii and Tulingi will strike your right and rear.',
+        timeLimit: 780, deploy: { mode: 'line', cx: 780, cy: 860 },
+        objectives: [{ id: 'ridge', name: 'The Ridge', x: 800, y: 420, r: 110, owner: 'gaul' }], rule: { holdSecs: 150, attacker: 'rome' },
+        terrain: [{ kind: 'hill', cx: 800, cy: 260, rx: 520, ry: 190, h: 60 }, { kind: 'hill', cx: 800, cy: 760, rx: 420, ry: 110, h: 30 }, { kind: 'forest', cx: 160, cy: 470, rx: 180, ry: 140 }, { kind: 'forest', cx: 1460, cy: 480, rx: 150, ry: 130 }, { kind: 'water', x: 0, y: 620, w: 330, h: 50 }],
+        enemy: [
+          { type: 'warband', men: 330, x: 640, y: 250, ai: { kind: 'ambush', trigger: 120, maxDelay: 70, quiet: true } }, { type: 'warband', men: 330, x: 960, y: 250, ai: { kind: 'ambush', trigger: 120, maxDelay: 70, quiet: true } },
+          { type: 'gaul_elite', men: 300, x: 800, y: 290, ai: { kind: 'ambush', trigger: 100, maxDelay: 75, quiet: true } }, { type: 'gaul_skirm', men: 140, x: 800, y: 350, ai: { kind: 'skirm' } }
+        ],
+        reinforcements: [
+          { at: 70, msg: 'The Boii and Tulingi appear on your flank and rear!', unit: { type: 'warband', men: 405, x: 1500, y: 700, ai: { kind: 'rush', delay: 0 } } },
+          { at: 74, msg: '', unit: { type: 'warband', men: 300, x: 1540, y: 560, ai: { kind: 'rush', delay: 0 } } },
+          { at: 78, msg: '', unit: { type: 'gaul_elite', men: 215, x: 1560, y: 820, ai: { kind: 'rush', delay: 0 } } }
+        ]
+      },
+      {
+        phaseName: 'The Fight at the Wagons',
+        briefing: 'It is evening. The Helvetii have fallen back on their baggage and made a rampart of the wagons; they throw spears down from the top of it and thrust pikes out between the wheels. The fighting at the wagons will go on deep into the night. Take the camp and the war is over.',
+        objective: 'Take the wagon camp (hold the gold marker for 120 seconds) or break the defenders before night ends the battle.',
+        timeLimit: 540, deploy: { mode: 'line', cx: 800, cy: 890 },
+        objectives: [{ id: 'wagons', name: 'The Wagon Camp', x: 800, y: 300, r: 105, owner: 'gaul' }], rule: { holdSecs: 120, attacker: 'rome' },
+        terrain: [{ kind: 'hill', cx: 800, cy: 300, rx: 300, ry: 110, h: 20 }, { kind: 'forest', cx: 220, cy: 420, rx: 190, ry: 140 }, { kind: 'forest', cx: 1400, cy: 460, rx: 180, ry: 150 }],
+        enemy: [
+          { type: 'laager', men: 170, x: 600, y: 330, ai: { kind: 'idle' } }, { type: 'laager', men: 170, x: 800, y: 350, ai: { kind: 'idle' } }, { type: 'laager', men: 170, x: 1000, y: 330, ai: { kind: 'idle' } }, { type: 'laager', men: 150, x: 800, y: 210, ai: { kind: 'idle' } },
+          { type: 'warband', men: 320, x: 660, y: 270, ai: { kind: 'ambush', trigger: 110, maxDelay: 120, quiet: true } }, { type: 'warband', men: 320, x: 940, y: 270, ai: { kind: 'ambush', trigger: 110, maxDelay: 120, quiet: true } },
+          { type: 'gaul_skirm', men: 150, x: 700, y: 390, ai: { kind: 'skirm' } }, { type: 'gaul_skirm', men: 150, x: 900, y: 390, ai: { kind: 'skirm' } }
+        ],
+        reinforcements: []
+      }
+    ],
     rewards: { gold: 700, supplies: 400, recruits: 200, xpBase: 80, officerXp: 90 }, rewardMult: 1,
     unlock: [
       { type: 'legionary', name: 'VI Cohort', men: 420, maxMen: 480, xp: 60, drill: 30, msg: 'Survivors and volunteers form the VI Cohort.' },
@@ -312,7 +376,7 @@ export const SCENARIOS = [
   // ======================= ACT II: Ariovistus and the Suebi (Germania, 58 BC) =======================
   // Fewer fortified places and more movement: Germanic horse mixed with runners, warbands in tribal blocks, and wagon laagers that nobody flees past.
   {
-    boost: 1.25, id: 'parley', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Parley on the Mound', kind: 'skirmish',
+    boost: 1.25, id: 'parley', chief: { name: "Ariovistus' horsemen", style: 'aggressive' }, optional: true, fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Parley on the Mound', kind: 'skirmish',
     geo: { lat: 47.62, lon: 7.28, place: 'The Upper Rhine plain (Alsace)', note: 'The mound where Caesar and Ariovistus met; the exact site is not known' },
     briefing: 'Ariovistus has agreed to meet you on a broad mound in the open plain, each side bringing only mounted escorts. You do not trust German horse with your Gallic cavalry, so men of the Tenth have been put on their horses. The talks are short: German riders edge towards the mound, throwing stones and spears at your escort. Break off the parley, take the mound and hold it until your army is up.',
     objective: 'Hold the mound (the gold marker) for 110 seconds against the German horse, or break their riders. Their horse is fast and they will go for your flanks.',
@@ -333,7 +397,7 @@ export const SCENARIOS = [
     unlock: []
   },
   {
-    boost: 1.15, id: 'supply', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Cut Supply Line', kind: 'skirmish',
+    boost: 1.15, id: 'supply', chief: { name: "Ariovistus", style: 'cunning' }, fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Cut Supply Line', kind: 'skirmish',
     geo: { lat: 47.55, lon: 6.80, place: 'The gap between the Vosges and the Jura', note: 'The road from the Sequani; the exact place is illustrative' },
     briefing: 'Ariovistus has camped behind you and his horse are cutting the road to the Sequani, from whom your grain comes. A column of wagons is coming up the road with a thin escort. The Germans ride fast and come in from every side at once: hold the wagons and the legion eats; lose them and it will not fight.',
     objective: 'Keep the supply wagons (the gold marker) in Roman hands. If the Germans hold them for 100 seconds the grain is lost. Break the raiders to win.',
@@ -355,7 +419,7 @@ export const SCENARIOS = [
     unlock: [{ type: 'legionary', name: 'VIII Cohort', men: 400, maxMen: 480, xp: 50, drill: 25, msg: 'The VIII Cohort marches up with the grain train.' }]
   },
   {
-    boost: 1.3, id: 'lessercamp', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Lesser Camp', kind: 'skirmish',
+    boost: 1.3, id: 'lessercamp', chief: { name: "the camp's elders", style: 'stubborn' }, optional: true, fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Lesser Camp', kind: 'skirmish',
     geo: { lat: 47.78, lon: 7.05, place: 'The Upper Rhine plain (Alsace)', note: 'The smaller German camp Caesar attacked; the place is approximate' },
     briefing: 'Ariovistus will not come out to fight, so you go to him. You march past his main camp and assault the smaller one, ringed with wagons. The Germans must come out to save it: your scouts report warbands in the brush, horse on the flanks and the families waiting behind the wagons.',
     objective: 'Capture the camp (the gold marker) by holding it for 100 seconds, or break the host. Wagons cannot move, and men who have the wagons behind them will not run.',
@@ -380,10 +444,15 @@ export const SCENARIOS = [
     unlock: [{ type: 'legionary', name: 'IX Cohort', men: 400, maxMen: 480, xp: 55, drill: 25, msg: 'The IX Cohort is drawn from the camp guards.' }]
   },
   {
-    boost: 1.45, id: 'ariovistus', act: 'II', theater: 'Germania', year: '58 BC', name: 'The Battle Against Ariovistus', kind: 'named',
+    boost: 1.45, id: 'ariovistus', chief: { name: "Ariovistus", style: 'cunning' }, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Battle Against Ariovistus', kind: 'named',
     geo: { lat: 47.90, lon: 7.33, place: 'The Upper Rhine plain (Alsace)', note: 'Battlefield not securely identified; the plain between the Vosges and the Rhine' },
     briefing: 'The Germans have been forced out. Ariovistus draws up his tribes in a line, the Harudes, Marcomanni, Tribocci, Vangiones, Nemetes, Sedusii and Suebi, and rings the whole host behind with wagons and carts so that no one can flee; the women stand on the wagons begging the men not to let them be taken as slaves. You have formed the legion in three lines. You lead the right, where the Germans are weakest. Young Publius Crassus commands the cavalry: watch your left, and when it is pressed, his third line will come.',
     objective: 'Break the German host. Your left will be hard pressed and the third line will relieve it. A well-ordered withdrawal is only a draw.',
+    links: [
+      { from: 'supply', scale: { german_cav: 0.6 }, text: 'The German horse were mauled on the supply road: fewer riders are on his wings.' },
+      { from: 'lessercamp', scale: { laager: 0.6 }, text: 'The lesser camp is taken: fewer wagons stand behind his line.' },
+      { from: 'parley', morale: 3, text: 'The men saw the Germans driven off the mound and do not fear them (+3 morale).' }
+    ],
     timeLimit: 960, daysToPrepare: 4,
     deploy: { mode: 'line', cx: 800, cy: 880 },
     objectives: [], rule: null,
@@ -416,7 +485,7 @@ export const SCENARIOS = [
     ]
   },
   {
-    boost: 1.35, id: 'rhine', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Pursuit to the Rhine', kind: 'skirmish',
+    boost: 1.35, id: 'rhine', chief: { name: "the rearguard chiefs", style: 'cautious' }, fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Pursuit to the Rhine', kind: 'skirmish',
     geo: { lat: 47.95, lon: 7.58, place: 'The left bank of the Rhine', note: 'The pursuit ran towards the Rhine; the point is illustrative' },
     briefing: 'The German line has broken and the host is running for the Rhine, wagons and all. Ariovistus himself is across in a small boat. Your cavalry and light troops are on their heels: catch the wagons and the rearguard before they reach the water. A rearguard that has nowhere to go will stand and sell its life dearly.',
     objective: 'Break the rearguard (reduce it below 25%) before the time runs out. Fresh cavalry are ruinous against men who are running.',
@@ -494,4 +563,10 @@ export function scaleScenario(scn, k) {
   scn.scale = k;
 }
 scaleScenario(PROLOGUE, PROLOGUE_SCALE);
-for (const scn of SCENARIOS) scaleScenario(scn, MAP_SCALE);
+for (const scn of SCENARIOS) { scaleScenario(scn, MAP_SCALE); for (const ph of scn.phases || []) scaleScenario(ph, MAP_SCALE); }
+// A battle fought in stages: the scenario as it stands for one stage (same battle, its own ground, enemy and objective). Rewards come with the last.
+export function phaseScn(scn, i) {
+  if (!scn || !scn.phases) return scn;
+  const n = scn.phases.length, k = Math.max(0, Math.min(n - 1, i || 0)), last = k === n - 1, rw = scn.rewards;
+  return { ...scn, ...scn.phases[k], phaseIdx: k, phaseCount: n, rewards: last ? rw : { gold: 0, supplies: 0, recruits: 0, xpBase: Math.round(rw.xpBase * 0.45), officerXp: Math.round(rw.officerXp * 0.4) }, unlock: last ? scn.unlock : [] };
+}

@@ -28,7 +28,7 @@ export class BattleUI {
     this.r.buildBackground(scn); this.r.fit();
     { const rs = this.b.units.filter(u => u.side === 'rome'); if (rs.length) { this.r.cam.zoom = Math.max(this.r.minZoom, Math.min(0.9, this.r.cam.zoom * 3)); this.r.cam.x = rs.reduce((a, u) => a + u.x, 0) / rs.length; this.r.cam.y = rs.reduce((a, u) => a + u.y, 0) / rs.length - 160 / this.r.cam.zoom; this.r.clampCam(); } }
     this.refreshBottom(); this.setPause(true); this.setSpeed(1);
-    $('help-orders').innerHTML = [['hold', '<b>H</b> hold position &middot; <b>G</b> defend post'], ['fallback', '<b>R</b> fall back and rest'], ['holdfire', '<b>J</b> hold fire (missile troops)'], ['extend', '<b>L</b> extend the line (thinner, wider); <b>Alt+right-drag</b> fills a drawn line'], ['wedge', '<b>U</b> wedge'], ['sprint', '<b>Shift+right-click</b> sprint / charge'], ['guard', '<b>right-click a friendly unit</b> to guard it'], ['testudo', '<b>T</b> testudo'], ['orbis', '<b>O</b> orbis (hollow square)'], ['relieve', '<b>Y</b> relieve a tired cohort'], ['pursue', '<b>P</b> cavalry pursue routers'], ['rally', '<b>F</b> rally the line'], ['queue', '<b>N</b> waypoint mode (right-click adds points)'], ['array', '<b>B</b> triplex acies; <b>Ctrl+B</b> remembers your formation, <b>Alt+B</b> recalls it'], ['rotate', '<b>K</b> auto-rotate tired cohorts'], ['cycle', '<b>M</b> horse charge, break off and re-charge'], ['priority', '<b>I</b> missile target priority']].filter(([id]) => this.b.orders.has(id)).map(x => x[1]).join(' &middot; ');
+    $('help-orders').innerHTML = [['hold', '<b>H</b> hold position &middot; <b>G</b> defend post'], ['fallback', '<b>R</b> fall back and rest'], ['holdfire', '<b>J</b> hold fire (missile troops)'], ['extend', '<b>L</b> extend the line (thinner, wider); <b>Alt+right-drag</b> fills a drawn line'], ['wedge', '<b>U</b> wedge'], ['sprint', '<b>Shift+right-click</b> sprint / charge'], ['guard', '<b>right-click a friendly unit</b> to guard it'], ['testudo', '<b>T</b> testudo'], ['orbis', '<b>O</b> orbis (hollow square)'], ['relieve', '<b>Y</b> relieve a tired cohort'], ['pursue', '<b>P</b> cavalry pursue routers'], ['rally', '<b>F</b> rally the line'], ['queue', '<b>N</b> waypoint mode (right-click adds points)'], ['array', '<b>B</b> triplex acies; <b>Ctrl+B</b> remembers your formation, <b>Alt+B</b> recalls it'], ['rotate', '<b>K</b> auto-rotate tired cohorts'], ['cycle', '<b>M</b> horse charge, break off and re-charge'], ['priority', '<b>I</b> missile target priority'], ['detach', '<b>,</b> send out or recall a cohort\'s antesignani']].filter(([id]) => this.b.orders.has(id)).map(x => x[1]).join(' &middot; ');
     $('btn-retreat').disabled = false;
     if (scn.id !== 'prologue') { this.b.beginDeploy(); this.showBanner('DEPLOYMENT - place your units in the gold zone, then press SPACE', 4000); } else this.showBanner('DEPLOYMENT - press SPACE', 2500);
     this.last = performance.now(); this.acc = 0; this.hudT = 0;
@@ -181,6 +181,8 @@ export class BattleUI {
       if (['a', 'w', 's', 'd', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k) && !e.ctrlKey) this.keys.add(k);
       const keyCmd = { h: 'hold', g: 'defend', r: 'fallback', t: 'testudo', o: 'orbis', u: 'wedge', y: 'relieve', p: 'pursue', j: 'holdfire', f: 'rally', l: 'extend', k: 'rotate', m: 'cycle', i: 'priority', n: 'queue' }[k];
       if (keyCmd && !e.ctrlKey && !e.metaKey) this.cmd(keyCmd);
+      if (k === ',' && !e.ctrlKey && !e.metaKey) this.cmd('detach');
+      if (/^[1-9]$/.test(k) && e.altKey) { e.preventDefault(); const ids = this.b.units.filter(u => u.side === 'rome' && u.active && u.legion === +k && u.type.cat !== 'train').map(u => u.id); if (ids.length) { this.select(ids); this.showBanner(`Legio ${['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'][+k]}`, 700); } }
       if (k === 'b' && !e.metaKey) { e.preventDefault(); this.cmd(e.ctrlKey ? 'saveform' : e.altKey ? 'recallform' : 'array'); }
       if (k === 'e') this.selectGeneral();
       if (k === 'escape') this.select([]);
@@ -215,6 +217,7 @@ export class BattleUI {
     const rome = b.units.filter(u => u.side === 'rome'); if (rome.length < 9) return;
     const by = (f) => () => this.select(rome.filter(u => u.active && f(u)).map(u => u.id));
     const items = [['All  (Q)', by(() => true)], ['Infantry', by(u => u.type.cat === 'inf')], ['Missile troops', by(u => u.type.cat === 'ranged')], ['Cavalry', by(u => u.type.cat === 'cav')], ['Tired units', by(u => u.fatigue > 45)], ['Wavering units', by(u => u.morale < u.maxMorale * 0.5)], ['In melee', by(u => u.fighting)]];
+    const nLeg = Math.max(1, ...rome.map(u => u.legion || 1)); if (nLeg > 1) for (let k = 1; k <= nLeg; k++) items.push([`Legio ${['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][k] || k}  (Alt+${k})`, by(u => u.legion === k && u.type.cat !== 'train')]);
     for (const [label, fn] of items) { const btn = document.createElement('button'); btn.className = 'cmd'; btn.textContent = label; btn.onclick = fn; el.appendChild(btn); }
   }
   // One place for every unit command, used by both the keyboard and the command bar.
@@ -233,6 +236,12 @@ export class BattleUI {
       case 'rotate': if (need('rotate') && inf.length) { inf.forEach(u => b.toggleRotate(u)); this.showBanner(inf.every(u => u.rotate) ? 'Rotation on: tired cohorts will be relieved' : inf.some(u => u.rotate) ? 'Rotation set on some' : 'Rotation off', 1100); } break;
       case 'cycle': { const cv = sel.filter(u => u.type.cat === 'cav'); if (need('cycle') && cv.length) { cv.forEach(u => b.toggleCycle(u)); this.showBanner(cv.every(u => u.cycle) ? 'Charge and rally: on' : 'Charge and rally: off', 1000); } break; }
       case 'priority': { const rg = sel.filter(u => u.type.cat === 'ranged'); if (need('priority') && rg.length) { rg.forEach(u => b.cyclePriority(u)); const p = rg[0].prio; this.showBanner(`Fire at: ${{ ranged: 'missile troops first', cav: 'horse first', inf: 'foot first' }[p] || 'whatever is nearest'}`, 1100); } break; }
+      case 'detach': {
+        if (!need('detach')) break; let did = 0;
+        for (const u of sel) { if (u.parentId != null) { b.rejoin(u); did++; } else if (u.typeKey === 'legionary') { const d = b.detach(u); if (d) did++; } }
+        if (did) { this.refreshBottom(); this.showBanner(sel.some(u => u.parentId != null) ? 'Antesignani recalled' : 'Antesignani forward', 900); } else if (sel.length) this.showBanner('Only a legionary cohort of 220 men or more, not in a fight, can detach its antesignani', 1600);
+        break;
+      }
       case 'queue': if (need('queue')) { this.queueMode = !this.queueMode; this.showBanner(this.queueMode ? 'Waypoint mode ON: right-click adds a point (N to stop)' : 'Waypoint mode off', 1300); } break;
       case 'array': case 'saveform': case 'recallform': {
         if (!need('array')) break;
@@ -260,6 +269,7 @@ export class BattleUI {
       ['extend', 'Extend', 'L', b.orders.has('extend') && has('inf')], ['testudo', 'Testudo', 'T', b.orders.has('testudo') && has('inf')], ['wedge', 'Wedge', 'U', b.orders.has('wedge') && has('inf')], ['orbis', 'Orbis', 'O', b.orders.has('orbis') && has('inf')], ['relieve', 'Relieve', 'Y', b.orders.has('relieve') && has('inf')],
       ['pursue', 'Pursue', 'P', b.orders.has('pursue') && has('cav')], ['holdfire', 'Hold fire', 'J', b.orders.has('holdfire') && has('ranged')],
       ['rotate', 'Rotate', 'K', b.orders.has('rotate') && has('inf')], ['cycle', 'Hit & rally', 'M', b.orders.has('cycle') && has('cav')], ['priority', 'Target', 'I', b.orders.has('priority') && has('ranged')],
+      ['detach', 'Antesignani', ',', b.orders.has('detach') && sel.some(u => u.typeKey === 'legionary' || u.parentId != null)],
       ['array', 'Array', 'B', b.orders.has('array')], ['queue', 'Waypoints', 'N', b.orders.has('queue')]]
       .filter(x => x[3]).map(x => ({ id: x[0], label: x[1], key: x[2] }));
     if (this.genSel && b.orders.has('rally')) list.push({ id: 'rally', label: 'Rally', key: 'F' });

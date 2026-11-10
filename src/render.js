@@ -161,6 +161,7 @@ export class Renderer {
     for (const u of order) if (this.showRange || this.selection.has(u.id)) this.drawRange(ctx, u);
     for (const u of order) this.drawUnit(ctx, u, b);
     for (const f of b.fx) if (f.kind !== 'dust') this.drawFx(ctx, f);
+    this.drawLegates(ctx, b);
     this.drawGeneral(ctx, b);
     this.drawOrders(ctx, b);
     this.drawMessengers(ctx, b);
@@ -373,6 +374,16 @@ export class Renderer {
   }
 
   // The general's banner and command ring.
+  // Legates ride behind their legions, each with a smaller ring of his own.
+  drawLegates(ctx, b) {
+    for (const l of b.legates || []) {
+      if (!l.placed) continue;
+      ctx.save(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(200,170,230,0.3)'; ctx.setLineDash([3, 8]); ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+      ctx.translate(l.x, l.y); ctx.rotate(l.f); const gs = 30; ctx.drawImage(specialSprite('general'), -gs / 2, -gs / 2, gs, gs); ctx.rotate(-l.f);
+      if (this.cam.zoom > 0.5) { ctx.fillStyle = 'rgba(15,12,8,0.75)'; const tx = `Legate ${l.name.split(' ').pop()}`; ctx.font = '10px system-ui, sans-serif'; const w = ctx.measureText(tx).width + 8; ctx.fillRect(-w / 2, -30, w, 13); ctx.fillStyle = '#d9c8f0'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(tx, 0, -23.5); }
+      ctx.restore();
+    }
+  }
   drawGeneral(ctx, b) {
     const g = b.general; if (!g) return; const R = b.cmdNow(), sel = this.genSel, hurt = g.wound > 0;
     ctx.save(); ctx.lineWidth = sel ? 1.8 : 1;

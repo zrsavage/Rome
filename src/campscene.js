@@ -21,7 +21,7 @@ export const BUILDINGS = [
 
 // One building at the start, plus one for every campaign battle won or drawn.
 export function unlockedCount(c) {
-  const wins = (c.history || []).filter(h => h.id !== 'prologue' && h.outcome !== 'defeat').length;
+  const wins = (c.history || []).filter(h => h.id !== 'prologue' && (h.outcome === 'victory' || h.outcome === 'draw')).length;
   return Math.min(BUILDINGS.length, 1 + wins);
 }
 export const unlockedBuildings = (c) => BUILDINGS.slice(0, unlockedCount(c));
@@ -90,6 +90,7 @@ export function sceneSvg(c, { visited = [], focus = null, flags = {} } = {}) {
   // the command tent (always available)
   s += `<g class="bld" data-b="praetorium" tabindex="0" role="button" aria-label="Command tent: march to battle"><title>Command tent: your next battle, and the march</title>
     <rect x="392" y="52" width="216" height="150" rx="10" class="hit"/>
+    ${flags.praetorium ? `<g class="bldflag" transform="translate(404,22)"><title>A career choice is waiting</title><line x1="0" y1="0" x2="0" y2="58" stroke="#2a1a08" stroke-width="4" stroke-linecap="round"/><line x1="0" y1="0" x2="0" y2="58" stroke="#8a6a3a" stroke-width="2" stroke-linecap="round"/><g class="cloth"><path d="M1 2h34l-8 10 8 10H1z" fill="#c62f25" stroke="#4a0f0b" stroke-width="1.6" stroke-linejoin="round"/><text x="13" y="17" text-anchor="middle" style="font:bold 13px system-ui,sans-serif;fill:#fff3d0">${flags.praetorium}</text></g></g>` : ''}
     <text x="500" y="216" class="bl" text-anchor="middle">Command Tent</text><text x="500" y="234" class="bs" text-anchor="middle">Next battle and the march</text></g>`;
   for (const b of BUILDINGS) {
     const tx = b.x - 85, ty = b.y - 55;
@@ -113,6 +114,7 @@ export function advice(c, visited, flags = {}) {
   const fresh = un.find(b => !seen.has(b.id));
   if (un.length === 1 && fresh) return { text: `Welcome to your camp. You have ${days} day${days === 1 ? '' : 's'} before the enemy moves. Click the glowing <b>${fresh.name}</b> to begin.`, focus: fresh.id };
   if (fresh) return { text: `New: the <b>${fresh.name}</b> is built. Click it to see what it offers. You have ${days} day${days === 1 ? '' : 's'} left.`, focus: fresh.id };
+  if (flags.praetorium) return { text: `<b>A raised flag</b> over the Command Tent: you have earned a step in your own career. It costs no day. You have ${days} day${days === 1 ? '' : 's'} left.`, focus: 'praetorium' };
   const fl = un.find(b => flags[b.id]);
   if (fl) return { text: `<b>A raised flag</b> over the ${fl.name} means ${fl.id === 'officers' ? 'an officer has earned an advancement' : 'a unit has gained a rank and can choose an improvement'}. It costs no day. You have ${days} day${days === 1 ? '' : 's'} left.`, focus: fl.id };
   return { text: `You have <b>${days} day${days === 1 ? '' : 's'}</b> left. Each action uses a day. Click any building, or the command tent when you are ready to march.`, focus: null };

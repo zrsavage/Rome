@@ -25,6 +25,8 @@ export const DOCTRINES = [
     text: 'Tell slingers and archers what to shoot at first: anything, enemy missile troops, horse or foot. Press I to cycle.' },
   { id: 'cycle', name: 'Charge and Rally', key: 'M', wins: 4, trait: 'tactics', req: 2, gold: 100,
     text: 'Horse that charge, break off after a few seconds in the melee, re-form and charge again, and ride out to meet enemy horse. Press M to switch it on or off.' },
+  { id: 'detach', name: 'Antesignani', key: ', (comma)', wins: 3, trait: 'tactics', req: 2, gold: 90,
+    text: 'A legionary cohort sends about a fifth of its men forward as a light screen with javelins. Press comma with the cohort selected; press it again with the detachment selected to call them back in.' },
   { id: 'rally', name: 'Rally the Line', key: 'F', wins: 4, trait: 'tactics', req: 2, gold: 100,
     text: 'Your general rides the line: wavering cohorts steady and routers turn about. Once every 90 seconds, inside the command ring. Press F.' },
   { id: 'pursue', name: 'Pursuit', key: 'P', wins: 4, trait: 'tactics', req: 2, gold: 100,
@@ -39,5 +41,5 @@ export const DOCTRINES = [
     text: 'A hollow square with no flanks and no rear, for a cohort that is about to be surrounded. Slow and weak on the attack. Press O.' }
 ];
 export const doctrineById = (id) => DOCTRINES.find(d => d.id === id);
-export const winsOf = (c) => (c.history || []).filter(h => h.outcome !== 'defeat').length;
+export const winsOf = (c) => (c.history || []).filter(h => h.outcome === 'victory' || h.outcome === 'draw').length;
 export const knownOrders = (c) => c.doctrines || [];

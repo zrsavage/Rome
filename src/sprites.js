@@ -321,6 +321,7 @@ const PAINT = {
   legionary: (g, t, v, a) => roman(g, t, v, a), aux_inf: (g, t, v) => aux(g, t, v), slinger: (g, t, v) => slinger(g, t, v), archer: (g, t, v) => archer(g, t, v),
   warband: (g, t, v) => gaul(g, t, v, 'warband'), gaul_elite: (g, t, v) => gaul(g, t, v, 'elite'), gaul_skirm: (g, t, v) => gaul(g, t, v, 'skirm'),
   equites: (g, t, v) => horseman(g, t, v, false, true), aux_cav: (g, t, v) => horseman(g, t, v, true, false), gaul_cav: (g, t, v) => horseman(g, t, v, true, true),
+  baggage: (g, t, v) => wagon(g, t, v), antesignani: (g, t, v, a) => roman(g, t, v, a),
   suebi: (g, t, v) => german(g, t, v), german_cav: (g, t, v) => germanHorse(g, t, v), laager: (g, t, v) => wagon(g, t, v),
   centurion: (g, t, v) => centurion(g, t, v), signifer: (g, t, v) => signifer(g, t, v), general: (g, t) => general(g, t)
 };

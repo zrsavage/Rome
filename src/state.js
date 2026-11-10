@@ -3,6 +3,7 @@ import { XP_LEVELS, SCENARIOS, WORLD, START_TYPES, TYPE_UNLOCKS, UNIT_TYPES } fr
 import { PERKS } from './perks.js';
 import { promote } from './officers.js';
 import { levelFor } from './sim.js';
+import { careerLv, realWin, legionsOf } from './campaign.js';
 
 export const DEFAULT_MODS = { recovery: 1, supplyUse: 1, spoils: 1, forage: 1, levy: 1, morale: 0, xp: 1 };
 // Effective campaign modifiers: origins, plus officer perks and the field hospital.
@@ -13,11 +14,14 @@ export function modsOf(c) {
   if (has('forager')) m.forage *= 1.2;
   if (has('surgeon')) m.recovery *= 1.2;
   m.recovery *= 1 + 0.30 * (c.hospital || 0);
+  // the commander's career
+  m.recovery *= 1 + 0.06 * careerLv(c, 'medicine'); m.supplyUse *= 1 - 0.05 * careerLv(c, 'logistics'); m.forage *= 1 + 0.08 * careerLv(c, 'logistics');
+  m.xp *= 1 + 0.05 * careerLv(c, 'training'); m.spoils *= 1 + 0.05 * careerLv(c, 'politics'); m.recruits = 1 + 0.10 * careerLv(c, 'politics');
   return m;
 }
 export const hasPerk = (c, id) => (c.officers || []).some(o => o.alive && (o.perks || []).includes(id));
 // A campaign grows an army from a handful of cohorts to 60-80 units by the final battles.
-export const commandLimit = (c) => Math.min(80, 6 + Math.round((c.history || []).filter(h => h.outcome !== 'defeat').length * 2.2));
+export const commandLimit = (c) => Math.min(80, 6 + Math.round((c.history || []).filter(realWin).length * 2.2) + careerLv(c, 'organisation'));
 // ---- Enemy strength follows yours ----
 // The Gauls gather in proportion to the army you bring (a little less than one for one, so a bigger and better army is still an
 // advantage). Early battles are authored for the starting army; as your host grows to seventy units, so do the hosts that meet it.
@@ -64,7 +68,18 @@ export const TRAITS = ['tactics', 'drill', 'logistics', 'diplomacy'];
 export function officerById(c, id) { return c.officers.find(o => o.id === id && o.alive) || null; }
 
 // Roman battle specs from cohorts, deployed per the scenario's deploy block.
+// The army as the battle sees it: the cohorts in their places, each marked with its legion, and the baggage train behind them.
 export function romeSpecs(c, scn) {
+  const specs = cohortSpecs(c, scn), lg = legionsOf(c);
+  for (const s of specs) s.legion = lg.of[s.cohortId] || 1;
+  if (scn && scn.id !== 'prologue' && specs.length) {
+    const H = (scn.world && scn.world.h) || 1000, W = (scn.world && scn.world.w) || 1600, cx = specs.reduce((a, s) => a + s.x, 0) / specs.length, by = Math.max(...specs.map(s => s.y));
+    const below = by + 130 < H - 30;
+    specs.push({ type: 'baggage', name: 'Baggage Train', cohortId: null, men: 60, maxMen: 60, xp: 0, drill: 0, condition: 100, officer: null, x: Math.max(60, Math.min(W - 60, cx)), y: below ? by + 130 : Math.min(...specs.map(s => s.y)) - 130, stance: 'hold' });
+  }
+  return specs;
+}
+function cohortSpecs(c, scn) {
   const d = scn?.deploy || { mode: 'line', cx: 800, cy: 880 };
   const live = c.cohorts.filter(h => h.men > 0);
   const inf = live.filter(h => h.type === 'legionary' || h.type === 'aux_inf');
@@ -113,11 +128,20 @@ export function applyResult(c, result, scn) {
   }
   c.lastLoss = result.rows.reduce((x, r) => x + r.casualties, 0); c.lastBack = result.rows.reduce((x, r) => x + Math.max(0, r.endMen - (r.startMen - r.casualties)), 0);
   c.gold += result.spoils.gold; c.supplies += result.spoils.supplies;
+  if (result.baggageLost) { const lost = Math.round(c.supplies * 0.25); c.supplies -= lost; notes.push(`Your baggage train was taken: ${lost} supplies are lost with it.`); }
+  if (result.wagonsTaken) notes.push(`${result.wagonsTaken} enemy wagon camp${result.wagonsTaken > 1 ? 's were' : ' was'} taken: grain and plunder for the army.`);
+  // a battle fought in stages: between stages there is no camp, no levy and no rest, only the wounded who can still stand
+  if (scn.phases && result.outcome !== 'defeat' && scn.phaseIdx < scn.phaseCount - 1) {
+    c.phase = scn.phaseIdx + 1; c.daysLeft = 0;
+    notes.push(`Stage ${scn.phaseIdx + 1} of ${scn.phaseCount} is won, but the day is not over. Your losses go with you into the next stage.`);
+    return notes;
+  }
+  if (scn.phases && result.outcome !== 'defeat') c.phase = 0;
   // Volunteers and provincial levies go into a pool of available soldiers; once the barracks is built you assign them to units with
   // sliders. Until then (the very first camp) they are assigned automatically so a new player is not left with an unexplained pool.
-  const wonCampaign = (c.history || []).filter(h => h.id !== 'prologue' && h.outcome !== 'defeat').length + (scn.id !== 'prologue' && result.outcome !== 'defeat' ? 1 : 0);
+  const wonCampaign = (c.history || []).filter(h => h.id !== 'prologue' && realWin(h)).length + (scn.id !== 'prologue' && result.outcome !== 'defeat' ? 1 : 0);
   const manual = wonCampaign >= 1; c.manpower = c.manpower || 0;
-  let recruits = result.spoils.recruits, pooled = 0;
+  let recruits = Math.round(result.spoils.recruits * (modsOf(c).recruits || 1)), pooled = 0;
   if (manual) { c.manpower += recruits; pooled += recruits; } else for (const h of c.cohorts) { const add = Math.min(recruits, h.maxMen - h.men); h.men += add; recruits -= add; }
   // Every unit's missing men come forward at a quarter, and nothing ever falls below 35% (no soft-locks).
   for (const h of c.cohorts) {
@@ -140,6 +164,7 @@ export function applyResult(c, result, scn) {
     }
     c.scenario++;
     c.scouted = false; c.favour = Math.round(c.favour * 0.5);
+    c.career = c.career || { points: 0, levels: {} }; c.career.points++; notes.push('You have earned a career point. A flag over the Command Tent marks the choice.');
   }
   const next = SCENARIOS[c.scenario];
   c.daysLeft = next ? next.daysToPrepare : 0;

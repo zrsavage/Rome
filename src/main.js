@@ -7,6 +7,7 @@ import { renderMap } from './map.js';
 import { artSrc, initArt } from './art.js';
 import { ask, inform } from './ui.js';
 import { reportHtml } from './report.js';
+import { currentScn, battleExtras, linksFor, STYLES, prisonerOptions, careerLv, chooseRoute, skipBattle } from './campaign.js';
 import { music, mountMusicUI, gameOpts } from './music.js';
 import { pickWeather, WEATHER } from './weather.js';
 import { snapshot, backups, restoreBackup, clearBackups, exportCampaign, parseImport } from './saves.js';
@@ -33,7 +34,7 @@ const store = {
 };
 const save = () => { if (campaign) store.set(key(campaign.slot), campaign); };
 
-const marchGuard = async () => { const n = (campaign && campaign.manpower) || 0; if (n > 0 && !(await ask(`You have ${n} soldiers waiting at camp who are not assigned to any unit. March without them?`, 'March anyway', 'Assign them first'))) return; showBrief(); };
+const marchGuard = async () => { const n = ((campaign && campaign.manpower) || 0) + ((campaign && campaign.vets) || 0); if (n > 0 && !(await ask(`You have ${n} soldiers waiting at camp who are not assigned to any unit. March without them?`, 'March anyway', 'Assign them first'))) return; showBrief(); };
 const camp = new Camp($('screen-camp'), { save, map: () => showMap(), march: () => marchGuard() });
 const battle = new BattleUI();
 
@@ -48,7 +49,7 @@ function refreshMenu() {
   for (let n = 1; n <= SLOTS; n++) {
     const c = store.get(key(n)), d = document.createElement('div'); d.className = 'slot';
     if (c) {
-      const scn = SCENARIOS[c.scenario];
+      const scn = currentScn(c);
       d.innerHTML = `<div><b>Slot ${n}</b> - ${esc(DIFFICULTY[c.difficulty].name)}<small>${scn ? `Battle ${c.scenario + 1}/${SCENARIOS.length}: ${esc(scn.name)}` : 'Act II complete'} - ${totalMen(c)} men - day ${c.day}</small></div>
         <div class="row"><button class="primary" data-a="load">Continue</button><button data-a="exp" title="Download this campaign as a file">Export</button><button data-a="bak" title="Rolling backups taken after each battle and at camp">Backups</button><button data-a="del">Delete</button></div>`;
       d.querySelector('[data-a=exp]').onclick = () => exportCampaign(c);
@@ -96,7 +97,9 @@ function showMap() {
   renderMap($('screen-map'), campaign, {
     camp: () => { snapshot(campaign.slot, campaign, 'Entering camp'); camp.show(campaign); show('screen-camp'); },
     march: () => marchGuard(),
-    menu: () => toMenu()
+    menu: () => toMenu(),
+    route: (id) => { const msg = chooseRoute(campaign, id); if (msg) camp.note(msg, 'info'); save(); showMap(); },
+    skip: async () => { if (await ask('March past this fight? You gain nothing from it, and a later battle may be harder for it.', 'March past', 'Stay and fight')) { const msg = skipBattle(campaign); if (msg) camp.note(msg, 'info'); save(); showMap(); } }
   });
   const cs = SCENARIOS[campaign.scenario];
   if (cs && cs.act === 'II' && !(campaign.actsSeen || []).includes('II')) {
@@ -113,27 +116,30 @@ function showMap() {
 
 // ----- briefing -----
 function showBrief(scnArg) {
-  const c = campaign, scn = scnArg || SCENARIOS[c.scenario];
+  const c = campaign, scn = scnArg || currentScn(c);
   if (!scn) return showMap();
+  const ex = battleExtras(c, scn), known = c.scouted || careerLv(c, 'recon') >= 2, links = linksFor(c, scn);
   const opening = scn.id === 'prologue';
   const diff = DIFFICULTY[c.difficulty];
   const favMult = c.favour >= 2 ? 0.9 : c.favour <= -2 ? 1.1 : 1, fs = forceScale(c, scn), scale = diff.enemyMult * favMult * (opening ? 1 : 1.1) * fs;
   const groups = {};
-  [...scn.enemy, ...scn.reinforcements.filter(r => r.side !== 'rome').map(r => r.unit)].forEach(e => { groups[e.type] = (groups[e.type] || 0) + e.men * scale; });
+  [...scn.enemy, ...scn.reinforcements.filter(r => r.side !== 'rome').map(r => r.unit)].forEach(e => { groups[e.type] = (groups[e.type] || 0) + e.men * scale * (scn.boost || 1) * (ex.typeScale[e.type] ?? 1); });
   const total = Object.values(groups).reduce((a, b) => a + b, 0);
   const rnd = (n) => Math.max(0, Math.round(n / 50) * 50);
-  const list = Object.entries(groups).map(([t, n]) => c.scouted ? `<li>${UNIT_TYPES[t].name}: <b>${Math.round(n)}</b> men</li>` : `<li>${UNIT_TYPES[t].name}: roughly <b>${rnd(n * 0.75)}-${rnd(n * 1.35)}</b></li>`).join('');
+  const list = Object.entries(groups).map(([t, n]) => known ? `<li>${UNIT_TYPES[t].name}: <b>${Math.round(n)}</b> men</li>` : `<li>${UNIT_TYPES[t].name}: roughly <b>${rnd(n * 0.75)}-${rnd(n * 1.35)}</b></li>`).join('');
   const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`;
   const waveMap = {}; scn.reinforcements.filter(r => r.side !== 'rome').forEach(r => { const k = Math.round(r.at / 10) * 10; waveMap[k] = (waveMap[k] || 0) + Math.round(r.unit.men * scale); });
   const waveKeys = Object.keys(waveMap).map(Number).sort((x, y) => x - y);
   const waveText = waveKeys.length ? `<div class="small" style="margin-top:6px"><b>Scouts report reinforcements:</b><br>${waveKeys.map(k => `about ${mmss(k)}: ~${Math.round(waveMap[k] / 10) * 10} men`).join('<br>')}<br><span class="muted">If you clear the field early, the next wave comes sooner.</span></div>` : '<div class="muted small">Scouts report no reinforcements.</div>';
   const rome = totalMen(c), wxk = opening ? 'clear' : pickWeather(scn, c), wxo = WEATHER[wxk];
   $('screen-brief').innerHTML = `<div class="panel-page"><div class="muted">${opening ? 'Opening battle' : `Act ${scn.act} - ${esc(scn.theater)}, ${esc(scn.year)} - Battle ${c.scenario + 1} of ${SCENARIOS.length}${scn.kind === 'named' ? ' - NAMED BATTLE' : ''}`}</div>
-    <h2>${esc(scn.name)}</h2><img class="banner" alt="" src="${artSrc('scenario', scn.id, 800, 240, { scn })}"><p>${esc(scn.briefing)}</p>
+    <h2>${esc(scn.name)}${scn.phaseCount ? ` <span class="pill">stage ${scn.phaseIdx + 1} of ${scn.phaseCount}: ${esc(scn.phaseName)}</span>` : ''}</h2><img class="banner" alt="" src="${artSrc('scenario', scn.id, 800, 240, { scn })}"><p>${esc(scn.briefing)}</p>
     <div class="card"><h3>Weather: ${esc(wxo.name)}</h3><div class="small">${esc(wxo.text)}</div></div>
+    ${scn.chief ? `<div class="card" style="margin-top:12px"><h3>Enemy commander: ${esc(scn.chief.name)}</h3><div class="small">${known ? esc(STYLES[scn.chief.style] || STYLES.balanced) : 'Nothing is known of how he fights. Scouts (at the Chieftains\' Hall) would tell you.'}</div></div>` : ''}
+    ${links.length ? `<div class="card" style="margin-top:12px"><h3>What earlier fights changed</h3>${links.map(l => `<div class="small">${l.won ? '<b style="color:var(--green)">Won:</b>' : '<span class="muted">Not won:</span>'} ${esc(l.name)} - ${l.won ? esc(l.text) : '<span class="muted">a victory there would have helped here.</span>'}</div>`).join('')}</div>` : ''}
     <div class="card" style="margin-top:12px"><h3>Objective</h3>${esc(scn.objective)}<br><span class="muted small">Time limit ${Math.round(scn.timeLimit / 60)} minutes. A well-ordered withdrawal (keeping at least ${Math.round((0.45 - 0.05 * c.fort) * 100)}% of your men; fortifications lower this) counts as a draw and earns partial spoils.${scn.rewardMult > 1.4 ? ' Historically a dark day for Rome: survival or victory pays handsomely.' : ''}</span></div>
     <div class="row" style="align-items:flex-start;margin-top:12px"><div class="card" style="flex:1"><h3>Your force (${rome} men)</h3><ul>${c.cohorts.length > 10 ? Object.entries(c.cohorts.reduce((g, h) => { (g[h.type] = g[h.type] || { n: 0, men: 0 }).n++; g[h.type].men += h.men; return g; }, {})).map(([t, g]) => `<li>${g.n} x ${esc(UNIT_TYPES[t].name)} - ${g.men} men</li>`).join('') : c.cohorts.map(h => `<li>${esc(h.name)} - ${h.men}</li>`).join('')}</ul></div>
-    <div class="card" style="flex:1"><h3>Enemy${c.scouted ? ` (scouted) ~${Math.round(total)}` : ' (estimated)'}</h3><ul>${list}</ul>${fs > 1.05 ? '<div class="muted small">The Gauls gather in proportion to the army you bring: the bigger your host, the bigger theirs.</div>' : ''}${c.scouted ? waveText : '<div class="muted small">Without scouts, expect surprises: you will not know how many reinforcements come, or when.</div>'}</div></div>
+    <div class="card" style="flex:1"><h3>Enemy${known ? ` (scouted) ~${Math.round(total)}` : ' (estimated)'}</h3><ul>${list}</ul>${fs > 1.05 ? '<div class="muted small">The Gauls gather in proportion to the army you bring: the bigger your host, the bigger theirs.</div>' : ''}${known ? waveText : '<div class="muted small">Without scouts, expect surprises: you will not know how many reinforcements come, or when.</div>'}</div></div>
     <p class="muted small">Goodwill ${c.favour}. Fort ${c.fort}. Supplies ${c.supplies}${c.supplies < totalMen(c) / 60 * 2 ? ' - LOW, morale will suffer' : ''}.</p>
     ${opening ? '<p class="small" style="color:var(--gold)">After this fight you will see your army management screen, where you spend days between battles.</p>' : ''}
     <div class="row"><button class="primary" id="go">Deploy</button>${opening ? '<button id="back">Main menu</button>' : '<button id="back">Back to map</button>'}</div></div>`;
@@ -146,8 +152,8 @@ function startBattle(scn) {
   const c = campaign;
   store.set(preKey(c.slot), c);
   show('screen-battle');
-  const low = c.supplies < totalMen(c) / 60 * 2, m = modsOf(c), opening = scn.id === 'prologue';
-  battle.start(scn, romeSpecs(c, scn), { difficulty: opening ? 'easy' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale, orders: c.doctrines || [], scouted: !!c.scouted, forceScale: forceScale(c, scn), weather: opening ? 'clear' : pickWeather(scn, c), messengers: !opening && gameOpts.messengers }, (res) => showResult(res, scn));
+  const low = c.supplies < totalMen(c) / 60 * 2, m = modsOf(c), opening = scn.id === 'prologue', extras = battleExtras(c, scn);
+  battle.start(scn, romeSpecs(c, scn), { difficulty: opening ? 'easy' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale + extras.moraleAdd, typeScale: extras.typeScale, legates: extras.legates, sight: extras.sight, orders: c.doctrines || [], scouted: !!c.scouted, forceScale: forceScale(c, scn), weather: opening ? 'clear' : pickWeather(scn, c), messengers: !opening && gameOpts.messengers }, (res) => showResult(res, scn));
   if (opening) startCoach(); else stopCoach();
 }
 
@@ -162,19 +168,25 @@ function showResult(res, scn) {
   const o = res.outcome, title = { victory: 'VICTORY', draw: 'DRAW', defeat: 'DEFEAT' }[o];
   const flavour = { victory: 'The enemy breaks and scatters. The field is yours.', draw: 'Neither side can claim the field, but your legion marches away intact.', defeat: 'The line has broken. You live to fight another day, but the loss is bitter.' }[o];
   const rows = res.rows.map(r => `<tr><td>${esc(r.name)}</td><td>${r.startMen}</td><td>${r.endMen}</td><td>${r.casualties}</td><td>${r.kills}</td><td>+${r.xpGain}</td></tr>`).join('');
-  const s = res.spoils, next = SCENARIOS[c.scenario], picks = rewardOptions(c, scn, o);
+  const mid = !!scn.phases && o !== 'defeat' && scn.phaseIdx < scn.phaseCount - 1;                 // more of the same battle to come: no camp, no spoils yet
+  const s = res.spoils, next = SCENARIOS[c.scenario], picks = mid ? [] : rewardOptions(c, scn, o), pris = (mid || opening) ? [] : prisonerOptions(c, res.prisoners);
   $('screen-result').innerHTML = `<div class="panel-page"><img class="banner" alt="" src="${artSrc('outcome', o, 800, 200)}"><div class="big ${o}">${title}</div><p>${flavour}</p>
     <div class="card"><h3>Casualties</h3><table><tr><th>Unit</th><th>Before</th><th>After</th><th>Lost</th><th>Kills</th><th>XP</th></tr>${rows}</table>
     <p class="muted small">Enemy dead: about ${res.enemyDead} of ${res.enemyStart}. Wounded men who can march are counted in the 'after' column.</p></div>
     ${reportHtml(res)}
-    <div class="card" style="margin-top:12px"><h3>Spoils</h3>${o === 'defeat' ? 'None. The enemy keeps the field; you may try again.' : `+${s.gold} denarii, +${s.supplies} supplies, +${s.recruits} fresh recruits`}</div>
-    ${picks.length ? `<div class="card" style="margin-top:12px"><h3>Choose a bonus <span class="pill">pick one</span></h3><div class="ocards">${picks.map((p, i) => `<button class="ocard" data-i="${i}"><b>${esc(p.name)}</b><span class="t">${esc(p.text)}</span></button>`).join('')}</div></div>` : ''}
+    <div class="card" style="margin-top:12px"><h3>Spoils</h3>${mid ? 'The spoils will be counted when the day is won.' : o === 'defeat' ? 'None. The enemy keeps the field; you may try again.' : `+${s.gold} denarii, +${s.supplies} supplies, +${s.recruits} fresh recruits`}</div>
+    ${pris.length ? `<div class="card" style="margin-top:12px" id="pris"><h3>${res.prisoners} prisoners <span class="pill">decide their fate</span></h3><div class="ocards">${pris.map((p, i) => `<button class="ocard" data-p="${i}"><b>${esc(p.name)}</b><span class="t">${esc(p.text)}</span></button>`).join('')}</div></div>` : ''}
+    ${picks.length ? `<div class="card" style="margin-top:12px" id="bonus"><h3>Choose a bonus <span class="pill">pick one</span></h3><div class="ocards">${picks.map((p, i) => `<button class="ocard" data-i="${i}"><b>${esc(p.name)}</b><span class="t">${esc(p.text)}</span></button>`).join('')}</div></div>` : ''}
     ${notes.length ? `<div class="card" style="margin-top:12px"><h3>Dispatches</h3>${notes.map(n => `<div>${esc(n)}</div>`).join('')}</div>` : ''}
-    <div class="row" style="margin-top:16px"><button class="primary" id="cont">${opening && o !== 'defeat' ? 'Continue to army management' : o !== 'defeat' && !next ? 'Finish Act II' : opening ? 'Try the opening battle again' : 'Return to the map'}</button></div></div>`;
-  $('cont').onclick = () => { camp.msgs = []; if (opening && o === 'defeat') { const snap = store.get(preKey(c.slot)); if (snap) { campaign = snap; save(); } showBrief(PROLOGUE); return; } camp.note(`After the ${o}, the army makes camp.`); showMap(); if (opening && !c.introShown) { c.introShown = true; save(); showManagementIntro(); } };
-  if (picks.length) {
-    const cont = $('cont'); cont.disabled = true; cont.title = 'Choose a bonus first';
-    document.querySelectorAll('#screen-result .ocard').forEach(b => b.onclick = () => { picks[+b.dataset.i].apply(c); save(); document.querySelectorAll('#screen-result .ocard').forEach(x => { x.disabled = true; x.classList.toggle('sel', x === b); }); cont.disabled = false; cont.title = ''; });
+    <div class="row" style="margin-top:16px"><button class="primary" id="cont">${mid ? `On to stage ${scn.phaseIdx + 2}: ${esc(scn.phases[scn.phaseIdx + 1].phaseName)}` : opening && o !== 'defeat' ? 'Continue to army management' : o !== 'defeat' && !next ? 'Finish Act II' : opening ? 'Try the opening battle again' : 'Return to the map'}</button></div></div>`;
+  $('cont').onclick = () => { camp.msgs = []; if (mid) { showBrief(); return; } if (opening && o === 'defeat') { const snap = store.get(preKey(c.slot)); if (snap) { campaign = snap; save(); } showBrief(PROLOGUE); return; } camp.note(`After the ${o}, the army makes camp.`); showMap(); if (opening && !c.introShown) { c.introShown = true; save(); showManagementIntro(); } };
+  {
+    // one or two decisions before you leave the field: the prisoners, then the bonus
+    const cont = $('cont'); let need = (picks.length ? 1 : 0) + (pris.length ? 1 : 0);
+    const done = () => { need--; if (need <= 0) { cont.disabled = false; cont.title = ''; } };
+    if (need > 0) { cont.disabled = true; cont.title = 'Make your choices first'; }
+    document.querySelectorAll('#bonus .ocard').forEach(b => b.onclick = () => { picks[+b.dataset.i].apply(c); save(); document.querySelectorAll('#bonus .ocard').forEach(x => { x.disabled = true; x.classList.toggle('sel', x === b); }); done(); });
+    document.querySelectorAll('#pris .ocard').forEach(b => b.onclick = () => { pris[+b.dataset.p].apply(c); save(); document.querySelectorAll('#pris .ocard').forEach(x => { x.disabled = true; x.classList.toggle('sel', x === b); }); done(); });
   }
   show('screen-result');
 }

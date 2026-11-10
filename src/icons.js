@@ -30,6 +30,7 @@ const P = {
   rotate: '<path d="M20 12a8 8 0 0 1-14 5"/><path d="M4 12a8 8 0 0 1 14-5"/><path d="M18 3v4h-4M6 21v-4h4"/>',
   cycle: '<path d="M4 14c0-5 4-8 9-8h5l-3-3M20 10c0 5-4 8-9 8H6l3 3"/>',
   priority: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
+  detach: '<rect x="4" y="13" width="16" height="7"/><path d="M8 9V4M12 9V3M16 9V4"/><path d="M6 6l2-2 2 2M10 5l2-2 2 2M14 6l2-2 2 2"/>',
   queue: '<circle cx="5" cy="18" r="2"/><circle cx="12" cy="9" r="2"/><circle cx="19" cy="15" r="2"/><path d="M6.5 16.5l4-6M13.8 10.4l3.8 3"/>'
 };
 export const icon = (name, size = 16, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ''}</svg>`;

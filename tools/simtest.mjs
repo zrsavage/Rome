@@ -1,7 +1,7 @@
 // Headless balance harness: node tools/simtest.mjs [runs] [scenarioIndex|all] [difficulty|all]
 // Plays each scenario with the army you'd plausibly have at that point, using simple scripted "players".
 import { Battle } from '../src/sim.js';
-import { SCENARIOS } from '../src/data.js';
+import { SCENARIOS, phaseScn } from '../src/data.js';
 import { newCampaign, romeSpecs, modsOf } from '../src/state.js';
 import { triplexLayout } from '../src/orders.js';
 
@@ -68,8 +68,8 @@ function smartBot(b, rome, S) {
 }
 
 export { campaignAt };
-export function play(strategy, i, difficulty, seed, mutate = null) {
-  const scn = SCENARIOS[i], c = campaignAt(i, difficulty);
+export function play(strategy, i, difficulty, seed, mutate = null, phase = null) {
+  const scn = phase == null ? SCENARIOS[i] : phaseScn(SCENARIOS[i], phase), c = campaignAt(i, difficulty);
   if (mutate) mutate(c, seed);   // camp decisions applied before the battle (used by tools/campbalance.mjs)
   const m = modsOf(c);
   const b = new Battle(scn, romeSpecs(c, scn), { difficulty, seed, fort: c.fort, recovery: m.recovery, moraleBonus: m.morale });

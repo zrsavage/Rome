@@ -54,6 +54,18 @@ python3 -m http.server 8080   # then open http://localhost:8080
 - **Advancement, one decision at a time**: each officer level and each cohort rank earns a single either/or choice from a ladder that is the same for every
   leader or unit of that kind (centurion of foot, prefect of horse, staff officer; foot, missile troops, horse). A raised flag over the Officers' Tent or the
   Training Ground shows a choice is waiting. Clicking a unit shows its record: its real numbers, what it is best at and where it stands out. Rules in `src/promote.js`.
+- **Campaign depth (v0.5, ideas from the Ultimate General games)**:
+  - *Baggage train*: a wagon unit deploys behind the army. Units beside it refill pila, sling-shot and arrows; if it is taken you lose a quarter of your supplies. The Gauls go for it. Enemy wagon camps taken are worth supplies.
+  - *Veterans or recruits*: the pool holds raw recruits (cheap, dilute experience) and veterans (hired dear, or your own lightly wounded after a rest; no dilution). Sliders place veterans first.
+  - *Prisoners*: after a win, ransom them, sell them (goodwill -1), enrol the willing as recruits, or release them (goodwill +1).
+  - *Antesignani* (doctrine, comma key): a legionary cohort detaches a fifth of its men as a javelin screen and takes them back.
+  - *Career*: one point per battle won or drawn; three of seven skills are offered each time (Politics, Economy, Medicine, Training, Army organisation, Logistics, Reconnaissance). Flag over the Command Tent.
+  - *Line of march*: on reaching a new battle choose the road (+supplies), a forced march (+1 day, tired, fewer supplies) or living off the land (+supplies, -1 day, goodwill -1).
+  - *Legions and legates*: more than ten legionary cohorts form a second legion; give each a legate (Officers' Tent) with a command ring of his own. Alt+1, Alt+2 select a legion.
+  - *Battles in stages*: Bibracte is three linked fights (the assault on the hill, the Boii and Tulingi on the flank, the wagons at dusk) with losses carried over and no camp between.
+  - *Side fights*: the hill fort, the parley and the lesser camp may be marched past; winning them (and the supply and ambush fights) weakens the named battle's host or steadies your men. The briefing lists what was won.
+  - *Enemy commanders*: each battle has a commander who is cautious, aggressive, cunning or stubborn, which changes how the host fights. Scouting (or Reconnaissance 2) reveals it in the briefing.
+  Rules live in `src/campaign.js`.
 - **Save safety**: export a campaign as a file, import it, and keep six rolling backups per slot (after every battle and when you make camp).
 
 ## Balancing the camp
