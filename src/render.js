@@ -134,6 +134,8 @@ export class Renderer {
     paintTerrain(g, scn);
     this.bg = c;
   }
+  // A small copy of the battlefield for the replay on the result screen.
+  bgThumb(w = 720) { if (!this.bg) return null; const c = document.createElement('canvas'); c.width = w; c.height = Math.round(w * this.bg.height / this.bg.width); c.getContext('2d').drawImage(this.bg, 0, 0, c.width, c.height); try { return c.toDataURL('image/jpeg', 0.72); } catch { return null; } }
 
   draw(b) {
     const ctx = this.ctx, z = this.cam.zoom;

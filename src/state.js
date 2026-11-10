@@ -4,6 +4,7 @@ import { PERKS } from './perks.js';
 import { promote } from './officers.js';
 import { levelFor } from './sim.js';
 import { careerLv, realWin, legionsOf } from './campaign.js';
+import { awardHonours, promoteFromRanks, decoMorale } from './heroes.js';
 
 export const DEFAULT_MODS = { recovery: 1, supplyUse: 1, spoils: 1, forage: 1, levy: 1, morale: 0, xp: 1 };
 // Effective campaign modifiers: origins, plus officer perks and the field hospital.
@@ -86,7 +87,7 @@ function cohortSpecs(c, scn) {
   const ranged = live.filter(h => h.type === 'slinger' || h.type === 'archer');
   const cav = live.filter(h => h.type === 'equites' || h.type === 'aux_cav');
   const specs = [];
-  const mk = (h, x, y) => specs.push({ type: h.type, name: h.name, cohortId: h.id, men: h.men, maxMen: h.maxMen, xp: h.xp, drill: h.drill, condition: h.condition, officer: officerById(c, h.officerId), upg: h.upg, ups: h.ups, x, y, f: d.f, stance: 'aggressive' });
+  const mk = (h, x, y) => specs.push({ type: h.type, name: h.name, cohortId: h.id, men: h.men, maxMen: h.maxMen, xp: h.xp, drill: h.drill, condition: h.condition, officer: officerById(c, h.officerId), upg: h.upg, ups: h.ups, moraleBonus: decoMorale(h), x, y, f: d.f, stance: 'aggressive' });
   if (d.mode === 'grid') {
     [...inf, ...ranged, ...cav].forEach((h, i) => { const col = i % d.cols, row = Math.floor(i / d.cols); mk(h, d.cx + (col - (d.cols - 1) / 2) * d.dx, d.cy + row * d.dy); });
     return specs;
@@ -121,11 +122,12 @@ export function applyResult(c, result, scn) {
     if (r.officerId != null) {
       const o = c.officers.find(x => x.id === r.officerId);
       if (o) {
-        if (r.officerFate === 'killed') { o.alive = false; h.officerId = null; notes.push(`${o.rank} ${o.name} fell in battle with ${h.name}.`); }
+        if (r.officerFate === 'killed') { o.alive = false; h.officerId = null; notes.push(`${o.rank} ${o.name} fell in battle with ${h.name}.`); const n = promoteFromRanks(c, h); if (n) { notes.push(`${n.name} of ${h.name} is promoted from the ranks to ${n.rank} in his place.`); (result.promotions = result.promotions || []).push({ unit: h.name, name: n.name, rank: n.rank, fallen: o.name }); } }
         else { o.xp += result.officerXp; const up = levelOfficer(o); if (up) notes.push(up); }
       }
     }
   }
+  result.honours = awardHonours(c, result, scn.phaseName || scn.name);
   c.lastLoss = result.rows.reduce((x, r) => x + r.casualties, 0); c.lastBack = result.rows.reduce((x, r) => x + Math.max(0, r.endMen - (r.startMen - r.casualties)), 0);
   c.gold += result.spoils.gold; c.supplies += result.spoils.supplies;
   if (result.baggageLost) { const lost = Math.round(c.supplies * 0.25); c.supplies -= lost; notes.push(`Your baggage train was taken: ${lost} supplies are lost with it.`); }

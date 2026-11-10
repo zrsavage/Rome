@@ -115,7 +115,7 @@ export class Battle {
     this.recoveryMult = opts.recovery ?? 1;
     const rb = this.diff.romeMorale + Math.min(12, this.fortLevel * 4) + (opts.suppliesLow ? -8 : 0) + (opts.moraleBonus || 0);
     this.romeBonus = rb;
-    for (const s of romeSpecs) this.units.push(new Unit({ ...s, side: 'rome', moraleBonus: rb }));
+    for (const s of romeSpecs) this.units.push(new Unit({ ...s, side: 'rome', moraleBonus: rb + (s.moraleBonus || 0) }));
     this.orders = new Set(opts.orders || ALL_ORDERS);          // formation orders the army has learned in camp
     this.cmdR = CMD_R + (opts.cmdBonus || 0); this.rallyCd = 0; this.general = null;
     const rs = this.units.filter(u => u.side === 'rome');
@@ -306,6 +306,15 @@ export class Battle {
     let rr = 0, gr = 0;
     for (const u of this.units) if (u.state === 'routing') { if (u.side === 'rome') rr++; else gr++; }
     this.rep.series.push({ t: Math.round(this.t), rome: Math.round(this.activeMen('rome')), gaul: Math.round(this.activeMen('gaul')), rr, gr });
+  }
+  // The replay: every two seconds, where each unit stood. [id, x, y, facing x100, width, depth, state (0 fine, 1 fighting, 2 routing, 3 gone), men]
+  recordFrame() {
+    if (this.t < (this.rep.nextFrame || 0)) return; this.rep.nextFrame = this.t + 2;
+    const units = this.units.filter(u => u.present || u.state === 'routing').map(u => [u.id, Math.round(u.x), Math.round(u.y), Math.round(u.f * 100), Math.round(u.w), Math.round(u.d), u.state === 'routing' ? 2 : u.fighting ? 1 : 0, u.men]);
+    const g = this.general ? [Math.round(this.general.x), Math.round(this.general.y)] : null;
+    (this.rep.frames = this.rep.frames || []).push({ t: Math.round(this.t), units, g });
+    if (!this.rep.meta) this.rep.meta = {};
+    for (const u of this.units) if (!this.rep.meta[u.id]) this.rep.meta[u.id] = { side: u.side, name: u.name, cat: u.type.cat };
   }
   sumMen(side) { return this.units.filter(u => u.side === side).reduce((a, u) => a + u.men, 0); }
   activeMen(side) { return this.units.filter(u => u.side === side && u.active).reduce((a, u) => a + u.men, 0); }
@@ -736,7 +745,7 @@ export class Battle {
   // ---------- main step ----------
   update(dt) {
     if (this.result) return;
-    this.t += dt; this.sampleReport(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt); this.updateRotation(); this.runPending(); this.updateSupply(dt); this.stepLegates(dt);
+    this.t += dt; this.sampleReport(); this.recordFrame(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt); this.updateRotation(); this.runPending(); this.updateSupply(dt); this.stepLegates(dt);
     for (const r of this.reinf) if (!r.done && this.t >= r.at) {
       r.done = true;
       if (r.side === 'rome') {
@@ -797,6 +806,7 @@ export class Battle {
         for (let i = 0; i < br.length; i++) for (let j = i + 1; j < br.length; j++) spread = Math.max(spread, Math.abs(norm(br[i] - br[j])));
         u.surrounded = spread > 2.0;
       }
+      if (u.surrounded) u.wasSurrounded = true; if (u.flanked) u.wasFlanked = true;
       if (u.surrounded && !was && !u.notedSurround) { u.notedSurround = true; this.say(`${u.name} is surrounded!`, u.side === 'rome' ? 'bad' : 'good'); }
       if (!u.surrounded) u.notedSurround = false;
     }
@@ -1222,7 +1232,7 @@ export class Battle {
       if (!u.contacts.some(e => e.active)) u.morale = Math.min(u.maxMorale, u.morale + (2.2 + (u.officer ? 0.35 * (u.officer.tactics || 0) : 0) + (u.perks.includes('inspire') ? 1.1 : 0)) * (u.auraT > this.t ? 1.25 : 1) * dt * (u.side === 'rome' ? (this.inCommand(u) ? 1.2 : 0.45) : 1));
       if (u.type.wagon) u.morale = Math.max(u.morale, 30);                          // a laager cannot run: it is held until the last man falls
       if (u.morale <= (u.laagered ? Math.max(6, u.maxMorale * 0.1) : u.tier >= 2 ? Math.max(8, u.maxMorale * 0.14) : Math.max(12, u.maxMorale * 0.2))) {
-        u.state = 'routing'; u.order = { kind: 'none' }; this.stats.routs[u.side]++;
+        u.state = 'routing'; u.order = { kind: 'none' }; this.stats.routs[u.side]++; u.everRouted = true;
         this.addFx({ kind: 'ring', x: u.x, y: u.y, life: 1, max: 1, r: Math.max(u.w, u.d) });
         this.say(`${u.name} breaks and flees!`, u.side === 'rome' ? 'bad' : 'good');
         { const mc = u.mc || {}, tot = Object.values(mc).reduce((a, b) => a + b, 0) || 1; const top = Object.entries(mc).sort((a, b) => b[1] - a[1]); this.mark('rout', u.name, u.side, { x: u.x, y: u.y, men: u.men, cause: top.length ? top[0][0] : 'frontal', share: top.length ? top[0][1] / tot : 1, cause2: top[1] ? top[1][0] : null, cmd: this.inCommand(u), neigh: !!u.mc && (u.mc.neighbour || 0) / tot > 0.25 }); }
@@ -1238,7 +1248,7 @@ export class Battle {
     if (!this.objectives.length) return;
     for (const o of this.objectives) {
       const pr = { rome: false, gaul: false };
-      for (const u of this.units) if (u.active && Math.hypot(u.x - o.x, u.y - o.y) < o.r + Math.max(u.w, u.d) / 3) pr[u.side] = true;
+      for (const u of this.units) if (u.active && Math.hypot(u.x - o.x, u.y - o.y) < o.r + Math.max(u.w, u.d) / 3) { pr[u.side] = true; if (u.side === 'rome' && u.type.cat === 'inf' && o.owner === 'gaul' && this.firstIn == null && u.cohortId != null) this.firstIn = u.id; }
       o.presence = pr; o.contested = pr.rome && pr.gaul;
       if (pr.rome && !pr.gaul) o.owner = 'rome'; else if (pr.gaul && !pr.rome) o.owner = 'gaul';
     }
@@ -1322,7 +1332,7 @@ export class Battle {
         const chance = tm * (0.03 + r * 0.4 + (u.state === 'routing' ? 0.12 : 0) + (u.state === 'dead' ? 0.4 : 0) + (outcome === 'defeat' ? 0.08 : 0)) * dm.officerRisk;
         fate = this.rand() < chance ? 'killed' : 'survived';
       }
-      rows.push({ cohortId: u.cohortId, name: u.name, startMen: u.startMen, endMen, casualties, kills: u.kills, xpGain, officerId: u.officer ? u.officer.id : null, officerFate: fate });
+      rows.push({ cohortId: u.cohortId, name: u.name, startMen: u.startMen, endMen, casualties, kills: u.kills, xpGain, officerId: u.officer ? u.officer.id : null, officerFate: fate, routed: !!u.everRouted, surrounded: !!u.wasSurrounded, flanked: !!u.wasFlanked, relieved: this.rep.events.filter(e => e.kind === 'relieve' && e.text.startsWith(u.name + ' ')).length, firstIn: this.firstIn === u.id });
     }
     const mult = outcome === 'victory' ? 1 : outcome === 'draw' ? 0.45 : 0;
     const rewardMult = (this.scn.rewardMult || 1) * dm.reward * this.rewardScale;
@@ -1332,7 +1342,7 @@ export class Battle {
     const prisoners = outcome === 'victory' ? Math.round(broken * 0.3) : outcome === 'draw' ? Math.round(broken * 0.08) : 0;
     const wagonsTaken = outcome === 'defeat' ? 0 : this.units.filter(u => u.side === 'gaul' && u.type.wagon && u.state === 'dead').length;
     this.result = {
-      outcome, time: this.t, rows, enemyDead, enemyStart, prisoners, wagonsTaken, baggageLost: !!this.stats.baggageLost, report: { wx: this.wxKey, series: this.rep.series, events: this.rep.events, stats: this.stats, startRome: this.startRome, startGaul: this.startGaul },
+      outcome, time: this.t, rows, enemyDead, enemyStart, prisoners, wagonsTaken, baggageLost: !!this.stats.baggageLost, report: { wx: this.wxKey, series: this.rep.series, frames: this.rep.frames, meta: this.rep.meta, world: { w: WORLD.w, h: WORLD.h }, events: this.rep.events, stats: this.stats, startRome: this.startRome, startGaul: this.startGaul },
       spoils: {
         gold: Math.round(rw.gold * mult * rewardMult),
         supplies: Math.round(rw.supplies * mult * rewardMult) + wagonsTaken * 35,

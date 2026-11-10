@@ -6,7 +6,8 @@ import { BattleUI } from './battleui.js';
 import { renderMap } from './map.js';
 import { artSrc, initArt } from './art.js';
 import { ask, inform } from './ui.js';
-import { reportHtml } from './report.js';
+import { resultHtml, mountResult } from './result.js';
+let stopResult = null;
 import { currentScn, battleExtras, linksFor, STYLES, prisonerOptions, careerLv, chooseRoute, skipBattle } from './campaign.js';
 import { music, mountMusicUI, gameOpts } from './music.js';
 import { pickWeather, WEATHER } from './weather.js';
@@ -165,29 +166,15 @@ function showResult(res, scn) {
   const notes = applyResult(c, res, scn);
   c.cohorts.forEach(h => { h.condition = Math.max(35, h.condition); });
   save(); snapshot(c.slot, c, `After ${scn.name}: ${res.outcome}`);
-  const o = res.outcome, title = { victory: 'VICTORY', draw: 'DRAW', defeat: 'DEFEAT' }[o];
+  const o = res.outcome;
   const flavour = { victory: 'The enemy breaks and scatters. The field is yours.', draw: 'Neither side can claim the field, but your legion marches away intact.', defeat: 'The line has broken. You live to fight another day, but the loss is bitter.' }[o];
-  const rows = res.rows.map(r => `<tr><td>${esc(r.name)}</td><td>${r.startMen}</td><td>${r.endMen}</td><td>${r.casualties}</td><td>${r.kills}</td><td>+${r.xpGain}</td></tr>`).join('');
   const mid = !!scn.phases && o !== 'defeat' && scn.phaseIdx < scn.phaseCount - 1;                 // more of the same battle to come: no camp, no spoils yet
-  const s = res.spoils, next = SCENARIOS[c.scenario], picks = mid ? [] : rewardOptions(c, scn, o), pris = (mid || opening) ? [] : prisonerOptions(c, res.prisoners);
-  $('screen-result').innerHTML = `<div class="panel-page"><img class="banner" alt="" src="${artSrc('outcome', o, 800, 200)}"><div class="big ${o}">${title}</div><p>${flavour}</p>
-    <div class="card"><h3>Casualties</h3><table><tr><th>Unit</th><th>Before</th><th>After</th><th>Lost</th><th>Kills</th><th>XP</th></tr>${rows}</table>
-    <p class="muted small">Enemy dead: about ${res.enemyDead} of ${res.enemyStart}. Wounded men who can march are counted in the 'after' column.</p></div>
-    ${reportHtml(res)}
-    <div class="card" style="margin-top:12px"><h3>Spoils</h3>${mid ? 'The spoils will be counted when the day is won.' : o === 'defeat' ? 'None. The enemy keeps the field; you may try again.' : `+${s.gold} denarii, +${s.supplies} supplies, +${s.recruits} fresh recruits`}</div>
-    ${pris.length ? `<div class="card" style="margin-top:12px" id="pris"><h3>${res.prisoners} prisoners <span class="pill">decide their fate</span></h3><div class="ocards">${pris.map((p, i) => `<button class="ocard" data-p="${i}"><b>${esc(p.name)}</b><span class="t">${esc(p.text)}</span></button>`).join('')}</div></div>` : ''}
-    ${picks.length ? `<div class="card" style="margin-top:12px" id="bonus"><h3>Choose a bonus <span class="pill">pick one</span></h3><div class="ocards">${picks.map((p, i) => `<button class="ocard" data-i="${i}"><b>${esc(p.name)}</b><span class="t">${esc(p.text)}</span></button>`).join('')}</div></div>` : ''}
-    ${notes.length ? `<div class="card" style="margin-top:12px"><h3>Dispatches</h3>${notes.map(n => `<div>${esc(n)}</div>`).join('')}</div>` : ''}
-    <div class="row" style="margin-top:16px"><button class="primary" id="cont">${mid ? `On to stage ${scn.phaseIdx + 2}: ${esc(scn.phases[scn.phaseIdx + 1].phaseName)}` : opening && o !== 'defeat' ? 'Continue to army management' : o !== 'defeat' && !next ? 'Finish Act II' : opening ? 'Try the opening battle again' : 'Return to the map'}</button></div></div>`;
+  const next = SCENARIOS[c.scenario], picks = mid ? [] : rewardOptions(c, scn, o), pris = (mid || opening) ? [] : prisonerOptions(c, res.prisoners);
+  const contLabel = mid ? `On to stage ${scn.phaseIdx + 2}: ${esc(scn.phases[scn.phaseIdx + 1].phaseName)}` : opening && o !== 'defeat' ? 'Continue to army management' : o !== 'defeat' && !next ? 'Finish Act II' : opening ? 'Try the opening battle again' : 'Return to the map';
+  $('screen-result').innerHTML = resultHtml({ res, o, flavour: mid ? `${flavour} But the day is not over.` : flavour, banner: artSrc('outcome', o, 800, 200), spoils: res.spoils, mid, picks, pris, notes, contLabel });
+  if (stopResult) stopResult();
+  stopResult = mountResult($('screen-result'), res, { picks, pris, onPick: (i) => { picks[i].apply(c); save(); }, onPris: (i) => { pris[i].apply(c); save(); } });
   $('cont').onclick = () => { camp.msgs = []; if (mid) { showBrief(); return; } if (opening && o === 'defeat') { const snap = store.get(preKey(c.slot)); if (snap) { campaign = snap; save(); } showBrief(PROLOGUE); return; } camp.note(`After the ${o}, the army makes camp.`); showMap(); if (opening && !c.introShown) { c.introShown = true; save(); showManagementIntro(); } };
-  {
-    // one or two decisions before you leave the field: the prisoners, then the bonus
-    const cont = $('cont'); let need = (picks.length ? 1 : 0) + (pris.length ? 1 : 0);
-    const done = () => { need--; if (need <= 0) { cont.disabled = false; cont.title = ''; } };
-    if (need > 0) { cont.disabled = true; cont.title = 'Make your choices first'; }
-    document.querySelectorAll('#bonus .ocard').forEach(b => b.onclick = () => { picks[+b.dataset.i].apply(c); save(); document.querySelectorAll('#bonus .ocard').forEach(x => { x.disabled = true; x.classList.toggle('sel', x === b); }); done(); });
-    document.querySelectorAll('#pris .ocard').forEach(b => b.onclick = () => { pris[+b.dataset.p].apply(c); save(); document.querySelectorAll('#pris .ocard').forEach(x => { x.disabled = true; x.classList.toggle('sel', x === b); }); done(); });
-  }
   show('screen-result');
 }
 
@@ -263,14 +250,10 @@ function startPractice(v) {
 }
 function practiceResult(res, v) {
   battle.stop();
-  const o = res.outcome, title = { victory: 'VICTORY', draw: 'DRAW', defeat: 'DEFEAT' }[o];
-  const rows = res.rows.map(r => `<tr><td>${esc(r.name)}</td><td>${r.startMen}</td><td>${r.endMen}</td><td>${r.casualties}</td><td>${r.kills}</td></tr>`).join('');
-  $('screen-result').innerHTML = `<div class="panel-page"><img class="banner" alt="" src="${artSrc('outcome', o, 800, 200)}"><div class="big ${o}">${title}</div>
-    <p class="muted">Practice battle: nothing is saved. Time ${Math.floor(res.time / 60)}:${String(Math.floor(res.time % 60)).padStart(2, '0')}. Enemy dead about ${res.enemyDead} of ${res.enemyStart}.</p>
-    <div class="card"><h3>Your units</h3><table><tr><th>Unit</th><th>Before</th><th>After</th><th>Lost</th><th>Kills</th></tr>${rows}</table></div>
-    ${reportHtml(res)}
-    <div class="row" style="margin-top:16px"><button class="primary" id="r-again">Fight again</button><button id="r-setup">Change setup</button><button id="r-menu">Main menu</button></div></div>`;
-  $('r-again').onclick = () => startPractice(v); $('r-setup').onclick = () => showPractice(); $('r-menu').onclick = () => toMenu();
+  const o = res.outcome, flavour = 'Practice battle: nothing here is saved.';
+  $('screen-result').innerHTML = resultHtml({ res, o, flavour, banner: artSrc('outcome', o, 800, 200), spoils: { gold: 0, supplies: 0, recruits: 0 }, practice: true, contLabel: 'Fight again', extraButtons: '<button id="r-setup">Change setup</button><button id="r-menu">Main menu</button>' });
+  if (stopResult) stopResult(); stopResult = mountResult($('screen-result'), res, {});
+  $('cont').onclick = () => startPractice(v); $('r-setup').onclick = () => showPractice(); $('r-menu').onclick = () => toMenu();
   show('screen-result');
 }
 $('btn-practice').onclick = () => showPractice();

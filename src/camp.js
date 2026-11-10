@@ -5,6 +5,7 @@ const upCost = (c, x, k) => { const u = upgradeCost(x, k); return { ...u, gold: 
 import { levelFor } from './sim.js';
 import { TEMPERS, temperOf, rivalOf, tierOf, rankFor, TIER_TEXT } from './officers.js';
 import { CAREER, CAREER_MAX, careerLv, careerPoints, careerOffer, chooseCareer, costMult, legionsOf, legateOf, setLegate, ROMAN, currentScn } from './campaign.js';
+import { heroesOf, DECORATIONS, decoMorale } from './heroes.js';
 import { officerPending, chooseOfficer, officerTrack, officerKind, OFFICER_KINDS, unitPending, chooseUnit, unitChosen, unitRecord, standsOut, unitTrack } from './promote.js';
 import { officerById, modsOf, hasPerk, commandLimit, unlockedTypes } from './state.js';
 import { artSrc } from './art.js';
@@ -338,6 +339,7 @@ export class Camp {
       <div class="stats">${bars}</div>
       <div class="small" style="margin-top:6px">${so.better.length ? `<span style="color:var(--green)">Better than your other ${r.cat === 'inf' ? 'foot' : r.cat === 'cav' ? 'horse' : 'missile troops'} at: ${so.better.join(', ')}.</span> ` : ''}${so.worse.length ? `<span style="color:#ee9a8e">Behind them in: ${so.worse.join(', ')}.</span>` : ''}${!so.better.length && !so.worse.length ? '<span class="muted">About level with your other units of its kind.</span>' : ''}</div>
       <div class="small" style="margin-top:6px">${ups.length ? 'Rank improvements: ' + ups.map(k => `<span class="pill" title="${esc(k.text)}">${esc(k.name)}</span>`).join(' ') : '<span class="muted">No rank improvements yet.</span>'}${unitPending(h) ? ' <span class="pill" style="border-color:var(--gold);color:var(--gold)">a choice is waiting</span>' : nextLv ? ` <span class="muted">Next choice at ${esc(nextLv)}.</span>` : ''}</div>
+      <div class="heroes"><span class="muted small">Notable men${decoMorale(h) ? ` (their decorations give the cohort +${decoMorale(h)} morale)` : ''}:</span>${heroesOf(h).map(m => `<div class="hero"><b>${esc(m.name)}</b>${m.dec.length ? ' ' + m.dec.map(d => `<span class="pill dec" title="${esc(DECORATIONS[d].text)}">${esc(DECORATIONS[d].name)}</span>`).join(' ') : ''}<div class="small muted">${m.deeds.length ? esc(m.deeds.slice(-3).join(' / ')) : 'No battles yet.'}</div></div>`).join('')}</div>
       <div class="small muted" style="margin-top:4px">The mark on each bar is a raw unit of this type; the bar is this unit with its rank, drill, equipment, improvements and officer.</div></div>`;
   }
   pick(spec) {

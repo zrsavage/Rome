@@ -57,7 +57,7 @@ export class BattleUI {
     this.r.draw(this.b);
     this.hudT += real;
     if (this.hudT > 0.15) { this.hudT = 0; this.refreshHud(); }
-    if (this.b.result && !this.ended) { this.ended = true; this.setPause(true); this.showBanner(this.b.result.outcome.toUpperCase(), 2200); setTimeout(() => this.onEnd && this.onEnd(this.b.result), 2300); }
+    if (this.b.result && !this.ended) { this.ended = true; this.setPause(true); this.showBanner(this.b.result.outcome.toUpperCase(), 2200); if (this.b.result.report) this.b.result.report.bg = this.r.bgThumb(760); setTimeout(() => this.onEnd && this.onEnd(this.b.result), 2300); }
     this.raf = requestAnimationFrame((t) => this.frame(t));
   }
 
