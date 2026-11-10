@@ -370,7 +370,6 @@ export class Renderer {
     const mx = (d.x0 + d.x1) / 2, my = (d.y0 + d.y1) / 2, L = 46 / z, tipx = mx + ca * L, tipy = my + sa * L;
     ctx.strokeStyle = '#ffe9a8'; ctx.fillStyle = '#ffe9a8'; ctx.lineWidth = 3 / z; ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(tipx, tipy); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(tipx + ca * 9 / z, tipy + sa * 9 / z); ctx.lineTo(tipx - sa * 7 / z, tipy + ca * 7 / z); ctx.lineTo(tipx + sa * 7 / z, tipy - ca * 7 / z); ctx.closePath(); ctx.fill();
-    ctx.font = `${13 / z}px Cardo, Georgia, serif`; ctx.textAlign = 'center'; ctx.lineWidth = 3 / z; ctx.strokeStyle = 'rgba(20,14,6,0.9)'; ctx.strokeText(`faces ${compass(lay.ang)}${d.fill ? ' (extended)' : ''}`, mx + ca * (L + 20 / z), my + sa * (L + 20 / z)); ctx.fillText(`faces ${compass(lay.ang)}${d.fill ? ' (extended)' : ''}`, mx + ca * (L + 20 / z), my + sa * (L + 20 / z));
     ctx.restore();
   }
 

@@ -106,7 +106,7 @@ export class BattleUI {
       if (fill && b.orders.has('extend')) lay.pts.forEach(p => b.setWide(p.u, p.wide));                      // Alt: stretch each unit to cover its share of the line
       const cl = (p) => ({ u: p.u, x: Math.max(8, Math.min(WORLD.w - 8, p.x)), y: Math.max(8, Math.min(WORLD.h - 8, p.y)), tf: ang });
       if (this.queueMode) lay.pts.forEach(p => { const q = cl(p); b.queueMove(q.u, q.x, q.y, ang, ignore, sprint); }); else b.setMoveGroup(lay.pts.map(cl), ignore, sprint);
-      this.showBanner(`Line faces ${compass(ang)}`, 900); this.emit('move', { drag: true, count: us.length }); return;
+      this.emit('move', { drag: true, count: us.length }); return;
     } else {
       const dx = wx - mx, dy = wy - my, d = Math.hypot(dx, dy);
       ang = d > 30 ? Math.atan2(dy, dx) : Math.atan2(fy, fx);
