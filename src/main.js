@@ -7,7 +7,7 @@ import { renderMap } from './map.js';
 import { artSrc, initArt } from './art.js';
 import { ask, inform } from './ui.js';
 import { reportHtml } from './report.js';
-import { music, mountMusicUI } from './music.js';
+import { music, mountMusicUI, gameOpts } from './music.js';
 import { pickWeather, WEATHER } from './weather.js';
 import { snapshot, backups, restoreBackup, clearBackups, exportCampaign, parseImport } from './saves.js';
 import { Coach } from './coach.js';
@@ -147,7 +147,7 @@ function startBattle(scn) {
   store.set(preKey(c.slot), c);
   show('screen-battle');
   const low = c.supplies < totalMen(c) / 60 * 2, m = modsOf(c), opening = scn.id === 'prologue';
-  battle.start(scn, romeSpecs(c, scn), { difficulty: opening ? 'easy' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale, orders: c.doctrines || [], scouted: !!c.scouted, forceScale: forceScale(c, scn), weather: opening ? 'clear' : pickWeather(scn, c) }, (res) => showResult(res, scn));
+  battle.start(scn, romeSpecs(c, scn), { difficulty: opening ? 'easy' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale, orders: c.doctrines || [], scouted: !!c.scouted, forceScale: forceScale(c, scn), weather: opening ? 'clear' : pickWeather(scn, c), messengers: !opening && gameOpts.messengers }, (res) => showResult(res, scn));
   if (opening) startCoach(); else stopCoach();
 }
 
@@ -247,7 +247,7 @@ function showPractice() {
 function startPractice(v) {
   const { scn, campaign: c, opts } = buildPractice(v);
   show('screen-battle');
-  battle.start(scn, romeSpecs(c, scn), { difficulty: opts.difficulty, fort: 0, favour: 0, weather: opts.weather }, (res) => practiceResult(res, v));
+  battle.start(scn, romeSpecs(c, scn), { difficulty: opts.difficulty, fort: 0, favour: 0, weather: opts.weather, messengers: gameOpts.messengers }, (res) => practiceResult(res, v));
 }
 function practiceResult(res, v) {
   battle.stop();

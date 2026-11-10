@@ -25,7 +25,12 @@ const P = {
   rally: '<path d="M6 21V4M6 5h12l-3 4 3 4H6"/>',
   general: '<path d="M12 3l2.4 5.2 5.6.6-4.2 3.8 1.2 5.6L12 15.4 7 18.2l1.2-5.6L4 8.8l5.6-.6z"/>',
   swords: '<path d="M5 5l14 14M19 5L5 19"/><path d="M4 8l4-4M16 20l4-4M20 8l-4-4M8 20l-4-4"/>',
-  tent: '<path d="M2 20L12 4l10 16z"/><path d="M12 20l-3-7h6z"/>'
+  tent: '<path d="M2 20L12 4l10 16z"/><path d="M12 20l-3-7h6z"/>',
+  array: '<rect x="3" y="4" width="5" height="4"/><rect x="10" y="4" width="5" height="4"/><rect x="17" y="4" width="4" height="4"/><rect x="6" y="11" width="5" height="4"/><rect x="13" y="11" width="5" height="4"/><rect x="9" y="18" width="6" height="3"/>',
+  rotate: '<path d="M20 12a8 8 0 0 1-14 5"/><path d="M4 12a8 8 0 0 1 14-5"/><path d="M18 3v4h-4M6 21v-4h4"/>',
+  cycle: '<path d="M4 14c0-5 4-8 9-8h5l-3-3M20 10c0 5-4 8-9 8H6l3 3"/>',
+  priority: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
+  queue: '<circle cx="5" cy="18" r="2"/><circle cx="12" cy="9" r="2"/><circle cx="19" cy="15" r="2"/><path d="M6.5 16.5l4-6M13.8 10.4l3.8 3"/>'
 };
 export const icon = (name, size = 16, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ''}</svg>`;
 export const iconPaths = P;

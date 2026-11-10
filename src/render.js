@@ -163,6 +163,7 @@ export class Renderer {
     for (const f of b.fx) if (f.kind !== 'dust') this.drawFx(ctx, f);
     this.drawGeneral(ctx, b);
     this.drawOrders(ctx, b);
+    this.drawMessengers(ctx, b);
     this.drawFloats(ctx, b);
     this.drawMarkers(ctx);
     this.drawDragPreview(ctx, b);
@@ -242,6 +243,7 @@ export class Renderer {
       for (let c = 0; c < inRow; c++, k++) {
         let y = (c - (inRow - 1) / 2) * sy, xx = x;
         if (routing) { xx += Math.sin(now * 9 + k * 1.7) * 2.4; y += Math.cos(now * 8 + k * 2.3) * 2.4; }
+        else if (u.fighting && row < 2) { xx += Math.sin(now * 6.5 + k * 1.9) * (row === 0 ? 1.3 : 0.7); y += Math.cos(now * 5.2 + k * 2.7) * 0.7; }     // the front ranks heave against the enemy
         if (roof) {   // a roof of locked shields, each one the real scutum
           ctx.drawImage(shieldTile(u.typeKey), xx - sx * 0.56, y - sy * 0.56, sx * 1.12, sy * 1.12);
           continue;
@@ -278,7 +280,7 @@ export class Renderer {
     const p = this.toScreen(u.x, u.y - u.w / 2 - 4), z = this.cam.zoom;
     const yy = this.toScreen(u.x, u.y).y - Math.max(u.w, u.d) * z / 2 - 8;
     const rome = u.side === 'rome', fs = Math.max(10, Math.min(14, 11 * z + 3));
-    const text = String(u.men) + (u.side === 'rome' && u.stance === 'hold' && u.active ? ' H' : ''), w = Math.max(30, 24 + text.length * 6);
+    const text = String(u.men) + (u.side === 'rome' && u.stance === 'hold' && u.active ? ' H' : '') + (u.side === 'rome' && u.rotate ? ' rot' : '') + (u.side === 'rome' && u.cycle ? ' hit' : '') + (u.side === 'rome' && u.prio ? ' >' + u.prio : ''), w = Math.max(30, 24 + text.length * 6);
     const x = p.x; let y = yy;
     const box = (yy2) => ({ x0: x - w / 2 - 2, x1: x + w / 2 + 2, y0: yy2 - 26, y1: yy2 + 7 });
     const clash = (b1) => placed.some(o => o.x0 < b1.x1 && o.x1 > b1.x0 && o.y0 < b1.y1 && o.y1 > b1.y0);
@@ -292,6 +294,7 @@ export class Renderer {
     const m = Math.max(0, Math.min(1, u.morale / u.maxMorale));
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - w / 2, y + 2, w, 3);
     ctx.fillStyle = m > 0.6 ? '#6fcf6f' : m > 0.35 ? '#e0c050' : '#d65a4a'; ctx.fillRect(x - w / 2, y + 2, w * m, 3);
+    if (u.type.cat === 'ranged' && u.type.ammo) { const am = Math.max(0, Math.min(1, u.ammo / u.type.ammo)); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - w / 2, y + 6, w, 3); ctx.fillStyle = am > 0.25 ? '#8fb4d8' : '#d2a23a'; ctx.fillRect(x - w / 2, y + 6, w * am, 3); }   // shot left
     if (u.state === 'routing') { ctx.fillStyle = '#ffd36a'; ctx.fillText('ROUT', x, y - 20); }
     else if (u.surrounded) { ctx.fillStyle = '#ff6a5a'; ctx.fillText('SURROUNDED', x, y - 20); }
     else if (u.flanked) { ctx.fillStyle = '#ffd36a'; ctx.fillText('FLANKED', x, y - 20); }
@@ -311,8 +314,26 @@ export class Renderer {
     ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x, y); ctx.stroke();
   }
 
+  // Orders on their way to cohorts out of the general's sight: a rider crosses the field.
+  drawMessengers(ctx, b) {
+    if (!b.pending || !b.pending.length) return;
+    ctx.save(); ctx.lineWidth = 1.2; ctx.setLineDash([3, 5]);
+    for (const p of b.pending) {
+      const k = Math.max(0, Math.min(1, (b.t - p.t0) / Math.max(0.1, p.at - p.t0))), tx = p.u.x, ty = p.u.y, x = p.x0 + (tx - p.x0) * k, y = p.y0 + (ty - p.y0) * k;
+      ctx.strokeStyle = 'rgba(232,195,106,0.35)'; ctx.beginPath(); ctx.moveTo(p.x0, p.y0); ctx.lineTo(tx, ty); ctx.stroke();
+      ctx.fillStyle = '#e8c36a'; ctx.beginPath(); ctx.arc(x, y, 4.5, 0, 7); ctx.fill(); ctx.strokeStyle = '#2a1f0e'; ctx.setLineDash([]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([3, 5]);
+    }
+    ctx.restore();
+  }
   drawOrders(ctx, b) {
     ctx.lineWidth = 1.6;
+    for (const id of this.selection) {                                          // queued waypoints: a dotted route with numbered flags
+      const u = b.byId(id); if (!u || !u.present || !u.queue || !u.queue.length) continue;
+      let px = u.order.kind === 'move' ? u.order.x : u.x, py = u.order.kind === 'move' ? u.order.y : u.y;
+      ctx.strokeStyle = 'rgba(255,233,168,0.7)'; ctx.fillStyle = 'rgba(255,233,168,0.9)'; ctx.setLineDash([3, 6]);
+      u.queue.forEach((q, i) => { ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(q.x, q.y); ctx.stroke(); ctx.beginPath(); ctx.arc(q.x, q.y, 5, 0, 7); ctx.fill(); ctx.fillStyle = '#2a1f0e'; ctx.font = 'bold 8px system-ui'; ctx.textAlign = 'center'; ctx.fillText(String(i + 2), q.x, q.y + 3); ctx.fillStyle = 'rgba(255,233,168,0.9)'; px = q.x; py = q.y; });
+      ctx.setLineDash([]);
+    }
     for (const id of this.selection) {
       const u = b.byId(id); if (!u || !u.present) continue;
       let tx = null, ty = null, col = 'rgba(255,233,168,0.85)', tf = null;

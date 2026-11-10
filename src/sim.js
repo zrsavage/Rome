@@ -27,7 +27,7 @@ const PASS_SPEED = 0.3;
 const FRONT_GRIND = 0.8, FLANK_DMG = 1.5, REAR_DMG = 2.2;
 const FLANK_MORALE = 1.0, REAR_MORALE = 2.0, SURROUND_MORALE = 1.2;
 // Command: the general's banner sets a radius inside which Roman cohorts recover and rally well. Charges need fresh, steady men.
-const CMD_R = 240, GEN_SPEED = 75, ALL_ORDERS = ['hold', 'fallback', 'holdfire', 'extend', 'testudo', 'sprint', 'guard', 'rally', 'relieve', 'pursue', 'wedge', 'orbis'];
+const CMD_R = 240, GEN_SPEED = 75, ALL_ORDERS = ['hold', 'fallback', 'holdfire', 'extend', 'testudo', 'sprint', 'guard', 'rally', 'relieve', 'pursue', 'wedge', 'orbis', 'queue', 'array', 'cycle', 'rotate', 'priority'];
 const hgt = (b, u) => elevAt(b.scn, u.x, u.y) / 40;   // height in 'hill units': 1 is an ordinary hilltop
 const SIGHT = 520, SPRINT = 1.45;
 let UID = 1;
@@ -89,6 +89,8 @@ export class Battle {
     this.wxKey = (opts && opts.weather && WEATHER[opts.weather]) ? opts.weather : 'clear'; this.wx = WEATHER[this.wxKey]; scn._wx = this.wxKey; scn.flood = 0;
     this.fogOn = this.wxKey === 'fog' || scn.fog === true || (!!scn.act && scn.id !== 'prologue' && scn.fog !== false);   // you must find the enemy in every real battle
     this.diff = DIFFICULTY[opts.difficulty || 'normal'];
+    this.aiLevel = scn.id === 'prologue' ? 0 : Math.max(0, ({ easy: 0, normal: 1, hard: 2, legendary: 3 }[opts.difficulty || 'normal'] ?? 1) - (['ford', 'arar', 'convoy'].includes(scn.id) ? 1 : 0));   // the first three fights stay gentle   // how much of its bag of tricks the Gallic host uses
+    this.messengers = !!opts.messengers; this.pending = [];
     this.rand = mulberry32(opts.seed ?? (Date.now() & 0xffffff));
     this.t = 0; this.units = []; this.bodies = []; this.fx = []; this.log = [];
     this.result = null; this.endTimer = null; this.pendingOutcome = null;
@@ -123,7 +125,7 @@ export class Battle {
   // One authored enemy unit becomes as many units as the host needs to match your army: a warband never grows past about 520 men, so a
   // bigger army meets more warbands, in ranks, not a handful of monsters. Returns the men spawned.
   spawnEnemy(e) {
-    const total = Math.round(e.men * this.enemyScale * this.powerScale);
+    const total = Math.round(e.men * this.enemyScale * this.powerScale * (this.scn.boost || 1));
     const cap = { warband: 520, gaul_elite: 330, gaul_skirm: 190, gaul_cav: 95, suebi: 520, german_cav: 95, laager: 210 }[e.type] || 400, n = Math.max(1, Math.min(14, Math.ceil(total / cap)));
     let spawned = 0;
     for (let i = 0; i < n; i++) {
@@ -132,6 +134,7 @@ export class Battle {
       if (y < 40) y = e.y + row * 110; x = Math.max(40, Math.min(WORLD.w - 40, x)); y = Math.min(WORLD.h - 40, y);
       const ai = { ...e.ai }; if (ai.delay != null) ai.delay += (i % 4) * 1.5;
       const u = new Unit({ side: 'gaul', type: e.type, men, x, y, ai, stance: e.ai && e.ai.kind === 'idle' ? 'hold' : 'aggressive', moraleBonus: this.diff.enemyMorale, xp: 40 + (this.diff.enemyMult > 1 ? 60 : 0) });
+      if (u.type.cat === 'cav') u.cycle = this.aiLevel >= 2;
       if (this.fogOn) { u.spotted = false; u.seenUntil = this.t === 0 && this.scouted ? 40 : 0; if (u.seenUntil) u.spotted = true; }   // scouts have told you where they are, for a while
       this.units.push(u); spawned += men;
     }
@@ -182,6 +185,52 @@ export class Battle {
     for (const u of this.units) if (u.side === 'gaul' && !u.type.wagon) u.laagered = live.some(w => Math.hypot(w.x - u.x, w.y - u.y) < 340);
     if (!live.length && !this._lgDown) { this._lgDown = true; for (const u of this.units) if (u.side === 'gaul' && u.active) u.morale -= 10; this.say('The wagon laager is overrun - the Germans have lost their last refuge!', 'good'); this.mark('laager', 'The wagon laager is overrun', 'gaul'); }
   }
+  toggleRotate(u) { if (u.type.cat !== 'inf' || !this.orders.has('rotate')) return false; u.rotate = !u.rotate; return true; }
+  toggleCycle(u) { if (u.type.cat !== 'cav' || !this.orders.has('cycle')) return false; u.cycle = !u.cycle; if (!u.cycle) u.cyc = null; return true; }
+  cyclePriority(u) { if (u.type.cat !== 'ranged' || !this.orders.has('priority')) return false; const L = [null, 'ranged', 'cav', 'inf']; u.prio = L[(L.indexOf(u.prio || null) + 1) % L.length]; return true; }
+  // Rotation of the line: a tired or shaken cohort on the front is relieved by a fresh one, without being told.
+  updateRotation() {
+    if (!this.orders.has('rotate') || this.t < (this._rotT || 0)) return; this._rotT = this.t + 2;
+    for (const u of this.units) {
+      if (u.side !== 'rome' || !u.rotate || !u.active || u.type.cat !== 'inf' || this.t < (u.rotCd || 0)) continue;
+      if (u.order.back || !u.contacts.some(e => e.active)) continue;
+      if (u.fatigue > 62 || u.morale < u.maxMorale * 0.45) u.rotCd = this.t + (this.relieve(u, true) ? 30 : 8);
+    }
+  }
+  // Horse do not stand in a melee: they charge, break off, re-form and charge again.
+  cavCycle(u, engaged, dt) {
+    if (u.cyc) {
+      if (this.t > u.cyc.until || u.order.kind !== 'move') {
+        let tg = this.byId(u.cyc.target); if (!tg || !tg.active) { const n = this.nearestEnemy(u, (e) => e.active && e.spotted !== false); tg = n && n.e; }
+        u.cyc = null; u.engT = 0; if (tg) { this.setAttack(u, tg, true); u.order.sprint = true; if (u.side === 'rome') u.stance = 'aggressive'; }
+      }
+      return;
+    }
+    const act = u.contacts.filter(e => e.active);
+    if (engaged && act.length && act.every(e => e.type.cat !== 'cav')) u.engT = (u.engT || 0) + dt; else if (!engaged) u.engT = 0;
+    if (engaged && u.engT > 7 && !u.surrounded && u.fatigue < 85) {
+      let cx = 0, cy = 0; for (const e of act) { cx += e.x; cy += e.y; } cx /= act.length; cy /= act.length;
+      const dx = u.x - cx, dy = u.y - cy, d = Math.hypot(dx, dy) || 1, tgt = act.sort((a, b) => this.gap(u, a) - this.gap(u, b))[0];
+      this.setMove(u, clamp(u.x + dx / d * 240, 20, WORLD.w - 20), clamp(u.y + dy / d * 240, 20, WORLD.h - 20), null, true); u.order.sprint = true; u.order.pass = true;
+      u.cyc = { until: this.t + 9, target: tgt.id }; u.engT = 0; this.stats.cycles = (this.stats.cycles || 0) + 1;
+    }
+  }
+  // The best nearby ground to fall back to: higher, or in the trees, and away from the enemy.
+  betterGround(u) {
+    const n = this.nearestEnemy(u); if (!n) return null;
+    const ax = u.x - n.e.x, ay = u.y - n.e.y, ad = Math.hypot(ax, ay) || 1, base = Math.atan2(ay, ax);
+    const score = (x, y) => { if (x < 40 || y < 40 || x > WORLD.w - 40 || y > WORLD.h - 40) return -9; const tr = terrainAt(this.scn, x, y); return elevAt(this.scn, x, y) / 40 + (tr.kind === 'forest' ? 0.8 : 0) + (tr.kind === 'water' ? -9 : 0) + (tr.kind === 'ford' ? -1 : 0); };
+    const cur = score(u.x, u.y); let best = null, bs = cur + 0.25;
+    for (let k = -4; k <= 4; k++) for (const r of [150, 270, 390]) { const a = base + k * 0.35, x = u.x + Math.cos(a) * r, y = u.y + Math.sin(a) * r, s = score(x, y) - r * 0.0006; if (s > bs) { bs = s; best = { x, y }; } }
+    return best;
+  }
+  // Orders take time to reach a cohort that is out of the general's sight (the optional "messengers" rule).
+  dispatch(u, fn) {
+    if (!this.messengers || this.deploying || !this.general || u.side !== 'rome' || this.inCommand(u)) { fn(); return; }
+    const d = Math.hypot(u.x - this.general.x, u.y - this.general.y), delay = Math.min(18, 1.2 + d / 95);
+    this.pending.push({ at: this.t + delay, u, fn, x0: this.general.x, y0: this.general.y, t0: this.t });
+  }
+  runPending() { if (!this.pending.length) return; const due = this.pending.filter(p => this.t >= p.at); if (!due.length) return; this.pending = this.pending.filter(p => this.t < p.at); for (const p of due) if (p.u.active) p.fn(); }
   // A storm raises the rivers: after a while the fords become deep and slow.
   updateWeather() {
     const w = this.wx; if (!w.floodAt) return;
@@ -269,25 +318,54 @@ export class Battle {
     if (this.waterAt(x, y)) return false;
     u.x = x; u.y = y; if (f != null) u.f = f; u.post = { x, y }; u.order = { kind: 'none' }; u.updateDims(); return true;
   }
-  setMove(u, x, y, tf = null, ignore = false, sprint = false) { if (this.deploying && u.side === 'rome') { this.deployAt(u, x, y, tf); return; } if (!u.active) return; u.order = { kind: 'move', x, y, tf, ignore, sprint: sprint && this.orders.has('sprint') }; u.post = { x, y }; }
+  setMove(u, x, y, tf = null, ignore = false, sprint = false) { if (this.deploying && u.side === 'rome') { this.deployAt(u, x, y, tf); return; } if (!u.active) return; u.queue = []; u.order = { kind: 'move', x, y, tf, ignore, sprint: sprint && (u.side === 'gaul' || this.orders.has('sprint')) }; u.post = { x, y }; }
+  // A line moves as a line: every unit is given its place, and they march so that all arrive together (the far end of a wheel hurries, the pivot barely moves).
+  setMoveGroup(entries, ignore = false, sprint = false) {
+    if (this.deploying) { entries.forEach(e => this.setMove(e.u, e.x, e.y, e.tf)); return; }
+    const id = (this.gid = (this.gid || 0) + 1);
+    for (const e of entries) this.dispatch(e.u, () => { this.setMove(e.u, e.x, e.y, e.tf, ignore, sprint); if (e.u.order.kind === 'move') e.u.order.grp = id; });
+  }
+  // Queued waypoints (Marching Orders): the unit carries on to the next point when it reaches this one.
+  queueMove(u, x, y, tf = null, ignore = false, sprint = false) {
+    this.dispatch(u, () => {
+      if (!u.active || !this.orders.has('queue') || (u.order.kind !== 'move' && !(u.queue && u.queue.length))) { this.setMove(u, x, y, tf, ignore, sprint); return; }
+      (u.queue = u.queue || []).push({ kind: 'move', x, y, tf, ignore, sprint: sprint && this.orders.has('sprint') }); if (u.queue.length > 8) u.queue.shift();
+    });
+  }
+  nextOrder(u) { const q = u.queue && u.queue.shift(); if (q) { u.order = q; u.post = { x: q.x, y: q.y }; } else u.order = { kind: 'none' }; }
+  // Each tick the members of a group are paced to the slowest: all arrive at the same moment, so the line stays a line.
+  syncGroups() {
+    const by = new Map();
+    for (const u of this.units) {
+      const o = u.order; if (!u.present || !o || o.kind !== 'move' || !o.grp || o.back || u.state === 'routing') continue;
+      if (u.contacts.some(e => e.active)) { o.grp = null; o.gspeed = null; continue; }               // a unit in a fight leaves the line; the rest carry on
+      if (u.blocked) continue;
+      (by.get(o.grp) || by.set(o.grp, []).get(o.grp)).push(u);
+    }
+    for (const list of by.values()) {
+      let T = 0; const info = list.map(u => { const d = Math.hypot(u.order.x - u.x, u.order.y - u.y), v = Math.max(1, this.speedOf(u) * (u.order.sprint ? SPRINT : 1) * 0.9); T = Math.max(T, d / v); return { u, d, v }; });
+      for (const { u, d, v } of info) u.order.gspeed = (d < 30 || T < 1) ? 1 : Math.max(0.25, Math.min(1, d / (T * v)));
+    }
+  }
   setAttack(u, tgt, sprint = false) { if (!u.active) return; u.order = { kind: 'attack', targetId: tgt.id, sprint: sprint && (u.side === 'gaul' || this.orders.has('sprint')) }; }
   setHold(u) { if (!u.active) return; u.order = { kind: 'none' }; u.stance = 'hold'; u.post = { x: u.x, y: u.y }; }
   setEngage(u) { if (!u.active) return; u.stance = 'aggressive'; if (u.order.kind === 'none') u.post = { x: u.x, y: u.y }; }
+  noFormation(u) { const k = this.terr(u).kind; if (k === 'forest' || k === 'ford') { this.say(`${u.name} cannot hold a formation in the ${k === 'forest' ? 'trees' : 'water'}.`, 'info'); return true; } return false; }
   toggleFormation(u) {
-    if (!u.active || u.type.cat !== 'inf' || !this.orders.has('testudo')) return;
+    if (!u.active || u.type.cat !== 'inf' || !this.orders.has('testudo') || this.noFormation(u)) return;
     u.formation = u.formation === 'close' ? 'normal' : 'close'; u.wide = 1;
     u.updateDims();
   }
   // Extended line: the same men spread over more frontage, so more of them fight at once (more damage) and the unit covers more ground, but it is
   // thinner in depth: casualties shake it more, and charges bite deeper into it. `w` runs from 1 (normal) to 2.4.
   setWide(u, w) {
-    if (!u.active || u.type.cat !== 'inf' || !this.orders.has('extend')) return false;
+    if (!u.active || u.type.cat !== 'inf' || !this.orders.has('extend') || (w > 1.05 && this.noFormation(u))) return false;
     if (u.formation !== 'normal') u.formation = 'normal';
     u.wide = clamp(Math.round(w * 20) / 20, 1, 2.4); u.updateDims(); return true;
   }
   cycleWide(u) { const L = [1, 1.6, 2.2], i = L.findIndex(v => Math.abs(v - (u.wide || 1)) < 0.12); return this.setWide(u, L[(i + 1) % L.length]); }
   toggleWedge(u) {
-    if (!u.active || u.type.cat !== 'inf' || !this.orders.has('wedge')) return;
+    if (!u.active || u.type.cat !== 'inf' || !this.orders.has('wedge') || this.noFormation(u)) return;
     u.formation = u.formation === 'wedge' ? 'normal' : 'wedge'; u.wide = 1;
     u.updateDims();
   }
@@ -331,8 +409,8 @@ export class Battle {
     if (u.ai) u.ai.kind = 'rush';
   }
   // Relieve: a fresher cohort behind the line steps up while the tired one falls back through it.
-  relieve(u) {
-    if (!this.orders.has('relieve') || !u.active || u.type.cat !== 'inf') return false;
+  relieve(u, auto = false) {
+    if ((!this.orders.has('relieve') && !auto) || !u.active || u.type.cat !== 'inf') return false;
     const fx = Math.cos(u.f), fy = Math.sin(u.f); let best = null, bs = -1e9;
     for (const f of this.units) {
       if (f === u || f.side !== u.side || !f.active || f.type.cat !== 'inf' || f.contacts.some(e => e.active)) continue;
@@ -341,11 +419,11 @@ export class Battle {
       const sc = (u.fatigue - f.fatigue) + 20 * f.morale / f.maxMorale - d * 0.05;
       if (sc > bs) { bs = sc; best = f; }
     }
-    if (!best) { this.say(`No fresher cohort stands behind ${u.name} to relieve it.`, 'info'); return false; }
+    if (!best) { if (!auto) this.say(`No fresher cohort stands behind ${u.name} to relieve it.`, 'info'); return false; }
     const ux = u.x, uy = u.y, uf = u.f, bx = best.x, by = best.y;
     this.setMove(best, ux, uy, uf, true); best.stance = u.stance === 'hold' ? 'hold' : 'aggressive';
     this.setMove(u, bx, by, uf, true); u.order.back = true; u.stance = 'hold';
-    this.say(`${best.name} relieves ${u.name}.`, 'info'); this.mark('relieve', `${best.name} relieves ${u.name}`, 'rome'); this.stats.relieved++; return true;
+    this.say(`${best.name} ${auto ? 'rotates in for' : 'relieves'} ${u.name}.`, 'info'); this.mark('relieve', `${best.name} relieves ${u.name}`, 'rome'); this.stats.relieved++; return true;
   }
   // Pursuit is an order, never a reflex: cavalry only ride down routers when you tell them to.
   pursue(u) {
@@ -405,9 +483,10 @@ export class Battle {
     }
     // a large host sends one nimble unit forward to feint: it engages, then breaks off and runs, to draw impatient cohorts out of your line
     const S = this.aiS;
-    if (!S.feintPicked && this.t < 40) {
+    const wantFeints = [0, 1, 1, 2][this.aiLevel] || 0;
+    if ((S.feints || 0) < wantFeints && this.t < 40 + 25 * (S.feints || 0) && this.t >= 20 * (S.feints || 0)) {
       const lines = this.units.filter(u => u.side === 'gaul' && u.active && u.role === 'line' && u.type.cat === 'inf');
-      if (lines.length >= 5) { S.feintPicked = true; const f = lines.sort((p1, p2) => p1.men - p2.men)[0]; f.role = 'feint'; f.fp = 'go'; }
+      if (lines.length >= (this.aiLevel >= 2 ? 4 : 5)) { S.feints = (S.feints || 0) + 1; S.feintPicked = true; const f = lines.sort((p1, p2) => p1.men - p2.men)[0]; f.role = 'feint'; f.fp = 'go'; }
     }
   }
   // Which flank of your line looks weaker, judged only from what Gallic units have actually come close enough to see.
@@ -480,7 +559,7 @@ export class Battle {
     if (u.role === 'feint') { this.feint(u, rc); return; }
     if (u.role === 'champion') {
       let tg = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null;
-      if (!tg || !tg.active) { tg = this.weakPoint(u); if (tg) { this.setAttack(u, tg, true); if (!this.aiS.champSaid) { this.aiS.champSaid = true; this.say(`The Gallic champions charge ${tg.name} - the weakest point of your line!`, 'warn'); this.mark('champ', `The champions charge ${tg.name}`, 'gaul'); } } }
+      if (!tg || !tg.active) { tg = this.aiLevel >= 1 ? this.weakPoint(u) : this.smartTarget(u); if (tg) { this.setAttack(u, tg, true); if (!this.aiS.champSaid) { this.aiS.champSaid = true; this.say(`The Gallic champions charge ${tg.name} - the weakest point of your line!`, 'warn'); this.mark('champ', `The champions charge ${tg.name}`, 'gaul'); } } }
       return;
     }
     if (u.contacts.some(e => e.active)) return;                                    // fighting: let the melee run
@@ -495,9 +574,9 @@ export class Battle {
     } else if (u.role === 'wing') {
       if (!u.wp) {
         const intel = this.flankIntel(), own = ((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x) >= 0 ? 1 : -1;
-        if (!(intel && (intel.side[1].seen || intel.side[-1].seen)) && this.t < 22) return;          // wait for riders and skirmishers to look at your flanks first
+        if (this.aiLevel >= 1 && !(intel && (intel.side[1].seen || intel.side[-1].seen)) && this.t < 22) return;          // wait for riders and skirmishers to look at your flanks first
         let side = own;
-        if (intel) { const A = intel.side[1], B = intel.side[-1], weak = (A.seen && B.seen) ? (A.str < B.str ? 1 : -1) : A.seen ? 1 : B.seen ? -1 : own; const lateral = Math.abs((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x); if (weak !== own && lateral < 520) side = weak; if (!S.scoutSaid && (A.seen || B.seen)) { S.scoutSaid = true; this.mark('scout', `Gallic scouts have found your ${weak === 1 ? 'left' : 'right'} flank the weaker`, 'gaul'); } }
+        if (intel && this.aiLevel >= 1) { const A = intel.side[1], B = intel.side[-1], weak = (A.seen && B.seen) ? (A.str < B.str ? 1 : -1) : A.seen ? 1 : B.seen ? -1 : own; const lateral = Math.abs((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x); if (weak !== own && lateral < 520) side = weak; if (!S.scoutSaid && (A.seen || B.seen)) { S.scoutSaid = true; this.mark('scout', `Gallic scouts have found your ${weak === 1 ? 'left' : 'right'} flank the weaker`, 'gaul'); } }
         u.wp = { x: rc.x - a.y * side * -1 * 0 + (-a.y) * side * 720 - a.x * 40, y: rc.y + a.x * side * 720 - a.y * 40 }; if (!this._wingSaid) { this._wingSaid = true; this.say('Gallic warbands are swinging wide around your flank!', 'warn'); this.mark('wing', 'Gallic warbands swing wide round your flank', 'gaul'); } }
       if (Math.hypot(u.wp.x - u.x, u.wp.y - u.y) > 160 && !u.wpDone) this.setMove(u, u.wp.x, u.wp.y, null, true);
       else { u.wpDone = true; if (S.surge || this.t - (S.t0 ?? this.t) > 60) attack(); else if (u.order.kind === 'move') u.order = { kind: 'none' }; }
@@ -540,7 +619,7 @@ export class Battle {
     // outnumbering you, the host stretches its line to overlap yours (thinner, but more men fight at once and the ends curl round your flanks)
     if (this.t >= (S.extT || 0)) {
       S.extT = this.t + 5;
-      const ratio = this.activeMen('gaul') / Math.max(1, this.activeMen('rome')), want = ratio > 1.8 ? 2.0 : ratio > 1.35 ? 1.6 : 1;
+      const ratio = this.activeMen('gaul') / Math.max(1, this.activeMen('rome')), th = [[9, 9], [1.35, 1.8], [1.25, 1.6], [1.15, 1.45]][this.aiLevel], want = ratio > th[1] ? 2.0 : ratio > th[0] ? 1.6 : 1;
       for (const u of lines) {
         if (u.type.cat !== 'inf' || u.typeKey === 'gaul_elite') continue;
         if (Math.abs((u.wide || 1) - want) < 0.05 || (want > 1 && u.contacts.some(e => e.active))) continue;
@@ -554,13 +633,13 @@ export class Battle {
     } else if (!S.commit) {
       const rs = this.units.filter(u => u.side === 'rome');
       const turned = this.stats.routs.gaul > 0 || this.stats.routs.rome > 0 || this.activeMen('rome') < this.startRome * 0.85;
-      if ((turned && this.t - S.surgeT > 20) || this.t - S.surgeT > 90) { S.commit = true; if (this.units.some(u => u.side === 'gaul' && u.active && u.role === 'reserve')) this.say('The Gallic champions are committed to the fight!', 'warn'); this.mark('commit', 'The Gallic champions are committed', 'gaul'); }
+      if ((turned && this.t - S.surgeT > [20, 20, 12, 8][this.aiLevel]) || this.t - S.surgeT > [90, 90, 60, 45][this.aiLevel]) { S.commit = true; if (this.units.some(u => u.side === 'gaul' && u.active && u.role === 'reserve')) this.say('The Gallic champions are committed to the fight!', 'warn'); this.mark('commit', 'The Gallic champions are committed', 'gaul'); }
     }
   }
   aiThink() {
     if (this.smartAI) this.updateSurge();
     for (const u of this.units) {
-      if (u.side !== 'gaul' || !u.active || !u.ai) continue;
+      if (u.side !== 'gaul' || !u.active || !u.ai || u.cyc) continue;
       const ai = u.ai;
       const near = this.nearestEnemy(u);
       if (!near) continue;
@@ -571,8 +650,8 @@ export class Battle {
         if (this.smartAI && this.aiS.surge && (u.role === 'line' || u.role === 'wing') && u.type.cat === 'inf') {       // a fighting withdrawal: shaken men step back to catch their breath instead of waiting to break
           if (u.wdUntil) { if (this.t > u.wdUntil) { u.wdUntil = null; u.stance = 'aggressive'; u.order = { kind: 'none' }; u.wdCd = this.t + 60; } else continue; }
           else if (u.morale < u.maxMorale * 0.4 && u.contacts.some(e => e.active) && this.t > (u.wdCd || 0)) {
-            if (u.wdPlan === undefined) u.wdPlan = this.rand() < 0.45;
-            if (u.wdPlan) { u.wdPlan = undefined; this.fallBack(u); u.wdUntil = this.t + 14; if (this.t > (this._wdSaid || 0)) { this._wdSaid = this.t + 25; this.say(`${u.name} falls back in good order to catch its breath.`, 'info'); } this.mark('withdraw', `${u.name} withdraws in order`, 'gaul'); continue; }
+            if (u.wdPlan === undefined) u.wdPlan = this.rand() < [0, 0.45, 0.6, 0.75][this.aiLevel];
+            if (u.wdPlan) { u.wdPlan = undefined; const bg = this.aiLevel >= 2 ? this.betterGround(u) : null; if (bg) { const n0 = this.nearestEnemy(u); this.setMove(u, bg.x, bg.y, n0 ? Math.atan2(n0.e.y - u.y, n0.e.x - u.x) : null, true); u.order.back = true; u.stance = 'hold'; } else this.fallBack(u); u.wdUntil = this.t + (bg ? 20 : 14); if (this.t > (this._wdSaid || 0)) { this._wdSaid = this.t + 25; this.say(`${u.name} falls back in good order to catch its breath.`, 'info'); } this.mark('withdraw', `${u.name} withdraws in order`, 'gaul'); continue; }
           }
         }
         if (this.smartAI && u.role && u.role !== 'burst') { this.smartMove(u); continue; }
@@ -614,7 +693,7 @@ export class Battle {
   // ---------- main step ----------
   update(dt) {
     if (this.result) return;
-    this.t += dt; this.sampleReport(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt);
+    this.t += dt; this.sampleReport(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt); this.updateRotation(); this.runPending();
     for (const r of this.reinf) if (!r.done && this.t >= r.at) {
       r.done = true;
       if (r.side === 'rome') {
@@ -642,6 +721,7 @@ export class Battle {
     if (this._ai >= 0.4) { this._ai = 0; this.updateFront(); this.aiThink(); }
     this.computeContacts();
     this.markExposure();
+    this.syncGroups();
     for (const u of this.units) if (u.present) this.stepUnit(u, dt);
     this.separate(dt);
     for (const u of this.units) if (u.present) this.combat(u, dt);
@@ -688,6 +768,12 @@ export class Battle {
     if (u.state === 'routing') return this.stepRout(u, dt);
     const engaged = u.contacts.some(e => e.active);
     const pursuit = !engaged && u.contacts.length > 0;
+    if (t.cat === 'cav' && u.cycle) this.cavCycle(u, engaged, dt);
+    { const tk = this.terr(u).kind;                                      // in woods and fords a formation cannot hold: the unit goes to loose order
+      if ((tk === 'forest' || tk === 'ford') && (u.formation === 'close' || u.formation === 'wedge' || (u.wide || 1) > 1.05)) {
+        u.formation = 'normal'; u.wide = 1; u.updateDims();
+        if (u.side === 'rome' && this.t > (u.looseSaid || 0)) { u.looseSaid = this.t + 25; this.say(`${u.name} loses its formation in the ${tk === 'forest' ? 'trees' : 'water'}.`, 'warn'); }
+      } }
     let goal = null, speedMul = 1, breakoff = false, backing = false;
 
     if (u.order.kind === 'retreat') goal = { x: u.x, y: H + 90 };
@@ -705,7 +791,7 @@ export class Battle {
       if (u.order.kind === 'move') {
         if (dist < 4 || (u.order.back && dist < 6)) {
           if (u.order.tf != null && !u.order.back) this.turnTo(u, u.order.tf, dt);
-          if (u.order.targetId == null) u.order = { kind: 'none' };
+          if (u.order.targetId == null) this.nextOrder(u);
         } else if (u.order.back) backing = true;
         else goal = { x: u.order.x, y: u.order.y };
       }
@@ -729,6 +815,10 @@ export class Battle {
         }
       }
     }
+    if (t.cat === 'cav' && u.order.kind === 'none' && u.stance === 'aggressive' && !engaged && (u.cycle || u.side === 'gaul') && this.t > (u.ccCd || 0)) {   // counter-charge: horse that see enemy horse coming ride out to meet them
+      const ec = this.nearestEnemy(u, (e) => e.active && e.type.cat === 'cav' && e.spotted !== false); u.ccCd = this.t + 3;
+      if (ec && ec.gap < 170 && ec.gap > 25 && (u.side !== 'gaul' || this.aiLevel >= 2)) { this.setAttack(u, ec.e, true); u.order.sprint = true; }
+    }
     if (u.order.kind === 'none' && u.stance === 'aggressive' && !engaged) {
       const n = this.nearestEnemy(u, (e) => e.active);
       const aggro = t.cat === 'ranged' ? t.range * 1.25 : 60;
@@ -748,10 +838,17 @@ export class Battle {
     // skirmishers step back from melee troops that reach them (through their own line) instead of standing and dying
     if (t.cat === 'ranged' && engaged && u.ammo > 0 && !u.holdFire && u.order.kind === 'none' && u.stance !== 'hold' && !(u.skCd > 0)) {
       const c = u.contacts.filter(e => e.active && e.type.cat !== 'ranged').sort((a, b) => this.gap(u, a) - this.gap(u, b))[0];
-      if (c) { const dx = u.x - c.x, dy = u.y - c.y, d = Math.hypot(dx, dy) || 1; this.setMove(u, clamp(u.x + dx / d * 110, 20, WORLD.w - 20), clamp(u.y + dy / d * 110, 20, WORLD.h - 20), null, true); u.skCd = 6; }
+      if (c) {
+        const dx = u.x - c.x, dy = u.y - c.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
+        // fall back through your own line: the nearest friendly foot behind us, and a place just behind it
+        let line = null, lg = 1e9; for (const f of this.units) { if (f === u || f.side !== u.side || !f.active || f.type.cat !== 'inf') continue; const px = f.x - u.x, py = f.y - u.y, al = px * ux + py * uy; if (al > 15 && al < 320 && Math.hypot(px, py) < lg) { lg = Math.hypot(px, py); line = f; } }
+        const gx = line ? line.x + ux * (line.d / 2 + u.d / 2 + 16) : u.x + ux * 110, gy = line ? line.y + uy * (line.d / 2 + u.d / 2 + 16) : u.y + uy * 110;
+        this.setMove(u, clamp(gx, 20, WORLD.w - 20), clamp(gy, 20, WORLD.h - 20), null, true); u.order.pass = true; u.skCd = 6;
+      }
     }
     if (goal && u.order.kind !== 'retreat') goal = this.pathGoal(u, goal);
     if (goal && u.order.sprint && u.fatigue < 78) speedMul = SPRINT;
+    if (goal && u.order.kind === 'move' && u.order.gspeed != null && !engaged) speedMul *= u.order.gspeed;
     if (engaged) {
       // fight unless deliberately breaking off
       const away = goal && (u.order.kind === 'move' || u.order.kind === 'retreat') && Math.hypot(goal.x - u.x, goal.y - u.y) > 15;
@@ -808,6 +905,7 @@ export class Battle {
     if (this.waterAt(rx, ry) && !this.waterAt(u.x, u.y)) { if (!this.waterAt(rx, u.y)) ry = u.y; else if (!this.waterAt(u.x, ry)) rx = u.x; else { rx = u.x; ry = u.y; } }   // routers cannot swim either
     u.x = rx; u.y = ry;
     u.state = 'routing';
+    u.dustCd = (u.dustCd || 0) - dt; if (u.dustCd <= 0 && this.fx.length < 450) { u.dustCd = 0.12; this.fx.push({ kind: 'dust', x: u.x + (this.rand() - 0.5) * u.w * 0.7, y: u.y + (this.rand() - 0.5) * u.d * 0.7, life: 1.3, max: 1.3, r: 4 + this.rand() * 4 }); }   // routers kick up a cloud
     // recover
     const safe = !n || n.gap > 140;
     if (safe) u.morale += 3 * dt * (u.side === 'rome' ? (this.inCommand(u) ? 1.3 : 0.6) : 1);
@@ -882,9 +980,29 @@ export class Battle {
     const ad = Math.abs(norm(h - u.f));
     const align = dist < 30 ? 1 : ad < 0.6 ? 1 : ad < 1.5 ? 0.4 : 0.12;
     u.passing = this.overlapsFriend(u, Math.cos(h), Math.sin(h));          // marching through friendly units is slow going
-    const sp = this.speedOf(u) * speedMul * align * (u.passing ? PASS_SPEED : 1);
+    const sp = this.speedOf(u) * speedMul * align * (u.passing && !u.order.pass ? PASS_SPEED : 1);
     const step = Math.min(dist, sp * dt);
-    let nx = u.x + Math.cos(h) * step, ny = u.y + Math.sin(h) * step;
+    let hh0 = h, nx = u.x + Math.cos(h) * step, ny = u.y + Math.sin(h) * step;
+    // body-blocking: a unit does not march through a friend that stands in its way (unless they are in the same moving line); it steers round it
+    if (u.order.kind !== 'retreat' && !u.order.pass && step > 0.05) {
+      const grp = u.order.grp, blocker = (px, py) => {
+        for (const f of this.units) {
+          if (f === u || f.side !== u.side || !f.present || f.state === 'routing' || (grp && f.order && f.order.grp === grp)) continue;
+          if (Math.abs(f.x - px) > 120 || Math.abs(f.y - py) > 120) continue;
+          const g = this.gapAt(u, px, py, f); if (g < -3 && g < this.gap(u, f) - 0.3) return f;
+        }
+        return null;
+      };
+      const f0 = blocker(nx, ny);
+      if (f0) {
+        const side = (this.t < (u.steerUntil || 0) && u.steerSign) ? u.steerSign : (((f0.x - u.x) * Math.sin(h) - (f0.y - u.y) * Math.cos(h)) > 0 ? 1 : -1);   // friend on the left: steer right
+        const stepF = u.passing ? Math.min(dist, this.speedOf(u) * speedMul * align * dt) : step;                // going round, not through: full pace
+        for (const a of [0.45, 0.9, 1.35]) {
+          const ah = h + a * side, tx = u.x + Math.cos(ah) * stepF, ty = u.y + Math.sin(ah) * stepF;
+          if (!blocker(tx, ty) && !this.waterAt(tx, ty)) { nx = tx; ny = ty; hh0 = ah; u.steerSign = side; u.steerUntil = this.t + 1.2; u.passing = false; break; }
+        }
+      }
+    }
     if (u.order.kind !== 'retreat' && this.waterAt(nx, ny) && !this.waterAt(u.x, u.y)) {   // deep water cannot be crossed: slide along the bank
       let ok = false; const sg = u.slideSign || 1;
       for (const a of [0.6, -0.6, 1.2, -1.2, 1.8, -1.8]) { const hh = h + a * sg, tx = u.x + Math.cos(hh) * step, ty = u.y + Math.sin(hh) * step; if (!this.waterAt(tx, ty)) { nx = tx; ny = ty; ok = true; if (a < 0) u.slideSign = -sg; break; } }
@@ -964,7 +1082,10 @@ export class Battle {
     // ranged fire
     if (t.range && u.ammo > 0 && !u.holdFire && !u.contacts.some(e => e.active) && (u.state !== 'moving' || u.order.kind === 'none')) {
       let tgt = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null;
-      if (!tgt || !tgt.active || this.gap(u, tgt) > t.range) { const n = this.nearestEnemy(u, u.side === 'rome' ? (e) => e.active && e.spotted !== false : undefined); tgt = n && n.gap <= t.range ? n.e : null; }
+      if (!tgt || !tgt.active || this.gap(u, tgt) > t.range) {
+        let n = u.prio ? this.nearestEnemy(u, (e) => e.active && e.spotted !== false && e.type.cat === u.prio) : null; if (!n || n.gap > t.range) n = this.nearestEnemy(u, u.side === 'rome' ? (e) => e.active && e.spotted !== false : undefined);
+        tgt = n && n.gap <= t.range ? n.e : null;
+      }
       if (tgt) {
         const g = this.gap(u, tgt);
         u.shooting = true;
@@ -1007,7 +1128,7 @@ export class Battle {
         imp *= e.formation === 'close' && ang.c === 1 ? 0.7 : 1;
         imp *= 1 - Math.max(0, (e.type.antiCharge || 0) * (1 - 0.35 * ((e.wide || 1) - 1))) * (e.state === 'idle' || e.stance === 'hold' ? 1 : 0.4);
         imp *= 1 + 0.3 * ((e.wide || 1) - 1);                    // a charge into a thin line goes deeper
-        imp *= this.wx.charge;
+        imp *= this.wx.charge * (this.terr(u).kind === 'forest' ? 0.6 : this.terr(u).kind === 'ford' ? 0.8 : 1);       // no run-up among trees or in water
         imp *= u.temper === 'rash' ? 1.15 : u.temper === 'bold' ? 1.1 : u.temper === 'cautious' ? 0.85 : 1;
         imp *= this.terr(e).def;
         imp *= 1 + 0.3 * clamp(hgt(this, u) - hgt(this, e), -1, 1);   // charging downhill hits harder, uphill softer

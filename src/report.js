@@ -95,6 +95,7 @@ export function reportHtml(res) {
   const helped = [];
   if (st.rallied) helped.push(`the general rode the line ${st.rallied === 1 ? 'once' : st.rallied + ' times'} to steady the cohorts`);
   if (st.relieved) helped.push(`tired cohorts were relieved ${st.relieved === 1 ? 'once' : st.relieved + ' times'}`);
+  if (st.cycles) helped.push(`horse charged, broke off and charged again ${st.cycles} time${st.cycles > 1 ? 's' : ''}`);
   const unitRallies = ev.filter(e => e.kind === 'unitrally' && e.side === 'rome').length;
   if (unitRallies) helped.push(`${unitRallies} broken cohort${unitRallies > 1 ? 's' : ''} rallied and returned`);
   if (helped.length) out.push(`<b>What helped:</b> ${helped.join('; ')}.`);

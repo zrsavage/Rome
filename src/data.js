@@ -312,7 +312,7 @@ export const SCENARIOS = [
   // ======================= ACT II: Ariovistus and the Suebi (Germania, 58 BC) =======================
   // Fewer fortified places and more movement: Germanic horse mixed with runners, warbands in tribal blocks, and wagon laagers that nobody flees past.
   {
-    id: 'parley', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Parley on the Mound', kind: 'skirmish',
+    boost: 1.25, id: 'parley', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Parley on the Mound', kind: 'skirmish',
     geo: { lat: 47.62, lon: 7.28, place: 'The Upper Rhine plain (Alsace)', note: 'The mound where Caesar and Ariovistus met; the exact site is not known' },
     briefing: 'Ariovistus has agreed to meet you on a broad mound in the open plain, each side bringing only mounted escorts. You do not trust German horse with your Gallic cavalry, so men of the Tenth have been put on their horses. The talks are short: German riders edge towards the mound, throwing stones and spears at your escort. Break off the parley, take the mound and hold it until your army is up.',
     objective: 'Hold the mound (the gold marker) for 110 seconds against the German horse, or break their riders. Their horse is fast and they will go for your flanks.',
@@ -333,7 +333,7 @@ export const SCENARIOS = [
     unlock: []
   },
   {
-    id: 'supply', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Cut Supply Line', kind: 'skirmish',
+    boost: 1.15, id: 'supply', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Cut Supply Line', kind: 'skirmish',
     geo: { lat: 47.55, lon: 6.80, place: 'The gap between the Vosges and the Jura', note: 'The road from the Sequani; the exact place is illustrative' },
     briefing: 'Ariovistus has camped behind you and his horse are cutting the road to the Sequani, from whom your grain comes. A column of wagons is coming up the road with a thin escort. The Germans ride fast and come in from every side at once: hold the wagons and the legion eats; lose them and it will not fight.',
     objective: 'Keep the supply wagons (the gold marker) in Roman hands. If the Germans hold them for 100 seconds the grain is lost. Break the raiders to win.',
@@ -355,7 +355,7 @@ export const SCENARIOS = [
     unlock: [{ type: 'legionary', name: 'VIII Cohort', men: 400, maxMen: 480, xp: 50, drill: 25, msg: 'The VIII Cohort marches up with the grain train.' }]
   },
   {
-    id: 'lessercamp', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Lesser Camp', kind: 'skirmish',
+    boost: 1.3, id: 'lessercamp', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Lesser Camp', kind: 'skirmish',
     geo: { lat: 47.78, lon: 7.05, place: 'The Upper Rhine plain (Alsace)', note: 'The smaller German camp Caesar attacked; the place is approximate' },
     briefing: 'Ariovistus will not come out to fight, so you go to him. You march past his main camp and assault the smaller one, ringed with wagons. The Germans must come out to save it: your scouts report warbands in the brush, horse on the flanks and the families waiting behind the wagons.',
     objective: 'Capture the camp (the gold marker) by holding it for 100 seconds, or break the host. Wagons cannot move, and men who have the wagons behind them will not run.',
@@ -380,7 +380,7 @@ export const SCENARIOS = [
     unlock: [{ type: 'legionary', name: 'IX Cohort', men: 400, maxMen: 480, xp: 55, drill: 25, msg: 'The IX Cohort is drawn from the camp guards.' }]
   },
   {
-    id: 'ariovistus', act: 'II', theater: 'Germania', year: '58 BC', name: 'The Battle Against Ariovistus', kind: 'named',
+    boost: 1.45, id: 'ariovistus', act: 'II', theater: 'Germania', year: '58 BC', name: 'The Battle Against Ariovistus', kind: 'named',
     geo: { lat: 47.90, lon: 7.33, place: 'The Upper Rhine plain (Alsace)', note: 'Battlefield not securely identified; the plain between the Vosges and the Rhine' },
     briefing: 'The Germans have been forced out. Ariovistus draws up his tribes in a line, the Harudes, Marcomanni, Tribocci, Vangiones, Nemetes, Sedusii and Suebi, and rings the whole host behind with wagons and carts so that no one can flee; the women stand on the wagons begging the men not to let them be taken as slaves. You have formed the legion in three lines. You lead the right, where the Germans are weakest. Young Publius Crassus commands the cavalry: watch your left, and when it is pressed, his third line will come.',
     objective: 'Break the German host. Your left will be hard pressed and the third line will relieve it. A well-ordered withdrawal is only a draw.',
@@ -416,7 +416,7 @@ export const SCENARIOS = [
     ]
   },
   {
-    id: 'rhine', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Pursuit to the Rhine', kind: 'skirmish',
+    boost: 1.35, id: 'rhine', fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Pursuit to the Rhine', kind: 'skirmish',
     geo: { lat: 47.95, lon: 7.58, place: 'The left bank of the Rhine', note: 'The pursuit ran towards the Rhine; the point is illustrative' },
     briefing: 'The German line has broken and the host is running for the Rhine, wagons and all. Ariovistus himself is across in a small boat. Your cavalry and light troops are on their heels: catch the wagons and the rearguard before they reach the water. A rearguard that has nowhere to go will stand and sell its life dearly.',
     objective: 'Break the rearguard (reduce it below 25%) before the time runs out. Fresh cavalry are ruinous against men who are running.',

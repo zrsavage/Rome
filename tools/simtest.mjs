@@ -3,6 +3,7 @@
 import { Battle } from '../src/sim.js';
 import { SCENARIOS } from '../src/data.js';
 import { newCampaign, romeSpecs, modsOf } from '../src/state.js';
+import { triplexLayout } from '../src/orders.js';
 
 const RUNS = +process.argv[2] || 20;
 const SEL = process.argv[3] && process.argv[3] !== 'all' ? [+process.argv[3]] : SCENARIOS.map((_, i) => i);
@@ -17,6 +18,53 @@ function campaignAt(i, difficulty) {
   c.cohorts.forEach(h => { h.condition = 95; });
   c.fort = Math.min(2, Math.floor(i / 2));
   return c;
+}
+
+
+// A bot that plays like a person who knows the rules: it forms the triplex acies, fights with the front line, rotates tired cohorts, keeps a reserve
+// for trouble, sends horse into the rear of engaged enemies, falls back skirmishers through the line, keeps the general near the front and rallies.
+function smartBot(b, rome, S) {
+  const dt = 0.1, active = (u) => u.active && u.present;
+  if (b.t < 0.2) {
+    const live = rome.filter(active), gs = b.units.filter(u => u.side === 'gaul' && active(u));
+    const cx = live.reduce((a, u) => a + u.x, 0) / live.length, cy = live.reduce((a, u) => a + u.y, 0) / live.length;
+    const gx = gs.length ? gs.reduce((a, u) => a + u.x, 0) / gs.length : cx, gy = gs.length ? gs.reduce((a, u) => a + u.y, 0) / gs.length : cy - 500;
+    S.f = Math.atan2(gy - cy, gx - cx);
+    const ents = triplexLayout(live, cx, cy, S.f), rank = ents.filter(e => e.u.type.cat === 'inf').map(e => ({ u: e.u, fw: (e.x - cx) * Math.cos(S.f) + (e.y - cy) * Math.sin(S.f) })).sort((a, c) => c.fw - a.fw);
+    rank.forEach((r, i) => { r.u.botRow = i < Math.ceil(rank.length * 0.4) ? 0 : i < Math.ceil(rank.length * 0.7) ? 1 : 2; });
+    b.setMoveGroup(ents.map(e => ({ ...e, x: Math.max(30, Math.min(1e5, e.x)), y: Math.max(30, e.y) })));
+    for (const u of live) { if (u.type.cat === 'inf') u.rotate = true; if (u.type.cat === 'cav') u.cycle = true; }
+    S.t = 0; return;
+  }
+  if (b.t - (S.t || 0) < 1.5) return; S.t = b.t;
+  const live = rome.filter(active), inf = live.filter(u => u.type.cat === 'inf'), enemies = b.units.filter(u => u.side === 'gaul' && active(u) && u.type.cat !== 'cav' || (u.side === 'gaul' && active(u) && u.type.cat === 'cav'));
+  const engagedE = enemies.filter(e => e.contacts.some(c => c.side === 'rome' && c.active));
+  const nearestTo = (u, list) => { let best = null, bg = 1e9; for (const e of list) { const g = b.gap(u, e); if (g < bg) { bg = g; best = e; } } return best ? { e: best, gap: bg } : null; };
+  const trouble = live.filter(u => u.state === 'routing' || u.flanked || u.surrounded || (u.contacts.some(e => e.active) && u.morale < u.maxMorale * 0.4));
+  const rule = b.rule, obj = b.objectives[0];
+  for (const u of live) {
+    if (u.type.cat === 'inf') {
+      if (u.contacts.some(e => e.active)) continue;
+      const row = u.botRow ?? 0;
+      if (u.order.back) continue;
+      const near = nearestTo(u, enemies), nearEng = nearestTo(u, engagedE);
+      if (row === 0 && near && near.gap < 300) b.setAttack(u, near.e);
+      else if (row === 1 && (nearEng && nearEng.gap < 200 || near && near.gap < 160)) b.setAttack(u, (nearEng && nearEng.gap < 200 ? nearEng : near).e);
+      else if (row === 2 && trouble.length) { const t0 = trouble[0], tgt = nearestTo(t0, enemies); if (tgt && b.gap(u, tgt.e) < 600) b.setAttack(u, tgt.e); }
+      else if (rule && rule.attacker === 'rome' && obj && b.t > 35 && !near && u.order.kind === 'none') b.setMove(u, obj.x, obj.y + (row - 1) * 80, S.f, false, false);
+      else if (rule && rule.attacker === 'gaul' && obj && row === 2 && u.order.kind === 'none' && Math.hypot(u.x - obj.x, u.y - obj.y) > 180) b.setMove(u, obj.x, obj.y + 60, S.f, true);
+    } else if (u.type.cat === 'cav') {
+      if (u.order.kind === 'attack' || u.cyc) continue;
+      const cand = engagedE.filter(e => e.type.cat !== 'cav'); const t0 = nearestTo(u, cand.length ? cand : b.units.filter(e => e.side === 'gaul' && active(e) && e.type.cat === 'ranged'));
+      if (t0 && b.t > 20) b.setAttack(u, t0.e, true);
+    }
+  }
+  if (b.general) {
+    const front = inf.filter(u => (u.botRow ?? 0) === 0 && active(u)); const eng = live.filter(u => u.contacts.some(e => e.active));
+    const base = eng.length ? eng : front.length ? front : live;
+    if (base.length) { const mx = base.reduce((a, u) => a + u.x, 0) / base.length, my = base.reduce((a, u) => a + u.y, 0) / base.length; b.moveGeneral(mx - Math.cos(S.f) * 70, my - Math.sin(S.f) * 70); }
+    if (b.rallyCd <= 0 && live.filter(u => u.morale < u.maxMorale * 0.4).length + live.filter(u => u.state === 'routing').length >= 2) b.rally();
+  }
 }
 
 export { campaignAt };
@@ -38,6 +86,7 @@ export function play(strategy, i, difficulty, seed, mutate = null) {
     }
     if (strategy === 'hold' && b.t < 0.2) rome.forEach(u => { if (u.type.cat === 'inf') u.stance = 'hold'; });
     if (strategy === 'retreat' && b.t > 60) b.retreatAll();
+    if (strategy === 'smart') smartBot(b, rome, (b._bot = b._bot || {}));
     if (strategy === 'tactician') {
       // default stance is 'defend post' (engage nearby enemies, then return); no blanket hold
       if (b.t < 0.2 && b.rule && b.rule.attacker === 'gaul') { const o = b.objectives[0]; rome.filter(u => u.type.cat === 'inf').forEach((u, i, a) => b.setMove(u, o.x + (i - (a.length - 1) / 2) * 70, o.y + 30, -Math.PI / 2)); }

@@ -327,3 +327,6 @@ input.mslide{width:100%;accent-color:#e8c36a;height:6px;cursor:pointer}
 #musicpanel .mp-row{display:flex;align-items:center;gap:8px}
 #musicpanel input[type=range]{flex:1}
 #musicpanel .mp-now{color:var(--muted);font-size:13px;min-height:2.6em}
+
+#hud-cmds.compact .cmd .lbl{display:none}
+#hud-cmds.compact .cmd{padding:5px 8px}
