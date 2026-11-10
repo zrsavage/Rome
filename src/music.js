@@ -1,17 +1,17 @@
-// Background music: calm classical for the menu, map and camp; driving orchestral pieces for battle. Tracks are shuffled, crossfade into each other,
+// Background music: ancient-feeling pieces (plucked strings, flutes, reeds and hand drums) for the menu, map and camp; driving orchestral pieces for battle. Tracks are shuffled, crossfade into each other,
 // and the player stays silent until the first click or key press (browsers do not allow sound before that). Credits are in docs/MUSIC.md and the panel.
 // The files are Kevin MacLeod's (incompetech.com, CC BY 4.0), re-encoded and volume-matched; see docs/MUSIC.md.
 export const TRACKS = {
   calm: [
-    { file: 'audio/calm-gymnopedie-no-1.mp3', title: 'Gymnopedie No. 1', by: 'Erik Satie' },
-    { file: 'audio/calm-prelude-in-c.mp3', title: 'Prelude in C', by: 'J. S. Bach' },
-    { file: 'audio/calm-canon-in-d-major.mp3', title: 'Canon in D', by: 'Johann Pachelbel' },
-    { file: 'audio/calm-virtutes-instrumenti.mp3', title: 'Virtutes Instrumenti', by: 'medieval sacred music' },
-    { file: 'audio/calm-cello-suite-1-in-g-prelude.mp3', title: 'Cello Suite No. 1, Prelude', by: 'J. S. Bach' },
-    { file: 'audio/calm-sheep-may-safely-graze.mp3', title: 'Sheep May Safely Graze', by: 'J. S. Bach' },
-    { file: 'audio/calm-gymnopedie-no-2.mp3', title: 'Gymnopedie No. 2', by: 'Erik Satie' },
-    { file: 'audio/calm-teller-of-the-tales.mp3', title: 'Teller of the Tales', by: 'Kevin MacLeod' },
-    { file: 'audio/calm-thaxted-holst.mp3', title: 'Thaxted', by: 'Gustav Holst' }
+    { file: 'audio/calm-temple-of-the-manes.mp3', title: 'Temple of the Manes', by: 'Kevin MacLeod (harps, flutes, oboe)' },
+    { file: 'audio/calm-teller-of-the-tales.mp3', title: 'Teller of the Tales', by: 'Kevin MacLeod (plucked strings)' },
+    { file: 'audio/calm-suonatore-di-liuto.mp3', title: 'Suonatore di Liuto', by: 'Kevin MacLeod (solo lute)' },
+    { file: 'audio/calm-lord-of-the-land.mp3', title: 'Lord of the Land', by: 'Kevin MacLeod (lute, flute, drums)' },
+    { file: 'audio/calm-old-road.mp3', title: 'Old Road', by: 'Kevin MacLeod (double reed, drums)' },
+    { file: 'audio/calm-tabuk.mp3', title: 'Tabuk', by: 'Kevin MacLeod (strings, flute, drums)' },
+    { file: 'audio/calm-ritual.mp3', title: 'Ritual', by: 'Kevin MacLeod (low flutes)' },
+    { file: 'audio/calm-ancient-rite.mp3', title: 'Ancient Rite', by: 'Kevin MacLeod (voices, drums)' },
+    { file: 'audio/calm-desert-city.mp3', title: 'Desert City', by: 'Kevin MacLeod (dulcimer, drums)' }
   ],
   battle: [
     { file: 'audio/battle-egmont-overture.mp3', title: 'Egmont Overture', by: 'Ludwig van Beethoven' },

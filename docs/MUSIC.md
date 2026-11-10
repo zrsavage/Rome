@@ -1,6 +1,6 @@
 # Music
 
-Background music lives in `audio/` (played by `src/music.js`). Calm classical pieces play on the menu, map, camp and briefing screens; driving
+Background music lives in `audio/` (played by `src/music.js`). Calm, ancient-feeling pieces play on the menu, map, camp and briefing screens; driving
 orchestral pieces play in battle. Pieces are shuffled and crossfade; the player stays silent until the first click or key press, and the
 speaker button (bottom-left, or in the battle toolbar) turns it off, sets the volume and skips to the next piece.
 
@@ -17,15 +17,14 @@ Required credit line (also shown in-game):
 
 | Pool | Piece | Composer |
 |---|---|---|
-| calm | Gymnopedie No. 1 / No. 2 | Erik Satie |
-| calm | Prelude in C (BWV 846), Cello Suite No. 1 Prelude, Sheep May Safely Graze | J. S. Bach |
-| calm | Canon in D | Johann Pachelbel |
-| calm | Thaxted | Gustav Holst |
-| calm | Virtutes Instrumenti (medieval sacred music), Teller of the Tales | Kevin MacLeod |
+| calm | Temple of the Manes, Teller of the Tales, Suonatore di Liuto, Lord of the Land, Old Road, Tabuk, Ritual, Ancient Rite, Desert City | Kevin MacLeod |
 | battle | Egmont Overture | Ludwig van Beethoven |
 | battle | In the Hall of the Mountain King | Edvard Grieg |
 | battle | Danse Macabre | Camille Saint-Saens |
 | battle | Five Armies, Clash Defiant, Noble Race, Heroic Age, Undaunted | Kevin MacLeod |
+
+The calm pool was first European classical (Satie, Bach, Pachelbel, Holst); it was replaced with modal pieces for plucked strings, flutes, double
+reeds and hand drums, which sit closer to what little is known of ancient Mediterranean music. None of it is a reconstruction of Roman music.
 
 ## Adding or replacing tracks
 

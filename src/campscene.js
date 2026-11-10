@@ -10,7 +10,7 @@ export const BUILDINGS = [
   { id: 'depot', name: 'Supply Depot', sub: 'Forage for food', x: 810, y: 470,
     intro: ['Your army eats every day. Send <b>foraging parties</b> to refill your supplies.', 'A cautious sweep is safe. A wide sweep brings back more but risks an ambush.'] },
   { id: 'officers', name: "Officers' Tent", sub: 'Skills and assignments', x: 810, y: 150,
-    intro: ['Officers earn <b>skill points</b> as they level. Spend them on perks.', 'Attach an officer to a unit to help it in battle.'] },
+    intro: ['Each time an officer gains a level he earns <b>one advancement</b>: a choice between two improvements. A raised flag over this tent means one is waiting.', 'Attach an officer to a unit to help it in battle.'] },
   { id: 'forge', name: 'Armourer', sub: 'Better arms and armour', x: 190, y: 310,
     intro: ['Spend denarii and supplies to give a cohort better <b>armour and weapons</b>.', 'Each upgrade takes a day. Equip your best units first.'] },
   { id: 'hospital', name: 'Field Hospital', sub: 'Heal the wounded', x: 810, y: 310,
@@ -80,7 +80,7 @@ function art(id) {
 }
 
 // The camp screen: a painting (campart.js) with an SVG layer of clickable buildings, labels and badges on top.
-export function sceneSvg(c, { visited = [], focus = null } = {}) {
+export function sceneSvg(c, { visited = [], focus = null, flags = {} } = {}) {
   const un = unlockedBuildings(c), unIds = new Set(un.map(b => b.id)), seen = new Set(visited);
   const art = campArt([...unIds], BUILDINGS);
   let s = `<div class="campstage"><img class="campart" alt="" src="${art}"><svg viewBox="0 0 ${W} ${H}" id="campsvg" role="group" aria-label="Your camp. Click a building to use it.">
@@ -99,6 +99,7 @@ export function sceneSvg(c, { visited = [], focus = null } = {}) {
       <rect x="-6" y="-14" width="182" height="146" rx="10" class="hit"/>
       ${isFocus ? '<rect x="-4" y="-12" width="178" height="142" rx="10" class="pulsebox"/>' : ''}
       ${isNew ? '<g transform="translate(160,-4)"><circle r="13" fill="#e8c36a" stroke="#2a1a08" stroke-width="2"/><text y="5" text-anchor="middle" class="newb">NEW</text></g>' : ''}
+      ${flags[b.id] ? `<g class="bldflag" transform="translate(8,-34)"><title>${flags[b.id]} decision${flags[b.id] > 1 ? 's' : ''} waiting</title><line x1="0" y1="0" x2="0" y2="58" stroke="#2a1a08" stroke-width="4" stroke-linecap="round"/><line x1="0" y1="0" x2="0" y2="58" stroke="#8a6a3a" stroke-width="2" stroke-linecap="round"/><g class="cloth"><path d="M1 2h34l-8 10 8 10H1z" fill="#c62f25" stroke="#4a0f0b" stroke-width="1.6" stroke-linejoin="round"/><text x="13" y="17" text-anchor="middle" style="font:bold 13px system-ui,sans-serif;fill:#fff3d0">${flags[b.id]}</text></g></g>` : ''}
       <text x="85" y="128" class="bl" text-anchor="middle">${b.name}</text></g>`;
   }
   s += `</svg></div>`;
@@ -106,11 +107,13 @@ export function sceneSvg(c, { visited = [], focus = null } = {}) {
 }
 
 // One plain sentence telling the player what to do next.
-export function advice(c, visited) {
+export function advice(c, visited, flags = {}) {
   const un = unlockedBuildings(c), seen = new Set(visited), days = c.daysLeft;
   if (days <= 0) return { text: 'No days remain. Click the command tent and march to battle.', focus: 'praetorium' };
   const fresh = un.find(b => !seen.has(b.id));
   if (un.length === 1 && fresh) return { text: `Welcome to your camp. You have ${days} day${days === 1 ? '' : 's'} before the enemy moves. Click the glowing <b>${fresh.name}</b> to begin.`, focus: fresh.id };
   if (fresh) return { text: `New: the <b>${fresh.name}</b> is built. Click it to see what it offers. You have ${days} day${days === 1 ? '' : 's'} left.`, focus: fresh.id };
+  const fl = un.find(b => flags[b.id]);
+  if (fl) return { text: `<b>A raised flag</b> over the ${fl.name} means ${fl.id === 'officers' ? 'an officer has earned an advancement' : 'a unit has gained a rank and can choose an improvement'}. It costs no day. You have ${days} day${days === 1 ? '' : 's'} left.`, focus: fl.id };
   return { text: `You have <b>${days} day${days === 1 ? '' : 's'}</b> left. Each action uses a day. Click any building, or the command tent when you are ready to march.`, focus: null };
 }

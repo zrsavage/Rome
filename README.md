@@ -43,7 +43,7 @@ python3 -m http.server 8080   # then open http://localhost:8080
 - **Officers**: temperament (bold, rash, steady, cautious) with battle effects (a rash officer charges unordered), rivalry (Pullo and Vorenus) and promotions
   (level 3 and 5) that make a cohort a rallying point and then immovable.
 - **Battle report** on the result screen: strength timeline, why each cohort broke, what decided the fight and short rule lessons.
-- **Music**: nine calm classical pieces for menu, map and camp and eight orchestral pieces for battle (Kevin MacLeod, CC BY 4.0), shuffled with crossfades; speaker button, volume, credits. See `docs/MUSIC.md`.
+- **Music**: nine calm ancient-feeling pieces (plucked strings, flutes, reeds, hand drums) for menu, map and camp and eight orchestral pieces for battle (Kevin MacLeod, CC BY 4.0), shuffled with crossfades; speaker button, volume, credits. See `docs/MUSIC.md`.
 - **Movement and fighting (v0.4)**: a drawn line now marches as a line (every cohort paced so all arrive together, which gives wheels), friends are steered
   round instead of walked through, and woods and fords break formations and kill a charge's run-up. Learned in camp: Marching Orders (N, waypoints),
   Triplex Acies (B; Ctrl+B saves your own formation, Alt+B recalls it), Target Priority (I), Charge and Rally (M, horse break off and re-charge, and meet
@@ -51,6 +51,9 @@ python3 -m http.server 8080   # then open http://localhost:8080
   under the label. The Gauls scale their tricks with difficulty (feints, extended lines, champion strikes, falling back to higher ground). An optional
   "messengers" rule (speaker panel) delays orders to cohorts outside the general's ring. `node tools/simtest.mjs 6 6 normal` with `STRATS=smart` runs a bot that plays
   with these tools (triplex, rotation, reserve, horse on rears) and is the balance yardstick.
+- **Advancement, one decision at a time**: each officer level and each cohort rank earns a single either/or choice from a ladder that is the same for every
+  leader or unit of that kind (centurion of foot, prefect of horse, staff officer; foot, missile troops, horse). A raised flag over the Officers' Tent or the
+  Training Ground shows a choice is waiting. Clicking a unit shows its record: its real numbers, what it is best at and where it stands out. Rules in `src/promote.js`.
 - **Save safety**: export a campaign as a file, import it, and keep six rolling backups per slot (after every battle and when you make camp).
 
 ## Balancing the camp

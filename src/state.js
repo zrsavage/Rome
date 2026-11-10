@@ -26,7 +26,7 @@ export function armyPower(c) {
   for (const h of c.cohorts) {
     if (h.men <= 0) continue;
     const t = UNIT_TYPES[h.type], u = h.upg || {}, w = (t.cost || 60) / 60, lvl = levelFor(h.xp || 0);
-    p += h.men * w * (1 + 0.07 * lvl) * (1 + 0.1 * Math.min(100, h.drill || 0) / 100) * (1 + 0.05 * ((u.armour || 0) + (u.weapon || 0)));
+    p += h.men * w * (1 + 0.07 * lvl) * (1 + 0.1 * Math.min(100, h.drill || 0) / 100) * (1 + 0.05 * ((u.armour || 0) + (u.weapon || 0))) * (1 + 0.03 * ((h.ups || []).length));
   }
   return p;
 }
@@ -71,7 +71,7 @@ export function romeSpecs(c, scn) {
   const ranged = live.filter(h => h.type === 'slinger' || h.type === 'archer');
   const cav = live.filter(h => h.type === 'equites' || h.type === 'aux_cav');
   const specs = [];
-  const mk = (h, x, y) => specs.push({ type: h.type, name: h.name, cohortId: h.id, men: h.men, maxMen: h.maxMen, xp: h.xp, drill: h.drill, condition: h.condition, officer: officerById(c, h.officerId), upg: h.upg, x, y, f: d.f, stance: 'aggressive' });
+  const mk = (h, x, y) => specs.push({ type: h.type, name: h.name, cohortId: h.id, men: h.men, maxMen: h.maxMen, xp: h.xp, drill: h.drill, condition: h.condition, officer: officerById(c, h.officerId), upg: h.upg, ups: h.ups, x, y, f: d.f, stance: 'aggressive' });
   if (d.mode === 'grid') {
     [...inf, ...ranged, ...cav].forEach((h, i) => { const col = i % d.cols, row = Math.floor(i / d.cols); mk(h, d.cx + (col - (d.cols - 1) / 2) * d.dx, d.cy + row * d.dy); });
     return specs;

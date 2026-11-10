@@ -3,6 +3,7 @@ import { LEVEL_NAMES, SCENARIOS, DIFFICULTY, UNIT_TYPES, RAISE, XP_LEVELS } from
 import { PERKS, perkById, LEVEL_TRAITS, UPGRADES, MAX_TIER, upgradeCost } from './perks.js';
 import { levelFor } from './sim.js';
 import { TEMPERS, temperOf, rivalOf, tierOf, rankFor, TIER_TEXT } from './officers.js';
+import { officerPending, chooseOfficer, officerTrack, officerKind, OFFICER_KINDS, unitPending, chooseUnit, unitChosen, unitRecord, standsOut, unitTrack } from './promote.js';
 import { officerById, modsOf, hasPerk, commandLimit, unlockedTypes } from './state.js';
 import { artSrc } from './art.js';
 import { inform } from './ui.js';
@@ -53,11 +54,12 @@ export function planDrill(c, h, key, leaderId) {
 const roman = (n) => { const m = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]; let o = ''; for (const [v, t] of m) while (n >= v) { o += t; n -= v; } return o; };
 const bestOfficer = (c, trait) => Math.max(0, ...c.officers.filter(o => o.alive).map(o => o[trait]));
 
+const flagIcon = () => '<svg class="flagico" viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M5 22V2" stroke="#3a2a14" stroke-width="2.4" stroke-linecap="round"/><path d="M6 3h13l-3.2 4.2L19 11.5H6z" fill="#b3261e" stroke="#5a120e" stroke-width="1"/></svg>';
 // Temperament, rival and promotion tags shown under an officer in the Officers panel.
 function officerTags(c, o) {
   if (!o.alive) return '';
   const t = temperOf(o), tm = TEMPERS[t], rv = rivalOf(o) != null ? c.officers.find(x => x.id === rivalOf(o) && x.alive) : null, tier = tierOf(o);
-  return `<div class="row small" style="gap:4px;margin-top:3px;flex-wrap:wrap"><span class="pill" title="${esc(tm.text)}">${esc(tm.name)}</span>${rv ? `<span class="pill" title="Rivals fight harder when side by side in a fight, each determined not to be outdone.">Rival: ${esc(rv.name.split(' ').pop())}</span>` : ''}${tier ? `<span class="pill" title="${esc(TIER_TEXT[tier])}">${tier === 1 ? 'Rallying point' : 'Immovable'}</span>` : ''}</div><div class="muted small">${esc(tm.text)}</div>`;
+  return `<div class="row small" style="gap:4px;margin-top:3px;flex-wrap:wrap"><span class="pill" title="${esc(tm.text)}">${esc(tm.name)}</span>${rv ? `<span class="pill" title="Rivals fight harder when side by side in a fight, each determined not to be outdone.">Rival: ${esc(rv.name.split(' ').pop())}</span>` : ''}${tier ? `<span class="pill" title="${esc(TIER_TEXT[tier])}">${tier === 1 ? 'Rallying point' : 'Immovable'}</span>` : ''}</div>`;
 }
 export class Camp {
   constructor(root, api) { this.root = root; this.api = api; this.sel = 1; this.c = null; this.msgs = []; this.open = null; this.regimen = null; this.leader = 'self'; this.recruitN = 20; this.hireN = 50; this.snap = null; this.scope = 'one'; this.raiseN = 1;
@@ -200,9 +202,9 @@ export class Camp {
   scout() { const c = this.c, free = hasPerk(c, 'spymaster'); if ((!free && !this.canAct()) || c.scouted) return; c.scouted = true; this.note(free ? 'Your spies report the enemy dispositions (no day spent).' : 'Scouts report the enemy dispositions.', 'good'); if (free) this.api.save(); else this.endDay(); this.render(); }
   // ----- management depth -----
   learn(spec) {
-    const [oid, pid] = spec.split(':'), o = this.c.officers.find(x => x.id === +oid), p = perkById(pid);
-    if (!o || !p || (o.points || 0) < 1 || o[p.trait] < p.req || (o.perks || []).includes(pid)) return;
-    o.points--; o.perks = [...(o.perks || []), pid]; this.note(`${o.name} learns ${p.name}.`, 'good'); this.api.save(); this.render();
+    const [oid, pid] = spec.split(':'), o = this.c.officers.find(x => x.id === +oid), pend = o && officerPending(o), k = pend && pend.options.find(x => x.id === pid);
+    if (!k || !chooseOfficer(o, pid)) return;
+    this.note(`${o.name}: ${k.name}.`, 'good'); this.api.save(); this.render();
   }
   upgrade(kind) {
     const c = this.c, h = this.selected(), names = UPGRADES[UNIT_TYPES[h.type].cat], tg = this.targets(h).filter(x => upgradeCost(x, kind).tier < MAX_TIER);
@@ -288,6 +290,31 @@ export class Camp {
   }
 
   // ---------- rendering: the camp is a place; each building opens one small panel ----------
+  // A cohort that has gained a rank chooses one of two improvements. Only the first waiting cohort is shown: one decision at a time.
+  promoHtml() {
+    const c = this.c, waiting = c.cohorts.filter(x => unitPending(x)), h1 = waiting[0]; if (!h1) return '';
+    const p = unitPending(h1);
+    return `<div class="decision"><div class="dhead">${flagIcon()}<div><b>${esc(h1.name)}</b> has reached the rank of <b>${esc(p.rank)}</b> <span class="pill">choice ${p.row + 1} of ${unitTrack(h1).length}</span><div class="small muted">Every ${esc(UNIT_TYPES[h1.type].cat === 'inf' ? 'cohort of foot' : UNIT_TYPES[h1.type].cat === 'cav' ? 'squadron of horse' : 'unit of missile troops')} gets the same choice at this rank. Pick one; the other is given up.${waiting.length > 1 ? ` ${waiting.length - 1} more unit${waiting.length > 2 ? 's are' : ' is'} waiting.` : ''}</div></div></div>
+      <div class="choice2">${p.options.map(k => `<button class="regimen" data-pick="unit:${h1.id}:${k.id}"><b>${esc(k.name)}</b><span class="t">${esc(k.text)}</span></button>`).join('<div class="or">or</div>')}</div></div>`;
+  }
+  // The unit record: what this cohort's numbers are, what it is best at and where it stands out from the others like it.
+  recordHtml(h) {
+    const c = this.c, off = (x) => officerById(c, x.officerId), r = unitRecord(h, off(h)), so = standsOut(h, c.cohorts, off), ups = unitChosen(h), lv = levelFor(h.xp), nextLv = lv < 5 ? LEVEL_NAMES[lv + 1] : null;
+    const bars = r.stats.map(st => { const w = Math.max(3, Math.min(100, st.value / st.max * 100)), b0 = Math.max(0, Math.min(100, st.base / st.max * 100)), up = st.value > st.base * 1.005;
+      return `<div class="statrow"><span>${st.name}</span><div class="statbar"><i style="width:${w}%" class="${up ? 'up' : ''}"></i><em style="left:${b0}%" title="A raw unit of this type"></em></div><b>${st.show}</b></div>`; }).join('');
+    return `<div class="card unitrec"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><b>${esc(h.name)}</b> <span class="muted small">- ${esc(UNIT_TYPES[h.type].name)}, ${esc(LEVEL_NAMES[lv])}</span><div class="small">${esc(r.best)}</div></div></div>
+      <div class="stats">${bars}</div>
+      <div class="small" style="margin-top:6px">${so.better.length ? `<span style="color:var(--green)">Better than your other ${r.cat === 'inf' ? 'foot' : r.cat === 'cav' ? 'horse' : 'missile troops'} at: ${so.better.join(', ')}.</span> ` : ''}${so.worse.length ? `<span style="color:#ee9a8e">Behind them in: ${so.worse.join(', ')}.</span>` : ''}${!so.better.length && !so.worse.length ? '<span class="muted">About level with your other units of its kind.</span>' : ''}</div>
+      <div class="small" style="margin-top:6px">${ups.length ? 'Rank improvements: ' + ups.map(k => `<span class="pill" title="${esc(k.text)}">${esc(k.name)}</span>`).join(' ') : '<span class="muted">No rank improvements yet.</span>'}${unitPending(h) ? ' <span class="pill" style="border-color:var(--gold);color:var(--gold)">a choice is waiting</span>' : nextLv ? ` <span class="muted">Next choice at ${esc(nextLv)}.</span>` : ''}</div>
+      <div class="small muted" style="margin-top:4px">The mark on each bar is a raw unit of this type; the bar is this unit with its rank, drill, equipment, improvements and officer.</div></div>`;
+  }
+  pick(spec) {
+    const [kind, id, what] = spec.split(':'), c = this.c;
+    if (kind === 'officer') return this.learn(`${id}:${what}`);
+    const h = c.cohorts.find(x => x.id === +id), p = h && unitPending(h), k = p && p.options.find(o => o.id === what);
+    if (!k || !chooseUnit(h, what)) return;
+    this.sel = h.id; this.note(`${h.name}: ${k.name}.`, 'good'); this.api.save(); this.render();
+  }
   unitList(cols) {
     const c = this.c, bar = (v, m, cls = '') => `<div class="bar ${cls}"><i style="width:${pct(v, m)}%"></i></div>`, XP = [...XP_LEVELS, 4600];
     const head = { str: 'Strength', exp: 'Experience', drill: 'Drill', cond: 'Condition', gear: 'Equipment' };
@@ -324,7 +351,7 @@ export class Camp {
     switch (id) {
       case 'praetorium': return `<p><b>${esc(scn.name)}</b>${scn.kind === 'named' ? ' <span class="pill">Named battle</span>' : ''}<br><span class="small muted">${esc(scn.geo ? scn.geo.place : '')}</span></p><p class="muted">${esc(scn.briefing)}</p><p class="small">${esc(scn.objective)}</p>
         <div class="row"><button class="primary" id="march2">March to battle</button><button id="tomap2">Back to the map</button></div>
-        <h4 class="sect">Your army</h4>${this.unitList(['str', 'cond'])}`;
+        <h4 class="sect">Your army</h4>${this.unitList(['str', 'cond'])}${this.recordHtml(h)}`;
       case 'training': {
         const drillers = offs.filter(o => o.drill >= 1), insOpts = '<option value="">- none -</option>' + drillers.map(o => `<option value="${o.id}" ${h.instructorId === o.id ? 'selected' : ''}>${esc(o.name)} (drill ${o.drill})</option>`).join('');
         const lead = this.leader || 'self', adv = TRAINING_ADVICE[scn.id] || 'Decide what your men need most.';
@@ -333,7 +360,7 @@ export class Camp {
             <div class="eff"><span class="g">+${p.xp} experience</span><span class="g">+${p.dr} drill</span><span class="${r.cond <= -9 ? 'b' : ''}">condition ${r.cond}</span><span class="${r.risk ? 'b' : ''}">${r.risk ? `${Math.round(r.risk * 100)}% risk of hurt men` : 'no risk'}</span><span>${r.sup * nT} supplies</span></div></button>`; }).join('');
         const leaders = [['self', 'You', 'a decent all-rounder']].concat(offs.map(o => [String(o.id), `${o.rank} ${o.name}`, this.regimen ? `${REGIMENS[this.regimen].trait} ${o[REGIMENS[this.regimen].trait]}` : `drill ${o.drill}, tactics ${o.tactics}`]));
         const chips = leaders.map(([id, n, sub]) => `<button class="chip ${String(lead) === id ? 'sel' : ''}" data-leader="${id}">${esc(n)}<small>${esc(sub)}</small></button>`).join('');
-        return `<div class="advicebox"><b>The centurion's advice.</b> ${esc(adv)}</div><p class="muted">Each drill uses one day. You cannot do everything, so decide what ${esc(h.name)} needs most.</p>${this.unitList(['str', 'exp', 'drill', 'cond'])}${this.scopeChips(h)}
+        return `${this.promoHtml()}<div class="advicebox"><b>The centurion's advice.</b> ${esc(adv)}</div><p class="muted">Each drill uses one day. You cannot do everything, so decide what ${esc(h.name)} needs most. Click a unit to see its record.</p>${this.unitList(['str', 'exp', 'drill', 'cond'])}${this.recordHtml(h)}${this.scopeChips(h)}
           <h4 class="sect">1. What should ${esc(nT > 1 ? 'these units' : h.name)} practise?</h4><div class="regimens">${cards}</div>
           <h4 class="sect">2. Who leads it?</h4><div class="chips">${chips}</div><div class="small muted" style="margin-top:4px">${this.regimen ? `For ${REGIMENS[this.regimen].name.toLowerCase()}, an officer is judged on ${REGIMENS[this.regimen].trait}.` : 'Officers are better at some drills than others.'}</div>
           <div class="row" style="margin-top:12px"><button class="primary" id="run-drill" ${act && this.regimen ? '' : 'disabled'}>${this.regimen ? 'Run the drill' : 'Choose a drill first'}</button></div>
@@ -368,15 +395,20 @@ export class Camp {
           ${card('data-a="fortify"', `Fortify the camp (level ${c.fort}/3)`, 'The men dig ditch and palisade. Two days of work make a level.', [['+4 battle morale per level', 'g'], [`withdrawal draw needs ${floor}% -> ${nextFloor}% of your army`, 'g'], ['10 supplies', '']], c.supplies >= 10 && c.fort < 3)}</div>
           <div class="row small" style="margin-top:6px"><span class="muted">Hire how many?</span><div class="chips">${[20, 50, 100, 200].map(k => `<button class="chip ${hn === k ? 'sel' : ''}" data-hiren="${k}">${k} men</button>`).join('')}</div></div>
           <h4 class="sect">Raise a unit <span class="pill">${c.cohorts.length}/${commandLimit(c)} units</span></h4><div class="small muted">Your command limit grows with every battle you win or draw.${room <= 0 ? ' <b>You are at the limit.</b>' : ''}</div>${room > 1 ? `<div class="row small" style="margin-top:6px"><span class="muted">Raise how many at once?</span><div class="chips">${[1, 5, 10].filter(k => k <= room || k === 1).map(k => `<button class="chip ${rk === k ? 'sel' : ''}" data-raisen="${k}">${k} unit${k > 1 ? 's' : ''}</button>`).join('')}</div></div>` : ''}<div class="regimens" style="margin-top:6px">${raise}</div>${note}`; }
-      case 'officers': { const pts = offs.reduce((a, o) => a + (o.points || 0), 0);
-        const rows = c.officers.map(o => `<tr class="${o.alive ? '' : 'dead'}"><td><div class="cellflex"><img class="portrait" alt="" src="${artSrc('officer', o.id, 80, 100, { title: o.name, rank: o.rank })}"><div>${esc(rankFor(o))} ${esc(o.name)}<div class="muted small">${esc(o.bio)}</div>${officerTags(c, o)}</div></div></td><td>L${o.level}</td><td class="small">Tac ${o.tactics}<br>Drl ${o.drill}</td><td class="small">Log ${o.logistics}<br>Dip ${o.diplomacy}</td></tr>`).join('');
+      case 'officers': {
+        // one decision at a time: the first officer with a step waiting on his ladder
+        const waiting = offs.filter(o => officerPending(o)), o1 = waiting[0], pend = o1 && officerPending(o1);
+        const decision = o1 ? `<div class="decision"><div class="dhead">${flagIcon()}<div><b>${esc(rankFor(o1))} ${esc(o1.name)}</b> has earned an advancement <span class="pill">step ${pend.row + 1} of ${officerTrack(o1).length}</span><div class="small muted">${esc(OFFICER_KINDS[officerKind(o1)])}: every officer of this kind chooses from the same ladder. Pick one; the other is given up.${waiting.length > 1 ? ` ${waiting.length - 1} more decision${waiting.length > 2 ? 's' : ''} after this.` : ''}</div></div></div>
+          <div class="choice2">${pend.options.map(k => `<button class="regimen" data-pick="officer:${o1.id}:${k.id}"><b>${esc(k.name)}</b><span class="t">${esc(k.text)}</span></button>`).join('<div class="or">or</div>')}</div></div>`
+          : `<div class="advicebox">No advancement is waiting. An officer earns one step on his ladder each time he gains a level.</div>`;
+        const rows = c.officers.map(o => { const kind = officerKind(o), track = officerTrack(o), got = track.map(r => r.find(k => (o.perks || []).includes(k.id))).filter(Boolean), nx = o.alive ? track.findIndex(r => !r.some(k => (o.perks || []).includes(k.id))) : -1;
+          return `<tr class="${o.alive ? '' : 'dead'}"><td><div class="cellflex"><img class="portrait" alt="" src="${artSrc('officer', o.id, 80, 100, { title: o.name, rank: o.rank })}"><div>${esc(rankFor(o))} ${esc(o.name)} <span class="muted small">- ${esc(OFFICER_KINDS[kind])}, level ${o.level}</span>${officerTags(c, o)}
+            <div class="small" style="margin-top:3px">${got.length ? got.map(k => `<span class="pill" title="${esc(k.text)}">${esc(k.name)}</span>`).join(' ') : '<span class="muted">No advancements yet.</span>'}${o.alive && nx >= 0 && !officerPending(o) ? ` <span class="muted">Next choice at level ${nx + 1}: ${track[nx].map(k => esc(k.name)).join(' or ')}.</span>` : ''}</div></div></div></td></tr>`; }).join('');
         const assign = `<option value="">- none -</option>` + offs.map(o => `<option value="${o.id}" ${h.officerId === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
         const unitOpts = c.cohorts.map(x => `<option value="${x.id}" ${x.id === this.sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
-        const skills = offs.map(o => { const p = o.points || 0, learned = (o.perks || []).map(i => `<span class="pill" title="${esc(perkById(i).text)}">${esc(perkById(i).name)}</span>`).join(' ');
-          const avail = PERKS.filter(k => !(o.perks || []).includes(k.id) && o[k.trait] >= k.req).map(k => `<button class="act" data-a="learn" data-m="${o.id}:${k.id}" ${p > 0 ? '' : 'disabled'}>${esc(k.name)}<small>${esc(k.text)}</small></button>`).join('');
-          return `<div class="skillrow"><div class="row"><b>${esc(o.name)}</b><span class="pill">${p} skill point${p === 1 ? '' : 's'}</span>${learned}</div>${p > 0 && avail ? `<div class="actions">${avail}</div>` : ''}</div>`; }).join('');
-        return `<table><tr><th>Officer</th><th>Lvl</th><th></th><th></th></tr>${rows}</table><h4 class="sect">Attach an officer to a unit</h4><div class="row small"><select id="assign-unit">${unitOpts}</select><span class="muted">is led by</span><select id="assign">${assign}</select></div>
-          <h4 class="sect">Skills ${pts ? `<span class="pill">${pts} to spend</span>` : ''}</h4><div class="small muted">Each level earns a skill point. Perks need a high enough rating. Attached officers help their own unit; others help the whole army.</div>${skills}`; }
+        return `${decision}<h4 class="sect">Your officers</h4><table class="offtable">${rows}</table>
+          <h4 class="sect">Attach an officer to a unit</h4><div class="row small"><select id="assign-unit">${unitOpts}</select><span class="muted">is led by</span><select id="assign">${assign}</select></div>
+          <div class="small muted" style="margin-top:6px">A centurion's and a prefect's advancements help the unit he leads; a staff officer's mostly help the whole army.</div>`; }
       case 'forge': { const cat = UNIT_TYPES[h.type].cat, names = UPGRADES[cat], lt = LEVEL_TRAITS[levelFor(h.xp)], u = { armour: 0, weapon: 0, ...(h.upg || {}) }, prof = enemyProfile(scn);
         const heavy = prof.parts.find(x => x[2] === 'warband') ? prof.parts.find(x => x[2] === 'warband')[1] : 0;
         const adv = `${enemyLine(prof)} ${heavy > 50 ? 'Warbands are lightly armoured and win by charging: armour blunts their charge, better weapons win the melee. ' : ''}Spend on the units that will take the brunt, usually the front line, not on every cohort.`;
@@ -404,13 +436,14 @@ export class Camp {
 
   render() {
     const c = this.c, scn = SCENARIOS[Math.min(c.scenario, SCENARIOS.length - 1)], diff = DIFFICULTY[c.difficulty];
-    const visited = c.visitedBuildings = c.visitedBuildings || [], adv = advice(c, visited);
+    const flags = { training: c.cohorts.filter(x => unitPending(x)).length, officers: c.officers.filter(o => officerPending(o)).length };   // a raised flag over a building: decisions are waiting there
+    const visited = c.visitedBuildings = c.visitedBuildings || [], adv = advice(c, visited, flags);
     const meta = this.open === 'praetorium' ? { name: 'Command Tent', sub: 'Your next battle and the march' } : BUILDINGS.find(b => b.id === this.open);
     const food = Math.ceil(totalMen(c) / 60 * modsOf(c).supplyUse);
     const res = `<span>${icon('coin')} Denarii <b>${c.gold}</b></span>${(c.manpower || 0) > 0 ? `<span title="Assign them at the Barracks">${icon('helmet')} Soldiers available <b class="poolN">${c.manpower}</b></span>` : ''}<span>${icon('grain')} Supplies <b>${c.supplies}</b> <span class="muted small">(-${food}/day)</span></span><span title="Each activity uses one day">${icon('day')} Days left <b>${c.daysLeft}</b> <span class="muted small">(1 per activity)</span></span>`;
     this.root.innerHTML = `<div class="camp2"><header><h2>Camp - ${esc(scn.theater)}, ${esc(scn.year)}</h2><div class="res">${res}<span>${icon('fort')} Fort <b>${c.fort}/3</b></span><span>${icon('laurel')} Goodwill <b>${c.favour > 0 ? '+' : ''}${c.favour}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
       <div class="advice">${adv.text}</div>
-      <div class="scenewrap">${sceneSvg(c, { visited, focus: adv.focus })}</div>
+      <div class="scenewrap">${sceneSvg(c, { visited, focus: adv.focus, flags })}</div>
       <div class="campbar"><div class="muted small">${unlockedBuildings(c).length} of ${BUILDINGS.length} buildings built. Win or draw battles to build more.</div><div class="row"><button class="primary" id="march">March to battle</button><button id="tomap">Back to map</button></div></div>
       ${this.open && meta ? `<div class="overlay" id="ov"><div class="panel" role="dialog" aria-label="${esc(meta.name)}"><div class="phead"><div><h2>${esc(meta.name)}</h2><div class="muted small">${esc(meta.sub)}</div></div><div class="pres">${res}</div><button id="p-close">Back to camp</button></div><div class="pbody">${this.panelBody(this.open)}</div>${this.msgs.length ? `<div class="plog">${this.msgs.slice(0, 3).map(m => `<div class="${m.kind}">${esc(m.msg)}</div>`).join('')}</div>` : ''}</div></div>` : ''}</div>`;
     const R = this.root, q = (s) => R.querySelector(s);
@@ -426,6 +459,7 @@ export class Camp {
     R.querySelectorAll('[data-hiren]').forEach(b => b.onclick = () => { this.hireN = +b.dataset.hiren; this.render(); });
     R.querySelectorAll('input.mslide').forEach(inp => { inp.oninput = () => this.onSlide(+inp.dataset.id, +inp.value); inp.onchange = () => this.api.save(); });
     if (q('#m-fill')) q('#m-fill').onclick = () => this.fillEvenly(); if (q('#m-undo')) q('#m-undo').onclick = () => this.undoMuster();
+    R.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => this.pick(b.dataset.pick));
     R.querySelectorAll('[data-regimen]').forEach(b => b.onclick = () => { this.regimen = b.dataset.regimen; this.render(); });
     R.querySelectorAll('[data-leader]').forEach(b => b.onclick = () => { this.leader = b.dataset.leader; this.render(); });
     if (q('#run-drill')) q('#run-drill').onclick = () => this.runDrill();

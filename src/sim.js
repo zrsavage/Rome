@@ -3,6 +3,7 @@ import { UNIT_TYPES, WORLD, XP_LEVELS, DIFFICULTY, terrainAt, elevAt, setWorld, 
 import { MAX_TIER } from './perks.js';
 import { temperOf, tierOf, rivalOf } from './officers.js';
 import { WEATHER } from './weather.js';
+import { applyMods } from './promote.js';
 
 const TAU = Math.PI * 2;
 export const norm = (a) => { while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU; return a; };
@@ -37,7 +38,7 @@ export class Unit {
     this.id = UID++;
     this.side = spec.side;
     this.typeKey = spec.type;
-    this.type = UNIT_TYPES[spec.type];
+    this.type = applyMods({ ...UNIT_TYPES[spec.type] }, [...(spec.ups || []), ...((spec.officer && spec.officer.perks) || [])]);   // each unit carries its own numbers: rank upgrades and its officer's perks change them
     this.name = spec.name || this.type.name;
     this.cohortId = spec.cohortId ?? null;
     this.men = spec.men; this.maxMen = spec.maxMen || spec.men; this.startMen = spec.men;
@@ -882,8 +883,8 @@ export class Battle {
     u.fighting = (engaged && (!breakoff || u.blocked)) || pursuit && !breakoff;
     if (u.fighting) u.state = 'fighting';
     // fatigue
-    if (u.fighting) u.fatigue = Math.min(100, u.fatigue + 0.9 * dt);
-    else if (u.state === 'moving') u.fatigue = Math.min(100, u.fatigue + (speedMul > 1 ? 1.9 : 0.45) * dt);
+    if (u.fighting) u.fatigue = Math.min(100, u.fatigue + 0.9 * (t.tire || 1) * dt);
+    else if (u.state === 'moving') u.fatigue = Math.min(100, u.fatigue + (speedMul > 1 ? 1.9 : 0.45) * (t.tire || 1) * dt);
     else u.fatigue = Math.max(0, u.fatigue - 2.2 * dt);
     // exit by retreat
     if (u.order.kind === 'retreat' && u.y >= H + 60) { u.state = 'gone'; u.exited = true; this.say(`${u.name} has withdrawn from the field.`, 'info'); }
@@ -1143,7 +1144,7 @@ export class Battle {
         if (u.side === 'gaul' && e.side === 'rome' && imp > 8) this.say(`${u.name} crashes into ${e.name}!`, 'warn');
         u.runT = 0;
       }
-      const routingMult = e.state === 'routing' ? (t.cat === 'cav' ? 2.2 : 1.6) : 1;
+      const routingMult = e.state === 'routing' ? (t.cat === 'cav' ? 2.2 : 1.6) * (t.hunt || 1) : 1;
       const def = e.state === 'routing' ? 0 : this.defOf(e, ang.c === 1);
       // head-on is a grind; flank and rear hits are decisive; a unit hit from the side or behind, or surrounded, fights back less
       const pressed = u.surrounded ? 0.7 : 1 - 0.15 * Math.min(3, u.flanked || 0);
@@ -1269,7 +1270,7 @@ export class Battle {
       const recovered = Math.round(Math.max(0, casualties) * (outcome === 'defeat' ? 0.1 : 0.22) * this.recoveryMult);
       const endMen = Math.min(u.maxMen, survivors + recovered);
       const xpMult = outcome === 'victory' ? 1 : outcome === 'draw' ? 0.75 : 0.5;
-      const xpGain = Math.round((rw.xpBase * xpMult + u.kills * 0.3) * (u.state === 'routing' ? 0.6 : 1));
+      const xpGain = Math.round((rw.xpBase * xpMult + u.kills * 0.3) * (u.state === 'routing' ? 0.6 : 1) * (u.perks.includes('mentor') ? 1.25 : 1));
       let fate = null;
       if (u.officer) {
         const r = casualties / Math.max(1, u.startMen);
