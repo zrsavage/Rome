@@ -87,7 +87,9 @@ export class BattleUI {
 
   // ----- selection / orders -----
   selected() { return [...this.r.selection].map(id => this.b.byId(id)).filter(u => u && u.active && u.side === 'rome'); }
-  selectGeneral() { if (!this.b.general) return; this.r.selection.clear(); this.genSel = true; this.r.genSel = true; this.refreshBottom(); this.refreshHud(); this.emit('general-select'); }
+  // Select the general; with centre=true the camera also glides to him.
+  selectGeneral(centre = false) { if (!this.b.general) return; if (centre) this.centreOn(this.b.general.x, this.b.general.y); this.r.selection.clear(); this.genSel = true; this.r.genSel = true; this.refreshBottom(); this.refreshHud(); this.emit('general-select'); }
+  centreOn(x, y) { this.r.cam.x = x; this.r.cam.y = y; this.r.clampCam(); }
   select(ids, add = false) { this.genSel = false; this.r.genSel = false; if (!add) this.r.selection.clear(); ids.forEach(i => this.r.selection.add(i)); this.refreshBottom(); this.refreshHud(); this.emit('select', { ids }); }
 
   issueMove(wx, wy, drag, ignore = false, sprint = false, fill = false) {
@@ -147,8 +149,9 @@ export class BattleUI {
           const ids = this.b.units.filter(u => u.side === 'rome' && u.active).filter(u => { const s = this.r.toScreen(u.x, u.y); return s.x >= x0 && s.x <= x1 && s.y >= y0 && s.y <= y1; }).map(u => u.id);
           this.select(ids, left.shift);
         } else {
-          const u = this.r.unitAt(this.b, w.x, w.y), gn = this.b.general;
-          if (gn && !u && Math.hypot(w.x - gn.x, w.y - gn.y) < 24) this.selectGeneral();
+          const u = this.r.unitAt(this.b, w.x, w.y), gn = this.b.general, gh = this.r.genHitTest(p.x, p.y);
+          if (gh) this.selectGeneral(gh === 'off');                                     // the gold standard above him, or the arrow at the screen edge
+          else if (gn && !u && Math.hypot(w.x - gn.x, w.y - gn.y) < Math.max(28, 26 / this.r.cam.zoom)) this.selectGeneral();
           else if (u && u.side === 'rome') this.select([u.id], left.shift);
           else if (u) { this.inspect = u.id; this.refreshHud(); }
           else { this.inspect = null; this.select([], false); }
@@ -184,7 +187,7 @@ export class BattleUI {
       if (k === ',' && !e.ctrlKey && !e.metaKey) this.cmd('detach');
       if (/^[1-9]$/.test(k) && e.altKey) { e.preventDefault(); const ids = this.b.units.filter(u => u.side === 'rome' && u.active && u.legion === +k && u.type.cat !== 'train').map(u => u.id); if (ids.length) { this.select(ids); this.showBanner(`Legio ${['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'][+k]}`, 700); } }
       if (k === 'b' && !e.metaKey) { e.preventDefault(); this.cmd(e.ctrlKey ? 'saveform' : e.altKey ? 'recallform' : 'array'); }
-      if (k === 'e') this.selectGeneral();
+      if (k === 'e') { const now = performance.now(); this.selectGeneral(this.genSel || now - (this.lastE || 0) < 450); this.lastE = now; }   // E selects him; again (or double-tap) centres the camera on him
       if (k === 'escape') this.select([]);
       if (e.key === '?' || e.key === '/') $('hud-help').classList.toggle('hidden');
       if (k === 'q') this.select(this.b.units.filter(u => u.side === 'rome' && u.active).map(u => u.id));
@@ -291,7 +294,7 @@ export class BattleUI {
     const nRome = this.b.units.filter(u => u.side === 'rome').length;
     el.classList.toggle('many', nRome > 9); $('screen-battle').classList.toggle('huge', nRome > 24);   // past two dozen units the cards give way to the selection buttons
     this.buildSelectors();
-    if (this.b.general) { const d = document.createElement('div'); d.className = 'ucard'; d.dataset.gen = '1'; d.innerHTML = `${icon('general', 14)} <b>General (E)</b><div class="muted" style="font-size:12px">command ring</div>`; d.onclick = () => this.selectGeneral(); el.appendChild(d); }
+    if (this.b.general) { const d = document.createElement('div'); d.className = 'ucard'; d.dataset.gen = '1'; d.innerHTML = `${icon('general', 14)} <b>General (E)</b><div class="muted" style="font-size:12px">click to find him</div>`; d.onclick = () => this.selectGeneral(true); d.title = 'Select the general and centre the view on him (E; press E again to centre)'; el.appendChild(d); }
     this.b.units.filter(u => u.side === 'rome').forEach(u => {
       const d = document.createElement('div'); d.className = 'ucard'; d.dataset.id = u.id;
       d.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 52, 52)}"><b></b><div class="bar x"><i></i></div><div class="bar m" style="margin-top:3px"><i></i></div>`;

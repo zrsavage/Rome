@@ -172,6 +172,7 @@ export class Renderer {
     this.drawWeather(ctx, b);
     const placed = [];                                      // label boxes already on screen, so labels never sit on top of each other
     for (const u of [...order].sort((a, b2) => b2.y - a.y)) this.drawLabel(ctx, u, placed);
+    this.drawGeneralMarker(ctx, b);
     if (this.box) { ctx.strokeStyle = '#e8c36a'; ctx.fillStyle = 'rgba(232,195,106,0.12)'; const bx = this.box; ctx.fillRect(bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0); ctx.strokeRect(bx.x0, bx.y0, bx.x1 - bx.x0, bx.y1 - bx.y0); }
   }
 
@@ -374,6 +375,43 @@ export class Renderer {
   }
 
   // The general's banner and command ring.
+  // The general is always easy to find: a gold standard pinned above him at a fixed size on screen, and an arrow at the
+  // edge of the view when he is off screen. Both are click targets (see genHitTest).
+  drawGeneralMarker(ctx, b) {
+    const g = b.general; this.genHit = null; if (!g) return;
+    const p = this.toScreen(g.x, g.y), M = 26, on = p.x > M && p.x < this.vw - M && p.y > M + 40 && p.y < this.vh - M - 70;
+    const sel = this.genSel, hurt = g.wound > 0, gold = hurt ? '#e07a5f' : '#e8c36a', t = performance.now() / 1000;
+    ctx.save(); ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    const badge = (x, y, r) => {
+      ctx.fillStyle = 'rgba(20,14,6,0.88)'; ctx.strokeStyle = gold; ctx.lineWidth = sel ? 3 : 2;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = gold; ctx.beginPath();                                   // a five-pointed star
+      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.3 : r * 0.68; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+      ctx.closePath(); ctx.fill();
+    };
+    if (on) {
+      const bob = sel ? 0 : Math.sin(t * 2.4) * 2, bx = p.x, by = p.y - 34 + bob, r = 13;
+      ctx.strokeStyle = gold; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(p.x, p.y - 14); ctx.lineTo(bx, by + r); ctx.stroke();
+      if (!sel) { ctx.strokeStyle = `rgba(232,195,106,${0.35 + 0.25 * Math.sin(t * 3)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, 20 + 3 * Math.sin(t * 3), 0, 7); ctx.stroke(); }
+      badge(bx, by, r);
+      ctx.font = 'bold 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const tx = hurt ? 'GENERAL (wounded)' : 'GENERAL', w = ctx.measureText(tx).width + 10;
+      ctx.fillStyle = 'rgba(20,14,6,0.85)'; ctx.fillRect(bx - w / 2, by - r - 17, w, 14); ctx.fillStyle = gold; ctx.fillText(tx, bx, by - r - 10);
+      this.genHit = { pts: [{ x: bx, y: by, r: r + 6 }, { x: p.x, y: p.y, r: Math.max(22, 20 * this.cam.zoom) }], off: false };
+    } else {
+      // off screen: a badge pinned to the edge, with an arrow pointing the way
+      const cx = this.vw / 2, cy = this.vh / 2, dx = p.x - cx, dy = p.y - cy, top = 60, bot = this.vh - 120, left = 30, right = this.vw - 30;
+      const k = Math.min(dx > 0 ? (right - cx) / dx : dx < 0 ? (left - cx) / dx : 1e9, dy > 0 ? (bot - cy) / dy : dy < 0 ? (top - cy) / dy : 1e9);
+      const ex = cx + dx * k, ey = cy + dy * k, a = Math.atan2(dy, dx), r = 15;
+      ctx.fillStyle = gold; ctx.beginPath(); ctx.moveTo(ex + Math.cos(a) * (r + 12), ey + Math.sin(a) * (r + 12)); ctx.lineTo(ex + Math.cos(a + 0.5) * (r + 2), ey + Math.sin(a + 0.5) * (r + 2)); ctx.lineTo(ex + Math.cos(a - 0.5) * (r + 2), ey + Math.sin(a - 0.5) * (r + 2)); ctx.closePath(); ctx.fill();
+      badge(ex, ey, r);
+      ctx.font = 'bold 10px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const ly = ey > this.vh / 2 ? ey - r - 9 : ey + r + 9, lw = ctx.measureText('GENERAL').width + 8; ctx.fillStyle = 'rgba(20,14,6,0.85)'; ctx.fillRect(ex - lw / 2, ly - 7, lw, 14); ctx.fillStyle = gold; ctx.fillText('GENERAL', ex, ly);
+      this.genHit = { pts: [{ x: ex, y: ey, r: r + 8 }], off: true };
+    }
+    ctx.restore();
+  }
+  // Screen point -> 'on' (the general or his standard), 'off' (the edge arrow) or null.
+  genHitTest(sx, sy) { const h = this.genHit; if (!h) return null; return h.pts.some(q => Math.hypot(sx - q.x, sy - q.y) <= q.r) ? (h.off ? 'off' : 'on') : null; }
   // Legates ride behind their legions, each with a smaller ring of his own.
   drawLegates(ctx, b) {
     for (const l of b.legates || []) {
