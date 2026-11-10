@@ -124,8 +124,9 @@ tr.clickable{cursor:pointer} tr.clickable:hover td{background:#33281a}
 .carts{fill:#cdbf98;font-family:var(--body);font-style:italic;text-anchor:middle}
 .land{fill:#76673f;stroke:#2a2112;stroke-linejoin:round}
 .lake{fill:#2d5870;stroke:#1c3441}
-.river{fill:none;stroke:#4f83a3;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
-.grat{stroke:#ffffff;stroke-opacity:.07;stroke-width:1}
+.river{fill:none;stroke:#4f83a3;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
+.river.minor{opacity:.6}
+.grat{stroke:#d9cba8;stroke-opacity:.5;stroke-width:1}
 .gl{fill:#d9cba8;opacity:.55;font-family:system-ui,sans-serif}
 .region{fill:#2a2112;opacity:.8;letter-spacing:.3em;font-family:var(--head);paint-order:stroke;stroke:#9a8a58;stroke-width:3px;stroke-linejoin:round}
 .tribe{fill:#241a0c;opacity:.92;font-style:italic;font-family:var(--body);paint-order:stroke;stroke:#968655;stroke-width:2.6px;stroke-linejoin:round}
