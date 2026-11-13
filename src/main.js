@@ -5,7 +5,7 @@ import { Camp, totalMen, breakCamp, rationsDue } from './camp.js';
 import { BattleUI } from './battleui.js';
 import { renderMap } from './map.js';
 import { artSrc, initArt } from './art.js';
-import { ask, inform } from './ui.js';
+import { ask, inform, keepScroll } from './ui.js';
 import { resultHtml, mountResult } from './result.js';
 let stopResult = null;
 import { currentScn, battleExtras, linksFor, STYLES, prisonerOptions, careerLv, chooseRoute, skipBattle, skipBritain } from './campaign.js';
@@ -265,9 +265,11 @@ function showOrigins(slot) {
         <div class="kvl" style="padding:8px 0"><span>Name / difficulty</span><span><b>${esc(name)}</b>, ${esc(DIFFICULTY[diff].name)} <button data-edit="0" style="padding:2px 8px;margin-left:8px">Change</button></span></div></div>`;
     }
     const last = step === total - 1;
+    const restoreScroll = keepScroll(root), sameStep = step === draw.lastStep; draw.lastStep = step;   // picking an option keeps the page still; a new step starts at the top
     root.innerHTML = `<div class="origins wiz"><header><h2>Your Origins</h2><div class="stepbar">${dots}<span class="muted small">Step ${step + 1} of ${total}</span></div></header>
       <div class="main">${main}<div class="nav"><button id="o-back">${step === 0 ? 'Back to menu' : 'Back'}</button><button class="primary" id="o-next">${last ? 'Begin the campaign' : 'Next'}</button></div></div>
       <div class="col">${step === 0 ? '' : summary}</div></div>`;
+    restoreScroll(sameStep); if (!sameStep) root.scrollTop = 0;
     root.querySelectorAll('.ocard').forEach(b2 => b2.onclick = () => { picks[b2.dataset.k] = b2.dataset.id; draw(); });
     root.querySelectorAll('[data-edit]').forEach(b2 => b2.onclick = () => { step = +b2.dataset.edit; draw(); });
     const nm = root.querySelector('#o-name'); if (nm) nm.oninput = (e) => { name = e.target.value; root.querySelector('#o-next').disabled = name.trim().length < 2; };

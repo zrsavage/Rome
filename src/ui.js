@@ -16,6 +16,18 @@ export function ask(message, okLabel = 'Confirm', cancelLabel = 'Cancel') {
 }
 
 // One-button information dialog with a bullet list. Resolves when dismissed.
+// Re-rendering a screen with innerHTML throws away every scroll position. keepScroll(root) notes where the screen and its scrolling parts
+// stand; calling the function it returns after the new HTML is in puts them back, so a click never jumps the view.
+const SCROLLERS = ['#ov', '.ulist.scrolls', '.mlist', '.pbody', '.log'];
+export function keepScroll(root) {
+  const at = { root: root.scrollTop, win: window.scrollY }, parts = {};
+  for (const sel of SCROLLERS) { const el = root.querySelector(sel); if (el) parts[sel] = el.scrollTop; }
+  return (sameView = true) => {
+    root.scrollTop = at.root; if (window.scrollY !== at.win) window.scrollTo(0, at.win);
+    if (!sameView) return;
+    for (const [sel, top] of Object.entries(parts)) { const el = root.querySelector(sel); if (el) el.scrollTop = top; }
+  };
+}
 export function inform(title, bullets, okLabel = 'Got it') {
   return new Promise((resolve) => {
     const el = document.getElementById('confirm');
