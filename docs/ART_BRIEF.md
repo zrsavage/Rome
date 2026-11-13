@@ -117,9 +117,8 @@ Make 3 to 6 versions with different seeds and pick the one with the clearest, mo
 
 ## Received so far (to wire in once the files are in the repository)
 
-- **Camp picture** (received in chat, Nov 2026): the code is ready. Upload it as `assets/art/camp.jpg` (it is already listed in
-  `assets/art/manifest.json`); the hotspots are placed for that picture (`PAINTED` in `src/campscene.js`). Until the file is there the game
-  draws its own camp.
+- **Camp picture:** in the game as `assets/art/camp.jpg` (converted from the uploaded PNG). Hotspots are placed for it (`PAINTED` in
+  `src/campscene.js`).
 - **Terrain textures** (received in chat, Nov 2026): a top-down forest canopy patch with a soft transparent edge, and a tileable grass field.
   Planned use: replace the drawn woods and the grass base of the battlefield (`paintTerrain` in `src/render.js`). Upload them as
   `assets/art/terrain_forest.png` (keep the transparency) and `assets/art/terrain_grass.jpg`. Useful next: the same style for a dry

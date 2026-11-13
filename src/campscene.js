@@ -100,7 +100,7 @@ export function sceneSvg(c, { visited = [], focus = null, flags = {} } = {}) {
     const P = painted ? PAINTED[b.id] : b, tx = b.x - 85, ty = b.y - 55;
     if (painted) {                                   // the painting shows every building; ones not built yet are dimmed with a question mark
       const inner = `translate(${-85 * K},${-55 * K}) scale(${K})`;
-      if (!unIds.has(b.id)) { s += `<g transform="translate(${P.x},${P.y})" class="plot" aria-hidden="true"><rect x="-64" y="-40" width="128" height="80" rx="10" fill="rgba(12,8,3,0.62)"/><text y="14" text-anchor="middle" class="plotq" style="opacity:.55">?</text><text y="34" text-anchor="middle" class="bs" style="font-size:11px">not built yet</text></g>`; continue; }
+      if (!unIds.has(b.id)) { s += `<g transform="translate(${P.x},${P.y})" class="plot" aria-hidden="true"><rect x="-92" y="-36" width="184" height="82" rx="12" fill="rgba(12,8,3,0.62)"/><text y="14" text-anchor="middle" class="plotq" style="opacity:.55">?</text><text y="34" text-anchor="middle" class="bs" style="font-size:11px">not built yet</text></g>`; continue; }
       const isNew = !seen.has(b.id), isFocus = focus === b.id;
       s += `<g class="bld ${isFocus ? 'focus' : ''}" data-b="${b.id}" tabindex="0" role="button" aria-label="${b.name}: ${b.sub}" transform="translate(${P.x},${P.y})"><title>${b.name}: ${b.sub}</title>
         <g transform="${inner}"><rect x="-6" y="-14" width="182" height="146" rx="10" class="hit"/>
