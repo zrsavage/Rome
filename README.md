@@ -261,4 +261,8 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
   New enemies: Numidian horse that throw and wheel away, Numidian foot, war elephants that panic and trample their own side, Pompeian legions.
   New weather "African heat", the **Open Ranks** order (`.`) against elephants, a dry battlefield, a zoomed Act III map and an act introduction.
   Details in `docs/ACTS.md`.
+- **Act IV: Pharsalus and Pontus, 48-47 BC (playable).** Pharsalus (optional, with Caesar's fourth line), The Road to Comana, The Steppe Riders,
+  the named **Nicopolis** (a historical defeat: survive) and the named **Zela** (*veni, vidi, vici*). New enemies: Pompeian horse and archers,
+  Pontic infantry drilled in the Roman manner, Sarmatian horse archers who shoot on the move and leave when out of arrows, armoured Sarmatian
+  lancers, and scythed chariots (open ranks beat them). A Thessaly-to-Pontus map and an act introduction. Details in `docs/ACTS.md`.
 

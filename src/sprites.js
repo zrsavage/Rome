@@ -363,6 +363,49 @@ function elephant(g, t, v) {
   line(g, 39, C + 3, 46, C + 6, WOOD, 0.9);
 }
 
+// ---- Act IV: Pontus and the steppe ----
+// Sarmatian horse archer: a light rider in a felt cap and belted coat, the short composite bow, a gorytos (bow-case and quiver) at the hip.
+function steppeArcher(g, t, v) {
+  const skin = SKIN[v], coat = ['#8a6a3a', '#7a5a34', '#9a7a48'][v];
+  shadow(g, true);
+  horse(g, v, false);
+  rect(g, 20, C - 6.6, 12, 13.2, '#b8a070', OUT, 1.1, 3);                                                                 // felt saddle pad
+  ell(g, 25.5, C - 7.8, 5, 2.3, '#5a4a32', OUT, 1, 0.1); ell(g, 25.5, C + 7.8, 5, 2.3, '#5a4a32', OUT, 1, -0.1);             // trousers
+  ell(g, 26.5, C, 5.4, 8.4, coat, OUT, 1.1); line(g, 22, C - 6, 31, C + 6, shade(t.trim, 0.8), 0.8);                     // a belted coat
+  rect(g, 18, C + 6, 8, 4, '#6a4a22', OUT, 0.8, 1.5);                                                                      // the gorytos
+  for (const d of [0, 1.2, 2.4]) line(g, 18.5 + d, C + 6.5, 15 + d, C + 4, '#e4dcc8', 0.6);                                 // fletchings
+  arm(g, 29, C - 5, -0.35, 9, skin); arm(g, 29, C + 5, 0.25, 7, skin);
+  g.strokeStyle = '#4a2e14'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(36, C - 14); g.quadraticCurveTo(33, C - 7, 39, C - 4); g.quadraticCurveTo(44, C - 1, 41, C + 6); g.stroke();   // recurved bow
+  line(g, 36.4, C - 13.6, 41, C + 5.6, 'rgba(240,232,210,0.8)', 0.5);
+  ell(g, 28, C, 5.2, 5.4, shade(t.color, 0.9), OUT, 1.2); ell(g, 29.4, C, 2.4, 2.8, shade(t.color, 0.7), null, 0, 0, false);   // pointed felt cap from above
+}
+// Sarmatian lancer: horse and rider in scale armour, the long two-handed lance (kontos) held along the horse's flank.
+function steppeLancer(g, t, v) {
+  shadow(g, true);
+  horse(g, v);
+  g.save(); g.beginPath(); g.ellipse(25, C, 21, 8.6, 0, 0, 7); g.clip();                                                      // a scale bard over the horse's body
+  g.fillStyle = 'rgba(120,108,80,0.55)'; g.fillRect(4, C - 9, 42, 18);
+  g.strokeStyle = 'rgba(40,32,18,0.45)'; g.lineWidth = 0.7; for (let x = 6; x < 46; x += 2.6) for (let y = C - 8; y < C + 8; y += 2.6) { g.beginPath(); g.arc(x + ((y / 2.6) % 2) * 1.3, y, 1.2, 0, Math.PI); g.stroke(); }
+  g.restore();
+  ell(g, 25.5, C - 7.8, 5, 2.3, '#6a6050', OUT, 1, 0.1); ell(g, 25.5, C + 7.8, 5, 2.3, '#6a6050', OUT, 1, -0.1);
+  ell(g, 26.5, C, 5.6, 8.6, '#9a8c68', OUT, 1.2);                                                                          // scale shirt
+  g.save(); g.beginPath(); g.ellipse(26.5, C, 5.4, 8.4, 0, 0, 7); g.clip(); g.strokeStyle = 'rgba(40,32,18,0.5)'; g.lineWidth = 0.6; for (let y = C - 8; y < C + 8; y += 2) { g.beginPath(); g.moveTo(21, y); g.lineTo(32, y + 0.6); g.stroke(); } g.restore();
+  arm(g, 29, C - 4, 0.1, 7, '#9a8c68'); arm(g, 29, C + 4.5, 0.1, 7, '#9a8c68');
+  line(g, 10, C + 7, 66, C + 4, WOOD, 2.4); poly(g, [[67.8, C + 3.8], [61, C + 1.6], [61.4, C + 6.6]], '#d7dbe0', OUT, 0.5);   // the kontos, long and two-handed
+  ell(g, 28, C, 5.6, 5.6, IRON, OUT, 1.3); ell(g, 28, C, 2.6, 2.6, shade(IRON, 1.2)); line(g, 28, C - 5, 28, C + 5, shade(IRON, 0.75), 0.8);   // conical iron helmet
+}
+// A scythed chariot from above: two horses abreast, a small car with the driver, and the curved blades on the axle ends.
+function scythedChariot(g, t, v) {
+  ell(g, C + 2, C + 4, 28, 20, 'rgba(0,0,0,0.25)', null, 0, 0, false);
+  const { body, dark } = COATS[v];
+  for (const dy of [-6.5, 6.5]) { ell(g, 40, C + dy, 11, 4.6, body, OUT, 1.4); ell(g, 51.5, C + dy, 3.6, 2.6, body, OUT, 1.1); line(g, 34, C + dy, 46, C + dy, dark, 1.6); }   // the team
+  line(g, 20, C, 34, C, WOOD, 2.2); line(g, 32, C - 8, 32, C + 8, WOOD, 1.6);                                             // pole and yoke
+  rect(g, 10, C - 8, 12, 16, shade(t.color, 0.95), OUT, 1.4, 3);                                                         // the car
+  line(g, 16, C - 17, 16, C + 17, '#4a3a22', 2);                                                                          // the axle
+  for (const sy of [-1, 1]) { ell(g, 16, C + sy * 13, 4.5, 1.8, '#5a4428', OUT, 1); g.strokeStyle = '#d7dbe0'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(16, C + sy * 17); g.quadraticCurveTo(22, C + sy * 25, 30, C + sy * 24); g.stroke(); }   // wheels and scythe blades
+  ell(g, 15, C, 3.4, 4.6, '#c9b48a', OUT, 1); ell(g, 15.6, C, 2.6, 2.6, '#6a5a3a', OUT, 0.9);                              // the driver
+}
+
 const PAINT = {
   legionary: (g, t, v, a) => roman(g, t, v, a), aux_inf: (g, t, v) => aux(g, t, v), slinger: (g, t, v) => slinger(g, t, v), archer: (g, t, v) => archer(g, t, v),
   warband: (g, t, v) => gaul(g, t, v, 'warband'), gaul_elite: (g, t, v) => gaul(g, t, v, 'elite'), gaul_skirm: (g, t, v) => gaul(g, t, v, 'skirm'),
@@ -370,6 +413,8 @@ const PAINT = {
   baggage: (g, t, v) => wagon(g, t, v), antesignani: (g, t, v, a) => roman(g, t, v, a),
   suebi: (g, t, v) => german(g, t, v), german_cav: (g, t, v) => germanHorse(g, t, v), laager: (g, t, v) => wagon(g, t, v),
   numid_cav: (g, t, v) => numidHorse(g, t, v), numid_inf: (g, t, v) => numidFoot(g, t, v), elephant: (g, t, v) => elephant(g, t, v), pompeian: (g, t, v, a) => roman(g, t, v, a),
+  pomp_cav: (g, t, v) => horseman(g, t, v, false, true), pomp_missile: (g, t, v) => archer(g, t, v), pontic: (g, t, v, a) => roman(g, t, v, a),
+  horse_archer: (g, t, v) => steppeArcher(g, t, v), lancer: (g, t, v) => steppeLancer(g, t, v), chariot: (g, t, v) => scythedChariot(g, t, v),
   centurion: (g, t, v) => centurion(g, t, v), signifer: (g, t, v) => signifer(g, t, v), general: (g, t) => general(g, t)
 };
 

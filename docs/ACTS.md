@@ -1,6 +1,6 @@
 # Acts III to V: layout (draft)
 
-Status: **Act III is playable** (five battles, after Act II). Acts IV and V are design only; the map shows their markers as locked.
+Status: **Acts III and IV are playable** (five battles each, after Act II). Act V is design only; the map shows its markers as locked.
 
 ## The history problem, and the fix
 
@@ -46,7 +46,7 @@ As built:
 - Ground is drawn dry and scrubby (`scn.dry`). Enemy weights: Numidian horse 1.6, foot 0.85, elephant 2.5 (per man; ten men to an elephant), Pompeian 1.15.
 - Odds nudges: Anquillaria 0.85, Castra Cornelia 0.9, Bagradas 0.9. Bot results (normal, 4 runs each): the smart and tactician bots win roughly half of the first four; the Bagradas is mostly lost by bots that stand and fight, and drawn 4/4 by a bot that sounds the retreat after losing a third, which is the intended way through.
 
-## Act IV: The Bosporus and the Steppe Horse (48-47 BC)
+## Act IV: The Bosporus and the Steppe Horse (48-47 BC) - built
 
 After Pharsalus the commander goes east with Gnaeus Domitius Calvinus. Pharnaces II, king of the Bosporus and son of Mithridates,
 has invaded Pontus and Armenia Minor with his own army and steppe horse from beyond the Maeotis.
@@ -56,7 +56,7 @@ has invaded Pontus and Armenia Minor with his own army and steppe horse from bey
 | 1 | **Pharsalus** (opener, optional) | attack | August 48 BC. Caesar's fourth line of picked cohorts stops Pompey's cavalry. Roman against Roman, a short set piece that teaches the mirror rules for Act V. Can be moved off-stage if the act should stay purely eastern. |
 | 2 | The Road to Comana | attack | A small fight with Pontic raiders. |
 | 3 | The Steppe Riders | defend | Sarmatian horse archers and lancers hit the column on the march. The baggage train is their target. |
-| 4 | **Nicopolis** (named, December 48) | defend | Historical defeat: Calvinus' green legions (one raised in Pontus) break against Pharnaces' trenches and horse. Survive for big rewards. |
+| 4 | **Nicopolis** (named, December 48) | assault | Historical defeat: Calvinus attacked Pharnaces' trenched line, and his green legion (raised in Pontus) broke. Survive for big rewards. (Posture changed from defend: Calvinus was the attacker.) |
 | 5 | **Zela** (named, August 47) | defend | Pharnaces' army charges uphill against Caesar's camp while it is still being fortified, with scythed chariots in front. *Veni, vidi, vici*: a short, sharp, winnable fight. |
 
 New enemies:
@@ -66,6 +66,15 @@ New enemies:
 - **Pontic infantry:** Pharnaces had infantry drilled in the Roman manner. Good, but less steady than legionaries.
 
 New rules: **the fortified camp under attack** (`fortdef` posture, 1.6x), where the first minute of Zela is the camp still being dug.
+
+As built:
+- Unit types `pomp_cav`, `pomp_missile` (Pharsalus), `pontic`, `horse_archer`, `lancer`, `chariot` in `src/data.js`; sprites in `src/sprites.js`.
+- Horse archers shoot while moving (`shootMoving`, at 75% accuracy), use the skirmishing-horse AI (fall back shooting when charged), are weak in melee, and **ride off the field when their quivers are empty** rather than closing. Lancers charge hard (2.1) in scale armour.
+- Scythed chariots: AI `chariot` (one headlong run at the nearest foot), a huge impact (`chargePer`), then they bolt (`oneShot`). Pila hurt them but no longer stop them dead (pila do 30% against elephants and chariots); missiles panic them; **Open Ranks** cuts a chariot charge's damage from about 48 men to 14 in testing.
+- Pharsalus has Caesar's **fourth line** as a scripted Roman reinforcement on the right at 75 seconds; Nicopolis gives you the raw **Legio Pontica** on the left at the start.
+- The "African heat" weather is now "Scorching heat" (Zela and Pharsalus in August); the steppe riders are immune to it like the Numidians.
+- Unit sizes are capped per type so a large host arrives as several units (elephants 80 men = 8 beasts, chariots 60 = 15 chariots, horse 110).
+- Odds nudges: Comana 0.9, Steppe Riders 1.15, Nicopolis 1.35 (a historical defeat that should feel like one), Zela 0.7. Bot results (normal, 4 runs each): Pharsalus won 4/4 by the smart bot; Comana and the Steppe Riders won at a real cost; Nicopolis mostly lost but drawn 4/4 by a bot that sounds the retreat; Zela about half won before the last easing.
 
 ## Act V: Roman against Roman (46-45 BC)
 

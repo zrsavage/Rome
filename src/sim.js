@@ -134,7 +134,7 @@ export class Battle {
   // bigger army meets more warbands, in ranks, not a handful of monsters. Returns the men spawned.
   spawnEnemy(e) {
     const total = Math.round(e.men * this.enemyScale * this.powerScale * (this.scn.boost || 1) * (this.typeScale[e.type] ?? 1)); if (total < 8) return 0;
-    const cap = { warband: 520, gaul_elite: 330, gaul_skirm: 190, gaul_cav: 95, suebi: 520, german_cav: 95, laager: 210 }[e.type] || 400, n = Math.max(1, Math.min(14, Math.ceil(total / cap)));
+    const cap = { warband: 520, gaul_elite: 330, gaul_skirm: 190, gaul_cav: 95, suebi: 520, german_cav: 95, laager: 210, numid_cav: 110, horse_archer: 110, lancer: 100, pomp_cav: 110, elephant: 80, chariot: 60, pompeian: 480, pontic: 480 }[e.type] || 400, n = Math.max(1, Math.min(14, Math.ceil(total / cap)));
     let spawned = 0;
     for (let i = 0; i < n; i++) {
       const men = Math.round(total / n), row = Math.floor(i / 8), per = Math.min(8, n - row * 8);
@@ -708,6 +708,7 @@ export class Battle {
     if (this.smartAI) this.updateSurge();
     for (const u of this.units) {
       if (u.side !== 'gaul' || !u.active || !u.ai || u.cyc) continue;
+      if (u.leaving) { if (u.y < 9) { u.state = 'gone'; u.exited = true; } continue; }
       const ai = u.ai;
       const near = this.nearestEnemy(u);
       if (!near) continue;
@@ -733,12 +734,21 @@ export class Battle {
           this.setMove(u, clamp(u.x + dx / d * 90, 20, WORLD.w - 20), clamp(u.y + dy / d * 90, 20, WORLD.h - 20));
         } else if (near.gap > u.type.range * 0.9) this.setMove(u, tgt.x, tgt.y);
         else u.order = { kind: 'none' };
+      } else if (ai.kind === 'chariot') {
+        // scythed chariots: wait for the signal, then one headlong run at the nearest body of foot
+        if (this.t < (ai.delay || 0) || u.order.kind === 'attack' || u.spent) continue;
+        const tg = this.pickTarget(u, (e) => e.active && e.type.cat === 'inf'); if (tg) this.setAttack(u, tg, true);
       } else if (ai.kind === 'numidian') {
-        // Numidian horse: ride in, throw, wheel away from anything that comes at them, and come back. With the javelins gone they look for
+        // Skirmishing horse (Numidian javelinmen, steppe horse archers): ride in, throw or shoot, wheel away from anything that comes at them, and come back. With the javelins gone they look for
         // a flank or a rear to ride into, or a broken unit to cut down.
         if (this.t < (ai.delay || 0)) continue;
         const rout = this.nearestEnemy(u, (e) => e.state === 'routing' && e.present);
         if (rout && rout.gap < 260) { this.setAttack(u, rout.e); continue; }
+        if (u.ammo <= 0 && u.type.shootMoving) {                       // steppe archers with empty quivers ride off the field to refill; they do not close
+          if (!u.leaving) { u.leaving = true; this.setMove(u, u.x, -60, null, true); u.order.pass = true; if (!this.saidQuiver) { this.saidQuiver = true; this.say('Their horse archers have emptied their quivers and are riding off.', 'good'); } }
+          else if (u.y < 9) { u.state = 'gone'; u.exited = true; }
+          continue;
+        }
         if (u.ammo <= 0) { ai.kind = 'flank'; ai.delay = 0; continue; }
         const thr = this.nearestEnemy(u, (e) => e.active && e.type.cat !== 'ranged' && e.state === 'moving');
         const close = this.nearestEnemy(u, (e) => e.active && e.type.cat !== 'ranged');
@@ -1184,7 +1194,7 @@ export class Battle {
     const kk = this.stats.k[att.side]; kk[cause] = (kk[cause] || 0) + n;
     if (ranged && att.side === 'rome') this.stats.rangedKills += n;
     def.men -= n; def.casualties += n; att.kills += n; def.flash = 0.22; def.floatAcc = (def.floatAcc || 0) + n;
-    let loss = n / def.maxMen * 130 * def.type.fragile * (ranged ? (def.type.panicky ? 1.4 : 0.55) : 1);   // missiles sting an elephant into panic
+    let loss = n / def.maxMen * 130 * def.type.fragile * (ranged ? (def.type.panicky ? 1.4 : 0.55) : 1) * (def.type.big && cause === 'pilum' ? 0.4 : 1);   // missiles sting an elephant into panic
     if (def.officer) loss *= 1 - 0.04 * (def.officer.tactics || 0);
     if (def.temper === 'rash') loss *= 1.15; else if (def.temper === 'steady') loss *= 0.9;
     if (def.perks.includes('steadfast')) loss *= 0.8;
@@ -1206,7 +1216,7 @@ export class Battle {
     const t = u.type;
     if (u.state === 'routing') return;
     // ranged fire
-    if (t.range && u.ammo > 0 && !u.holdFire && !u.contacts.some(e => e.active) && (u.state !== 'moving' || u.order.kind === 'none')) {
+    if (t.range && u.ammo > 0 && !u.holdFire && !u.contacts.some(e => e.active) && (u.state !== 'moving' || u.order.kind === 'none' || t.shootMoving)) {   // steppe archers shoot from a moving horse
       let tgt = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null;
       if (!tgt || !tgt.active || this.gap(u, tgt) > t.range) {
         let n = u.prio ? this.nearestEnemy(u, (e) => e.active && e.spotted !== false && e.type.cat === u.prio) : null; if (!n || n.gap > t.range) n = this.nearestEnemy(u, u.side === 'rome' ? (e) => e.active && e.spotted !== false : undefined);
@@ -1218,7 +1228,7 @@ export class Battle {
         const am = this.angleMult(u, tgt).c;
         const prot = this.defOf(tgt, am === 1) * (tgt.formation === 'close' && am === 1 ? 2.2 : tgt.formation === 'orb' ? 1.2 : 0.6);
         const falloff = 1 - 0.4 * clamp(g / t.range, 0, 1);
-        u.fireAcc += u.men * t.rate * dt * (this.atkMult(u) / COMBAT_PACE) * RANGED_PACE * this.wx.missile * falloff * (1 - Math.min(0.9, prot)) * (this.terr(tgt).kind === 'forest' ? 0.6 : 1) * (1 + 0.15 * clamp(hgt(this, u) - hgt(this, tgt), -1, 1));
+        u.fireAcc += (t.shootMoving && u.state === 'moving' ? 0.75 : 1) * u.men * t.rate * dt * (this.atkMult(u) / COMBAT_PACE) * RANGED_PACE * this.wx.missile * falloff * (1 - Math.min(0.9, prot)) * (this.terr(tgt).kind === 'forest' ? 0.6 : 1) * (1 + 0.15 * clamp(hgt(this, u) - hgt(this, tgt), -1, 1));
         u.ammo -= dt;
         while (u.fireAcc >= 1) { u.fireAcc -= 1; this.hit(u, tgt, 1, true); }
         u.fxCd -= dt;
@@ -1231,7 +1241,7 @@ export class Battle {
       if (n && n.gap > 1 && n.gap <= 30) {
         u.pilumLeft--; u.pilumCd = 3; if (u.side === 'rome') this.stats.pilum++;
         const ang = this.angleMult(u, n.e);
-        const kills = Math.round(u.men * 0.05 * (this.atkMult(u) / COMBAT_PACE) * (1 - n.e.type.def * 0.5) * (n.e.formation === 'close' ? 0.5 : 1));
+        const kills = Math.round(u.men * 0.05 * (this.atkMult(u) / COMBAT_PACE) * (1 - n.e.type.def * 0.5) * (n.e.formation === 'close' ? 0.5 : 1) * (n.e.type.big ? 0.3 : 1));   // a few pila do not stop an elephant or a team at the gallop
         this.hit(u, n.e, kills, false, 'pilum'); n.e.moralePending += 3; this.mloss(n.e, 'pilum', 3); n.e.disrupted = 6;
         for (let i = 0; i < 8; i++) this.fx.push({ x1: u.x + (this.rand() - 0.5) * u.w, y1: u.y, x2: n.e.x + (this.rand() - 0.5) * n.e.w, y2: n.e.y + (this.rand() - 0.5) * n.e.d, life: 0.45, max: 0.45, kind: 'pilum' });
         if (u.side === 'rome') this.say(`${u.name} hurls its pila!`, 'info');
@@ -1268,6 +1278,7 @@ export class Battle {
         if (imp > 6) { this.addFx({ kind: 'clash', x: (u.x + e.x) / 2, y: (u.y + e.y) / 2, life: 0.6, max: 0.6, r: clamp(imp / 5, 9, 30) }); this.shake = Math.max(this.shake, Math.min(3, imp / 25)); }
         { const ml = (t.charge * 3 + (t.terror ? t.terror * (e.type.cat === 'cav' ? 10 : 5) * (e.lanes ? 0.4 : 1) : 0)) * ang.m; e.moralePending += ml; this.mloss(e, 'charge', ml); }
         if (u.side === 'gaul' && e.side === 'rome' && imp > 8) this.say(`${u.name} crashes into ${e.name}!`, 'warn');
+        if (t.oneShot) { u.morale = 0; u.spent = true; }        // a scythed chariot has one charge in it; then the teams bolt
         u.runT = 0;
       }
       const routingMult = e.state === 'routing' ? (t.cat === 'cav' ? 2.2 : 1.6) * (t.hunt || 1) : 1;

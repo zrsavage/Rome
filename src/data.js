@@ -87,6 +87,42 @@ export const UNIT_TYPES = {
     speed: 22, turn: 1.7, morale: 70, charge: 0.55, pilum: 2, space: 1, fragile: 0.85, antiCharge: 0.25,
     color: '#5a6a8a', trim: '#e8c36a', blurb: 'Romans like your own: mail, scutum, pilum and gladius, the same drill and the same stubbornness.'
   },
+  // ----- Act IV: Pharsalus and Pontus, 48-47 BC -----
+  // Pompey's horse at Pharsalus was raised from allies and client kings (Gauls, Germans, Galatians, Cappadocians, Thracians); his light troops were
+  // archers and slingers from the East.
+  pomp_cav: {
+    name: 'Pompeian Horse', side: 'gaul', cat: 'cav', perDot: 4, atk: 0.08, def: 0.24,
+    speed: 56, turn: 2.5, morale: 58, charge: 1.6, space: 3.2, fragile: 1.1,
+    color: '#4a5a8a', trim: '#e8c36a', blurb: "Pompey's great mass of allied horse, gathered from half the kings of the East. Strong in the charge, unsteady if it goes wrong."
+  },
+  pomp_missile: {
+    name: 'Pompeian Archers and Slingers', side: 'gaul', cat: 'ranged', perDot: 8, atk: 0.025, def: 0.08,
+    speed: 30, turn: 2.4, morale: 46, charge: 0.2, range: 125, rate: 0.018, ammo: 60, space: 1.5, fragile: 1.1,
+    color: '#5a7a9a', trim: '#e8c36a', blurb: 'Eastern archers and slingers behind the horse. Deadly at range, helpless when caught.'
+  },
+  // Pharnaces' foot: Pontic infantry drilled and armed in the Roman manner, as his father Mithridates had begun. Good, less steady than legionaries.
+  pontic: {
+    name: 'Pontic Infantry', side: 'gaul', cat: 'inf', perDot: 8, atk: 0.054, def: 0.34,
+    speed: 23, turn: 1.7, morale: 60, charge: 0.7, pilum: 1, space: 1, fragile: 1.0, antiCharge: 0.15,
+    color: '#7a4a6a', trim: '#e8c36a', blurb: "Pharnaces' foot, armed and drilled in the Roman manner. Solid, but they break sooner than real legions."
+  },
+  // The Sarmatians (Siraces and Aorsi), steppe horsemen from beyond the Maeotis, the heirs of the Scythians (Strabo 11.5.8).
+  horse_archer: {
+    name: 'Sarmatian Horse Archers', side: 'gaul', cat: 'cav', perDot: 4, atk: 0.03, def: 0.14, native: true, shootMoving: true,
+    speed: 62, turn: 2.8, morale: 54, charge: 0.6, range: 110, rate: 0.016, ammo: 80, space: 3.0, fragile: 1.1,
+    color: '#8a6a3a', trim: '#d8c48a', blurb: 'Steppe archers who shoot from the saddle and fall back shooting when charged. They carry only so many arrows.'
+  },
+  lancer: {
+    name: 'Sarmatian Lancers', side: 'gaul', cat: 'cav', perDot: 4, atk: 0.1, def: 0.4,
+    speed: 50, turn: 2.0, morale: 66, charge: 2.1, space: 3.4, fragile: 0.95,
+    color: '#6a4a2a', trim: '#d8c48a', blurb: 'Nobles in scale armour with the long two-handed lance. Ruinous in a frontal charge; slow to turn and poor when caught standing.'
+  },
+  // Scythed chariots: blades on the axles, a single headlong charge, then nothing. Pharnaces sent them in first at Zela (Bellum Alexandrinum 75).
+  chariot: {
+    name: 'Scythed Chariots', side: 'gaul', cat: 'cav', perDot: 4, atk: 0.03, def: 0.2, big: true, oneShot: true, panicky: true,
+    speed: 72, turn: 0.9, morale: 50, charge: 3, chargePer: 3.2, space: 1, fragile: 1.6,
+    color: '#7a5a3a', trim: '#d8c48a', blurb: 'One straight, terrible charge, then they are spent. Missiles bring the horses down; open ranks let them through.'
+  },
   // ----- the Roman train and detachments -----
   baggage: {
     name: 'Baggage Train', side: 'rome', cat: 'train', perDot: 20, atk: 0.012, def: 0.3, wagon: true,
@@ -648,6 +684,127 @@ export const SCENARIOS = [
     reinforcements: [],
     rewards: { gold: 700, supplies: 420, recruits: 220, xpBase: 100, officerXp: 110 }, rewardMult: 1.6,
     unlock: [{ type: 'legionary', name: 'XII Cohort', men: 380, maxMen: 480, xp: 90, drill: 35, msg: 'The survivors of the Bagradas are formed into the XII Cohort. They will not be beaten like that again.' }]
+  },
+  // ======================= ACT IV: Pharsalus, and Pharnaces of the Bosporus (48-47 BC) =======================
+  // After the Bagradas the commander crosses to Caesar in Greece in time for Pharsalus (August 48), then goes east with Gnaeus Domitius
+  // Calvinus against Pharnaces II, son of Mithridates and king of the Bosporus, who has invaded Pontus with his own army and Sarmatian horse
+  // from beyond the Maeotis (Bellum Alexandrinum 34-41, 65-77; Strabo 11.5.8).
+  {
+    id: 'pharsalus', posture: 'attack', chief: { name: 'Gnaeus Pompeius Magnus', style: 'cautious' }, optional: true, act: 'IV', theater: 'Greece', year: '48 BC', name: 'Pharsalus', dry: true, kind: 'skirmish',
+    geo: { lat: 39.29, lon: 22.38, place: 'The plain of Pharsalus, Thessaly', note: 'Caesar against Pompey, 9 August 48 BC; the exact field is disputed' },
+    briefing: "You reached Caesar in Greece. Now Pompey has come down into the plain of Pharsalus with twice your numbers in foot and seven times your horse, all massed on his left under Labienus. Caesar has taken cohorts from his third line and hidden them behind his right as a fourth line. Your part of the line faces Pompey's legions: hold them, and trust the fourth line to deal with the horse.",
+    objective: "Break Pompey's army (reduce it below 25%). His legions fight like yours. His great mass of horse will come round your right; Caesar's fourth line will meet it.",
+    timeLimit: 720, daysToPrepare: 4,
+    deploy: { mode: 'line', cx: 760, cy: 860 },
+    terrain: [{ kind: 'water', x: 0, y: 0, w: 70, h: 1000 }, { kind: 'hill', cx: 1350, cy: 250, rx: 220, ry: 90, h: 25 }],   // the Enipeus guards the left of both armies
+    enemy: [
+      { type: 'pompeian', men: 420, x: 380, y: 320, ai: { kind: 'rush', delay: 20 } },
+      { type: 'pompeian', men: 420, x: 560, y: 315, ai: { kind: 'rush', delay: 20 } },
+      { type: 'pompeian', men: 420, x: 740, y: 310, ai: { kind: 'rush', delay: 20 } },
+      { type: 'pompeian', men: 420, x: 920, y: 315, ai: { kind: 'rush', delay: 20 } },
+      { type: 'pompeian', men: 380, x: 650, y: 220, ai: { kind: 'rush', delay: 60, reserve: true } },
+      { type: 'pomp_cav', men: 260, x: 1200, y: 330, ai: { kind: 'flank', delay: 10 } },
+      { type: 'pomp_cav', men: 260, x: 1340, y: 360, ai: { kind: 'flank', delay: 12 } },
+      { type: 'pomp_missile', men: 200, x: 1240, y: 250, ai: { kind: 'skirm' } }
+    ],
+    reinforcements: [
+      { at: 75, side: 'rome', msg: "Caesar's fourth line comes out from behind the right, pila held as spears at the horses' faces!", unit: { type: 'legionary', men: 420, x: 1320, y: 1010, f: -1.5708, name: 'Fourth Line', xp: 900 } }
+    ],
+    rewards: { gold: 760, supplies: 420, recruits: 220, xpBase: 86, officerXp: 86 }, rewardMult: 1,
+    unlock: [{ type: 'legionary', name: 'XIII Cohort', men: 420, maxMen: 480, xp: 80, drill: 30, msg: "Pompey's surrendered legionaries are enrolled: they form the XIII Cohort." }]
+  },
+  {
+    id: 'comana', posture: 'attack', odds: 0.9, chief: { name: "Pharnaces' raiders", style: 'cautious' }, fog: true, act: 'IV', theater: 'Pontus', year: '48 BC', name: 'The Road to Comana', kind: 'skirmish',
+    geo: { lat: 40.36, lon: 36.60, place: 'Near Comana Pontica', note: 'Illustrative: Calvinus marched on Pharnaces through Pontus; the fight is not recorded' },
+    briefing: 'Calvinus has gathered what he can: one veteran legion, a legion just raised in Pontus, and the Galatian legions of King Deiotarus. Pharnaces has overrun Pontus and Armenia Minor. On the road by the temple town of Comana, his raiders are driving off the herds. Clear them off the road.',
+    objective: "Break the raiders (reduce them below 25%). A first look at Pharnaces' Roman-drilled infantry and at the steppe horse archers.",
+    timeLimit: 600, daysToPrepare: 4,
+    deploy: { mode: 'line', cx: 800, cy: 860 },
+    terrain: [{ kind: 'hill', cx: 330, cy: 380, rx: 260, ry: 140, h: 40 }, { kind: 'hill', cx: 1280, cy: 360, rx: 260, ry: 140, h: 40 }, { kind: 'forest', cx: 800, cy: 120, rx: 260, ry: 80 }],
+    enemy: [
+      { type: 'pontic', men: 360, x: 640, y: 300, ai: { kind: 'rush', delay: 10 } },
+      { type: 'pontic', men: 360, x: 960, y: 300, ai: { kind: 'rush', delay: 12 } },
+      { type: 'horse_archer', men: 130, x: 300, y: 420, ai: { kind: 'numidian' } },
+      { type: 'horse_archer', men: 130, x: 1300, y: 400, ai: { kind: 'numidian', delay: 8 } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 540, supplies: 380, recruits: 130, xpBase: 72, officerXp: 72 }, rewardMult: 1,
+    unlock: []
+  },
+  {
+    id: 'steppe', odds: 1.15, posture: 'defend', chief: { name: 'the Sarmatian chiefs', style: 'aggressive' }, fog: true, act: 'IV', theater: 'Pontus', year: '48 BC', name: 'The Steppe Riders', kind: 'skirmish',
+    geo: { lat: 40.90, lon: 36.20, place: 'The road from Amisus', note: 'Illustrative: Sarmatian horse of the Siraces and Aorsi served Pharnaces (Strabo 11.5.8)' },
+    briefing: "The column is strung out on the road with the grain wagons in the middle when the horsemen come over the skyline: Sarmatians from beyond the Maeotis, the steppe people who came after the Scythians. Archers who shoot from the saddle, and nobles in scale armour with lances as long as two men. They want the wagons.",
+    objective: 'Keep the grain wagons (the gold marker) in Roman hands: if the enemy holds them for 100 seconds the grain is lost. Break the riders to win. Horse archers fall back shooting when charged and carry only so many arrows; lancers are deadly head-on and slow to turn.',
+    timeLimit: 600, daysToPrepare: 3,
+    deploy: { mode: 'line', cx: 800, cy: 720 },
+    objectives: [{ id: 'grain', name: 'Grain Wagons', x: 800, y: 660, r: 80, owner: 'rome' }],
+    rule: { holdSecs: 100, attacker: 'gaul' },
+    terrain: [{ kind: 'hill', cx: 800, cy: 240, rx: 380, ry: 90, h: 30 }],
+    enemy: [
+      { type: 'horse_archer', men: 150, x: 280, y: 420, ai: { kind: 'numidian' } },
+      { type: 'horse_archer', men: 150, x: 1320, y: 420, ai: { kind: 'numidian', delay: 4 } },
+      { type: 'horse_archer', men: 130, x: 800, y: 260, ai: { kind: 'numidian', delay: 8 } },
+      { type: 'lancer', men: 120, x: 560, y: 220, ai: { kind: 'raid', obj: 'grain', delay: 45 } },
+      { type: 'lancer', men: 120, x: 1040, y: 220, ai: { kind: 'flank', delay: 55 } },
+      { type: 'horse_archer', men: 120, x: 160, y: 760, ai: { kind: 'numidian', delay: 30 } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 520, supplies: 480, recruits: 120, xpBase: 76, officerXp: 76 }, rewardMult: 1,
+    unlock: []
+  },
+  {
+    id: 'nicopolis', posture: 'assault', odds: 1.35, chief: { name: 'Pharnaces II', style: 'cunning' }, fog: true, act: 'IV', theater: 'Armenia Minor', year: '48 BC', name: 'Nicopolis', kind: 'named',
+    geo: { lat: 40.15, lon: 37.85, place: 'Nicopolis in Armenia Minor', note: 'Calvinus was defeated here in December 48 BC (Bellum Alexandrinum 38-40); site approximate' },
+    briefing: "Pharnaces is drawn up before Nicopolis behind two trenches, with his best foot between them and horse on both wings. Calvinus attacks anyway. The veterans of the Thirty-Sixth go forward on the right of your line; on the left stands the new legion raised in Pontus, which has never fought. If the green legion goes, the whole army is in danger.",
+    objective: 'Break Pharnaces\' army, or survive: still have at least 45% of your army with the standards when night falls. A well-ordered withdrawal is a draw. Historically a defeat, so a draw here pays handsomely.',
+    links: [
+      { from: 'comana', morale: 3, text: 'The road to Comana was cleared: the men have beaten these troops before (+3 morale).' },
+      { from: 'steppe', scale: { horse_archer: 0.8, lancer: 0.8 }, text: 'The Sarmatians were mauled at the grain wagons: fewer of them ride with Pharnaces.' }
+    ],
+    timeLimit: 720, daysToPrepare: 3,
+    deploy: { mode: 'line', cx: 800, cy: 860 },
+    terrain: [{ kind: 'hill', cx: 800, cy: 230, rx: 520, ry: 120, h: 30 }, { kind: 'forest', cx: 140, cy: 320, rx: 140, ry: 180 }],
+    enemy: [
+      { type: 'pontic', men: 400, x: 520, y: 330, ai: { kind: 'rush', delay: 40 } },
+      { type: 'pontic', men: 400, x: 800, y: 320, ai: { kind: 'rush', delay: 40 } },
+      { type: 'pontic', men: 400, x: 1080, y: 330, ai: { kind: 'rush', delay: 40 } },
+      { type: 'pontic', men: 380, x: 800, y: 210, ai: { kind: 'rush', delay: 90, reserve: true } },
+      { type: 'lancer', men: 130, x: 260, y: 420, ai: { kind: 'flank', delay: 50 } },
+      { type: 'lancer', men: 130, x: 1340, y: 420, ai: { kind: 'flank', delay: 55 } },
+      { type: 'horse_archer', men: 140, x: 340, y: 520, ai: { kind: 'numidian', delay: 10 } },
+      { type: 'horse_archer', men: 140, x: 1260, y: 520, ai: { kind: 'numidian', delay: 12 } }
+    ],
+    reinforcements: [
+      { at: 3, side: 'rome', msg: 'The new legion raised in Pontus takes its place on the left. It has never stood in a battle line.', unit: { type: 'legionary', men: 420, x: 380, y: 940, f: -1.5708, name: 'Legio Pontica', xp: 0 } }
+    ],
+    rewards: { gold: 760, supplies: 460, recruits: 240, xpBase: 104, officerXp: 112 }, rewardMult: 1.6,
+    unlock: []
+  },
+  {
+    id: 'zela', posture: 'fortdef', odds: 0.7, chief: { name: 'Pharnaces II', style: 'aggressive' }, act: 'IV', theater: 'Pontus', year: '47 BC', name: 'Zela', dry: true, kind: 'named',
+    geo: { lat: 40.30, lon: 35.89, place: 'Zela (Zile), Pontus', note: 'Caesar beat Pharnaces here on 2 August 47 BC: veni, vidi, vici (Bellum Alexandrinum 72-77)' },
+    briefing: "Caesar has come himself, fast from Egypt with few men. He has taken the hill across the valley from Pharnaces' camp, the hill where Mithridates once beat a Roman army, and the legions are digging the camp. Nobody expects an attack: to reach you the enemy must come down into the valley and climb straight up at you. Pharnaces does exactly that. The scythed chariots are coming first, and half your men still have spades in their hands.",
+    objective: 'Hold the camp on the hill (the gold marker): if the enemy holds it for 100 seconds it is lost. Break his army to win. Open ranks (.) and missiles beat the chariots; the slope is on your side.',
+    links: [{ from: 'nicopolis', morale: 4, text: 'The men who came through Nicopolis want their revenge (+4 morale).' }],
+    timeLimit: 600, daysToPrepare: 4,
+    deploy: { mode: 'line', cx: 800, cy: 640 },
+    objectives: [{ id: 'camp', name: "Caesar's Camp", x: 800, y: 720, r: 95, owner: 'rome' }],
+    rule: { holdSecs: 100, attacker: 'gaul' },
+    terrain: [{ kind: 'hill', cx: 800, cy: 680, rx: 560, ry: 220, h: 55 }, { kind: 'hill', cx: 800, cy: 90, rx: 500, ry: 90, h: 40 }],
+    enemy: [
+      { type: 'chariot', men: 40, x: 600, y: 200, ai: { kind: 'chariot', delay: 6 } },
+      { type: 'chariot', men: 40, x: 1000, y: 200, ai: { kind: 'chariot', delay: 8 } },
+      { type: 'pontic', men: 400, x: 500, y: 150, ai: { kind: 'rush', delay: 12 } },
+      { type: 'pontic', men: 400, x: 800, y: 140, ai: { kind: 'rush', delay: 10 } },
+      { type: 'pontic', men: 400, x: 1100, y: 150, ai: { kind: 'rush', delay: 12 } },
+      { type: 'pontic', men: 360, x: 800, y: 60, ai: { kind: 'rush', delay: 40, reserve: true } },
+      { type: 'lancer', men: 120, x: 220, y: 220, ai: { kind: 'flank', delay: 30 } },
+      { type: 'horse_archer', men: 130, x: 1380, y: 220, ai: { kind: 'numidian', delay: 15 } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 1100, supplies: 600, recruits: 320, xpBase: 120, officerXp: 130 }, rewardMult: 1,
+    unlock: [{ type: 'legionary', name: 'XIV Cohort', men: 440, maxMen: 480, xp: 120, drill: 40, msg: 'The Sixth Legion, which won Zela almost alone, sends a cohort to your army.' }]
   }
 ];
 
@@ -680,7 +837,7 @@ PROLOGUE.enemy.push(...PROLOGUE.reinforcements.map(r => ({ ...r.unit, ai: { kind
 // Battles are all or nothing: the whole enemy host is on the field from the start. The only reinforcements are the ones authored
 // into a scenario as a deliberate surprise (a flank attack, an ambush party, allies arriving late).
 // ---------------------------------------------------------------------------
-const TIME_LIMITS = { anquillaria: 1080, castra: 1080, utica: 1320, water: 1080, bagradas: 1080, ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500, parley: 800, supply: 1080, lessercamp: 1200, ariovistus: 1800, rhine: 900 };
+const TIME_LIMITS = { pharsalus: 1320, comana: 1080, steppe: 1080, nicopolis: 1320, zela: 1080, anquillaria: 1080, castra: 1080, utica: 1320, water: 1080, bagradas: 1080, ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500, parley: 800, supply: 1080, lessercamp: 1200, ariovistus: 1800, rhine: 900 };
 for (const scn of SCENARIOS) scn.timeLimit = TIME_LIMITS[scn.id] || scn.timeLimit;
 for (const scn of SCENARIOS) if (scn.act === 'III') scn.dry = true;   // Africa is drawn as dry, open country
 

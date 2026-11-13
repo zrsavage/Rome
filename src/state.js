@@ -31,7 +31,7 @@ export const commandLimit = (c) => Math.min(80, 8 + (c.history || []).filter(h =
 // legionary is 1 and a Gallic warrior is worth about the same in this game (he charges hard; the legionary is armoured and drilled), so an
 // open battle is fought at roughly even numbers. Your army's quality (experience, drill,
 // equipment) is NOT counted: training and arming your men is a real advantage, not something the enemy grows to match.
-export const ENEMY_WEIGHT = { warband: 1.0, gaul_skirm: 0.8, gaul_elite: 1.6, gaul_cav: 2.0, suebi: 1.15, german_cav: 2.1, laager: 0.55, numid_cav: 1.6, numid_inf: 0.85, elephant: 2.5, pompeian: 1.15 };
+export const ENEMY_WEIGHT = { warband: 1.0, gaul_skirm: 0.8, gaul_elite: 1.6, gaul_cav: 2.0, suebi: 1.15, german_cav: 2.1, laager: 0.55, numid_cav: 1.6, numid_inf: 0.85, elephant: 2.5, pompeian: 1.15, pomp_cav: 1.9, pomp_missile: 0.8, pontic: 1.1, horse_archer: 1.7, lancer: 2.4, chariot: 3.0 };
 export const POSTURES = {
   attack: { ratio: 1.15, name: 'Battle in the open', text: 'An open fight: they bring a little more fighting strength than you, about 1.15 times.' },
   defend: { ratio: 1.4, name: 'You defend', text: 'They attack your position, so they bring more than you: about 1.4 times your strength.' },

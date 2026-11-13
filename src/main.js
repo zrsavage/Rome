@@ -118,9 +118,18 @@ function showMap() {
       'Nine years pass. Gaul is conquered, the Senate orders Caesar to give up his army, and in January 49 BC he crosses the Rubicon. <b>Civil war.</b>',
       'Caesar sends his young friend <b>Gaius Scribonius Curio</b> to take Africa from the Pompeian Attius Varus, and you go with him. Utica stands where Carthage once ruled; Carthage itself is a ruin.',
       'Varus has an ally: <b>King Juba I of Numidia</b>. Almost every enemy here is on a horse. Numidian horsemen throw their javelins and ride away before you can reach them: <b>do not chase them</b>. A steady line, slingers and archers beat them.',
-      'It is hot. Everyone but the Numidians tires faster: rest the line. Juba has <b>elephants</b>: missiles drive them mad, and a new order, <b>Open Ranks</b>, is taught at the Training Ground.',
+      'It is hot ("scorching heat" in the briefing). Everyone but the Numidians tires faster: rest the line. Juba has <b>elephants</b>: missiles drive them mad, and a new order, <b>Open Ranks</b>, is taught at the Training Ground.',
       'Some of the men facing you are <b>Romans</b>, with your armour and your drill.'
     ], 'To Africa');
+  }
+  if (cs && cs.act === 'IV' && !(campaign.actsSeen || []).includes('IV')) {
+    campaign.actsSeen = [...(campaign.actsSeen || []), 'IV']; save();
+    inform('Act IV: Pharsalus, and the steppe horse', [
+      'You came out of the Bagradas with what was left of the army and crossed to Caesar in Greece. In August 48 BC Pompey offers battle in the plain of <b>Pharsalus</b>: Romans against Romans, with seven horsemen of his to every one of yours. That fight is yours to take or to leave.',
+      'Then you go east with <b>Gnaeus Domitius Calvinus</b>. <b>Pharnaces II</b>, son of Mithridates and king of the Bosporus, has invaded Pontus with his own Roman-drilled foot and <b>Sarmatian horse</b> from the steppe beyond the Maeotis, the heirs of the Scythians.',
+      '<b>Horse archers</b> shoot from the saddle and fall back shooting when you charge them; they carry only so many arrows. <b>Lancers</b> in scale armour are deadly head-on and slow to turn.',
+      'At the end waits <b>Zela</b>, and Pharnaces\' <b>scythed chariots</b>: one terrible charge each. Missiles and <b>Open Ranks</b> beat them.'
+    ], 'To the East');
   }
   show('screen-map');
 }

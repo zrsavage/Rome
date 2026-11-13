@@ -57,10 +57,15 @@ const TRAINING_ADVICE = {
   castra: 'Holding a crest is about cohesion. Drill them to turn and close up quickly.',
   utica: 'Romans against Romans: the same pila, the same drill. Experience and a fresh reserve decide it.',
   water: 'More missiles than melee. Keep the men steady, and do not wear them out chasing horsemen in this heat.',
-  bagradas: 'If this is the fight the deserters warn of, every man must be fit and steady. Rest them, and drill cohesion over killing.'
+  bagradas: 'If this is the fight the deserters warn of, every man must be fit and steady. Rest them, and drill cohesion over killing.',
+  pharsalus: 'Romans against Romans again, and more of them. Experience wins this: the men must hold their nerve longer than Pompey\'s.',
+  comana: 'A straightforward fight. Sharpen their weapons work.',
+  steppe: 'Horse archers wear a line down from a distance. Steady, well-drilled men who will not break under arrows matter most.',
+  nicopolis: 'An attack on trenches, and the new men will be shaky. Drill and rest them, and keep a reserve for when the green legion wavers.',
+  zela: 'They will come uphill at us. Steady men with full pila, and every cohort drilled to open its ranks for the chariots.'
 };
 // What the next enemy is made of, in words the player can act on.
-const ENEMY_NAMES = { warband: 'warbands', gaul_elite: 'armoured champions', gaul_skirm: 'javelineers', gaul_cav: 'horsemen', suebi: 'Suebi warbands', german_cav: 'Germanic horse and runners', laager: 'wagon laagers', numid_cav: 'Numidian horse', numid_inf: 'Numidian foot', elephant: 'war elephants', pompeian: 'Pompeian legionaries' };
+const ENEMY_NAMES = { warband: 'warbands', gaul_elite: 'armoured champions', gaul_skirm: 'javelineers', gaul_cav: 'horsemen', suebi: 'Suebi warbands', german_cav: 'Germanic horse and runners', laager: 'wagon laagers', numid_cav: 'Numidian horse', numid_inf: 'Numidian foot', elephant: 'war elephants', pompeian: 'Pompeian legionaries', pomp_cav: 'Pompeian horse', pomp_missile: 'archers and slingers', pontic: 'Pontic infantry', horse_archer: 'Sarmatian horse archers', lancer: 'Sarmatian lancers', chariot: 'scythed chariots' };
 function enemyProfile(scn) {
   const all = [...scn.enemy, ...scn.reinforcements.filter(r => r.side !== 'rome').map(r => r.unit)], tot = all.reduce((a, e) => a + e.men, 0), by = {};
   all.forEach(e => { by[e.type] = (by[e.type] || 0) + e.men; });
