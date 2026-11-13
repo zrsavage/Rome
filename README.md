@@ -244,8 +244,8 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
 - **Command limit:** 8 units, +4 per battle won or drawn, +4 per level of Army organisation (cap 80), so a full campaign reaches 50-60 units in
   several legions under legates.
 - **Fair enemy hosts:** the enemy is sized from your army's fighting strength by the kind of fight (`posture` on each scenario and Bibracte stage,
-  `POSTURES` in `src/state.js`): open battle 1.0x, you defend 1.2x, you storm a strong place 0.85x, ambush 1.1x, pursuit 0.75x (fortified camp 1.4x
-  is ready for later acts), then difficulty and goodwill. Strength counts men by type (a legionary or a Gallic warrior 1, a horseman about 2); your
+  `POSTURES` in `src/state.js`): open battle 1.15x, you defend 1.4x, you storm a strong place 1.0x, ambush 1.25x, pursuit 0.85x (fortified camp 1.6x
+  is ready for later acts), then difficulty and goodwill. The first two defend battles have a small `odds` nudge down (0.8, 0.85), as do Bibracte and the Parley. Strength counts men by type (a legionary or a Gallic warrior 1, a horseman about 2); your
   experience, drill and equipment are not counted, so they stay your edge. The weights were calibrated with the smart bot. The briefing shows the odds.
 - **Sound Retreat works:** the army falls back away from the enemy (men in contact step back facing the foe, the rest march off) and the battle ends
   after 30 seconds: a draw if enough men are still with the standards. Tested with `STRATS=lateretreat` (fight, then retreat after losing a third):
@@ -254,4 +254,5 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
   headway for 2.5 seconds files through friends at 60% pace; steering tries both sides. `node tools/pathtest.mjs` checks the cases.
 - **Battle HUD:** at most three messages at a time in the top right, important ones only, each fading after a few seconds (all still in the report).
 - **Buildings:** the Field Hospital now comes before the Armourer.
-
+- **Acts III to V** are laid out (design only) in `docs/ACTS.md`: Africa and the old lands of Carthage (49 BC), Pharnaces and the Sarmatian steppe horse
+  (48-47 BC), and Roman against Roman (46-45 BC, ending at Munda). The campaign map shows their markers.

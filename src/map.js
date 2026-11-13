@@ -33,12 +33,12 @@ const RIVERS = [['Rhodanus', 44.55, 4.95], ['Arar', 46.05, 5.15], ['Sequana', 48
 
 const FUTURE = [
   { act: 'II', name: 'Ariovistus', lat: 47.90, lon: 7.33, hint: 'Germania: the Suebi under Ariovistus, 58 BC' },
-  { act: 'III', name: 'Britannia', lat: 51.82, lon: -0.29, hint: "A grinding slog: Cassivellaunus' stronghold, 54 BC" },
-  { act: 'IV', name: 'Ilerda', lat: 41.62, lon: 0.62, hint: 'Hispania' },
-  { act: 'IV', name: 'Thapsus', lat: 35.62, lon: 11.05, hint: 'Africa' },
-  { act: 'IV', name: 'Carrhae', lat: 36.87, lon: 39.03, hint: 'The East: Parthian horse archers (Carrhae, 53 BC)' },
-  { act: 'V', name: 'Pharsalus', lat: 39.29, lon: 22.38, hint: 'Civil war: Roman against Roman' },
-  { act: 'VI', name: 'Rome', lat: 41.90, lon: 12.50, hint: 'The final battle', rome: true }
+  { act: 'III', name: 'Bagradas', lat: 36.98, lon: 9.95, hint: 'Act III: Africa, the old lands of Carthage. Juba of Numidia and the Pompeians, 49 BC' },
+  { act: 'IV', name: 'Zela', lat: 40.30, lon: 35.89, hint: 'Act IV: Pharnaces of the Bosporus and the Sarmatian steppe horse, 48-47 BC' },
+  { act: 'IV', name: 'Panticapaeum', lat: 45.35, lon: 36.47, hint: 'Act IV: the Bosporan kingdom, at the edge of the steppe' },
+  { act: 'V', name: 'Thapsus', lat: 35.62, lon: 11.05, hint: 'Act V: Roman against Roman. Scipio, Juba and the elephants, 46 BC' },
+  { act: 'V', name: 'Munda', lat: 37.40, lon: -4.80, hint: 'Act V finale: Munda, 45 BC (the exact site is disputed)' },
+  { act: 'VI', name: 'Rome', lat: 41.90, lon: 12.50, hint: 'Epilogue: the triumphs in Rome', rome: true }
 ];
 // Mountain ranges drawn as small peaks (Alps, Pyrenees, Massif Central, Vosges, Jura, Apennines). Peaks that would sit on a label are dropped.
 const MOUNTAINS = [[46.3, 7.2], [46.1, 8.2, 1.2], [46.4, 9.3], [45.9, 6.6], [46.6, 10.4], [45.7, 7.5, 0.9], [46.9, 8.8, 1.1], [45.4, 7.0], [46.0, 9.8], [42.7, 0.5], [42.7, -0.7], [42.6, 1.6], [42.8, 2.4, 0.8], [45.2, 2.7, 0.8], [44.9, 3.3, 0.8], [48.2, 7.0, 0.8], [46.8, 6.1, 0.8], [47.0, 6.8, 0.8], [44.3, 6.7, 0.9], [44.0, 11.3, 0.9], [43.2, 12.8, 0.9], [41.9, 13.9, 0.9],
@@ -204,7 +204,7 @@ export function renderMap(root, c, api) {
         ${placeDots}${future}${nodes}${armyMark}${actLabel}${scale}${north}${decor}</svg></div>
     <div class="col">
       <div class="card"><h3>${done ? `Act ${curAct} complete` : `Act ${scn.act} - battle ${idx + 1} of ${SCENARIOS.length}`}</h3>
-        ${done ? `<p>Ariovistus has fled across the Rhine and Gaul is free of the Germans and the Helvetii alike. Acts III onward (Britannia, the civil war and Rome itself) are the next milestones.</p>`
+        ${done ? `<p>Ariovistus has fled across the Rhine and Gaul is free of the Germans and the Helvetii alike. Acts III to V (Africa and the old lands of Carthage, Pharnaces and the steppe horse, and Roman against Roman) are the next milestones.</p>`
           : `<p><b>${esc(scn.name)}</b>${scn.kind === 'named' ? ' <span class="pill">Named battle</span>' : ''}${scn.phaseCount ? ` <span class="pill">stage ${scn.phaseIdx + 1} of ${scn.phaseCount}</span>` : ''}${scn.rewardMult > 1.4 ? ' <span class="pill">Dangerous - rich spoils</span>' : ''}<br><span class="small muted">${esc(scn.geo.place)} (${scn.geo.lat.toFixed(2)}&deg;N, ${scn.geo.lon.toFixed(2)}&deg;E)</span><br><span class="muted">${esc(scn.briefing)}</span></p>
           <p class="small muted">${esc(scn.objective)}</p>
           ${routePending(c) ? `<div class="decision"><div class="dhead"><div><b>Choose your line of march</b><div class="small muted">How you come to this fight decides how well fed and how rested you arrive. One choice; it cannot be changed.</div></div></div>${ROUTES.map(r => `<button class="regimen" data-route="${r.id}" style="width:100%;text-align:left;margin-top:6px"><b>${r.name}</b><span class="t">${r.text}</span><div class="eff">${r.effects.map(e => `<span>${e}</span>`).join('')}</div></button>`).join('')}</div>`
