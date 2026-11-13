@@ -1,1 +1,1 @@
-{ "unit": {}, "officer": {}, "scenario": {}, "outcome": {}, "camp": { "main": "camp.jpg" } }
+{"unit": {}, "officer": {}, "scenario": {}, "outcome": {}, "camp": {"main": "camp.jpg"}, "terrain": {"grass": "terrain_grass.jpg", "forest": "terrain_forest.webp"}}

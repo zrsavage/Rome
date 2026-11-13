@@ -37,7 +37,7 @@ export const POSTURES = {
   defend: { ratio: 1.4, name: 'You defend', text: 'They attack your position, so they bring more than you: about 1.4 times your strength.' },
   assault: { ratio: 1.0, name: 'You attack a strong place', text: 'They hold strong ground, so they need no more men than you: about as strong as you.' },
   fortdef: { ratio: 1.6, name: 'You defend a fortified camp', text: 'They must storm your rampart, so they come in great numbers: about 1.6 times your strength.' },
-  ambush: { ratio: 1.25, name: 'Ambush', text: 'They chose the ground and the moment: about 1.25 times your strength, and help is on its way.' },
+  ambush: { ratio: 1.25, name: 'Ambush', text: 'They chose the ground and the moment: about 1.25 times your strength.' },
   pursuit: { ratio: 0.85, name: 'Pursuit', text: 'You are catching a beaten or strung-out enemy: about 0.85 times your strength.' }
 };
 export const postureOf = (scn) => POSTURES[(scn && scn.posture) || 'attack'] || POSTURES.attack;

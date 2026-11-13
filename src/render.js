@@ -1,6 +1,7 @@
 // Canvas renderer for the battle: terrain, soldier dots, effects, order lines.
 import { WORLD, elevAt, terrainAt, forestIn, riverShift, vnoise } from './data.js';
 import { soldierSprite, specialSprite, shieldTile } from './sprites.js';
+import { terrainTexture } from './textures.js';
 import { dragLayout, compass } from './orders.js';
 import { mulberry32 } from './sim.js';
 
@@ -27,10 +28,80 @@ function paintRelief(g, scn) {
   g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(c, 0, 0, WORLD.w, WORLD.h);
 }
 
+// ---- photographic terrain (assets/art/terrain_grass.jpg, terrain_forest.png), used when present ----
+const texCache = new Map();
+const mkCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return [c, c.getContext('2d')]; };
+const GRASS_UNITS = 1300;                                         // one copy of the grass photo covers this many battlefield units
+// The grass photo with feathered edges, and its average colour (laid down first so no gap ever shows).
+function featheredGrass(img) {
+  const key = 'grassF'; if (texCache.has(key)) return texCache.get(key);
+  const [c, g] = mkCanvas(img.width, img.height), fx = img.width * 0.14, fy = img.height * 0.14;
+  g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = 'destination-in';
+  const lx = g.createLinearGradient(0, 0, img.width, 0); lx.addColorStop(0, 'rgba(0,0,0,0)'); lx.addColorStop(fx / img.width, '#000'); lx.addColorStop(1 - fx / img.width, '#000'); lx.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = lx; g.fillRect(0, 0, img.width, img.height);
+  const ly = g.createLinearGradient(0, 0, 0, img.height); ly.addColorStop(0, 'rgba(0,0,0,0)'); ly.addColorStop(fy / img.height, '#000'); ly.addColorStop(1 - fy / img.height, '#000'); ly.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = ly; g.fillRect(0, 0, img.width, img.height);
+  const [a, ag] = mkCanvas(1, 1); ag.drawImage(img, 0, 0, 1, 1); const d = ag.getImageData(0, 0, 1, 1).data;
+  const out = { c, avg: `rgb(${d[0]},${d[1]},${d[2]})` }; texCache.set(key, out); return out;
+}
+// Overlapping, randomly flipped copies of the feathered photo: no seams, and no mirror-symmetry for the eye to catch.
+function paintGrassTexture(g, img, dry, rnd) {
+  const { c: F, avg } = featheredGrass(img), sc = GRASS_UNITS / img.width, w = img.width * sc, h = img.height * sc, stepX = w * 0.72, stepY = h * 0.72;
+  g.fillStyle = avg; g.fillRect(0, 0, WORLD.w, WORLD.h);
+  for (let y = -h * 0.4; y < WORLD.h + h * 0.2; y += stepY) for (let x = -w * 0.4; x < WORLD.w + w * 0.2; x += stepX) {
+    const jx = (rnd() - 0.5) * stepX * 0.35, jy = (rnd() - 0.5) * stepY * 0.35;
+    g.save(); g.translate(x + jx + w / 2, y + jy + h / 2); g.scale(rnd() < 0.5 ? -1 : 1, rnd() < 0.5 ? -1 : 1); g.drawImage(F, -w / 2, -h / 2, w, h); g.restore();
+  }
+  // large, soft light and shadow patches
+  for (let i = 0; i < Math.round(WORLD.w * WORLD.h / 9e5); i++) {
+    const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 180 + rnd() * 420, dark = rnd() < 0.5, gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, dark ? 'rgba(30,40,12,0.14)' : 'rgba(255,240,190,0.10)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  g.save(); g.globalCompositeOperation = 'saturation'; g.fillStyle = 'rgba(128,128,128,0.22)'; g.fillRect(0, 0, WORLD.w, WORLD.h); g.restore();   // a little less vivid, to sit with the painted units
+  if (dry) {                                                      // Africa and high summer: the same field, burnt to straw and dust
+    g.save(); g.globalCompositeOperation = 'color'; g.fillStyle = 'rgba(176,156,118,0.7)'; g.fillRect(0, 0, WORLD.w, WORLD.h);
+    g.globalCompositeOperation = 'saturation'; g.fillStyle = 'rgba(128,128,128,0.35)'; g.fillRect(0, 0, WORLD.w, WORLD.h);
+    g.globalCompositeOperation = 'soft-light'; g.fillStyle = 'rgba(235,220,190,0.45)'; g.fillRect(0, 0, WORLD.w, WORLD.h); g.restore();
+  }
+}
+const CANOPY_SCALE = 0.42;                                        // battlefield units per pixel of the forest photo (a crown about 30-45 units across)
+// A wood: the canopy photo stamped over the wood's shape (random flips, overlapping), cut to the same ragged outline the rules use, with a soft
+// edge and a shadow on the ground beneath it.
+function paintForestTexture(g, f, img, dry, rnd) {
+  const pad = 1.35, x0 = f.cx - f.rx * pad, y0 = f.cy - f.ry * pad, w = f.rx * 2 * pad, h = f.ry * 2 * pad, k = Math.min(1, 1600 / Math.max(w, h));
+  const [c, cg] = mkCanvas(w * k, h * k), sw = img.width * CANOPY_SCALE * k, sh = img.height * CANOPY_SCALE * k;
+  for (let y = -sh * 0.3; y < c.height; y += sh * 0.55) for (let x = -sw * 0.3; x < c.width; x += sw * 0.55) {
+    const jx = (rnd() - 0.5) * sw * 0.3, jy = (rnd() - 0.5) * sh * 0.3; cg.save(); cg.translate(x + jx + sw / 2, y + jy + sh / 2); cg.scale(rnd() < 0.5 ? -1 : 1, rnd() < 0.5 ? -1 : 1); cg.drawImage(img, -sw / 2, -sh / 2, sw, sh); cg.restore();
+  }
+  const [m, mg] = mkCanvas(c.width, c.height), step = 9 / k * 0 + 9, rad = 8;   // the wood's outline, sampled from forestIn
+  mg.fillStyle = '#fff';
+  for (let yy = 0; yy < m.height; yy += step) for (let xx = 0; xx < m.width; xx += step) if (forestIn(f, x0 + xx / k, y0 + yy / k)) { mg.beginPath(); mg.arc(xx, yy, rad, 0, 7); mg.fill(); }
+  cg.save(); cg.globalCompositeOperation = 'destination-in'; cg.filter = 'blur(5px)'; cg.drawImage(m, 0, 0); cg.restore();
+  if (dry) { cg.save(); cg.globalCompositeOperation = 'source-atop'; cg.fillStyle = 'rgba(150,140,90,0.35)'; cg.fillRect(0, 0, c.width, c.height); cg.restore(); }   // olive and scrub, not a green wood
+  g.save(); g.globalAlpha = 0.45; g.filter = 'brightness(0)'; g.drawImage(c, x0 + 10, y0 + 14, w, h); g.restore();   // shadow on the ground
+  g.drawImage(c, x0, y0, w, h);
+}
+// Single trees for open country, cut from the canopy photo with a soft round edge.
+function loneTrees(img) {
+  const key = 'lone'; if (texCache.has(key)) return texCache.get(key);
+  const out = [], R2 = 70;
+  for (let i = 0; i < 8; i++) {
+    const [c, cg] = mkCanvas(R2 * 2, R2 * 2), sx = img.width * (0.2 + 0.6 * ((i * 0.37) % 1)), sy = img.height * (0.25 + 0.5 * ((i * 0.61) % 1));
+    cg.drawImage(img, sx - R2, sy - R2, R2 * 2, R2 * 2, 0, 0, R2 * 2, R2 * 2);
+    const gr = cg.createRadialGradient(R2, R2, R2 * 0.45, R2, R2, R2); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    cg.globalCompositeOperation = 'destination-in'; cg.fillStyle = gr; cg.fillRect(0, 0, R2 * 2, R2 * 2); out.push(c);
+  }
+  texCache.set(key, out); return out;
+}
+
 export function paintTerrain(g, scn) {
   const rnd = mulberry32(7), A = WORLD.w * WORLD.h / 1.6e6;          // everything below scales with the size of the battlefield
   const dry = !!scn.dry;                                          // Africa: sun-bleached scrub, not the green fields of Gaul
+  const grassTex = terrainTexture('grass'), forestTex = terrainTexture('forest');
   g.fillStyle = dry ? '#a99a63' : '#6f9150'; g.fillRect(0, 0, WORLD.w, WORLD.h);
+  if (grassTex) paintGrassTexture(g, grassTex, dry, rnd);
+  else {
   // soft colour variation, dry patches, then grass tufts, flowers and stones
   for (let i = 0; i < Math.round(2600 * A); i++) {
     g.fillStyle = dry ? (rnd() > 0.5 ? 'rgba(150,128,78,0.35)' : 'rgba(196,178,120,0.3)') : rnd() > 0.5 ? 'rgba(90,125,60,0.35)' : 'rgba(135,160,90,0.3)';
@@ -47,6 +118,7 @@ export function paintTerrain(g, scn) {
   for (let i = 0; i < Math.round((dry ? 40 : 260) * A); i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h; g.fillStyle = ['#f3e7a8', '#ffffff', '#d98cc4', '#e8b04a'][i & 3]; g.globalAlpha = 0.75; g.beginPath(); g.arc(x, y, 1.1, 0, 7); g.fill(); }
   g.globalAlpha = 1;
   for (let i = 0; i < Math.round(70 * A); i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 2 + rnd() * 3.5; g.fillStyle = 'rgba(40,38,30,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, r, r * 0.6, 0, 0, 7); g.fill(); g.fillStyle = '#a7a396'; g.beginPath(); g.ellipse(x, y, r, r * 0.65, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.ellipse(x - 0.8, y - 0.8, r * 0.5, r * 0.3, 0, 0, 7); g.fill(); }
+  }
   const trees = [];
   for (const f of scn.terrain) {
     // a river is a wandering strip: its banks follow riverShift, the same function the sim uses to decide where the water is
@@ -67,6 +139,8 @@ export function paintTerrain(g, scn) {
       g.fillStyle = 'rgba(112,92,52,0.5)'; strip(f, 7); g.fill();
       g.fillStyle = scn._wx === 'frost' ? '#c4dbe5' : '#86adbd'; strip(f, 0); g.fill();
       for (let i = 0; i < 70; i++) { const x = f.x + rnd() * f.w, y = f.y + riverShift(f, x) + rnd() * f.h, rx = 3.5 + rnd() * 5, ry = 2.5 + rnd() * 3; g.fillStyle = 'rgba(40,60,70,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, rx, ry, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(196,184,150,0.8)'; g.beginPath(); g.ellipse(x, y, rx * 0.8, ry * 0.8, rnd() * 3, 0, 7); g.fill(); }
+    } else if (f.kind === 'forest' && forestTex) {
+      paintForestTexture(g, f, forestTex, dry, rnd);
     } else if (f.kind === 'forest') {
       // trees are scattered inside the ragged woodland shape, with smaller outliers straggling past its edge
       const ts = Math.sqrt(f.sc || 1), n = Math.round(Math.PI * f.rx * f.ry * 0.8 / (95 * ts * ts));   // bigger woods get bigger trees, not endless ones
@@ -78,12 +152,20 @@ export function paintTerrain(g, scn) {
   }
   paintRelief(g, scn);
   // trees last, far to near, so canopies overlap properly and stand over the hillshade
-  for (let i = 0; i < Math.round((dry ? 30 : 70) * A); i++) {               // lone trees and thickets out in the open (fewer in Africa)
+  if (forestTex) {                                               // lone trees and thickets cut from the canopy photo
+    const lone = loneTrees(forestTex);
+    for (let i = 0; i < Math.round((dry ? 30 : 70) * A); i++) {
+      const x = rnd() * WORLD.w, y = rnd() * WORLD.h, cl = rnd() < 0.4 ? 3 : 1; if (terrainAt(scn, x, y).kind !== 'grass') continue;
+      for (let j = 0; j < cl; j++) { const t = lone[Math.floor(rnd() * lone.length)], r = (16 + rnd() * 14) * (dry ? 0.8 : 1), tx = x + (rnd() - 0.5) * 50 * (cl > 1), ty = y + (rnd() - 0.5) * 36 * (cl > 1);
+        g.save(); g.globalAlpha = 0.4; g.filter = 'brightness(0)'; g.drawImage(t, tx - r + 6, ty - r + 8, r * 2, r * 2); g.restore(); g.drawImage(t, tx - r, ty - r, r * 2, r * 2); }
+    }
+  }
+  for (let i = 0; i < Math.round((dry ? 30 : 70) * (forestTex ? 0 : 1) * A); i++) {               // lone trees and thickets out in the open (fewer in Africa)
     const x = rnd() * WORLD.w, y = rnd() * WORLD.h, kind = terrainAt(scn, x, y).kind, k = rnd(), sz = 4 + rnd() * 5, cl = rnd() < 0.4 ? 3 : 1;
     if (kind !== 'grass') continue;
     for (let j = 0; j < cl; j++) trees.push({ x: x + (rnd() - 0.5) * 22 * (cl > 1), y: y + (rnd() - 0.5) * 16 * (cl > 1), r: sz * (0.7 + rnd() * 0.5), k });
   }
-  for (let i = 0; i < Math.round(260 * A); i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h; if (terrainAt(scn, x, y).kind !== 'grass') continue; g.fillStyle = dry ? 'rgba(98,96,52,0.5)' : 'rgba(52,84,34,0.55)'; g.beginPath(); g.ellipse(x, y, 3 + rnd() * 4, 2 + rnd() * 2.5, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(120,150,70,0.35)'; g.beginPath(); g.ellipse(x - 1, y - 1, 1.8, 1.2, 0, 0, 7); g.fill(); }
+  for (let i = 0; i < Math.round((grassTex ? 0 : 260) * A); i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h; if (terrainAt(scn, x, y).kind !== 'grass') continue; g.fillStyle = dry ? 'rgba(98,96,52,0.5)' : 'rgba(52,84,34,0.55)'; g.beginPath(); g.ellipse(x, y, 3 + rnd() * 4, 2 + rnd() * 2.5, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(120,150,70,0.35)'; g.beginPath(); g.ellipse(x - 1, y - 1, 1.8, 1.2, 0, 0, 7); g.fill(); }
   for (const t of trees) if (t.under) { g.fillStyle = 'rgba(18,34,16,0.13)'; g.beginPath(); g.arc(t.x, t.y, t.r * 2.1, 0, 7); g.fill(); }   // the dark floor of a wood
   trees.sort((a, b) => a.y - b.y);
   for (const t of trees) {
