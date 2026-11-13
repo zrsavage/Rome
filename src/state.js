@@ -1,5 +1,5 @@
 // Campaign state: cohorts, officers, resources. Plain JSON so it saves to localStorage.
-import { XP_LEVELS, SCENARIOS, WORLD, START_TYPES, TYPE_UNLOCKS, UNIT_TYPES } from './data.js';
+import { XP_LEVELS, SCENARIOS, WORLD, START_TYPES, TYPE_UNLOCKS, UNIT_TYPES, actLabel } from './data.js';
 import { PERKS } from './perks.js';
 import { promote } from './officers.js';
 import { levelFor } from './sim.js';
@@ -31,7 +31,7 @@ export const commandLimit = (c) => Math.min(80, 8 + (c.history || []).filter(h =
 // legionary is 1 and a Gallic warrior is worth about the same in this game (he charges hard; the legionary is armoured and drilled), so an
 // open battle is fought at roughly even numbers. Your army's quality (experience, drill,
 // equipment) is NOT counted: training and arming your men is a real advantage, not something the enemy grows to match.
-export const ENEMY_WEIGHT = { warband: 1.0, gaul_skirm: 0.8, gaul_elite: 1.6, gaul_cav: 2.0, suebi: 1.15, german_cav: 2.1, laager: 0.55, numid_cav: 1.6, numid_inf: 0.85, elephant: 2.5, pompeian: 1.15, pomp_cav: 1.9, pomp_missile: 0.8, pontic: 1.1, horse_archer: 1.7, lancer: 2.4, chariot: 3.0, pomp_levy: 0.95 };
+export const ENEMY_WEIGHT = { warband: 1.0, gaul_skirm: 0.8, gaul_elite: 1.6, gaul_cav: 2.0, suebi: 1.15, german_cav: 2.1, laager: 0.55, numid_cav: 1.6, numid_inf: 0.85, elephant: 2.5, pompeian: 1.15, pomp_cav: 1.9, pomp_missile: 0.8, pontic: 1.1, horse_archer: 1.7, lancer: 2.4, chariot: 3.0, pomp_levy: 0.95, britons: 1.0, brit_chariot: 1.8, brit_cav: 1.9 };
 export const POSTURES = {
   attack: { ratio: 1.15, name: 'Battle in the open', text: 'An open fight: they bring a little more fighting strength than you, about 1.15 times.' },
   defend: { ratio: 1.4, name: 'You defend', text: 'They attack your position, so they bring more than you: about 1.4 times your strength.' },
@@ -70,7 +70,7 @@ export const unlockedTypes = (c) => c.unlockedTypes || START_TYPES;
 
 export function newCampaign(difficulty = 'normal') {
   return {
-    version: 3, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, campUse: {},
+    version: 4, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, campUse: {},
     gold: 300, supplies: 160, fort: 0, favour: 0, scouted: false, log: [], over: false,
     cohorts: [
       { id: 1, name: 'I Cohort',   type: 'legionary', men: 400, maxMen: 480, xp: 60, drill: 30, condition: 90, officerId: 1 },
@@ -196,7 +196,7 @@ export function applyResult(c, result, scn) {
   const next = SCENARIOS[c.scenario];
   c.campUse = {};                                             // a new camp: the countryside near it has not been stripped yet
   if (!next) c.over = true;
-  else if (scn && next.act !== scn.act && result.outcome !== 'defeat') notes.push(`Act ${scn.act} is won. Caesar now turns to the next threat: Act ${next.act}, ${next.theater}.`);
+  else if (scn && next.act !== scn.act && result.outcome !== 'defeat') notes.push(`${actLabel(scn.act)} is won. Next: ${actLabel(next.act)}, ${next.theater}.`);
   return notes;
 }
 

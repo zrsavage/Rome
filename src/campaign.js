@@ -100,6 +100,14 @@ export function prisonerOptions(c, n) {
 }
 
 // ---------------- optional fights ----------------
+// ---------------- the optional side act: Britannia ----------------
+// On reaching the first Britannia battle the player chooses to cross the Ocean or to leave Britain and go straight on to Africa.
+export const britainPending = (c) => { const s = SCENARIOS[c.scenario]; return !!s && s.act === 'B' && !c.britain; };
+export function skipBritain(c) {
+  c.britain = 'skipped'; c.history = c.history || [];
+  while (SCENARIOS[c.scenario] && SCENARIOS[c.scenario].act === 'B') { c.history.push({ id: SCENARIOS[c.scenario].id, outcome: 'skipped', day: c.day }); c.scenario++; }
+  c.phase = 0; c.scouted = false; c.campUse = {}; if (!SCENARIOS[c.scenario]) c.over = true;
+}
 export function canSkip(c) { const s = SCENARIOS[c.scenario]; return !!s && !!s.optional && !(c.phase > 0); }
 export function skipBattle(c) {
   const s = SCENARIOS[c.scenario]; if (!canSkip(c)) return null;

@@ -131,3 +131,21 @@ New rules for Roman against Roman:
 - Not built: the "low reputation makes your own cohorts waver" half of the defection idea, and mirror-AI habits for the Pompeians beyond the
   existing smart AI.
 
+## Side act: Britannia (55-54 BC) - built, optional
+
+On reaching it, the map asks: **Sail for Britain** or **Leave Britain: on to Africa** (the four battles are then marked as passed by).
+
+| # | Battle | Posture | Notes |
+|---|---|---|---|
+| 1 | The Landing in Britain (55 BC) | assault | Your army starts in the surf (shallow water: slow, loose order) and must take the beach. The eagle-bearer of the Tenth (Gallic War IV.25). |
+| 2 | The Seventh at the Harvest (55 BC) | ambush | The Seventh is caught reaping; Caesar's guard cohorts arrive at 150 seconds (IV.32-34). Survive. |
+| 3 | The Hillfort in the Woods (54 BC, optional) | assault | Bigbury, taken by the Seventh under the testudo (V.9). |
+| 4 | **The Stronghold of Cassivellaunus** (54 BC, named) | assault | A staked ford of the Thames, then the stronghold in the woods (V.18-21). |
+
+- New types: `britons` (warriors), `brit_chariot` (two-wheeled war chariots: javelins, skirmishing-horse AI; no scythes), `brit_cav`.
+- No woad, no round shields, no towns of later Roman Britain on the map (Caesar names Cantium, the Thames and the Trinovantes).
+- Saves from before this was added (version 3) are moved forward four battles if they were already past Act II, and treated as having
+  left Britain.
+- Bot results (normal, 4 runs): the landing and the hillfort are won; the harvest is mostly survived (draws) or won; the stronghold is won
+  3-4 of 4. It is a side act: winnable, with spoils and a veteran cohort at the end.
+

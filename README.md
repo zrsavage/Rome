@@ -269,4 +269,7 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
   an unordered charge on your right), Ategua and the finale at **Munda**. Wavering Pompeian cohorts may come over to you: the better your goodwill
   (now your name for clemency), the likelier. After Munda, **the triumph in Rome** closes the campaign with an account of your war.
   Twenty-six battles in all. Details in `docs/ACTS.md`.
+- **Side act: Britannia, 55-54 BC (optional).** Between Act II and Act III the map offers Caesar's two crossings to Britain: the landing in the
+  surf, the Seventh caught at the harvest, the hillfort in the woods and the stronghold of Cassivellaunus. British war chariots (javelins,
+  no scythes). Thirty battles in all. Art hand-off for an image AI: `docs/ART_BRIEF.md` with every prompt in `docs/ART_SHOTLIST.md`.
 
