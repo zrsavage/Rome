@@ -6,6 +6,7 @@
 // To use a generated painting instead: put its data URL in CAMP_PAINTING below. The building hotspots (BUILDINGS in campscene.js) are in a
 // 1000 x 620 space that maps onto the picture, so only those coordinates need adjusting to the new image.
 import { soldierSprite } from './sprites.js';
+import { hasRealArt, artSrc } from './art.js';
 
 export const CAMP_PAINTING = null;
 const W = 1000, H = 620, R = 2.2;
@@ -198,8 +199,10 @@ function paintFinish(c, rnd) {
 }
 
 // The painting as a data URL, for the buildings that are built so far. Cached.
+// The painted camp (assets/art/camp.jpg, listed in the manifest as camp.main) if there is one, else null.
+export const campPainting = () => CAMP_PAINTING || (hasRealArt('camp', 'main') ? artSrc('camp', 'main') : null);
 export function campArt(unlockedIds, allIds) {
-  if (CAMP_PAINTING) return CAMP_PAINTING;
+  if (campPainting()) return campPainting();
   const key = [...unlockedIds].sort().join(',');
   if (cache.has(key)) return cache.get(key);
   const c = document.createElement('canvas'); c.width = W * R; c.height = H * R;

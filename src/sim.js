@@ -114,6 +114,8 @@ export class Battle {
     this.favour = opts.favour || 0;
     // Roman against Roman: a wavering enemy cohort may come over to you. The better your name for clemency (goodwill), the likelier.
     this.defectChance = scn.defect ? clamp(0.12 + 0.08 * this.favour, 0.03, 0.4) : 0;
+    // ... and the other half: with a bad name (goodwill below 0), a wavering cohort of yours may refuse to fight fellow Romans and march off.
+    this.desertChance = scn.defect && this.favour < 0 ? clamp(-0.08 * this.favour, 0, 0.3) : 0;
     // enemy strength modifiers: difficulty + local favour (informants and divided tribes)
     const favMult = this.favour >= 2 ? 0.9 : this.favour <= -2 ? 1.1 : 1;
     this.powerScale = opts.forceScale || 1; this.rewardScale = Math.pow(this.powerScale, 0.75);   // bigger hosts carry bigger spoils
@@ -568,7 +570,8 @@ export class Battle {
     }
     // a large host sends one nimble unit forward to feint: it engages, then breaks off and runs, to draw impatient cohorts out of your line
     const S = this.aiS;
-    const wantFeints = ([0, 1, 1, 2][this.aiLevel] || 0) + (this.style === 'cunning' && this.aiLevel >= 1 ? 1 : 0);
+    const legionArmy = this.isLegion(this.units.filter(u => u.side === 'gaul' && u.active && u.role === 'line'));
+    const wantFeints = legionArmy ? 0 : ([0, 1, 1, 2][this.aiLevel] || 0) + (this.style === 'cunning' && this.aiLevel >= 1 ? 1 : 0);   // feigned flight is a Gallic trick
     if ((S.feints || 0) < wantFeints && this.t < 40 + 25 * (S.feints || 0) && this.t >= 20 * (S.feints || 0)) {
       const lines = this.units.filter(u => u.side === 'gaul' && u.active && u.role === 'line' && u.type.cat === 'inf');
       if (lines.length >= (this.aiLevel >= 2 ? 4 : 5)) { S.feints = (S.feints || 0) + 1; S.feintPicked = true; const f = lines.sort((p1, p2) => p1.men - p2.men)[0]; f.role = 'feint'; f.fp = 'go'; }
@@ -623,10 +626,11 @@ export class Battle {
     }
     return best;
   }
-  smartTarget(u) {
+  smartTarget(u, avoid = null) {
     let best = null, bs = 1e9;
     for (const e of this.units) {
       if (e.side === u.side || !e.active) continue;
+      if (avoid && e === avoid && this.units.some(o => o !== e && o.side !== u.side && o.active)) continue;   // blocked from that one: pick another
       let sc = this.gap(u, e) + this.rand() * 30;
       if (e.type.cat === 'ranged') sc -= 90;
       if (e.type.cat === 'train') sc -= (this.style === 'cunning' ? 140 : 60);              // the wagons are the richest prize on the field
@@ -650,8 +654,10 @@ export class Battle {
     }
     if (u.contacts.some(e => e.active)) return;                                    // fighting: let the melee run
     const dx = rc.x - u.x, dy = rc.y - u.y, d = Math.hypot(dx, dy) || 1, a = { x: dx / d, y: dy / d }, S = this.aiS;
-    const attack = () => { const cur = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null; if (!cur || !cur.active) { const t = this.smartTarget(u); if (t) this.setAttack(u, t); } };
+    const attack = () => { const cur = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null; const stuck = cur && u.blockedAtt > this.t - 1; if (stuck) u.blockedAtt = 0;
+      if (!cur || !cur.active || stuck) { const t = this.smartTarget(u, stuck ? cur : null); if (t) this.setAttack(u, t); } };
     if (u.role === 'line') {
+      if (S.surge && u.legionRank > 0 && !S.commit && u.slot) { this.secondLine(u, a); return; }
       if (S.surge || !u.slot) { attack(); return; }
       // advance as one line: every unit holds its own place in a moving battle line, and the line marches at the pace of its slowest unit
       const ds = Math.hypot(u.slot.x - u.x, u.slot.y - u.y);
@@ -672,6 +678,24 @@ export class Battle {
       if (S.commit) { u.role = 'champion'; }
     }
   }
+  // Roman-drilled enemies (Pompeians, Pharnaces' foot) fight as you do: a second line holds behind the first, relieves its tired cohorts and
+  // plugs any gap a broken cohort leaves.
+  isLegion(lines) { const L = ['pompeian', 'pomp_levy', 'pontic']; return lines.length > 0 && lines.filter(u => L.includes(u.typeKey)).length >= lines.length * 0.6; }
+  secondLine(u, a) {
+    const S = this.aiS, front = this.units.filter(f => f.side === u.side && f.role === 'line' && (f.legionRank || 0) === 0 && f !== u && Math.hypot(f.x - u.x, f.y - u.y) < 320);
+    const near = this.nearestEnemy(u); if (near && near.gap < 70) { this.setAttack(u, near.e); u.legionRank = 0; return; }   // the enemy is on us: fight
+    const gap = front.find(f => !f.active);                                                                   // a broken cohort in front: step into its place
+    const tired = front.find(f => f.active && f.contacts.some(e => e.active) && !f.reliefPending && (f.morale < f.maxMorale * 0.45 || f.fatigue > 65));
+    if (tired && this.aiLevel >= 1) {
+      const tg = tired.contacts.find(e => e.active); tired.reliefPending = true; u.legionRank = 0; tired.legionRank = 1;
+      if (tg) this.setAttack(u, tg); this.fallBack(tired);
+      if (!S.reliefSaid) { S.reliefSaid = true; this.say('The enemy relieves its tired cohorts with fresh ones from the second line. They fight as you do.', 'warn'); this.mark('relieve', 'The enemy second line relieves the first', 'gaul'); }
+      return;
+    }
+    if (gap) { const n2 = this.nearestEnemy(u); if (n2) { this.setAttack(u, n2.e); u.legionRank = 0; return; } }
+    if (Math.hypot(u.slot.x - u.x, u.slot.y - u.y) > 40) this.setMove(u, u.slot.x, u.slot.y, S.fa, true); else { if (u.order.kind === 'move') u.order = { kind: 'none' }; this.faceSmooth(u, S.fa, 0.4, 1); }
+    if (u.reliefPending && !u.contacts.some(e => e.active) && u.fatigue < 45 && u.morale > u.maxMorale * 0.7) u.reliefPending = false;   // rested: ready to go in again
+  }
   // The Gallic battle line: units are given slots side by side across the axis of advance (a second and third rank if the host is wide), the line
   // front marches toward a halt short of your army at the pace of its slowest unit, and every unit keeps its place in it.
   formLine(lines) {
@@ -681,9 +705,13 @@ export class Battle {
     S.fa = Math.atan2(a.y, a.x);
     if (!S.F) S.F = { x: gc.x, y: gc.y };
     const stage = { x: rc.x - a.x * 520, y: rc.y - a.y * 520 }, dF = Math.hypot(stage.x - S.F.x, stage.y - S.F.y);
-    if (dF > 10) { const v = Math.min(...lines.map(u => u.type.speed)) * 0.85 * 0.4; S.F.x += (stage.x - S.F.x) / dF * Math.min(dF, v); S.F.y += (stage.y - S.F.y) / dF * Math.min(dF, v); S.lineHalted = false; }
+    const lag = lines.reduce((q, u) => q + (u.slot ? Math.hypot(u.slot.x - u.x, u.slot.y - u.y) : 0), 0) / lines.length;
+    if (dF > 10 && lag > 110) S.lineHalted = false;                // the front waits for its stragglers, so the line stays a line
+    else if (dF > 10) { const v = Math.min(...lines.map(u => u.type.speed)) * 0.85 * 0.4; S.F.x += (stage.x - S.F.x) / dF * Math.min(dF, v); S.F.y += (stage.y - S.F.y) / dF * Math.min(dF, v); S.lineHalted = false; }
     else { S.lineHalted = true; if (S.t0 === null) S.t0 = this.t; }
-    const slotW = Math.max(...lines.map(u => u.w)) + 24, depth = Math.max(...lines.map(u => u.d)) + 30, perRank = Math.max(1, Math.floor(1900 / slotW)), n = lines.length;
+    const legion = this.isLegion(lines);
+    const slotW = Math.max(...lines.map(u => u.w)) + 24, depth = Math.max(...lines.map(u => u.d)) + (legion ? 70 : 30), n = lines.length;
+    const perRank = legion && n >= 4 ? Math.ceil(n * 0.6) : Math.max(1, Math.floor(1900 / slotW));   // Roman-drilled armies: a front line and a second line behind it
     const sig = lines.map(u => u.id).sort((p1, p2) => p1 - p2).join();
     if (sig !== S.sig || this.t > (S.resortT || 0)) {            // give the units nearest your army the front rank, then order each rank by where its men stand, so nobody has to cross through a friend
       S.sig = sig; S.resortT = this.t + 5;
@@ -693,7 +721,7 @@ export class Battle {
     }
     for (const u of lines) {
       const i = u.slotIdx ?? 0, rank = Math.floor(i / perRank), k = i % perRank, cnt = Math.min(perRank, n - rank * perRank), off = (k - (cnt - 1) / 2) * slotW;
-      u.slot = { x: S.F.x + perp.x * off - a.x * rank * depth, y: S.F.y + perp.y * off - a.y * rank * depth };
+      u.slot = { x: S.F.x + perp.x * off - a.x * rank * depth, y: S.F.y + perp.y * off - a.y * rank * depth }; u.legionRank = legion ? rank : 0;
     }
     // how many of our units are already going for each of your units (so the host spreads its attack instead of piling onto one)
     this._tcount = {}; for (const u of this.units) if (u.side === 'gaul' && u.active && u.order.kind === 'attack') this._tcount[u.order.targetId] = (this._tcount[u.order.targetId] || 0) + 1;
@@ -707,7 +735,7 @@ export class Battle {
       S.extT = this.t + 5;
       const ratio = this.activeMen('gaul') / Math.max(1, this.activeMen('rome')), th = [[9, 9], [1.35, 1.8], [1.25, 1.6], [1.15, 1.45]][this.aiLevel], want = ratio > th[1] ? 2.0 : ratio > th[0] ? 1.6 : 1;
       for (const u of lines) {
-        if (u.type.cat !== 'inf' || u.typeKey === 'gaul_elite') continue;
+        if (u.type.cat !== 'inf' || u.typeKey === 'gaul_elite' || this.isLegion(lines)) continue;   // drilled legions keep their depth
         if (Math.abs((u.wide || 1) - want) < 0.05 || (want > 1 && u.contacts.some(e => e.active))) continue;
         u.wide = want; u.updateDims();
         if (want > 1 && !S.extSaid) { S.extSaid = true; this.say('The Gallic host spreads wide to outflank your line!', 'warn'); this.mark('extend', 'The Gallic line stretches to outflank you', 'gaul'); }
@@ -731,7 +759,7 @@ export class Battle {
       const near = this.nearestEnemy(u);
       if (!near) continue;
       if (ai.kind === 'ambush') {
-        if (near.gap < ai.trigger || this.t > ai.maxDelay) { ai.kind = 'rush'; ai.burst = true; ai.delay = this.t + 1 + this.rand() * 3; if (!u.alerted) { u.alerted = true; if (!ai.quiet) this.say('A Gallic warband bursts from the treeline!', 'warn'); } }
+        if (near.gap < ai.trigger || this.t > ai.maxDelay) { ai.kind = 'rush'; ai.burst = this.terr(u).kind === 'forest' || u.type.cat !== 'inf' /* men breaking from cover charge; men waiting in the open join the battle line */; ai.delay = this.t + 1 + this.rand() * 3; if (!u.alerted) { u.alerted = true; if (!ai.quiet) this.say('Hidden enemies burst from cover!', 'warn'); } }
       } else if (ai.kind === 'rush') {
         if (this.t < ai.delay) continue;
         if (this.smartAI && this.aiS.surge && (u.role === 'line' || u.role === 'wing') && u.type.cat === 'inf') {       // a fighting withdrawal: shaken men step back to catch their breath instead of waiting to break
@@ -1122,7 +1150,8 @@ export class Battle {
       else if (this.t - pr.t > 2.5) {
         u.prog = { d: dist, t: this.t, o: u.order };
         if (u.order.kind === 'move' && dist < Math.max(90, u.w)) { u.order.x = u.x; u.order.y = u.y; u.post = { x: u.x, y: u.y }; return 0; }
-        u.ghostUntil = this.t + 4;
+        if (u.order.kind === 'move' || u.side === 'rome') u.ghostUntil = this.t + 4;   // a unit you sent somewhere files through friends;
+        else u.blockedAtt = this.t;                                  // an enemy attacker does not (that is how they ended up stacked in a melee): it finds another target
       }
     }
     const ghost = u.ghostUntil > this.t;
@@ -1152,6 +1181,7 @@ export class Battle {
           const ah = h + a * sd, tx = u.x + Math.cos(ah) * stepF, ty = u.y + Math.sin(ah) * stepF;
           if (!blocker(tx, ty) && !this.waterAt(tx, ty)) { nx = tx; ny = ty; hh0 = ah; u.steerSign = sd; u.steerUntil = this.t + 1.2; u.passing = false; found = true; break; }
         } if (found) break; }
+        if (!found && u.order.kind === 'attack' && u.side !== 'rome') { u.blocked = true; u.blockedAtt = this.t; u.runT = 0; return 0; }   // hemmed in by friends: wait, do not climb over them
       }
     }
     if (u.order.kind !== 'retreat' && this.waterAt(nx, ny) && !this.waterAt(u.x, u.y)) {   // deep water cannot be crossed: slide along the bank
@@ -1334,7 +1364,11 @@ export class Battle {
     }
     u.updateDims();
     if (u.state === 'dead' || u.state === 'gone') return;
-    if (this.defectChance && u.side === 'gaul' && u.type.defects && !u.defectRolled && u.state !== 'routing' && u.morale < u.maxMorale * 0.35) { u.defectRolled = true; if (this.rand() < this.defectChance) { this.defect(u); return; } }
+    if (this.desertChance && (this.nDesert || 0) < 3 && u.side === 'rome' && !u.defected && u.typeKey === 'legionary' && !u.desertRolled && u.state !== 'routing' && u.morale < u.maxMorale * 0.35) {
+      u.desertRolled = true;
+      if (this.rand() < this.desertChance) { this.nDesert = (this.nDesert || 0) + 1; const lost = Math.round(u.men * 0.3); u.men -= lost; u.casualties += lost; u.state = 'routing'; u.order = { kind: 'none' }; u.deserted = true; this.mark('rout', u.name, 'rome', { x: u.x, y: u.y, men: u.men, cause: 'desertion', share: 1 }); this.say(`${u.name} will not fight fellow Romans for a commander it does not trust: it throws down its standards and marches off.`, 'bad'); return; }
+    }
+    if (this.defectChance && (this.nDefect || 0) < 3 && u.side === 'gaul' && u.type.defects && !u.defectRolled && u.state !== 'routing' && u.morale < u.maxMorale * 0.35) { u.defectRolled = true; if (this.rand() < this.defectChance) { this.nDefect = (this.nDefect || 0) + 1; this.defect(u); return; } }   // at most three either way in one battle
     if (u.state !== 'routing') {
       if (!u.contacts.some(e => e.active)) u.morale = Math.min(u.maxMorale, u.morale + (2.2 + (u.officer ? 0.35 * (u.officer.tactics || 0) : 0) + (u.perks.includes('inspire') ? 1.1 : 0)) * (u.auraT > this.t ? 1.25 : 1) * dt * (u.side === 'rome' ? (this.inCommand(u) ? 1.2 : 0.45) : 1));
       if (u.type.wagon) u.morale = Math.max(u.morale, 30);                          // a laager cannot run: it is held until the last man falls
