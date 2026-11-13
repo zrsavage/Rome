@@ -5,7 +5,7 @@ import { totalMen } from './camp.js';
 import { MAP } from './mapdata.js';
 import { icon, iconPaths } from './icons.js';
 import { routePending, ROUTES, canSkip, currentScn, careerLv, CAREER, britainPending } from './campaign.js';
-import { inform } from './ui.js';
+import { inform, keepScroll } from './ui.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const rad = (d) => d * Math.PI / 180;
@@ -217,6 +217,7 @@ export function renderMap(root, c, api) {
   const army = c.cohorts.map(h => `<li>${esc(h.name)} <span class="muted">- ${h.men}/${h.maxMen}</span></li>`).join('');
   const hrows = (c.history || []).slice(-6).reverse().map(h => { const s = [PROLOGUE, ...SCENARIOS].find(x => x.id === h.id); return `<div><span style="color:${OUT[h.outcome]}">${h.outcome.toUpperCase()}</span> - ${esc(s ? s.name : h.id)}</div>`; }).join('');
 
+  const restoreScroll = keepScroll(root);   // switching the view or choosing a route must not jump the page
   root.innerHTML = `<div class="camp mapscreen">
     <header><h2>The Road to Rome</h2><div class="res"><span>${icon('coin')} Denarii <b>${c.gold}</b></span><span>${icon('grain')} Supplies <b>${c.supplies}</b></span><span>${icon('helmet')} Army <b>${totalMen(c)}</b></span><span>${icon('day')} Day <b>${c.day}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
     <div class="card mapcard">
@@ -242,6 +243,7 @@ export function renderMap(root, c, api) {
       <div class="card"><h3>Your army</h3><ul class="armylist">${army}</ul></div>
       <div class="card"><h3>Dispatches</h3><div class="log">${hrows || '<div>No battles fought yet.</div>'}</div></div>
     </div></div>`;
+  restoreScroll();
   const q = (s) => root.querySelector(s);
   if (q('#m-camp')) q('#m-camp').onclick = () => api.camp();
   if (q('#m-march')) q('#m-march').onclick = () => api.march();

@@ -10,7 +10,7 @@ import { heroesOf, DECORATIONS, decoMorale } from './heroes.js';
 import { officerPending, chooseOfficer, officerTrack, officerKind, OFFICER_KINDS, unitPending, chooseUnit, unitChosen, unitRecord, standsOut, unitTrack } from './promote.js';
 import { officerById, modsOf, hasPerk, commandLimit, unlockedTypes, COMMAND_PER_WIN, COMMAND_PER_ORG } from './state.js';
 import { artSrc } from './art.js';
-import { inform } from './ui.js';
+import { inform, keepScroll } from './ui.js';
 import { DOCTRINES, winsOf } from './doctrine.js';
 import { icon } from './icons.js';
 import { BUILDINGS, sceneSvg, advice, unlockedBuildings } from './campscene.js';
@@ -526,11 +526,13 @@ export class Camp {
     const meta = this.open === 'praetorium' ? { name: 'Command Tent', sub: 'Your next battle and the march' } : BUILDINGS.find(b => b.id === this.open);
     const food = dailyFood(c), due = rationsDue(c, currentScn(c));
     const res = `<span>${icon('coin')} Denarii <b>${c.gold}</b></span>${(c.manpower || 0) > 0 ? `<span title="Assign them at the Barracks">${icon('helmet')} Soldiers available <b class="poolN">${c.manpower}</b></span>` : ''}<span title="${food} a day; the march to the next battle takes ${due} when you leave">${icon('grain')} Supplies <b>${c.supplies}</b>${due ? ` <span class="muted small">(march: -${due})</span>` : ''}</span>`;
+    const restore = keepScroll(this.root), sameView = this.open === this.lastOpen; this.lastOpen = this.open;   // a click redraws the screen: keep it where it was
     this.root.innerHTML = `<div class="camp2"><header><h2>Camp - ${esc(scn.theater)}, ${esc(scn.year)}</h2><div class="res">${res}<span>${icon('fort')} Fort <b>${c.fort}/3</b></span><span>${icon('laurel')} Goodwill <b>${c.favour > 0 ? '+' : ''}${c.favour}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
       <div class="advice">${adv.text}</div>
       <div class="scenewrap">${sceneSvg(c, { visited, focus: adv.focus, flags })}</div>
       <div class="campbar"><div class="muted small">${unlockedBuildings(c).length} of ${BUILDINGS.length} buildings built. Win or draw battles to build more.</div><div class="row"><button class="primary" id="march">March to battle</button><button id="tomap">Back to map</button></div></div>
       ${this.open && meta ? `<div class="overlay" id="ov"><div class="panel" role="dialog" aria-label="${esc(meta.name)}"><div class="phead"><div><h2>${esc(meta.name)}</h2><div class="muted small">${esc(meta.sub)}</div></div><div class="pres">${res}</div><button id="p-close">Back to camp</button></div><div class="pbody">${this.panelBody(this.open)}</div>${this.msgs.length ? `<div class="plog">${this.msgs.slice(0, 3).map(m => `<div class="${m.kind}">${esc(m.msg)}</div>`).join('')}</div>` : ''}</div></div>` : ''}</div>`;
+    restore(sameView);
     const R = this.root, q = (s) => R.querySelector(s);
     R.querySelectorAll('.bld').forEach(g => { const open = () => { this.open = g.dataset.b; if (!visited.includes(this.open) && this.open !== 'praetorium') { visited.push(this.open); this.api.save(); } this.render(); }; g.onclick = open; g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }; });
     if (q('#ov')) { q('#ov').onclick = (e) => { if (e.target.id === 'ov') { this.open = null; this.snap = null; this.render(); } }; q('#p-close').onclick = () => { this.open = null; this.snap = null; this.render(); }; }
