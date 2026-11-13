@@ -287,4 +287,13 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
   ground and woods: the grass laid as feathered, randomly flipped copies so no seam or repeat shows, woods cut to their real outline with a
   soft edge and shadow, lone trees cut from the canopy, and everything tinted to dry straw in Africa and high summer. It paints faster than the
   old drawn ground (0.26 s against 0.6 s at the start of a battle).
+- **Marching through friends:** units you order to move or attack, and enemy units marching to a place, pass straight through friendly units
+  that are not fighting, at 75% pace (it was 30%, with zigzag detours). They still go round friends locked in melee. A unit arriving where a
+  friend already stands halts beside it, and idle units dress into line without jostling. Through a friendly line: 16 s instead of 23 s.
+- **Surrender:** a unit that breaks while surrounded may lay down its arms instead of routing. Base chance 30%, more after a sudden bloody blow,
+  with three or more enemies on it or when exhausted; less with friends nearby (12% each), inside your general's ring, for horse, for steady,
+  veteran or elite units; never for wagons, elephants or chariots; at most 75%. A surrendered unit sits pale and unarmed, takes no part and
+  cannot be attacked or commanded by the enemy. A friendly unit that reaches it while no enemy is within 80 paces frees it (35% morale, tired).
+  When the battle ends, your surrendered men are freed if you win and lost as prisoners if you draw or lose; enemy units that surrendered to you
+  join the prisoners you can ransom, sell, enrol or release. Bots see it about once a battle, three or four times at the Bagradas and Munda.
 

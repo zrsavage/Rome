@@ -734,7 +734,7 @@ export const SCENARIOS = [
     unlock: []
   },
   {
-    id: 'utica', posture: 'attack', chief: { name: 'Publius Attius Varus', style: 'stubborn' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'The Walls of Utica', kind: 'skirmish',
+    id: 'utica', odds: 0.9, posture: 'attack', chief: { name: 'Publius Attius Varus', style: 'stubborn' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'The Walls of Utica', kind: 'skirmish',
     geo: { lat: 37.05, lon: 10.06, place: 'Before Utica', note: 'Curio beat Varus in the valley before the town (Civil War II.34-35)' },
     briefing: "Varus has drawn up his legions before Utica with a steep-sided valley between his line and yours, and Juba's Numidians on his wings. Many of his men once served Caesar's enemies at Corfinium and were pardoned; they may not fight hard for Pompey. For the first time you face Romans: the same armour, the same pila, the same drill.",
     objective: 'Break Varus\' army (reduce it below 25%). His legionaries fight exactly as yours do; his Numidian horse will try to get round you.',

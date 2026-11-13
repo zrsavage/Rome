@@ -309,8 +309,8 @@ export class Renderer {
   drawUnit(ctx, u, b) {
     const t = u.type, rome = u.side === 'rome', sel = this.selection.has(u.id);
     ctx.save(); ctx.translate(u.x, u.y); ctx.rotate(u.f);
-    const routing = u.state === 'routing';
-    ctx.globalAlpha = routing ? 0.6 : 1;
+    const routing = u.state === 'routing', captive = u.state === 'surrendered';
+    ctx.globalAlpha = routing ? 0.6 : captive ? 0.5 : 1;            // men who have surrendered sit unarmed and pale on the field
     // footprint
     ctx.fillStyle = (rome ? 'rgba(190,40,30,' : 'rgba(40,90,190,') + (sel ? 0.3 : 0.17) + ')';
     ctx.fillRect(-u.d / 2, -u.w / 2, u.d, u.w);
@@ -341,7 +341,7 @@ export class Renderer {
         }
         // each man is a real top-down figure (see sprites.js): helmet or hair, shoulders, shield and weapon, facing the way the unit faces
         const cav = t.cat === 'cav', sz = t.big ? 40 : t.wagon ? 36 : cav ? Math.min(Math.max(Math.min(sx * 1.08, sy * 2.7), 11), 32) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
-        ctx.drawImage(soldierSprite(u.typeKey, (k * 7 + u.id) % 3, !['legionary', 'pompeian', 'pontic', 'pomp_levy'].includes(u.typeKey) || u.pilumLeft > 0), xx - sz / 2, y - sz / 2, sz, sz);   // a legionary who has thrown his pila draws the gladius
+        ctx.drawImage(soldierSprite(u.typeKey, (k * 7 + u.id) % 3, !captive && (!['legionary', 'pompeian', 'pontic', 'pomp_levy'].includes(u.typeKey) || u.pilumLeft > 0)), xx - sz / 2, y - sz / 2, sz, sz);   // a legionary who has thrown his pila draws the gladius
       }
     }
     if (!lod && rome && u.typeKey === 'legionary' && !roof) {     // the signifer stands in the front rank, the centurion at its right end
@@ -387,6 +387,7 @@ export class Renderer {
     ctx.fillStyle = m > 0.6 ? '#6fcf6f' : m > 0.35 ? '#e0c050' : '#d65a4a'; ctx.fillRect(x - w / 2, y + 2, w * m, 3);
     if (u.type.cat === 'ranged' && u.type.ammo) { const am = Math.max(0, Math.min(1, u.ammo / u.type.ammo)); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - w / 2, y + 6, w, 3); ctx.fillStyle = am > 0.25 ? '#8fb4d8' : '#d2a23a'; ctx.fillRect(x - w / 2, y + 6, w * am, 3); }   // shot left
     if (u.state === 'routing') { ctx.fillStyle = '#ffd36a'; ctx.fillText('ROUT', x, y - 20); }
+    else if (u.state === 'surrendered') { ctx.fillStyle = '#f0ece0'; ctx.fillText(u.side === 'rome' ? 'SURRENDERED - free them' : 'SURRENDERED', x, y - 20); }
     else if (u.surrounded) { ctx.fillStyle = '#ff6a5a'; ctx.fillText('SURROUNDED', x, y - 20); }
     else if (u.flanked) { ctx.fillStyle = '#ffd36a'; ctx.fillText('FLANKED', x, y - 20); }
     else if (rome && u.officer && this.cam.zoom > 0.6) { ctx.fillStyle = '#e8c36a'; ctx.font = `${Math.max(9, fs - 3)}px system-ui, sans-serif`; ctx.fillText(u.officer.name.split(' ').pop(), x, y - 21); }
