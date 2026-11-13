@@ -61,6 +61,32 @@ export const UNIT_TYPES = {
     speed: 56, turn: 2.5, morale: 56, charge: 1.7, space: 3.2, fragile: 1.1,
     color: '#2a4a8c', trim: '#d8d2b0', blurb: 'Noble horsemen, quick to hit your rear.'
   },
+  // ----- Act III: Africa, 49 BC (Juba of Numidia and the Pompeians) -----
+  // Numidians rode without saddle or bridle, guiding the horse with a neck rope and a switch; small round leather shields and a bundle of
+  // javelins. They threw and wheeled away; they did not stand.
+  numid_cav: {
+    name: 'Numidian Horse', side: 'gaul', cat: 'cav', perDot: 4, atk: 0.055, def: 0.12, native: true,
+    speed: 66, turn: 3.0, morale: 52, charge: 0.9, range: 70, rate: 0.02, ammo: 45, space: 3.0, fragile: 1.15,
+    color: '#4a6a9a', trim: '#e0d0a0', blurb: 'Fast, unarmoured javelin horse. They throw, wheel away from anything that comes at them, and come back. Roman horse cannot catch them on open ground.'
+  },
+  numid_inf: {
+    name: 'Numidian Foot', side: 'gaul', cat: 'inf', perDot: 8, atk: 0.05, def: 0.14, native: true, pilum: 1,
+    speed: 32, turn: 1.9, morale: 50, charge: 0.75, space: 1.4, fragile: 1.15,
+    color: '#3f7f9a', trim: '#e0d0a0', blurb: 'Light infantry with javelins and small round shields. Quick, and hard to pin down.'
+  },
+  // North African forest elephants: smaller than the Indian kind and carrying no towers, a driver on the neck. Terrifying to horses; maddened by
+  // missiles; a panicked elephant runs through whoever is in the way, its own side included.
+  elephant: {
+    name: 'War Elephants', side: 'gaul', cat: 'inf', perDot: 10, atk: 0.16, def: 0.5, big: true, terror: 1.2, panicky: true, rampage: true,
+    speed: 30, turn: 1.1, morale: 56, charge: 2.6, chargePer: 0.45, space: 1, fragile: 1.3,
+    color: '#7a7468', trim: '#d8d2b0', blurb: 'A crushing charge that horses will not face. Missiles drive them mad, and a maddened elephant tramples its own side. Open ranks (.) let them through.'
+  },
+  // Pompeian legionaries wore the same kit as yours; the blue-grey shields are only so you can tell the two sides apart on the field.
+  pompeian: {
+    name: 'Pompeian Legionaries', side: 'gaul', cat: 'inf', perDot: 8, atk: 0.056, def: 0.42,
+    speed: 22, turn: 1.7, morale: 70, charge: 0.55, pilum: 2, space: 1, fragile: 0.85, antiCharge: 0.25,
+    color: '#5a6a8a', trim: '#e8c36a', blurb: 'Romans like your own: mail, scutum, pilum and gladius, the same drill and the same stubbornness.'
+  },
   // ----- the Roman train and detachments -----
   baggage: {
     name: 'Baggage Train', side: 'rome', cat: 'train', perDot: 20, atk: 0.012, def: 0.3, wagon: true,
@@ -506,6 +532,122 @@ export const SCENARIOS = [
     reinforcements: [],
     rewards: { gold: 800, supplies: 320, recruits: 160, xpBase: 76, officerXp: 76 }, rewardMult: 1,
     unlock: []
+  },
+  // ======================= ACT III: Africa, the old lands of Carthage (49 BC) =======================
+  // Caesar's legate Gaius Scribonius Curio crosses from Sicily to take Africa from the Pompeian Attius Varus and his ally, King Juba I of
+  // Numidia (Caesar, Civil War II.23-44). Open, hot country; nearly every enemy is on a horse.
+  {
+    id: 'anquillaria', odds: 0.85, posture: 'defend', chief: { name: "Varus' Numidian horse", style: 'cunning' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'The Landing at Anquillaria', kind: 'skirmish',
+    geo: { lat: 36.93, lon: 11.03, place: 'Anquillaria, on the Cape Bon peninsula', note: 'Curio landed here (Civil War II.23); the exact beach is not known' },
+    briefing: 'The transports from Sicily are running onto the beach at Anquillaria. The legions are ashore but the baggage and the horses are still coming off the ships. Numidian horsemen have seen the sails and are riding in from every side, and the foot are not far behind. Hold the beach until the landing is finished.',
+    objective: 'Hold the landing beach (the gold marker) for the whole fight: if the enemy holds it for 100 seconds the landing fails. Break the raiders to win. Numidian horse will not stand: missiles and a steady line beat them, not a chase.',
+    timeLimit: 600, daysToPrepare: 4,
+    deploy: { mode: 'line', cx: 800, cy: 780 },
+    objectives: [{ id: 'beach', name: 'The Landing Beach', x: 800, y: 860, r: 85, owner: 'rome' }],
+    rule: { holdSecs: 100, attacker: 'gaul' },
+    terrain: [{ kind: 'water', x: 0, y: 940, w: 1600, h: 60 }, { kind: 'hill', cx: 1250, cy: 420, rx: 200, ry: 90, h: 25 }, { kind: 'hill', cx: 330, cy: 380, rx: 180, ry: 80, h: 20 }],
+    enemy: [
+      { type: 'numid_cav', men: 160, x: 300, y: 420, ai: { kind: 'numidian' } },
+      { type: 'numid_cav', men: 160, x: 1300, y: 400, ai: { kind: 'numidian', delay: 6 } },
+      { type: 'numid_cav', men: 140, x: 800, y: 220, ai: { kind: 'numidian', delay: 12 } },
+      { type: 'numid_inf', men: 380, x: 640, y: 200, ai: { kind: 'raid', obj: 'beach', delay: 25 } },
+      { type: 'numid_inf', men: 380, x: 960, y: 210, ai: { kind: 'raid', obj: 'beach', delay: 30 } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 520, supplies: 380, recruits: 120, xpBase: 70, officerXp: 70 }, rewardMult: 1,
+    unlock: []
+  },
+  {
+    id: 'castra', odds: 0.9, posture: 'defend', chief: { name: "Varus' foragers", style: 'cautious' }, optional: true, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'Castra Cornelia', kind: 'skirmish',
+    geo: { lat: 37.14, lon: 10.12, place: 'Castra Cornelia, the ridge north of Utica', note: "Scipio's camp of 204 BC, from the wars against Carthage (Civil War II.24); site approximate" },
+    briefing: "A long ridge runs out to the sea north of Utica: Castra Cornelia, where Scipio camped when Rome went to war with Carthage. Its old ditch is still there. Curio wants it as a base, and Varus' men want to stop you digging in. Hold the crest while the legions re-cut Scipio's ditch.",
+    objective: 'Hold the crest of the ridge (the gold marker): if the enemy holds it for 110 seconds you lose the camp. Break them to win. A side fight: winning gives the army a safe base for the rest of the campaign.',
+    timeLimit: 600, daysToPrepare: 3,
+    deploy: { mode: 'line', cx: 800, cy: 620 },
+    objectives: [{ id: 'crest', name: "Scipio's Ridge", x: 800, y: 520, r: 90, owner: 'rome' }],
+    rule: { holdSecs: 110, attacker: 'gaul' },
+    terrain: [{ kind: 'hill', cx: 800, cy: 520, rx: 420, ry: 110, h: 45 }, { kind: 'water', x: 1480, y: 0, w: 120, h: 1000 }],
+    enemy: [
+      { type: 'numid_inf', men: 340, x: 520, y: 200, ai: { kind: 'raid', obj: 'crest', delay: 10 } },
+      { type: 'numid_inf', men: 340, x: 1000, y: 190, ai: { kind: 'raid', obj: 'crest', delay: 14 } },
+      { type: 'numid_cav', men: 150, x: 260, y: 300, ai: { kind: 'numidian' } },
+      { type: 'numid_cav', men: 150, x: 1300, y: 260, ai: { kind: 'numidian', delay: 8 } },
+      { type: 'pompeian', men: 300, x: 780, y: 140, ai: { kind: 'rush', delay: 40 } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 420, supplies: 300, recruits: 90, xpBase: 64, officerXp: 64 }, rewardMult: 1,
+    unlock: []
+  },
+  {
+    id: 'utica', posture: 'attack', chief: { name: 'Publius Attius Varus', style: 'stubborn' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'The Walls of Utica', kind: 'skirmish',
+    geo: { lat: 37.05, lon: 10.06, place: 'Before Utica', note: 'Curio beat Varus in the valley before the town (Civil War II.34-35)' },
+    briefing: "Varus has drawn up his legions before Utica with a steep-sided valley between his line and yours, and Juba's Numidians on his wings. Many of his men once served Caesar's enemies at Corfinium and were pardoned; they may not fight hard for Pompey. For the first time you face Romans: the same armour, the same pila, the same drill.",
+    objective: 'Break Varus\' army (reduce it below 25%). His legionaries fight exactly as yours do; his Numidian horse will try to get round you.',
+    timeLimit: 720, daysToPrepare: 3,
+    deploy: { mode: 'line', cx: 800, cy: 860 },
+    terrain: [{ kind: 'hill', cx: 800, cy: 280, rx: 560, ry: 150, h: 30 }, { kind: 'hill', cx: 800, cy: 820, rx: 520, ry: 130, h: 26 }],   // a steep valley between the two lines
+    enemy: [
+      { type: 'pompeian', men: 420, x: 560, y: 330, ai: { kind: 'rush', delay: 5 } },
+      { type: 'pompeian', men: 420, x: 800, y: 320, ai: { kind: 'rush', delay: 5 } },
+      { type: 'pompeian', men: 420, x: 1040, y: 330, ai: { kind: 'rush', delay: 5 } },
+      { type: 'pompeian', men: 360, x: 800, y: 220, ai: { kind: 'rush', delay: 30, reserve: true } },
+      { type: 'numid_inf', men: 300, x: 380, y: 360, ai: { kind: 'rush', delay: 10 } },
+      { type: 'numid_cav', men: 140, x: 220, y: 380, ai: { kind: 'numidian', delay: 15 } },
+      { type: 'numid_cav', men: 140, x: 1380, y: 380, ai: { kind: 'numidian', delay: 20 } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 640, supplies: 360, recruits: 140, xpBase: 76, officerXp: 76 }, rewardMult: 1,
+    unlock: [{ type: 'legionary', name: 'XI Cohort', men: 400, maxMen: 480, xp: 70, drill: 30, msg: "Men of Varus' legions who served at Corfinium come over to you: they form the XI Cohort." }]
+  },
+  {
+    id: 'water', posture: 'defend', chief: { name: "Juba's raiders", style: 'cunning' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'Water and Forage', kind: 'skirmish',
+    geo: { lat: 36.97, lon: 9.93, place: 'The plain of the Bagradas below Utica', note: 'Illustrative: the army had to fetch water and forage under Numidian raids' },
+    briefing: 'The siege lines round Utica need water, and there is little of it. Every party sent to the wells is ridden at by Numidians, who throw their javelins and are gone before a cohort can reach them. A string of water carts is at the wells now. Keep it, and break the raiders when they finally close.',
+    objective: 'Keep the water carts at the wells (the gold marker) in Roman hands: if the enemy holds them for 100 seconds the army goes thirsty. Break the raiders to win.',
+    timeLimit: 600, daysToPrepare: 3,
+    deploy: { mode: 'line', cx: 800, cy: 760 },
+    objectives: [{ id: 'wells', name: 'The Wells', x: 800, y: 680, r: 80, owner: 'rome' }],
+    rule: { holdSecs: 100, attacker: 'gaul' },
+    terrain: [{ kind: 'hill', cx: 380, cy: 300, rx: 200, ry: 90, h: 20 }, { kind: 'hill', cx: 1220, cy: 320, rx: 200, ry: 90, h: 20 }],
+    enemy: [
+      { type: 'numid_cav', men: 170, x: 250, y: 480, ai: { kind: 'numidian' } },
+      { type: 'numid_cav', men: 170, x: 1350, y: 470, ai: { kind: 'numidian', delay: 5 } },
+      { type: 'numid_cav', men: 150, x: 800, y: 200, ai: { kind: 'numidian', delay: 10 } },
+      { type: 'numid_cav', men: 150, x: 500, y: 240, ai: { kind: 'numidian', delay: 20 } },
+      { type: 'numid_inf', men: 360, x: 1100, y: 220, ai: { kind: 'raid', obj: 'wells', delay: 45 } },
+      { type: 'numid_inf', men: 300, x: 600, y: 180, ai: { kind: 'raid', obj: 'wells', delay: 60 } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 460, supplies: 460, recruits: 100, xpBase: 70, officerXp: 70 }, rewardMult: 1,
+    unlock: []
+  },
+  {
+    id: 'bagradas', odds: 0.9, posture: 'ambush', chief: { name: 'Saburra, general of King Juba', style: 'cunning' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'The Bagradas', kind: 'named',
+    geo: { lat: 36.84, lon: 9.78, place: 'The plain of the Bagradas (Medjerda)', note: 'Curio was destroyed here (Civil War II.38-42); the exact field is not known' },
+    briefing: "Deserters say Juba has gone home and only his general Saburra waits on the Bagradas with a small force. You march at night to catch him, and at dawn his men are there, and give way before you. It is a trap. Juba's whole army is behind the hills: thousands of Numidian horse, his foot, his elephants. Curio died on this field. Keep the army together until dark.",
+    objective: 'Survive: break the host, or still have at least 45% of your army with the standards when night falls. A well-ordered withdrawal is a draw. Historically a disaster, so a draw here pays handsomely.',
+    links: [
+      { from: 'castra', morale: 4, text: "Scipio's camp is held behind you: the men know where to fall back to (+4 morale)." },
+      { from: 'utica', scale: { numid_inf: 0.75 }, text: "Varus' beaten legions are shut up in Utica: fewer foot march with Juba." },
+      { from: 'water', scale: { numid_cav: 0.85 }, text: 'The raiders at the wells were cut up: Juba has fewer horsemen.' }
+    ],
+    timeLimit: 600, daysToPrepare: 3,
+    deploy: { mode: 'grid', cx: 800, cy: 640, cols: 4, dx: 110, dy: 80 },
+    terrain: [{ kind: 'hill', cx: 250, cy: 420, rx: 230, ry: 160, h: 35 }, { kind: 'hill', cx: 1350, cy: 420, rx: 230, ry: 160, h: 35 }, { kind: 'hill', cx: 800, cy: 120, rx: 360, ry: 90, h: 30 }, { kind: 'hill', cx: 800, cy: 880, rx: 160, ry: 60, h: 22 }],
+    enemy: [
+      { type: 'numid_cav', men: 140, x: 800, y: 380, ai: { kind: 'numidian' } },
+      { type: 'numid_inf', men: 260, x: 800, y: 300, ai: { kind: 'skirm' } },
+      { type: 'numid_cav', men: 220, x: 260, y: 420, ai: { kind: 'ambush', trigger: 380, maxDelay: 30, quiet: true } },
+      { type: 'numid_cav', men: 220, x: 1340, y: 420, ai: { kind: 'ambush', trigger: 380, maxDelay: 35, quiet: true } },
+      { type: 'numid_cav', men: 180, x: 260, y: 700, ai: { kind: 'flank', delay: 60 } },
+      { type: 'numid_cav', men: 180, x: 1340, y: 720, ai: { kind: 'flank', delay: 70 } },
+      { type: 'numid_inf', men: 380, x: 600, y: 140, ai: { kind: 'ambush', trigger: 300, maxDelay: 50, quiet: true } },
+      { type: 'numid_inf', men: 380, x: 1000, y: 140, ai: { kind: 'ambush', trigger: 300, maxDelay: 55, quiet: true } },
+      { type: 'elephant', men: 60, x: 800, y: 110, ai: { kind: 'ambush', trigger: 300, maxDelay: 70, quiet: true } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 700, supplies: 420, recruits: 220, xpBase: 100, officerXp: 110 }, rewardMult: 1.6,
+    unlock: [{ type: 'legionary', name: 'XII Cohort', men: 380, maxMen: 480, xp: 90, drill: 35, msg: 'The survivors of the Bagradas are formed into the XII Cohort. They will not be beaten like that again.' }]
   }
 ];
 
@@ -538,8 +680,9 @@ PROLOGUE.enemy.push(...PROLOGUE.reinforcements.map(r => ({ ...r.unit, ai: { kind
 // Battles are all or nothing: the whole enemy host is on the field from the start. The only reinforcements are the ones authored
 // into a scenario as a deliberate surprise (a flank attack, an ambush party, allies arriving late).
 // ---------------------------------------------------------------------------
-const TIME_LIMITS = { ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500, parley: 800, supply: 1080, lessercamp: 1200, ariovistus: 1800, rhine: 900 };
+const TIME_LIMITS = { anquillaria: 1080, castra: 1080, utica: 1320, water: 1080, bagradas: 1080, ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500, parley: 800, supply: 1080, lessercamp: 1200, ariovistus: 1800, rhine: 900 };
 for (const scn of SCENARIOS) scn.timeLimit = TIME_LIMITS[scn.id] || scn.timeLimit;
+for (const scn of SCENARIOS) if (scn.act === 'III') scn.dry = true;   // Africa is drawn as dry, open country
 
 // ---------------------------------------------------------------------------
 // Battlefield scale. Maps are authored on a 1600x1000 grid and enlarged here, so the armies start far apart and you have to find the

@@ -256,3 +256,9 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
 - **Buildings:** the Field Hospital now comes before the Armourer.
 - **Acts III to V** are laid out (design only) in `docs/ACTS.md`: Africa and the old lands of Carthage (49 BC), Pharnaces and the Sarmatian steppe horse
   (48-47 BC), and Roman against Roman (46-45 BC, ending at Munda). The campaign map shows their markers.
+- **Act III: Africa, 49 BC (playable).** Five battles after Act II: The Landing at Anquillaria, Castra Cornelia (side fight), The Walls of Utica
+  (Romans against Romans), Water and Forage, and the named **Bagradas**, a historical defeat (Curio died there) where getting away is the goal.
+  New enemies: Numidian horse that throw and wheel away, Numidian foot, war elephants that panic and trample their own side, Pompeian legions.
+  New weather "African heat", the **Open Ranks** order (`.`) against elephants, a dry battlefield, a zoomed Act III map and an act introduction.
+  Details in `docs/ACTS.md`.
+

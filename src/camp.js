@@ -52,10 +52,15 @@ const TRAINING_ADVICE = {
   convoy: 'Raiders will strike from several sides at once. Cohesion matters more than killing power.',
   oppidum: 'Fighting uphill is costly. Seasoned troops matter, but do not send exhausted men up that slope.',
   silva: 'You will be ambushed on both flanks. A century that can turn and re-form quickly will survive it.',
-  bibracte: 'A long day with wave after wave of enemies. Build both skill and stamina, and keep the men fit.'
+  bibracte: 'A long day with wave after wave of enemies. Build both skill and stamina, and keep the men fit.',
+  anquillaria: 'Their horse will ride round you throwing javelins. A line that keeps its shape under missiles and does not chase wins this.',
+  castra: 'Holding a crest is about cohesion. Drill them to turn and close up quickly.',
+  utica: 'Romans against Romans: the same pila, the same drill. Experience and a fresh reserve decide it.',
+  water: 'More missiles than melee. Keep the men steady, and do not wear them out chasing horsemen in this heat.',
+  bagradas: 'If this is the fight the deserters warn of, every man must be fit and steady. Rest them, and drill cohesion over killing.'
 };
 // What the next enemy is made of, in words the player can act on.
-const ENEMY_NAMES = { warband: 'warbands', gaul_elite: 'armoured champions', gaul_skirm: 'javelineers', gaul_cav: 'horsemen', suebi: 'Suebi warbands', german_cav: 'Germanic horse and runners', laager: 'wagon laagers' };
+const ENEMY_NAMES = { warband: 'warbands', gaul_elite: 'armoured champions', gaul_skirm: 'javelineers', gaul_cav: 'horsemen', suebi: 'Suebi warbands', german_cav: 'Germanic horse and runners', laager: 'wagon laagers', numid_cav: 'Numidian horse', numid_inf: 'Numidian foot', elephant: 'war elephants', pompeian: 'Pompeian legionaries' };
 function enemyProfile(scn) {
   const all = [...scn.enemy, ...scn.reinforcements.filter(r => r.side !== 'rome').map(r => r.unit)], tot = all.reduce((a, e) => a + e.men, 0), by = {};
   all.forEach(e => { by[e.type] = (by[e.type] || 0) + e.men; });

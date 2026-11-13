@@ -1,6 +1,6 @@
 # Acts III to V: layout (draft)
 
-Status: design only. Nothing here is playable yet; the map shows the act markers as locked.
+Status: **Act III is playable** (five battles, after Act II). Acts IV and V are design only; the map shows their markers as locked.
 
 ## The history problem, and the fix
 
@@ -18,7 +18,7 @@ which closes the "Carthage" thread with Thapsus and its elephants.
 
 Britannia (54 BC, the old Act III plan) drops out for now. It could come back as an optional side act between Act II and Act III.
 
-## Act III: Africa, the Old Lands of Carthage (49 BC)
+## Act III: Africa, the Old Lands of Carthage (49 BC) - built
 
 After Gaul, the commander is lent to Gaius Scribonius Curio, who has to take Africa from the Pompeians. The ground is open, hot
 and dry, and almost every enemy is on a horse.
@@ -37,7 +37,14 @@ New enemies:
 - **War elephants** (one or two units at most; Juba is recorded with elephants in Africa): huge charge, terrify horses, and **panic when hurt**. A panicking elephant runs through the nearest unit of *either* side. Counter: missiles, legionaries opening lanes (a new "open ranks" order learned in Act III).
 - **Pompeian legionaries:** the same troops as yours (see Act V).
 
-New rules: **heat and water** (fatigue builds faster at midday; a well objective restores it), and **open-plain fighting** (no woods to anchor a flank, so the line has to make its own flank guard).
+New rules: **heat** (the "African heat" weather: everyone but the Numidians tires 40% faster), **water** (the wells are an objective to hold), and **open-plain fighting** (no woods to anchor a flank).
+
+As built:
+- Unit types `numid_cav`, `numid_inf`, `elephant`, `pompeian` in `src/data.js`; sprites in `src/sprites.js`. Numidian horse use the `numidian` AI (throw, wheel away from anything moving at them, come back; go for a flank when out of javelins; ride down routers).
+- Elephants: a big charge (`chargePer`), terror that drains the morale of anything in contact (horse twice as much), missiles hurt their morale far more (`panicky`), and when they break they **stampede** (`stepRampage`): straight away from the enemy, trampling every unit in the way, their own side included. They never rally.
+- **Open Ranks** (`lanes`, key `.`, taught after 7 wins): elephant charges into the cohort do 30% damage and their melee half, the elephants lose morale in the lanes, and the cohort's men fear them less; anyone else does 20% more damage to it.
+- Ground is drawn dry and scrubby (`scn.dry`). Enemy weights: Numidian horse 1.6, foot 0.85, elephant 2.5 (per man; ten men to an elephant), Pompeian 1.15.
+- Odds nudges: Anquillaria 0.85, Castra Cornelia 0.9, Bagradas 0.9. Bot results (normal, 4 runs each): the smart and tactician bots win roughly half of the first four; the Bagradas is mostly lost by bots that stand and fight, and drawn 4/4 by a bot that sounds the retreat after losing a third, which is the intended way through.
 
 ## Act IV: The Bosporus and the Steppe Horse (48-47 BC)
 

@@ -18,6 +18,7 @@ const P = {
   holdfire: '<path d="M7 4c8 3 8 13 0 16"/><path d="M7 4v16M3 12h12"/><path d="M4 4l16 16"/>',
   testudo: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M9 6v12M15 6v12M3 12h18"/>',
   wedge: '<path d="M12 3L21 20H3z"/><path d="M12 9v6"/>',
+  lanes: '<path d="M4 4v16M10 4v6M10 14v6M16 4v16M20 4v16"/><path d="M13 8l3 4-3 4"/>',
   orbis: '<circle cx="12" cy="12" r="6"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
   extend: '<path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/><path d="M12 6v12"/>',
   relieve: '<path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4"/>',

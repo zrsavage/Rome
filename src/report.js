@@ -5,7 +5,7 @@ import { esc } from './ui.js';
 const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 const CAUSE = {
   frontal: 'grinding losses in a head-on fight', flank: 'being hit in the flank', rear: 'being hit from behind', surround: 'being surrounded',
-  charge: 'the shock of a charge', missile: 'missile fire', pilum: 'a volley of pila', neighbour: 'seeing the cohort beside it break'
+  charge: 'the shock of a charge', missile: 'missile fire', pilum: 'a volley of pila', neighbour: 'seeing the cohort beside it break', elephants: 'the terror of the elephants', trampled: 'being trampled by panicking elephants', lanes: 'being speared in the lanes of open ranks'
 };
 const ROME = '#e0614f', GAUL = '#7fb3e6';
 
@@ -58,6 +58,8 @@ export function reportParts(res) {
       surround: 'Lesson: a surrounded cohort cannot fight back well and its morale drains steadily. Fall back before the circle closes, or form orbis if you have learned it.',
       charge: 'Lesson: the first clash is the dangerous one. Order a stand (hold) before the charge arrives, and throw pila as they close, so the shock does less harm.',
       missile: 'Lesson: slingers and archers wear a line down slowly. Close with them, screen with cavalry, or use the testudo if you have learned it.',
+      elephants: 'Lesson: horses will not face elephants and men fear them. Kill them with missiles before they arrive, or open ranks (.) so they run down the lanes.',
+      trampled: 'Lesson: a panicked elephant runs through whoever is in its way. Keep your line out of its path, or let it go through open ranks.',
       neighbour: 'Lesson: one rout shakes the cohorts beside it. Relieve a tired cohort before it breaks, and ride the line to rally the wavering.',
       frontal: 'Lesson: a long head-on grind tires and wears men down. Rotate fresh cohorts into the front (relieve), and look for a flank so the enemy break first.'
     }[dom]; if (lesson) P.lesson.push(lesson.replace(/^Lesson: (.)/, (m, ch) => ch.toUpperCase()));

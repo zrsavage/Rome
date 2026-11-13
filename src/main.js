@@ -112,6 +112,16 @@ function showMap() {
       'Expect <b>cut supply lines</b>, raids from every side at once, and a battle where your left may be pressed while the right wins.'
     ], 'To Germania');
   }
+  if (cs && cs.act === 'III' && !(campaign.actsSeen || []).includes('III')) {
+    campaign.actsSeen = [...(campaign.actsSeen || []), 'III']; save();
+    inform('Act III: Africa, the old lands of Carthage', [
+      'Nine years pass. Gaul is conquered, the Senate orders Caesar to give up his army, and in January 49 BC he crosses the Rubicon. <b>Civil war.</b>',
+      'Caesar sends his young friend <b>Gaius Scribonius Curio</b> to take Africa from the Pompeian Attius Varus, and you go with him. Utica stands where Carthage once ruled; Carthage itself is a ruin.',
+      'Varus has an ally: <b>King Juba I of Numidia</b>. Almost every enemy here is on a horse. Numidian horsemen throw their javelins and ride away before you can reach them: <b>do not chase them</b>. A steady line, slingers and archers beat them.',
+      'It is hot. Everyone but the Numidians tires faster: rest the line. Juba has <b>elephants</b>: missiles drive them mad, and a new order, <b>Open Ranks</b>, is taught at the Training Ground.',
+      'Some of the men facing you are <b>Romans</b>, with your armour and your drill.'
+    ], 'To Africa');
+  }
   show('screen-map');
 }
 

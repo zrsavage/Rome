@@ -204,7 +204,7 @@ function gaul(g, t, v, kind) {
 // A horse seen from above, with real proportions: a long, narrow barrel (about three times as long as it is wide), a slightly broader croup,
 // a long tapering neck ending in a small head with ears, a mane along the crest, and a tail. Gallic ponies were small and sturdy.
 const COATS = [{ body: '#7a4a2a', dark: '#1f1610' }, { body: '#9a5a2a', dark: '#6b3a1a' }, { body: '#a69d88', dark: '#4a4036' }, { body: '#cfcfca', dark: '#8a8a86' }];   // bay, chestnut, dun, grey
-function horse(g, v, harness = true) {
+function horse(g, v, harness = true, bridle = true) {
   const { body, dark } = COATS[v];
   for (const a of [-0.3, 0, 0.3]) { g.strokeStyle = dark; g.lineWidth = 2.4; g.lineCap = 'round'; g.beginPath(); g.moveTo(9, C); g.quadraticCurveTo(4, C + a * 8, 0.5, C + a * 17); g.stroke(); }
   const parts = [[14.5, C, 8, 7.4], [25, C, 9.5, 6.6], [35, C, 7.2, 6.3], [53.5, C, 6.6, 3.1], [60, C, 3, 2.5]];
@@ -218,7 +218,7 @@ function horse(g, v, harness = true) {
   ell(g, 49.5, C - 3.4, 1.4, 2.2, shade(body, 0.8), OUT, 0.8, 0.4, false); ell(g, 49.5, C + 3.4, 1.4, 2.2, shade(body, 0.8), OUT, 0.8, -0.4, false);   // ears
   line(g, 38, C, 51, C, dark, 2.6);                                                                                     // mane along the crest
   line(g, 10, C, 34, C, shade(body, 0.8), 0.9);                                                                         // the spine
-  line(g, 51, C - 1.6, 57, C - 1.2, '#3a2a18', 0.9); line(g, 51, C + 1.6, 57, C + 1.2, '#3a2a18', 0.9);                // bridle cheek-straps
+  if (bridle) { line(g, 51, C - 1.6, 57, C - 1.2, '#3a2a18', 0.9); line(g, 51, C + 1.6, 57, C + 1.2, '#3a2a18', 0.9); }   // bridle cheek-straps (Numidians rode without)
   if (harness) { line(g, 36.5, C - 6, 36.5, C + 6, '#5a3a1a', 1.3); for (const y of [C - 4, C - 1.5, C + 1.5, C + 4]) ell(g, 36.5, y, 0.9, 0.9, '#d8b24a', null, 0, 0, false); }   // breast-strap with bronze phalerae
 }
 function horseman(g, t, v, gaulish, noble) {
@@ -317,12 +317,59 @@ function general(g, t) {
   line(g, 22, C + 13, 40, C + 11, '#8a6a3a', 1.6); poly(g, [[40, C + 7.4], [52, C + 8.6], [52, C + 13.6], [40, C + 14.4]], '#b3261e', OUT, 0.7);   // his vexillum, streaming
 }
 
+// ---- Act III: Africa ----
+// A Numidian rider: no saddle and no bridle, only a rope round the horse's neck and a switch; a short tunic, a small round leather shield and
+// a bundle of light javelins. Dark curled hair, sun-darkened skin.
+const AFR_SKIN = ['#a8744c', '#8e5f3c', '#b88458'], AFR_HAIR = ['#2a1e14', '#1e160e', '#3a2a1a'];
+function numidHorse(g, t, v) {
+  const skin = AFR_SKIN[v], tunic = ['#e4d8b8', '#d8c8a0', '#cdbf9a'][v];
+  shadow(g, true);
+  horse(g, v, false, false);
+  line(g, 40, C - 5.4, 40, C + 5.4, '#8a6a3a', 1.4);                                                                     // the neck rope
+  ell(g, 25.5, C - 7.6, 5, 2.2, skin, OUT, 1, 0.1); ell(g, 25.5, C + 7.6, 5, 2.2, skin, OUT, 1, -0.1);                   // bare legs, no saddle
+  ell(g, 26.5, C, 5, 8, tunic, OUT, 1.1);
+  arm(g, 29, C - 5, 0.15, 7, skin); arm(g, 29, C + 5.5, 0.05, 8, skin);
+  for (const dy of [0, 1.6, 3.2]) line(g, 22, C + 9 + dy * 0.4, 52, C + 6 + dy, WOOD, 1.1);                             // a bundle of javelins
+  poly(g, [[54, C + 5.6], [50, C + 4], [50.4, C + 7.6]], '#d7dbe0', OUT, 0.4);
+  ell(g, 27, C - 13.5, 5.2, 5.2, shade(t.color, 0.95), OUT, 1.4); ell(g, 27, C - 13.5, 2.6, 2.6, null, shade(t.trim, 0.85), 0.8, 0, false);   // small round leather shield
+  ell(g, 28, C, 5.2, 5.4, AFR_HAIR[v], OUT, 1.2); for (const a of [-0.6, 0, 0.6]) ell(g, 27 + a, C + a * 5, 1.4, 1.4, shade(AFR_HAIR[v], 1.3), null, 0, 0, false);   // tight curls
+}
+function numidFoot(g, t, v) {
+  const skin = AFR_SKIN[v], tunic = ['#e4d8b8', '#d8c8a0', '#cdbf9a'][v];
+  shadow(g);
+  ell(g, 31, C, 9.4, 17, tunic, OUT, 1.2);
+  ell(g, 29, C, 6, 15, shade(t.color, 0.85), null, 0, 0, false);                                                        // a coloured cloak over one shoulder
+  arm(g, 36, 47, 0.2, 9, skin);
+  for (const dy of [0, 2]) line(g, 30, 52 + dy, 62, 45 + dy, WOOD, 1.4);                                                 // javelins
+  poly(g, [[64, 44.6], [58.6, 42.4], [59.2, 47.2]], '#cfd4da', OUT, 0.5);
+  ell(g, 44, 22, 7.6, 7.6, shade(t.color, 1), OUT, 1.5); ell(g, 44, 22, 3.6, 3.6, null, shade(t.trim, 0.85), 0.9, 0, false);   // small round shield: right for Numidians
+  arm(g, 36, 15, -0.45, 9, skin);
+  ell(g, 31, C, 7, 7.2, AFR_HAIR[v], OUT, 1.3); for (const a of [-1, 0, 1]) ell(g, 30 + a, C + a * 4, 1.5, 1.5, shade(AFR_HAIR[v], 1.35), null, 0, 0, false);
+}
+// A North African forest elephant from above: smaller than the Indian kind and without a tower; the driver sits on its neck with a goad.
+function elephant(g, t, v) {
+  const hide = ['#8a8478', '#7c776c', '#948d80'][v], dark = shade(hide, 0.75);
+  ell(g, C + 3, C + 5, 30, 21, 'rgba(0,0,0,0.28)', null, 0, 0, false);
+  line(g, 4, C, 1, C + 4, dark, 2);                                                                                       // tail
+  ell(g, 24, C, 20, 16, hide, OUT, 1.8);                                                                                  // the body
+  g.save(); g.beginPath(); g.ellipse(24, C, 20, 16, 0, 0, 7); g.clip(); g.strokeStyle = 'rgba(0,0,0,0.12)'; g.lineWidth = 0.8; for (let x = 8; x < 44; x += 4) { g.beginPath(); g.moveTo(x, C - 16); g.quadraticCurveTo(x + 2, C, x, C + 16); g.stroke(); } g.restore();
+  ell(g, 43, C - 11, 7, 10, shade(hide, 0.92), OUT, 1.4, -0.3); ell(g, 43, C + 11, 7, 10, shade(hide, 0.92), OUT, 1.4, 0.3);   // the great ears
+  ell(g, 45, C, 9, 8, hide, OUT, 1.6);                                                                                    // the head
+  line(g, 52, C - 3, 61, C - 6.5, '#f0ead8', 2.2); line(g, 52, C + 3, 61, C + 6.5, '#f0ead8', 2.2);                       // tusks
+  g.strokeStyle = OUT; g.lineWidth = 4.6; g.beginPath(); g.moveTo(52, C); g.quadraticCurveTo(58, C + 1, 62, C + 4); g.stroke();
+  g.strokeStyle = hide; g.lineWidth = 3; g.beginPath(); g.moveTo(52, C); g.quadraticCurveTo(58, C + 1, 62, C + 4); g.stroke();   // trunk
+  rect(g, 30, C - 6, 9, 12, shade(t.color, 0.9), OUT, 1, 2);                                                              // a saddle-cloth
+  ell(g, 38, C, 3.6, 5, '#e4d8b8', OUT, 1); ell(g, 38.5, C, 2.8, 2.8, AFR_HAIR[v], OUT, 0.9);                              // the driver
+  line(g, 39, C + 3, 46, C + 6, WOOD, 0.9);
+}
+
 const PAINT = {
   legionary: (g, t, v, a) => roman(g, t, v, a), aux_inf: (g, t, v) => aux(g, t, v), slinger: (g, t, v) => slinger(g, t, v), archer: (g, t, v) => archer(g, t, v),
   warband: (g, t, v) => gaul(g, t, v, 'warband'), gaul_elite: (g, t, v) => gaul(g, t, v, 'elite'), gaul_skirm: (g, t, v) => gaul(g, t, v, 'skirm'),
   equites: (g, t, v) => horseman(g, t, v, false, true), aux_cav: (g, t, v) => horseman(g, t, v, true, false), gaul_cav: (g, t, v) => horseman(g, t, v, true, true),
   baggage: (g, t, v) => wagon(g, t, v), antesignani: (g, t, v, a) => roman(g, t, v, a),
   suebi: (g, t, v) => german(g, t, v), german_cav: (g, t, v) => germanHorse(g, t, v), laager: (g, t, v) => wagon(g, t, v),
+  numid_cav: (g, t, v) => numidHorse(g, t, v), numid_inf: (g, t, v) => numidFoot(g, t, v), elephant: (g, t, v) => elephant(g, t, v), pompeian: (g, t, v, a) => roman(g, t, v, a),
   centurion: (g, t, v) => centurion(g, t, v), signifer: (g, t, v) => signifer(g, t, v), general: (g, t) => general(g, t)
 };
 

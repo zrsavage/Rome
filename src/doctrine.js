@@ -37,6 +37,8 @@ export const DOCTRINES = [
     text: 'A cohort set to rotate is relieved by a fresh one from behind as soon as it tires or wavers, without you giving the order. Select cohorts and press K.' },
   { id: 'wedge', name: 'The Wedge (cuneus)', key: 'U', wins: 5, trait: 'drill', req: 3, gold: 150,
     text: 'A narrow, deep column that hits much harder on the charge but is weaker on its flanks and slower. Press U before the charge.' },
+  { id: 'lanes', name: 'Open Ranks', key: '. (period)', wins: 7, trait: 'drill', req: 2, gold: 120,
+    text: 'The cohort opens lanes between its maniples. A charging elephant runs down a lane and is speared from both sides, and terrifies the men far less. Any other enemy finds the gaps: about 20% more damage. Press . (period) to open and close.' },
   { id: 'orbis', name: 'The Orbis', key: 'O', wins: 6, trait: 'drill', req: 4, gold: 150,
     text: 'A hollow square with no flanks and no rear, for a cohort that is about to be surrounded. Slow and weak on the attack. Press O.' }
 ];
