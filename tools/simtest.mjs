@@ -2,7 +2,7 @@
 // Plays each scenario with the army you'd plausibly have at that point, using simple scripted "players".
 import { Battle } from '../src/sim.js';
 import { SCENARIOS, phaseScn } from '../src/data.js';
-import { newCampaign, romeSpecs, modsOf } from '../src/state.js';
+import { newCampaign, romeSpecs, modsOf, forceScale } from '../src/state.js';
 import { triplexLayout } from '../src/orders.js';
 
 const RUNS = +process.argv[2] || 20;
@@ -72,7 +72,7 @@ export function play(strategy, i, difficulty, seed, mutate = null, phase = null)
   const scn = phase == null ? SCENARIOS[i] : phaseScn(SCENARIOS[i], phase), c = campaignAt(i, difficulty);
   if (mutate) mutate(c, seed);   // camp decisions applied before the battle (used by tools/campbalance.mjs)
   const m = modsOf(c);
-  const b = new Battle(scn, romeSpecs(c, scn), { difficulty, seed, fort: c.fort, recovery: m.recovery, moraleBonus: m.morale });
+  const b = new Battle(scn, romeSpecs(c, scn), { difficulty, seed, fort: c.fort, recovery: m.recovery, moraleBonus: m.morale, forceScale: process.env.AUTHORED ? undefined : forceScale(c, scn) });   // the host is sized to the army as in the game (AUTHORED=1 for the written sizes)
   const rome = b.units.filter(u => u.side === 'rome');
   const dt = 0.1;
   let guard = 0;
@@ -86,6 +86,7 @@ export function play(strategy, i, difficulty, seed, mutate = null, phase = null)
     }
     if (strategy === 'hold' && b.t < 0.2) rome.forEach(u => { if (u.type.cat === 'inf') u.stance = 'hold'; });
     if (strategy === 'retreat' && b.t > 60) b.retreatAll();
+    if (strategy === 'lateretreat') { smartBot(b, rome, (b._bot = b._bot || {})); if (!b.retreating && b.t > 30 && b.activeMen('rome') < b.startRome * 0.7) b.retreatAll(); }   // fight, then sound the retreat once a third is lost
     if (strategy === 'smart') smartBot(b, rome, (b._bot = b._bot || {}));
     if (strategy === 'tactician') {
       // default stance is 'defend post' (engage nearby enemies, then return); no blanket hold

@@ -24,13 +24,15 @@ const COMBAT_PACE = 0.25;
 const RANGED_PACE = 0.55;
 // Friendly units never shove each other. A moving unit marches through friends at this fraction of its speed.
 const PASS_SPEED = 0.3;
+const GHOST_SPEED = 0.6;   // a unit that was stuck files through friendly units at this pace
 // Melee geometry. Fighting a unit head-on is a slow grind; hitting its side or rear, or surrounding it, is decisive.
 const FRONT_GRIND = 0.8, FLANK_DMG = 1.5, REAR_DMG = 2.2;
 const FLANK_MORALE = 1.0, REAR_MORALE = 2.0, SURROUND_MORALE = 1.2;
 // Command: the general's banner sets a radius inside which Roman cohorts recover and rally well. Charges need fresh, steady men.
-const CMD_R = 240, GEN_SPEED = 75, ALL_ORDERS = ['hold', 'fallback', 'holdfire', 'extend', 'testudo', 'sprint', 'guard', 'rally', 'relieve', 'pursue', 'wedge', 'orbis', 'queue', 'array', 'cycle', 'rotate', 'priority', 'detach'];
+const CMD_R = 240, GEN_SPEED = 75, ALL_ORDERS = ['hold', 'fallback', 'holdfire', 'extend', 'testudo', 'sprint', 'guard', 'rally', 'relieve', 'pursue', 'wedge', 'orbis', 'queue', 'array', 'cycle', 'rotate', 'priority', 'detach', 'lanes'];
 const hgt = (b, u) => elevAt(b.scn, u.x, u.y) / 40;   // height in 'hill units': 1 is an ordinary hilltop
 const SIGHT = 520, SPRINT = 1.45;
+const WITHDRAW_SECS = 30;      // how long the army covers its withdrawal after the retreat is sounded
 let UID = 1;
 
 export class Unit {
@@ -73,6 +75,7 @@ export class Unit {
   updateDims() {
     const t = this.type;
     const baseFront = Math.max(3, Math.sqrt(this.men * 3 * t.space)), wide = this.formation === 'normal' ? this.wide || 1 : 1;   // an extended line is wider and so thinner
+    if (t.big) { const ne = Math.max(1, Math.ceil(this.men / t.perDot)); this.baseW = this.w = Math.max(30, ne * 22); this.d = 34; this.front = this.effFront = Math.max(3, this.men / 2.4); return; }   // a line of elephants, each about twenty paces apart
     if (t.wagon) { const nw = Math.max(1, Math.ceil(this.men / t.perDot)); this.baseW = this.w = nw * 34; this.d = 34; this.front = this.effFront = baseFront; return; }   // a row of wagons, each about thirty paces long
     this.baseW = Math.max(14, baseFront * 2.7); this.front = baseFront * wide; this.effFront = baseFront * (1 + 0.55 * (wide - 1));   // extra frontage helps, but with diminishing returns
     const rows = Math.max(1, this.men / this.front);
@@ -101,6 +104,7 @@ export class Battle {
     this.clearT = 0; this.fieldClear = false; this.callDelay = scn.callDelay || 12;   // breather before the next wave comes on its own
     this.retreating = false; this.broken = { rome: false, gaul: false };
     this.reinf = (scn.reinforcements || []).map(r => ({ ...r, done: false }));
+    this.events = (scn.events || []).map(e => ({ ...e, done: false }));            // scripted moments (an unordered charge, a panic in the enemy line)
     this.floats = [];
     this.stats = { flankTime: 0, rearTime: 0, rangedKills: 0, pilum: 0, routs: { rome: 0, gaul: 0 }, outCmd: 0, engaged: 0, k: { rome: {}, gaul: {} }, rallied: 0, relieved: 0 };
     this.rep = { series: [], events: [], nextSample: 0 };      // battle report: army strength over time and the moments that mattered
@@ -108,10 +112,13 @@ export class Battle {
     this.rule = scn.rule || null; this.hold = { rome: 0, gaul: 0 };
     this.fortLevel = opts.fort || 0; this.scouted = !!opts.scouted; this.shake = 0;
     this.favour = opts.favour || 0;
+    // Roman against Roman: a wavering enemy cohort may come over to you. The better your name for clemency (goodwill), the likelier.
+    this.defectChance = scn.defect ? clamp(0.12 + 0.08 * this.favour, 0.03, 0.4) : 0;
     // enemy strength modifiers: difficulty + local favour (informants and divided tribes)
     const favMult = this.favour >= 2 ? 0.9 : this.favour <= -2 ? 1.1 : 1;
     this.powerScale = opts.forceScale || 1; this.rewardScale = Math.pow(this.powerScale, 0.75);   // bigger hosts carry bigger spoils
-    this.enemyScale = this.diff.enemyMult * favMult * (scn.id === 'prologue' || scn.practice ? 1 : 0.9);   // real battles are meant to be a fight
+    // a campaign battle's host is already sized to your army by its posture (state.js forceScale); older callers get the authored host, a little lighter
+    this.enemyScale = this.diff.enemyMult * favMult * (scn.id === 'prologue' || scn.practice || opts.forceScale ? 1 : 0.9);
     this.recoveryMult = opts.recovery ?? 1;
     const rb = this.diff.romeMorale + Math.min(12, this.fortLevel * 4) + (opts.suppliesLow ? -8 : 0) + (opts.moraleBonus || 0);
     this.romeBonus = rb;
@@ -130,7 +137,7 @@ export class Battle {
   // bigger army meets more warbands, in ranks, not a handful of monsters. Returns the men spawned.
   spawnEnemy(e) {
     const total = Math.round(e.men * this.enemyScale * this.powerScale * (this.scn.boost || 1) * (this.typeScale[e.type] ?? 1)); if (total < 8) return 0;
-    const cap = { warband: 520, gaul_elite: 330, gaul_skirm: 190, gaul_cav: 95, suebi: 520, german_cav: 95, laager: 210 }[e.type] || 400, n = Math.max(1, Math.min(14, Math.ceil(total / cap)));
+    const cap = { warband: 520, gaul_elite: 330, gaul_skirm: 190, gaul_cav: 95, suebi: 520, german_cav: 95, laager: 210, numid_cav: 110, horse_archer: 110, lancer: 100, pomp_cav: 110, elephant: 80, chariot: 60, pompeian: 480, pontic: 480 }[e.type] || 400, n = Math.max(1, Math.min(14, Math.ceil(total / cap)));
     let spawned = 0;
     for (let i = 0; i < n; i++) {
       const men = Math.round(total / n), row = Math.floor(i / 8), per = Math.min(8, n - row * 8);
@@ -420,6 +427,8 @@ export class Battle {
     u.formation = u.formation === 'wedge' ? 'normal' : 'wedge'; u.wide = 1;
     u.updateDims();
   }
+  // Open ranks: the cohort opens lanes between its maniples, so elephants (and later chariots) run through and are speared from both sides.
+  toggleLanes(u) { if (!u.active || u.type.cat !== 'inf' || !this.orders.has('lanes')) return false; u.lanes = !u.lanes; return true; }
   toggleOrbis(u) {
     if (!u.active || u.type.cat !== 'inf' || !this.orders.has('orbis')) return;
     u.formation = u.formation === 'orb' ? 'normal' : 'orb'; u.wide = 1;
@@ -454,7 +463,8 @@ export class Battle {
   rallyUnit(u) {
     u.mc = {}; this.mark('unitrally', u.name, u.side);
     u.state = 'idle'; u.stance = 'hold'; u.fatigue = Math.max(u.fatigue, 40);
-    if (u.side === 'rome') u.order = { kind: 'move', x: u.post.x, y: u.post.y, tf: null };
+    if (u.side === 'rome' && this.retreating) u.order = { ...this.retreatOrder };
+    else if (u.side === 'rome') u.order = { kind: 'move', x: u.post.x, y: u.post.y, tf: null };
     else { u.order = { kind: 'none' }; u.post = { x: u.x, y: u.y }; }
     this.say(`${u.name} rallies!`, u.side === 'rome' ? 'good' : 'info');
     if (u.ai) u.ai.kind = 'rush';
@@ -496,13 +506,37 @@ export class Battle {
     u.order.back = true; u.order.ignore = true;   // an orderly withdrawal: walk backward, keep facing the enemy, no rout
     u.stance = 'hold';
   }
+  // Sounding the retreat: the army withdraws away from the enemy, men in contact stepping back with their shields to the foe (no blows in the
+  // back), the rest marching off. After WITHDRAW_SECS the withdrawal is complete and the battle ends: a draw if enough men got away.
   retreatAll() {
-    if (this.retreating || this.result) return;
-    this.retreating = true;
-    for (const u of this.units) if (u.side === 'rome' && u.active) u.order = { kind: 'retreat' };
-    this.say('The signal to withdraw is sounded!', 'warn');
+    if (this.retreating || this.result || this.deploying) return;
+    const rs = this.units.filter(u => u.side === 'rome' && u.active), gs = this.units.filter(u => u.side === 'gaul' && u.active);
+    if (!rs.length) return;
+    const rc = { x: rs.reduce((a, u) => a + u.x, 0) / rs.length, y: rs.reduce((a, u) => a + u.y, 0) / rs.length };
+    const gc = gs.length ? { x: gs.reduce((a, u) => a + u.x, 0) / gs.length, y: gs.reduce((a, u) => a + u.y, 0) / gs.length } : { x: rc.x, y: rc.y - 100 };
+    let dx = rc.x - gc.x, dy = rc.y - gc.y; const d = Math.hypot(dx, dy);
+    if (d < 1) { dx = 0; dy = 1; } else { dx /= d; dy /= d; }
+    this.retreating = true; this.retreatT = this.t; this.retreatOrder = { kind: 'retreat', dx, dy };
+    for (const u of rs) u.order = { ...this.retreatOrder };
+    this.say(`The signal to withdraw is sounded! The army falls back in order; the withdrawal is complete in ${WITHDRAW_SECS} seconds.`, 'warn');
   }
+  withdrawLeft() { return this.retreating ? Math.max(0, WITHDRAW_SECS - (this.t - this.retreatT)) : null; }
 
+  runEvent(ev) {
+    if (ev.kind === 'rashRight') {                   // Thapsus: the veterans on the right force a trumpeter to sound the charge
+      for (const u of this.units) if (u.side === 'rome' && u.active && u.type.cat === 'inf' && u.x > WORLD.w * 0.58 && !u.contacts.some(e => e.active)) { const n = this.nearestEnemy(u); if (n) this.setAttack(u, n.e); }
+      this.say(ev.msg, 'warn');
+    } else if (ev.kind === 'shake') {               // Munda: the enemy line thinks its general is running
+      for (const u of this.units) if (u.side === 'gaul' && u.active) { u.morale -= ev.amount || 12; this.mloss(u, 'panic', ev.amount || 12); }
+      this.say(ev.msg, 'good'); this.mark('commit', ev.msg, 'rome');
+    } else if (ev.msg) this.say(ev.msg, 'info');
+  }
+  // A wavering Pompeian cohort that goes over to you: it becomes yours for the rest of the battle (not your army's afterwards).
+  defect(u) {
+    u.side = 'rome'; u.ai = null; u.order = { kind: 'none' }; u.stance = 'hold'; u.post = { x: u.x, y: u.y }; u.contacts = []; u.prevIds = new Set();
+    u.morale = u.maxMorale * 0.6; u.name = `${u.name} (came over)`; u.defected = true; u.spotted = true; u.f = norm(u.f + Math.PI);
+    this.mark('unitrally', u.name, 'rome'); this.say(`A Pompeian cohort lowers its standards and comes over to you!`, 'good');
+  }
   pendingWaves() { return this.reinf.filter(r => !r.done && r.side !== 'rome'); }
   nextWaveEta() { const p = this.pendingWaves(); return p.length ? Math.max(0, Math.min(...p.map(r => r.at)) - this.t) : null; }
   // Bring the next enemy wave forward to now (everything due within 8 seconds of it comes with it).
@@ -692,6 +726,7 @@ export class Battle {
     if (this.smartAI) this.updateSurge();
     for (const u of this.units) {
       if (u.side !== 'gaul' || !u.active || !u.ai || u.cyc) continue;
+      if (u.leaving) { if (u.y < 9) { u.state = 'gone'; u.exited = true; } continue; }
       const ai = u.ai;
       const near = this.nearestEnemy(u);
       if (!near) continue;
@@ -717,6 +752,31 @@ export class Battle {
           this.setMove(u, clamp(u.x + dx / d * 90, 20, WORLD.w - 20), clamp(u.y + dy / d * 90, 20, WORLD.h - 20));
         } else if (near.gap > u.type.range * 0.9) this.setMove(u, tgt.x, tgt.y);
         else u.order = { kind: 'none' };
+      } else if (ai.kind === 'chariot') {
+        // scythed chariots: wait for the signal, then one headlong run at the nearest body of foot
+        if (this.t < (ai.delay || 0) || u.order.kind === 'attack' || u.spent) continue;
+        const tg = this.pickTarget(u, (e) => e.active && e.type.cat === 'inf'); if (tg) this.setAttack(u, tg, true);
+      } else if (ai.kind === 'numidian') {
+        // Skirmishing horse (Numidian javelinmen, steppe horse archers): ride in, throw or shoot, wheel away from anything that comes at them, and come back. With the javelins gone they look for
+        // a flank or a rear to ride into, or a broken unit to cut down.
+        if (this.t < (ai.delay || 0)) continue;
+        const rout = this.nearestEnemy(u, (e) => e.state === 'routing' && e.present);
+        if (rout && rout.gap < 260) { this.setAttack(u, rout.e); continue; }
+        if (u.ammo <= 0 && u.type.shootMoving) {                       // steppe archers with empty quivers ride off the field to refill; they do not close
+          if (!u.leaving) { u.leaving = true; this.setMove(u, u.x, -60, null, true); u.order.pass = true; if (!this.saidQuiver) { this.saidQuiver = true; this.say('Their horse archers have emptied their quivers and are riding off.', 'good'); } }
+          else if (u.y < 9) { u.state = 'gone'; u.exited = true; }
+          continue;
+        }
+        if (u.ammo <= 0) { ai.kind = 'flank'; ai.delay = 0; continue; }
+        const thr = this.nearestEnemy(u, (e) => e.active && e.type.cat !== 'ranged' && e.state === 'moving');
+        const close = this.nearestEnemy(u, (e) => e.active && e.type.cat !== 'ranged');
+        if ((thr && thr.gap < 110) || (close && close.gap < 45)) {
+          const f = (thr && thr.gap < 110 ? thr : close).e, dx = u.x - f.x, dy = u.y - f.y, d = Math.hypot(dx, dy) || 1;
+          this.setMove(u, clamp(u.x + dx / d * 200, 20, WORLD.w - 20), clamp(u.y + dy / d * 200, 20, WORLD.h - 20), null, true); u.order.pass = true; ai.evadeT = this.t + 3;
+        } else if (this.t > (ai.evadeT || 0)) {
+          if (near.gap > u.type.range * 0.85) { const p = this.pickTarget(u); if (p) this.setMove(u, p.x, p.y); }
+          else if (u.order.kind === 'move') u.order = { kind: 'none' };
+        }
       } else if (ai.kind === 'raid') {
         if (this.t < (ai.delay || 0)) continue;
         const o = this.objectives.find(x => x.id === ai.obj);
@@ -746,6 +806,7 @@ export class Battle {
   update(dt) {
     if (this.result) return;
     this.t += dt; this.sampleReport(); this.recordFrame(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt); this.updateRotation(); this.runPending(); this.updateSupply(dt); this.stepLegates(dt);
+    for (const ev of this.events) if (!ev.done && this.t >= ev.at) { ev.done = true; this.runEvent(ev); }
     for (const r of this.reinf) if (!r.done && this.t >= r.at) {
       r.done = true;
       if (r.side === 'rome') {
@@ -829,7 +890,11 @@ export class Battle {
       } }
     let goal = null, speedMul = 1, breakoff = false, backing = false;
 
-    if (u.order.kind === 'retreat') goal = { x: u.x, y: H + 90 };
+    if (u.order.kind === 'retreat') {
+      const o = u.order, n = this.nearestEnemy(u, (e) => e.active);
+      if (n && n.gap < 90) { o.x = u.x + o.dx * 200; o.y = u.y + o.dy * 200; backing = true; }   // still within reach: step back with shields to the enemy
+      else goal = { x: u.x + o.dx * 400, y: u.y + o.dy * 400 };
+    }
     else if (u.order.kind === 'move') {
       const dx = u.order.x - u.x, dy = u.order.y - u.y, dist = Math.hypot(dx, dy);
       // a marching missile unit stops to fire the moment an enemy is in range ahead (Ctrl+right-click moves ignore this)
@@ -935,14 +1000,16 @@ export class Battle {
     u.fighting = (engaged && (!breakoff || u.blocked)) || pursuit && !breakoff;
     if (u.fighting) u.state = 'fighting';
     // fatigue
-    if (u.fighting) u.fatigue = Math.min(100, u.fatigue + 0.9 * (t.tire || 1) * dt);
-    else if (u.state === 'moving') u.fatigue = Math.min(100, u.fatigue + (speedMul > 1 ? 1.9 : 0.45) * (t.tire || 1) * dt);
+    const heat = t.native ? 1 : (this.wx.fatigue || 1);              // the African sun tires everyone but the Numidians
+    if (u.fighting) u.fatigue = Math.min(100, u.fatigue + 0.9 * (t.tire || 1) * heat * dt);
+    else if (u.state === 'moving') u.fatigue = Math.min(100, u.fatigue + (speedMul > 1 ? 1.9 : 0.45) * (t.tire || 1) * heat * dt);
     else u.fatigue = Math.max(0, u.fatigue - 2.2 * dt);
     // exit by retreat
-    if (u.order.kind === 'retreat' && u.y >= H + 60) { u.state = 'gone'; u.exited = true; this.say(`${u.name} has withdrawn from the field.`, 'info'); }
+    if (u.order.kind === 'retreat' && (u.y >= H + 60 || u.y <= -60 || u.x <= -60 || u.x >= W + 60)) { u.state = 'gone'; u.exited = true; this.say(`${u.name} has withdrawn from the field.`, 'info'); }
   }
 
   stepRout(u, dt) {
+    if (u.type.rampage) return this.stepRampage(u, dt);
     // flee away from nearest enemy, toward the nearer map edge on the side away from threat
     const n = this.nearestEnemy(u, (e) => e.active);
     let dx, dy;
@@ -966,6 +1033,21 @@ export class Battle {
     if (u.x < -60 || u.x > WORLD.w + 60 || u.y < -60 || u.y > WORLD.h + 60) { u.state = 'gone'; u.fled = true; }
   }
 
+  // A panicked elephant does not rally: it bolts away from what hurt it, straight through whatever stands in the way, its own side's men
+  // as much as the enemy's, until it is off the field or brought down.
+  stepRampage(u, dt) {
+    if (u.rampH == null) { const n = this.nearestEnemy(u, (e) => e.active); u.rampH = n ? Math.atan2(u.y - n.e.y, u.x - n.e.x) + (this.rand() - 0.5) * 0.6 : u.f + Math.PI; if (u.side === 'gaul') this.say('The elephants panic and stampede through their own lines!', u.side === 'gaul' ? 'good' : 'bad'); }
+    u.f = u.rampH; u.state = 'routing';
+    const sp = u.type.speed * 1.35; u.x += Math.cos(u.rampH) * sp * dt; u.y += Math.sin(u.rampH) * sp * dt;
+    for (const o of this.units) {
+      if (o === u || !o.present || o.type.big || o.type.wagon) continue;
+      if (Math.abs(o.x - u.x) > 120 || Math.abs(o.y - u.y) > 120 || this.gap(u, o) > 0) continue;
+      o.trampleAcc = (o.trampleAcc || 0) + dt * u.men * 0.06;
+      if (o.trampleAcc >= 1) { const k = Math.floor(o.trampleAcc); o.trampleAcc -= k; this.hit(u, o, k, false, 'trampled'); }
+      if (o.state !== 'routing') { o.morale -= 5 * dt; this.mloss(o, 'trampled', 5 * dt); }
+    }
+    if (u.x < -80 || u.x > WORLD.w + 80 || u.y < -80 || u.y > WORLD.h + 80) { u.state = 'gone'; u.fled = true; }
+  }
   waterAt(x, y) { return terrainAt(this.scn, x, y).kind === 'water'; }
   // Where a unit should actually head: straight for its goal, unless a river lies between, in which case via the nearest ford.
   pathGoal(u, g) {
@@ -1009,7 +1091,7 @@ export class Battle {
   walkBack(u, dt) {
     const dx = u.order.x - u.x, dy = u.order.y - u.y, d = Math.hypot(dx, dy) || 1, n = this.nearestEnemy(u);
     if (n) this.turnToward(u, n.e, dt, 0.8);
-    const sp = this.speedOf(u) * 0.9 * (this.overlapsFriend(u, dx / d, dy / d) ? PASS_SPEED : 1), step = Math.min(d, sp * dt);
+    const sp = this.speedOf(u) * 0.9 * (u.order.kind !== 'retreat' && this.overlapsFriend(u, dx / d, dy / d) ? PASS_SPEED : 1), step = Math.min(d, sp * dt);
     u.x += dx / d * step; u.y += dy / d * step; u.runT = 0;
   }
   // True while a unit is actually marching through a friendly unit: it has pushed well into the friend's footprint and the friend
@@ -1032,12 +1114,24 @@ export class Battle {
     if (dist >= 30) u.f = norm(u.f + clamp(diff, -m, m));              // a short shuffle is a sidestep, not a turn
     const ad = Math.abs(norm(h - u.f));
     const align = dist < 30 ? 1 : ad < 0.6 ? 1 : ad < 1.5 ? 0.4 : 0.12;
+    // Stuck watch: a unit that has made no headway for a while is never left bouncing. Sent to a point close by, it stops where it is
+    // (the spot is taken; it dresses into line beside the friend there). Further off, it is allowed to file through friendly units.
+    if (u.order.kind === 'move' || u.order.kind === 'attack') {
+      const pr = u.prog;
+      if (!pr || pr.o !== u.order || dist < pr.d - 5) u.prog = { d: dist, t: this.t, o: u.order };
+      else if (this.t - pr.t > 2.5) {
+        u.prog = { d: dist, t: this.t, o: u.order };
+        if (u.order.kind === 'move' && dist < Math.max(90, u.w)) { u.order.x = u.x; u.order.y = u.y; u.post = { x: u.x, y: u.y }; return 0; }
+        u.ghostUntil = this.t + 4;
+      }
+    }
+    const ghost = u.ghostUntil > this.t;
     u.passing = this.overlapsFriend(u, Math.cos(h), Math.sin(h));          // marching through friendly units is slow going
-    const sp = this.speedOf(u) * speedMul * align * (u.passing && !u.order.pass ? PASS_SPEED : 1);
+    const sp = this.speedOf(u) * speedMul * align * (u.passing && !u.order.pass ? (ghost ? GHOST_SPEED : PASS_SPEED) : 1);
     const step = Math.min(dist, sp * dt);
     let hh0 = h, nx = u.x + Math.cos(h) * step, ny = u.y + Math.sin(h) * step;
     // body-blocking: a unit does not march through a friend that stands in its way (unless they are in the same moving line); it steers round it
-    if (u.order.kind !== 'retreat' && !u.order.pass && step > 0.05) {
+    if (u.order.kind !== 'retreat' && !u.order.pass && !ghost && step > 0.05) {
       const grp = u.order.grp, blocker = (px, py) => {
         for (const f of this.units) {
           if (f === u || f.side !== u.side || !f.present || f.state === 'routing' || (grp && f.order && f.order.grp === grp)) continue;
@@ -1047,13 +1141,17 @@ export class Battle {
         return null;
       };
       const f0 = blocker(nx, ny);
+      // the spot it is heading for is taken by a friend who is staying there: stop alongside instead of circling him
+      if (f0 && u.order.kind === 'move' && f0.order.kind !== 'move' && dist < (Math.max(u.w, u.d) + Math.max(f0.w, f0.d)) * 0.6) { u.order.x = u.x; u.order.y = u.y; u.post = { x: u.x, y: u.y }; return 0; }
+      if (f0 && u.order.kind === 'none' && u.returning && f0.order.kind !== 'move' && Math.hypot(u.post.x - u.x, u.post.y - u.y) < (Math.max(u.w, u.d) + Math.max(f0.w, f0.d)) * 0.7) { u.post = { x: u.x, y: u.y }; u.returning = false; return 0; }   // a friend stands on the old post: this is the post now
       if (f0) {
         const side = (this.t < (u.steerUntil || 0) && u.steerSign) ? u.steerSign : (((f0.x - u.x) * Math.sin(h) - (f0.y - u.y) * Math.cos(h)) > 0 ? 1 : -1);   // friend on the left: steer right
         const stepF = u.passing ? Math.min(dist, this.speedOf(u) * speedMul * align * dt) : step;                // going round, not through: full pace
-        for (const a of [0.45, 0.9, 1.35]) {
-          const ah = h + a * side, tx = u.x + Math.cos(ah) * stepF, ty = u.y + Math.sin(ah) * stepF;
-          if (!blocker(tx, ty) && !this.waterAt(tx, ty)) { nx = tx; ny = ty; hh0 = ah; u.steerSign = side; u.steerUntil = this.t + 1.2; u.passing = false; break; }
-        }
+        let found = false;
+        for (const sd of [side, -side]) { for (const a of [0.45, 0.9, 1.35]) {                                 // the preferred side first, then the other
+          const ah = h + a * sd, tx = u.x + Math.cos(ah) * stepF, ty = u.y + Math.sin(ah) * stepF;
+          if (!blocker(tx, ty) && !this.waterAt(tx, ty)) { nx = tx; ny = ty; hh0 = ah; u.steerSign = sd; u.steerUntil = this.t + 1.2; u.passing = false; found = true; break; }
+        } if (found) break; }
       }
     }
     if (u.order.kind !== 'retreat' && this.waterAt(nx, ny) && !this.waterAt(u.x, u.y)) {   // deep water cannot be crossed: slide along the bank
@@ -1073,16 +1171,20 @@ export class Battle {
   }
 
   separate(dt) {
-    // Friendly units never shove each other (see PASS_SPEED). Only two idle units sharing the same spot drift slowly apart.
-    const us = this.units.filter(u => u.present && u.state === 'idle' && u.order.kind === 'none' && !u.fighting);
+    // Friendly units never shove each other while moving (see PASS_SPEED). Idle units that overlap dress their ranks: they side-step
+    // apart along the line they face, so two cohorts sent to the same spot end up shoulder to shoulder, not stacked.
+    const us = this.units.filter(u => u.present && u.state !== 'routing' && u.order.kind === 'none' && !u.fighting && !u.contacts.some(e => e.active) && !u.type.wagon);
     for (let i = 0; i < us.length; i++) for (let j = i + 1; j < us.length; j++) {
       const a = us[i], b = us[j];
-      if (a.side !== b.side || Math.abs(a.x - b.x) > 110 || Math.abs(a.y - b.y) > 110) continue;
-      const g = this.gap(a, b);
-      if (g < -Math.min(a.d, b.d) * 0.5) {
-        const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, push = 6 * dt;
-        a.x -= dx / d * push; a.y -= dy / d * push; b.x += dx / d * push; b.y += dy / d * push;
-      }
+      if (a.side !== b.side || Math.abs(a.x - b.x) > 160 || Math.abs(a.y - b.y) > 160) continue;
+      const g = this.gap(a, b); if (g > -2) continue;
+      const fx = Math.cos(a.f) + Math.cos(b.f), fy = Math.sin(a.f) + Math.sin(b.f), fl = Math.hypot(fx, fy) || 1, lx = -fy / fl, ly = fx / fl;   // the shared line
+      let side = (b.x - a.x) * lx + (b.y - a.y) * ly; if (Math.abs(side) < 0.5) side = a.id < b.id ? 1 : -1;
+      const sgn = Math.sign(side), push = Math.min(-g, 14 * dt) / 2;
+      const ok = (u, k) => !this.waterAt(u.x + lx * k, u.y + ly * k);
+      if (ok(a, -sgn * push)) { a.x -= lx * sgn * push; a.y -= ly * sgn * push; }
+      if (ok(b, sgn * push)) { b.x += lx * sgn * push; b.y += ly * sgn * push; }
+      for (const u of [a, b]) if (u.side === 'rome' && u.post && Math.hypot(u.post.x - u.x, u.post.y - u.y) < 160) u.post = { x: u.x, y: u.y };   // the new place is the post
     }
   }
 
@@ -1111,7 +1213,7 @@ export class Battle {
     const kk = this.stats.k[att.side]; kk[cause] = (kk[cause] || 0) + n;
     if (ranged && att.side === 'rome') this.stats.rangedKills += n;
     def.men -= n; def.casualties += n; att.kills += n; def.flash = 0.22; def.floatAcc = (def.floatAcc || 0) + n;
-    let loss = n / def.maxMen * 130 * def.type.fragile * (ranged ? 0.55 : 1);
+    let loss = n / def.maxMen * 130 * def.type.fragile * (ranged ? (def.type.panicky ? 1.4 : 0.55) : 1) * (def.type.big && cause === 'pilum' ? 0.4 : 1);   // missiles sting an elephant into panic
     if (def.officer) loss *= 1 - 0.04 * (def.officer.tactics || 0);
     if (def.temper === 'rash') loss *= 1.15; else if (def.temper === 'steady') loss *= 0.9;
     if (def.perks.includes('steadfast')) loss *= 0.8;
@@ -1133,7 +1235,7 @@ export class Battle {
     const t = u.type;
     if (u.state === 'routing') return;
     // ranged fire
-    if (t.range && u.ammo > 0 && !u.holdFire && !u.contacts.some(e => e.active) && (u.state !== 'moving' || u.order.kind === 'none')) {
+    if (t.range && u.ammo > 0 && !u.holdFire && !u.contacts.some(e => e.active) && (u.state !== 'moving' || u.order.kind === 'none' || t.shootMoving)) {   // steppe archers shoot from a moving horse
       let tgt = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null;
       if (!tgt || !tgt.active || this.gap(u, tgt) > t.range) {
         let n = u.prio ? this.nearestEnemy(u, (e) => e.active && e.spotted !== false && e.type.cat === u.prio) : null; if (!n || n.gap > t.range) n = this.nearestEnemy(u, u.side === 'rome' ? (e) => e.active && e.spotted !== false : undefined);
@@ -1145,7 +1247,7 @@ export class Battle {
         const am = this.angleMult(u, tgt).c;
         const prot = this.defOf(tgt, am === 1) * (tgt.formation === 'close' && am === 1 ? 2.2 : tgt.formation === 'orb' ? 1.2 : 0.6);
         const falloff = 1 - 0.4 * clamp(g / t.range, 0, 1);
-        u.fireAcc += u.men * t.rate * dt * (this.atkMult(u) / COMBAT_PACE) * RANGED_PACE * this.wx.missile * falloff * (1 - Math.min(0.9, prot)) * (this.terr(tgt).kind === 'forest' ? 0.6 : 1) * (1 + 0.15 * clamp(hgt(this, u) - hgt(this, tgt), -1, 1));
+        u.fireAcc += (t.shootMoving && u.state === 'moving' ? 0.75 : 1) * u.men * t.rate * dt * (this.atkMult(u) / COMBAT_PACE) * RANGED_PACE * this.wx.missile * falloff * (1 - Math.min(0.9, prot)) * (this.terr(tgt).kind === 'forest' ? 0.6 : 1) * (1 + 0.15 * clamp(hgt(this, u) - hgt(this, tgt), -1, 1));
         u.ammo -= dt;
         while (u.fireAcc >= 1) { u.fireAcc -= 1; this.hit(u, tgt, 1, true); }
         u.fxCd -= dt;
@@ -1158,7 +1260,7 @@ export class Battle {
       if (n && n.gap > 1 && n.gap <= 30) {
         u.pilumLeft--; u.pilumCd = 3; if (u.side === 'rome') this.stats.pilum++;
         const ang = this.angleMult(u, n.e);
-        const kills = Math.round(u.men * 0.05 * (this.atkMult(u) / COMBAT_PACE) * (1 - n.e.type.def * 0.5) * (n.e.formation === 'close' ? 0.5 : 1));
+        const kills = Math.round(u.men * 0.05 * (this.atkMult(u) / COMBAT_PACE) * (1 - n.e.type.def * 0.5) * (n.e.formation === 'close' ? 0.5 : 1) * (n.e.type.big ? 0.3 : 1));   // a few pila do not stop an elephant or a team at the gallop
         this.hit(u, n.e, kills, false, 'pilum'); n.e.moralePending += 3; this.mloss(n.e, 'pilum', 3); n.e.disrupted = 6;
         for (let i = 0; i < 8; i++) this.fx.push({ x1: u.x + (this.rand() - 0.5) * u.w, y1: u.y, x2: n.e.x + (this.rand() - 0.5) * n.e.w, y2: n.e.y + (this.rand() - 0.5) * n.e.d, life: 0.45, max: 0.45, kind: 'pilum' });
         if (u.side === 'rome') this.say(`${u.name} hurls its pila!`, 'info');
@@ -1177,10 +1279,11 @@ export class Battle {
       const ang = this.angleMult(u, e);
       // impact on new contact
       if (!u.prevIds.has(e.id) && e.state !== 'routing' && u.runT > 1.2 && t.charge > 0.3) {
-        let imp = u.men * t.charge * 0.035 * ang.m * (u.formation === 'wedge' ? 1.4 : 1) * (u.disrupted > 0 ? 0.5 : 1) * (u.perks.includes('shock') ? 1.25 : 1);
+        let imp = u.men * (t.chargePer || t.charge * 0.035) * ang.m * (u.formation === 'wedge' ? 1.4 : 1) * (u.disrupted > 0 ? 0.5 : 1) * (u.perks.includes('shock') ? 1.25 : 1);
         imp *= e.formation === 'close' && ang.c === 1 ? 0.7 : 1;
         imp *= 1 - Math.max(0, (e.type.antiCharge || 0) * (1 - 0.35 * ((e.wide || 1) - 1))) * (e.state === 'idle' || e.stance === 'hold' ? 1 : 0.4);
         imp *= 1 + 0.3 * ((e.wide || 1) - 1);                    // a charge into a thin line goes deeper
+        if (t.big && e.lanes) { imp *= 0.3; u.moralePending += 6; this.mloss(u, 'lanes', 6); }   // open ranks: the beasts run down the lanes and are speared from both sides
         imp *= this.wx.charge * (this.terr(u).kind === 'forest' ? 0.6 : this.terr(u).kind === 'ford' ? 0.8 : 1);       // no run-up among trees or in water
         imp *= u.temper === 'rash' ? 1.15 : u.temper === 'bold' ? 1.1 : u.temper === 'cautious' ? 0.85 : 1;
         imp *= this.terr(e).def;
@@ -1192,8 +1295,9 @@ export class Battle {
         if (!this.inCommand(u)) imp *= 0.7;                          // out of the general's sight, a charge goes in ragged
         this.hit(u, e, Math.round(imp), false, 'charge');
         if (imp > 6) { this.addFx({ kind: 'clash', x: (u.x + e.x) / 2, y: (u.y + e.y) / 2, life: 0.6, max: 0.6, r: clamp(imp / 5, 9, 30) }); this.shake = Math.max(this.shake, Math.min(3, imp / 25)); }
-        e.moralePending += t.charge * 3 * ang.m; this.mloss(e, 'charge', t.charge * 3 * ang.m);
+        { const ml = (t.charge * 3 + (t.terror ? t.terror * (e.type.cat === 'cav' ? 10 : 5) * (e.lanes ? 0.4 : 1) : 0)) * ang.m; e.moralePending += ml; this.mloss(e, 'charge', ml); }
         if (u.side === 'gaul' && e.side === 'rome' && imp > 8) this.say(`${u.name} crashes into ${e.name}!`, 'warn');
+        if (t.oneShot) { u.morale = 0; u.spent = true; }        // a scythed chariot has one charge in it; then the teams bolt
         u.runT = 0;
       }
       const routingMult = e.state === 'routing' ? (t.cat === 'cav' ? 2.2 : 1.6) * (t.hunt || 1) : 1;
@@ -1201,7 +1305,8 @@ export class Battle {
       // head-on is a grind; flank and rear hits are decisive; a unit hit from the side or behind, or surrounded, fights back less
       const pressed = u.surrounded ? 0.7 : 1 - 0.15 * Math.min(3, u.flanked || 0);
       const room = ang.c === 1 ? Math.min(1, 3 * (e.wide || 1) / Math.max(1, e.frontCount || 1)) : 1;   // only so many men can fight on one front
-      u.pending += share * (1 + 0.25 * ((e.wide || 1) - 1)) * t.atk * dt * am * ang.g * room * pressed * (1 - def) * routingMult * this.terr(e).def;
+      const laneF = e.lanes ? (t.big ? 0.5 : 1.2) : 1;           // open ranks blunt elephants but leave gaps for anyone else
+      u.pending += laneF * share * (1 + 0.25 * ((e.wide || 1) - 1)) * t.atk * dt * am * ang.g * room * pressed * (1 - def) * routingMult * this.terr(e).def;
       if (ang.c > 1 && e.state !== 'routing') { const ml = (ang.c === 3 ? REAR_MORALE : FLANK_MORALE) * dt / targets.length; e.morale -= ml; this.mloss(e, ang.c === 3 ? 'rear' : 'flank', ml); }
       if (u.side === 'rome' && ang.c > 1 && e.state !== 'routing') this.stats[ang.c === 3 ? 'rearTime' : 'flankTime'] += dt / targets.length;
     }
@@ -1221,6 +1326,7 @@ export class Battle {
       this.floats.push({ x: u.x + (this.rand() - 0.5) * u.w * 0.6, y: u.y - 4, text: '-' + Math.round(u.floatAcc), side: u.side, life: 1.5, max: 1.5 });
       u.floatAcc = 0; u.floatCd = 0.9;
     }
+    if (u.type.terror && u.state !== 'routing') for (const e of u.contacts) if (e.active) { const ml = u.type.terror * dt * (e.type.cat === 'cav' ? 2 : 1) * (e.lanes ? 0.4 : 1); e.morale -= ml; this.mloss(e, 'elephants', ml); }   // horses will not face elephants
     if (u.surrounded && u.state !== 'routing') { u.morale -= SURROUND_MORALE * dt; this.mloss(u, 'surround', SURROUND_MORALE * dt); }
     if (u.side === 'rome' && u.state !== 'routing' && u.contacts.some(e => e.active)) { this.stats.engaged += dt; if (!this.inCommand(u)) this.stats.outCmd += dt; }
     if (u.moralePending > 0) {
@@ -1228,6 +1334,7 @@ export class Battle {
     }
     u.updateDims();
     if (u.state === 'dead' || u.state === 'gone') return;
+    if (this.defectChance && u.side === 'gaul' && u.type.defects && !u.defectRolled && u.state !== 'routing' && u.morale < u.maxMorale * 0.35) { u.defectRolled = true; if (this.rand() < this.defectChance) { this.defect(u); return; } }
     if (u.state !== 'routing') {
       if (!u.contacts.some(e => e.active)) u.morale = Math.min(u.maxMorale, u.morale + (2.2 + (u.officer ? 0.35 * (u.officer.tactics || 0) : 0) + (u.perks.includes('inspire') ? 1.1 : 0)) * (u.auraT > this.t ? 1.25 : 1) * dt * (u.side === 'rome' ? (this.inCommand(u) ? 1.2 : 0.45) : 1));
       if (u.type.wagon) u.morale = Math.max(u.morale, 30);                          // a laager cannot run: it is held until the last man falls
@@ -1291,7 +1398,8 @@ export class Battle {
     if (!this.retreating && (romeActive < this.startRome * 0.2 || !this.units.some(u => u.side === 'rome' && u.active))) {
       this.say('Your army is shattered.', 'bad'); return finish('defeat', 3);
     }
-    if (this.retreating && !this.units.some(u => u.side === 'rome' && u.present && u.state !== 'routing')) {
+    if (this.retreating && (this.t - this.retreatT >= WITHDRAW_SECS || !this.units.some(u => u.side === 'rome' && u.present && u.state !== 'routing'))) {
+      this.say(this.preserved() >= this.startRome * this.retreatFloor() ? 'The withdrawal is complete. The army gets away in good order.' : 'The withdrawal is complete, but too few men got away.', 'info');
       return finish(this.preserved() >= this.startRome * this.retreatFloor() ? 'draw' : 'defeat', 1);
     }
     if (this.t >= this.scn.timeLimit) {
@@ -1304,7 +1412,7 @@ export class Battle {
   retreatFloor() { return Math.max(0.3, 0.45 - 0.05 * this.fortLevel); }
   preserved() { // men Rome keeps if the battle ended now
     let n = 0;
-    for (const u of this.units) if (u.side === 'rome') n += u.state === 'routing' ? u.men * 0.5 : u.state === 'gone' ? (u.exited ? u.men : u.men * 0.5) : u.men;
+    for (const u of this.units) if (u.side === 'rome' && !u.defected) n += u.state === 'routing' ? u.men * 0.5 : u.state === 'gone' ? (u.exited ? u.men : u.men * 0.5) : u.men;
     return n;
   }
 

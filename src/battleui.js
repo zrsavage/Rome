@@ -7,6 +7,7 @@ import { ask } from './ui.js';
 import { icon } from './icons.js';
 import { dragLayout, compass, triplexLayout, saveFormation, recallFormation } from './orders.js';
 import { WEATHER } from './weather.js';
+const NOISY = /crashes into|hurls its pila|refills|fresh pila|loses its formation|cannot hold a formation|Enemy sighted|rallies!|fights harder|charge falters|breaks off and runs/;
 
 const $ = (id) => document.getElementById(id);
 
@@ -28,7 +29,7 @@ export class BattleUI {
     this.r.buildBackground(scn); this.r.fit();
     { const rs = this.b.units.filter(u => u.side === 'rome'); if (rs.length) { this.r.cam.zoom = Math.max(this.r.minZoom, Math.min(0.9, this.r.cam.zoom * 3)); this.r.cam.x = rs.reduce((a, u) => a + u.x, 0) / rs.length; this.r.cam.y = rs.reduce((a, u) => a + u.y, 0) / rs.length - 160 / this.r.cam.zoom; this.r.clampCam(); } }
     this.refreshBottom(); this.setPause(true); this.setSpeed(1);
-    $('help-orders').innerHTML = [['hold', '<b>H</b> hold position &middot; <b>G</b> defend post'], ['fallback', '<b>R</b> fall back and rest'], ['holdfire', '<b>J</b> hold fire (missile troops)'], ['extend', '<b>L</b> extend the line (thinner, wider); <b>Alt+right-drag</b> fills a drawn line'], ['wedge', '<b>U</b> wedge'], ['sprint', '<b>Shift+right-click</b> sprint / charge'], ['guard', '<b>right-click a friendly unit</b> to guard it'], ['testudo', '<b>T</b> testudo'], ['orbis', '<b>O</b> orbis (hollow square)'], ['relieve', '<b>Y</b> relieve a tired cohort'], ['pursue', '<b>P</b> cavalry pursue routers'], ['rally', '<b>F</b> rally the line'], ['queue', '<b>N</b> waypoint mode (right-click adds points)'], ['array', '<b>B</b> triplex acies; <b>Ctrl+B</b> remembers your formation, <b>Alt+B</b> recalls it'], ['rotate', '<b>K</b> auto-rotate tired cohorts'], ['cycle', '<b>M</b> horse charge, break off and re-charge'], ['priority', '<b>I</b> missile target priority'], ['detach', '<b>,</b> send out or recall a cohort\'s antesignani']].filter(([id]) => this.b.orders.has(id)).map(x => x[1]).join(' &middot; ');
+    $('help-orders').innerHTML = [['hold', '<b>H</b> hold position &middot; <b>G</b> defend post'], ['fallback', '<b>R</b> fall back and rest'], ['holdfire', '<b>J</b> hold fire (missile troops)'], ['extend', '<b>L</b> extend the line (thinner, wider); <b>Alt+right-drag</b> fills a drawn line'], ['wedge', '<b>U</b> wedge'], ['sprint', '<b>Shift+right-click</b> sprint / charge'], ['guard', '<b>right-click a friendly unit</b> to guard it'], ['testudo', '<b>T</b> testudo'], ['orbis', '<b>O</b> orbis (hollow square)'], ['lanes', '<b>.</b> open ranks (lanes against elephants)'], ['relieve', '<b>Y</b> relieve a tired cohort'], ['pursue', '<b>P</b> cavalry pursue routers'], ['rally', '<b>F</b> rally the line'], ['queue', '<b>N</b> waypoint mode (right-click adds points)'], ['array', '<b>B</b> triplex acies; <b>Ctrl+B</b> remembers your formation, <b>Alt+B</b> recalls it'], ['rotate', '<b>K</b> auto-rotate tired cohorts'], ['cycle', '<b>M</b> horse charge, break off and re-charge'], ['priority', '<b>I</b> missile target priority'], ['detach', '<b>,</b> send out or recall a cohort\'s antesignani']].filter(([id]) => this.b.orders.has(id)).map(x => x[1]).join(' &middot; ');
     $('btn-retreat').disabled = false;
     if (scn.id !== 'prologue') { this.b.beginDeploy(); this.showBanner('DEPLOYMENT - place your units in the gold zone, then press SPACE', 4000); } else this.showBanner('DEPLOYMENT - press SPACE', 2500);
     this.last = performance.now(); this.acc = 0; this.hudT = 0;
@@ -185,6 +186,7 @@ export class BattleUI {
       const keyCmd = { h: 'hold', g: 'defend', r: 'fallback', t: 'testudo', o: 'orbis', u: 'wedge', y: 'relieve', p: 'pursue', j: 'holdfire', f: 'rally', l: 'extend', k: 'rotate', m: 'cycle', i: 'priority', n: 'queue' }[k];
       if (keyCmd && !e.ctrlKey && !e.metaKey) this.cmd(keyCmd);
       if (k === ',' && !e.ctrlKey && !e.metaKey) this.cmd('detach');
+      if (k === '.' && !e.ctrlKey && !e.metaKey) this.cmd('lanes');
       if (/^[1-9]$/.test(k) && e.altKey) { e.preventDefault(); const ids = this.b.units.filter(u => u.side === 'rome' && u.active && u.legion === +k && u.type.cat !== 'train').map(u => u.id); if (ids.length) { this.select(ids); this.showBanner(`Legio ${['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'][+k]}`, 700); } }
       if (k === 'b' && !e.metaKey) { e.preventDefault(); this.cmd(e.ctrlKey ? 'saveform' : e.altKey ? 'recallform' : 'array'); }
       if (k === 'e') { const now = performance.now(); this.selectGeneral(this.genSel || now - (this.lastE || 0) < 450); this.lastE = now; }   // E selects him; again (or double-tap) centres the camera on him
@@ -199,7 +201,7 @@ export class BattleUI {
     $('btn-retreat').onclick = async () => {
       if (!this.b) return;
       const floor = Math.round(this.b.retreatFloor() * 100);
-      if (await ask(`Sound the retreat? You keep your surviving men, and the withdrawal counts as a draw only if at least ${floor}% of your army gets away.`, 'Sound retreat', 'Keep fighting')) { this.b.retreatAll(); this.setPause(false); $('btn-retreat').disabled = true; }
+      if (await ask(`Sound the retreat? Your army falls back away from the enemy for 30 seconds, men in contact stepping back with their shields to the foe, and then the battle ends. It counts as a draw if at least ${floor}% of your army is still with the standards (routing men count half).`, 'Sound retreat', 'Keep fighting')) { this.b.retreatAll(); this.setPause(false); $('btn-retreat').disabled = true; }
     };
   }
 
@@ -234,6 +236,7 @@ export class BattleUI {
       case 'testudo': if (need('testudo') && inf.length) { inf.forEach(u => b.toggleFormation(u)); this.emit('formation', { count: inf.length }); } break;
       case 'extend': if (need('extend') && inf.length) { inf.forEach(u => b.cycleWide(u)); const w = inf[0].wide || 1; this.showBanner(w > 1 ? `Extended line x${w.toFixed(1)}: more men fight, but it is thin` : 'Normal depth', 1000); this.emit('formation', { count: inf.length }); } break;
       case 'wedge': if (need('wedge') && inf.length) { inf.forEach(u => b.toggleWedge(u)); this.emit('formation', { count: inf.length }); } break;
+      case 'lanes': if (need('lanes') && inf.length) { inf.forEach(u => b.toggleLanes(u)); this.showBanner(inf.every(u => u.lanes) ? 'Open ranks: elephants will run down the lanes' : 'Ranks closed', 1000); } break;
       case 'orbis': if (need('orbis') && inf.length) { inf.forEach(u => b.toggleOrbis(u)); this.emit('formation', { count: inf.length }); } break;
       case 'relieve': if (need('relieve') && inf.length) inf.forEach(u => this.send(u, () => b.relieve(u))); break;
       case 'rotate': if (need('rotate') && inf.length) { inf.forEach(u => b.toggleRotate(u)); this.showBanner(inf.every(u => u.rotate) ? 'Rotation on: tired cohorts will be relieved' : inf.some(u => u.rotate) ? 'Rotation set on some' : 'Rotation off', 1100); } break;
@@ -269,20 +272,20 @@ export class BattleUI {
     const b = this.b, sel = this.selected(), el = $('hud-cmds');
     const has = (c) => sel.some(u => u.type.cat === c);
     const list = [['hold', 'Hold', 'H', b.orders.has('hold')], ['defend', 'Defend post', 'G', b.orders.has('hold')], ['fallback', 'Fall back', 'R', b.orders.has('fallback')],
-      ['extend', 'Extend', 'L', b.orders.has('extend') && has('inf')], ['testudo', 'Testudo', 'T', b.orders.has('testudo') && has('inf')], ['wedge', 'Wedge', 'U', b.orders.has('wedge') && has('inf')], ['orbis', 'Orbis', 'O', b.orders.has('orbis') && has('inf')], ['relieve', 'Relieve', 'Y', b.orders.has('relieve') && has('inf')],
+      ['extend', 'Extend', 'L', b.orders.has('extend') && has('inf')], ['testudo', 'Testudo', 'T', b.orders.has('testudo') && has('inf')], ['wedge', 'Wedge', 'U', b.orders.has('wedge') && has('inf')], ['orbis', 'Orbis', 'O', b.orders.has('orbis') && has('inf')], ['lanes', 'Open ranks', '.', b.orders.has('lanes') && has('inf')], ['relieve', 'Relieve', 'Y', b.orders.has('relieve') && has('inf')],
       ['pursue', 'Pursue', 'P', b.orders.has('pursue') && has('cav')], ['holdfire', 'Hold fire', 'J', b.orders.has('holdfire') && has('ranged')],
       ['rotate', 'Rotate', 'K', b.orders.has('rotate') && has('inf')], ['cycle', 'Hit & rally', 'M', b.orders.has('cycle') && has('cav')], ['priority', 'Target', 'I', b.orders.has('priority') && has('ranged')],
       ['detach', 'Antesignani', ',', b.orders.has('detach') && sel.some(u => u.typeKey === 'legionary' || u.parentId != null)],
       ['array', 'Array', 'B', b.orders.has('array')], ['queue', 'Waypoints', 'N', b.orders.has('queue')]]
       .filter(x => x[3]).map(x => ({ id: x[0], label: x[1], key: x[2] }));
     if (this.genSel && b.orders.has('rally')) list.push({ id: 'rally', label: 'Rally', key: 'F' });
-    const sig = (sel.length || this.genSel ? list.map(x => x.id).join() : '') + '|' + sel.map(u => (u.holdFire ? 'f' : '') + u.formation + u.stance).join();
+    const sig = (sel.length || this.genSel ? list.map(x => x.id).join() : '') + '|' + sel.map(u => (u.holdFire ? 'f' : '') + (u.lanes ? 'l' : '') + u.formation + u.stance).join();
     if (sig === this.cmdSig) return; this.cmdSig = sig;
     el.innerHTML = ''; if (!sel.length && !this.genSel) return;
     el.classList.toggle('compact', list.length > 9);          // a long list shows icons and keys only; the name is in the tooltip
     for (const c of list) {
       const btn = document.createElement('button'); btn.className = 'cmd'; btn.innerHTML = `${icon(c.id === 'defend' ? 'defend' : c.id, 15)}<span class="lbl">${c.label}</span><kbd>${c.key}</kbd>`; btn.title = `${c.label} (${c.key})`;
-      const on = (c.id === 'hold' && sel.length && sel.every(u => u.stance === 'hold')) || (c.id === 'defend' && sel.length && sel.every(u => u.stance !== 'hold')) || (c.id === 'testudo' && sel.some(u => u.formation === 'close')) || (c.id === 'extend' && sel.some(u => (u.wide || 1) > 1.05)) || (c.id === 'wedge' && sel.some(u => u.formation === 'wedge')) || (c.id === 'orbis' && sel.some(u => u.formation === 'orb')) || (c.id === 'holdfire' && sel.some(u => u.holdFire));
+      const on = (c.id === 'lanes' && sel.some(u => u.lanes)) || (c.id === 'hold' && sel.length && sel.every(u => u.stance === 'hold')) || (c.id === 'defend' && sel.length && sel.every(u => u.stance !== 'hold')) || (c.id === 'testudo' && sel.some(u => u.formation === 'close')) || (c.id === 'extend' && sel.some(u => (u.wide || 1) > 1.05)) || (c.id === 'wedge' && sel.some(u => u.formation === 'wedge')) || (c.id === 'orbis' && sel.some(u => u.formation === 'orb')) || (c.id === 'holdfire' && sel.some(u => u.holdFire));
       if (on) btn.classList.add('on');
       btn.onclick = () => this.cmd(c.id); el.appendChild(btn);
     }
@@ -312,7 +315,7 @@ export class BattleUI {
       const o = b.objectives[0], att = b.rule ? b.rule.attacker : null;
       objTxt = `   |  ${o.name}: ${o.contested ? 'CONTESTED' : o.owner === 'rome' ? 'Roman' : 'Gallic'}` + (att ? ` - ${att === 'rome' ? 'you hold' : 'enemy holds'} ${Math.floor(b.hold[att])}/${b.rule.holdSecs}s` : '');
     }
-    const waveTxt = '';
+    const wl = b.withdrawLeft ? b.withdrawLeft() : null, waveTxt = wl != null ? `   |  Withdrawing: ${Math.ceil(wl)}s` : '';
     $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${b.fogOn && b.units.some(u => u.side === 'gaul' && u.active && !u.spotted) ? '?' : Math.round(b.activeMen('gaul'))}   ${gs}`;
     $('hud-sub').textContent = (objTxt + waveTxt).replace(/^\s*\|\s*/, '').replace(/\s+\|\s+/g, '   |   ').trim();
     document.querySelectorAll('.ucard').forEach(d => {
@@ -323,12 +326,19 @@ export class BattleUI {
       d.querySelector('.m i').style.width = Math.max(0, Math.min(100, u.morale / u.maxMorale * 100)) + '%';
       d.title = `${u.men} men` + (u.state === 'routing' ? ' (routing)' : u.state === 'gone' ? ' (withdrawn)' : '');
     });
+    // units that join mid-battle (a relief force, a cohort that comes over) get their cards
+    { const n = b.units.filter(u => u.side === 'rome').length; if (n !== this.cardCount) { this.cardCount = n; this.refreshBottom(); } }
     // log
     const lg = $('hud-log');
+    // Only the messages that matter, a few at a time, each fading after a few seconds of battle. Routine chatter (pila thrown, ammunition
+    // refilled, a unit rallying, a charge landing) is left out; it is all still in the battle report.
     while (this.logShown < b.log.length) {
-      const m = b.log[this.logShown++], d = document.createElement('div'); d.className = m.kind; d.textContent = m.msg; lg.appendChild(d);
-      while (lg.children.length > 7) lg.removeChild(lg.firstChild);
+      const m = b.log[this.logShown++]; if (m.kind === 'info' || NOISY.test(m.msg) || (m.kind === 'good' && /breaks and flees|annihilated/.test(m.msg))) continue;
+      const dup = [...lg.children].find(x => x.textContent === m.msg); if (dup) { dup.dataset.t = m.t; continue; }   // the same news again only refreshes the line
+      const d = document.createElement('div'); d.className = m.kind; d.textContent = m.msg; d.dataset.t = m.t; lg.appendChild(d);
+      while (lg.children.length > 3) lg.removeChild(lg.firstChild);
     }
+    for (const d of [...lg.children]) { const age = b.t - +d.dataset.t; if (age > 8) d.remove(); else d.style.opacity = age > 6 ? String(Math.max(0, (8 - age) / 2)) : ''; }
     // left panel
     this.refreshCmds();
     const sel = this.selected(), ins = this.inspect ? b.byId(this.inspect) : null;

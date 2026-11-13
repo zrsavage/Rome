@@ -4,7 +4,8 @@ import { describe, picksNames } from './origins.js';
 import { totalMen } from './camp.js';
 import { MAP } from './mapdata.js';
 import { icon, iconPaths } from './icons.js';
-import { routePending, ROUTES, canSkip, currentScn } from './campaign.js';
+import { routePending, ROUTES, canSkip, currentScn, careerLv, CAREER } from './campaign.js';
+import { inform } from './ui.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const rad = (d) => d * Math.PI / 180;
@@ -33,18 +34,35 @@ const RIVERS = [['Rhodanus', 44.55, 4.95], ['Arar', 46.05, 5.15], ['Sequana', 48
 
 const FUTURE = [
   { act: 'II', name: 'Ariovistus', lat: 47.90, lon: 7.33, hint: 'Germania: the Suebi under Ariovistus, 58 BC' },
-  { act: 'III', name: 'Britannia', lat: 51.82, lon: -0.29, hint: "A grinding slog: Cassivellaunus' stronghold, 54 BC" },
-  { act: 'IV', name: 'Ilerda', lat: 41.62, lon: 0.62, hint: 'Hispania' },
-  { act: 'IV', name: 'Thapsus', lat: 35.62, lon: 11.05, hint: 'Africa' },
-  { act: 'IV', name: 'Carrhae', lat: 36.87, lon: 39.03, hint: 'The East: Parthian horse archers (Carrhae, 53 BC)' },
-  { act: 'V', name: 'Pharsalus', lat: 39.29, lon: 22.38, hint: 'Civil war: Roman against Roman' },
-  { act: 'VI', name: 'Rome', lat: 41.90, lon: 12.50, hint: 'The final battle', rome: true }
+  { act: 'III', name: 'Bagradas', lat: 36.98, lon: 9.95, hint: 'Act III: Africa, the old lands of Carthage. Juba of Numidia and the Pompeians, 49 BC' },
+  { act: 'IV', name: 'Zela', lat: 40.30, lon: 35.89, hint: 'Act IV: Pharnaces of the Bosporus and the Sarmatian steppe horse, 48-47 BC' },
+  { act: 'IV', name: 'Panticapaeum', lat: 45.35, lon: 36.47, hint: 'Act IV: the Bosporan kingdom, at the edge of the steppe' },
+  { act: 'V', name: 'Thapsus', lat: 35.62, lon: 11.05, hint: 'Act V: Roman against Roman. Scipio, Juba and the elephants, 46 BC' },
+  { act: 'V', name: 'Munda', lat: 37.40, lon: -4.80, hint: 'Act V finale: Munda, 45 BC (the exact site is disputed)' },
+  { act: 'VI', name: 'Rome', lat: 41.90, lon: 12.50, hint: 'Epilogue: the triumphs in Rome', rome: true }
 ];
 // Mountain ranges drawn as small peaks (Alps, Pyrenees, Massif Central, Vosges, Jura, Apennines). Peaks that would sit on a label are dropped.
 const MOUNTAINS = [[46.3, 7.2], [46.1, 8.2, 1.2], [46.4, 9.3], [45.9, 6.6], [46.6, 10.4], [45.7, 7.5, 0.9], [46.9, 8.8, 1.1], [45.4, 7.0], [46.0, 9.8], [42.7, 0.5], [42.7, -0.7], [42.6, 1.6], [42.8, 2.4, 0.8], [45.2, 2.7, 0.8], [44.9, 3.3, 0.8], [48.2, 7.0, 0.8], [46.8, 6.1, 0.8], [47.0, 6.8, 0.8], [44.3, 6.7, 0.9], [44.0, 11.3, 0.9], [43.2, 12.8, 0.9], [41.9, 13.9, 0.9],
   [47.75, 6.95, 0.7], [48.05, 7.05, 0.7], [48.45, 7.2, 0.7], [47.95, 8.15, 0.7], [47.7, 8.0, 0.7], [48.3, 8.25, 0.7]];   // Vosegus (Vosges) and the Black Forest, for Act II
-const SHORT = ['Rhone Fords', 'Arar Crossing', "Foragers' Road", 'Vesontio', 'Morvan Ambush', 'Bibracte', 'The Mound', 'Supply Line', 'Lesser Camp', 'Ariovistus', 'To the Rhine'];
-const LABEL_SIDE = ['below', 'below', 'right', 'above', 'left', 'below', 'above', 'left', 'left', 'right', 'right'];
+const SHORT = ['Rhone Fords', 'Arar Crossing', "Foragers' Road", 'Vesontio', 'Morvan Ambush', 'Bibracte', 'The Mound', 'Supply Line', 'Lesser Camp', 'Ariovistus', 'To the Rhine',
+  'Anquillaria', 'Castra Cornelia', 'Utica', 'The Wells', 'Bagradas', 'Pharsalus', 'Comana', 'Steppe Riders', 'Nicopolis', 'Zela', 'Ruspina', 'Uzitta', 'Thapsus', 'Ategua', 'Munda'];
+const LABEL_SIDE = ['below', 'below', 'right', 'above', 'left', 'below', 'above', 'left', 'left', 'right', 'right', 'below', 'above', 'right', 'left', 'left', 'below', 'right', 'above', 'below', 'left', 'above', 'left', 'right', 'above', 'below'];
+// Act III: the coast round Utica in 49 BC. Carthage lies in ruins (Caesar refounded it only in 44 BC); Clupea and Hadrumetum are Punic towns.
+const LOCAL3 = [['SINUS UTICENSIS', 37.25, 10.35], ['PROMUNTORIUM MERCURII', 37.05, 11.05], ['NUMIDIA', 36.45, 9.2]];
+const PLACES3 = [['Carthago (ruins)', 36.85, 10.32, 1], ['Clupea', 36.85, 11.10, 1], ['Tunes', 36.80, 10.17, 1]];
+// Act IV: Thessaly to Pontus, 48-47 BC. Panticapaeum is Pharnaces' capital on the Bosporus; Amisus and Sinope the Pontic ports.
+const LOCAL4 = [['PONTUS', 40.95, 37.4], ['GALATIA', 39.55, 33.2], ['CAPPADOCIA', 38.7, 35.6], ['REGNUM BOSPORANUM', 45.7, 35.2], ['PONTUS EUXINUS', 43.1, 34.0], ['THESSALIA', 39.75, 21.6], ['ARMENIA MINOR', 39.75, 38.6]];
+const PLACES4 = [['Panticapaeum', 45.35, 36.47, 1], ['Amisus', 41.29, 36.33, 1], ['Sinope', 42.03, 35.15, 1], ['Trapezus', 41.00, 39.72, 1], ['Ancyra', 39.93, 32.86, 1], ['Byzantium', 41.01, 28.98, 1], ['Larisa', 39.64, 22.42, 1]];
+// Act V: Africa again (46 BC), then Further Spain (45 BC).
+const LOCAL5 = [['HISPANIA ULTERIOR', 38.3, -5.6], ['MAURETANIA', 34.6, -4.0], ['NUMIDIA', 35.3, 8.0], ['MARE INTERNUM', 37.6, 4.0], ['BAETIS', 37.75, -5.4]];
+const PLACES5 = [['Hadrumetum', 35.83, 10.64, 1], ['Hispalis', 37.39, -5.98, 1], ['Gades', 36.53, -6.29, 1], ['Carthago Nova', 37.60, -0.99, 1], ['Iol', 36.60, 2.19, 1]];
+const ACT_ORDER = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+const ACT_VIEW = { I: { lat: 46.5, lon: 5.0, w: 15, km: 100, title: 'GALLIA TRANSALPINA', sub: 'The Gallic campaigns, 58 BC', tab: 'Act I: Gaul' },
+  II: { lat: 47.78, lon: 7.12, w: 2.9, km: 20, title: 'GALLIA ET GERMANIA', sub: 'The Gallic campaigns, 58 BC', tab: 'Act II: Germania' },
+  III: { lat: 36.98, lon: 10.45, w: 2.2, km: 20, title: 'AFRICA', sub: 'Curio against Varus and King Juba, 49 BC', tab: 'Act III: Africa' },
+  IV: { lat: 41.2, lon: 30.6, w: 19, km: 200, title: 'GRAECIA ET PONTUS', sub: 'Pharsalus, and Pharnaces of the Bosporus, 48-47 BC', tab: 'Act IV: Pontus' },
+  V: { lat: 37.0, lon: 3.6, w: 19, km: 200, title: 'AFRICA ET HISPANIA', sub: 'The last Pompeians, 46-45 BC', tab: 'Act V: Africa and Spain' } };
+const actView = () => ACT_VIEW[curAct] || ACT_VIEW.I;
 let curAct = 'I';
 const OUT = { victory: '#6fcf6f', draw: '#e8c36a', defeat: '#d65a4a' };
 
@@ -52,8 +70,8 @@ let view = 'act'; // 'act' | 'all'
 
 function viewBox() {
   if (view === 'all') return { x: 0, y: 0, w: MAP.W, h: MAP.H };
-  const II = curAct === 'II', [cx, cy] = II ? project(47.78, 7.12) : project(46.5, 5.0);
-  const w = (II ? 2.9 : 15) * MAP.s * rad(1), h = w * 0.8;
+  const V = actView(), [cx, cy] = project(V.lat, V.lon);
+  const w = V.w * MAP.s * rad(1), h = w * 0.8;
   return { x: cx - w / 2, y: cy - h / 2, w, h };
 }
 
@@ -100,22 +118,22 @@ export function renderMap(root, c, api) {
   const OTHERS = ['right', 'left', 'below', 'above'];
 
   // fixed furniture the labels must avoid
-  const midLat0 = big ? 45 : 47, ppk = MAP.s * rad(1) / (111.32 * Math.cos(rad(midLat0))), sbw0 = (big ? 500 : 100) * ppk;
+  const midLat0 = big ? 45 : actView().lat, ppk = MAP.s * rad(1) / (111.32 * Math.cos(rad(midLat0))), sbw0 = (big ? 500 : 100) * ppk;
   occ.push(R(vb.x + vb.w / 2 - 120 * k, vb.y + 10 * k, vb.x + vb.w / 2 + 120 * k, vb.y + 58 * k));                       // title plate
   occ.push(R(vb.x + vb.w - 92 * k, vb.y + vb.h - 98 * k, vb.x + vb.w, vb.y + vb.h));                                      // compass rose
   occ.push(R(vb.x + vb.w - 46 * k, vb.y + 8 * k, vb.x + vb.w, vb.y + 64 * k));                                            // north arrow
   occ.push(R(vb.x, vb.y + vb.h - 62 * k, vb.x + sbw0 + 40 * k, vb.y + vb.h));                                             // scale bar
 
-  const NUDGE = { silva: [-34, -16], bibracte: [-22, 24] };      // Morvan and Bibracte are the same spot on the map: pull the two badges apart
+  const NUDGE = { silva: [-34, -16], bibracte: [-22, 24], steppe: [-6, -26], comana: [30, -6], nicopolis: [44, 30], zela: [-24, 10], ruspina: [-6, -26], uzitta: [-30, 12], thapsus: [22, 14], ategua: [6, -20], munda: [-6, 18] };   // battles on almost the same spot are pulled apart      // Morvan and Bibracte are the same spot on the map: pull the two badges apart
   const pts = SCENARIOS.map(s => { const [x, y] = project(s.geo.lat, s.geo.lon), n = NUDGE[s.id] || [0, 0]; return [x + n[0] * k * (big ? 0.5 : 1), y + n[1] * k * (big ? 0.5 : 1)]; });
   const rN = (s, i) => (s.kind === 'named' ? 18 : 14) * k * (big ? 0.7 : 1);
   const mine = (i) => !big && SCENARIOS[i].act === curAct;   // on the whole-world view each act is one badge (see actBadges), not a cluster of battles          // only this act's battles are drawn; the others are a single marker each
   pts.forEach(([x, y], i) => { if (mine(i) && inView(x, y, 40 * k)) { dot(x, y, rN(SCENARIOS[i], i) + 9 * k); if (i === idx) dot(x + rN(SCENARIOS[i], i) + 8 * k, y - 4 * k, 22 * k); } });
-  const futs = FUTURE.filter(f => !(big && (f.act === 'I' || f.act === 'II')) && f.act !== curAct && !(curAct === 'II' && f.act === 'I')).map(f => { const [x, y] = project(f.lat, f.lon); return { f, x, y, r: (f.rome ? 12 : 8) * k * (big ? 0.8 : 1) }; }).filter(o => inView(o.x, o.y, 30 * k));
+  const futs = FUTURE.filter(f => ACT_ORDER.indexOf(f.act) > ACT_ORDER.indexOf(curAct) && !(big && SCENARIOS.some(s => s.act === f.act))).map(f => { const [x, y] = project(f.lat, f.lon); return { f, x, y, r: (f.rome ? 12 : 8) * k * (big ? 0.8 : 1) }; }).filter(o => inView(o.x, o.y, 30 * k));
   futs.forEach(o => dot(o.x, o.y, o.r + 3 * k));
-  const placeList = PLACES.map(([n, lat, lon, sz]) => { const [x, y] = project(lat, lon); return { n, x, y, sz }; }).filter(p => inView(p.x, p.y) && !(big && p.sz < 2) && !(curAct === 'I' && ['Bibracte', 'Vesontio', 'Genava'].includes(p.n)));
+  const placeList = [...PLACES, ...(curAct === 'III' && !big ? PLACES3 : []), ...(curAct === 'IV' && !big ? PLACES4 : []), ...(curAct === 'V' && !big ? PLACES5 : [])].map(([n, lat, lon, sz]) => { const [x, y] = project(lat, lon); return { n, x, y, sz }; }).filter(p => inView(p.x, p.y) && !(big && p.sz < 2) && !(curAct === 'I' && ['Bibracte', 'Vesontio', 'Genava'].includes(p.n)));
   placeList.forEach(p => dot(p.x, p.y, (p.sz === 2 ? 10 : 7) * k));
-  if (big) for (const a of ['I', 'II']) { const ss = SCENARIOS.filter(s => s.act === a); if (!ss.length) continue; const ax = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[0], 0) / ss.length, ay = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[1], 0) / ss.length; dot(ax, ay, 24 * k); occ.push(a === 'II' ? R(ax, ay - 12 * k, ax + 190 * k, ay + 12 * k) : R(ax - 160 * k, ay - 12 * k, ax, ay + 12 * k)); }
+  if (big) for (const a of ['I', 'II', 'III', 'IV', 'V']) { const ss = SCENARIOS.filter(s => s.act === a); if (!ss.length) continue; const ax = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[0], 0) / ss.length, ay = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[1], 0) / ss.length; dot(ax, ay, 24 * k); occ.push(a === 'II' ? R(ax, ay - 12 * k, ax + 190 * k, ay + 12 * k) : R(ax - 160 * k, ay - 12 * k, ax, ay + 12 * k)); }
 
   // 1. the battles (always shown), 2. the future acts, 3. cities, 4. towns, 5. tribes, 6. rivers, 7. regions
   if (!big) SCENARIOS.forEach((s, i) => { const [x, y] = pts[i]; if (mine(i) && inView(x, y, 40 * k)) { const first = LABEL_SIDE[i], order = [first, ...OTHERS.concat(['above']).filter(z => z !== first)]; label(SHORT[i], 14, 'node', 'nl', x, y, rN(s, i) + 7 * k, order, true); } });
@@ -123,8 +141,11 @@ export function renderMap(root, c, api) {
   for (const sz of [2, 1]) placeList.filter(p => p.sz === sz).forEach(p => label(p.n, sz === 2 ? 14.5 : 13, 'body', 'pl', p.x, p.y, (sz === 2 ? 10 : 7) * k, OTHERS));
   if (!big) TRIBES.forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, 12, 'body', 'tribe', x, y, 0, ['center']); });
   if (!big) RIVERS.forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, 11.5, 'body', 'rivlab', x, y, 0, ['center']); });
+  if (!big && curAct === 'V') LOCAL5.forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, 13, 'head', 'region', x, y, 0, ['center']); });
+  if (!big && curAct === 'IV') LOCAL4.forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, 13, 'head', 'region', x, y, 0, ['center']); });
+  if (!big && curAct === 'III') LOCAL3.forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, 12, 'head', 'region', x, y, 0, ['center']); });
   if (!big && curAct === 'II') LOCAL2.forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, 13, 'head', 'region', x, y, 0, ['center']); });
-  REGIONS.filter(r => big || !['AEGYPTUS', 'ASIA', 'MACEDONIA'].includes(r[0])).forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, big ? 30 : 17, 'head', 'region', x, y, 0, ['center']); });
+  REGIONS.filter(r => big || curAct === 'IV' || !['AEGYPTUS', 'ASIA', 'MACEDONIA'].includes(r[0])).forEach(([n, lat, lon]) => { const [x, y] = project(lat, lon); if (inView(x, y)) label(n, big ? 30 : 17, 'head', 'region', x, y, 0, ['center']); });
   // a mountain peak that would sit under a label is left out
   const mtHidden = new Set(big ? [] : MOUNTAINS.filter(([la, lo]) => { const [x, y] = project(la, lo), a = 9.5 * k; return occ.some(o => hit(o, R(x - a, y - a, x + a, y + a * 0.6))); }));
   // towns and cities as little walled settlements (Roma with a temple front)
@@ -138,7 +159,7 @@ export function renderMap(root, c, api) {
   const placeDots = placeList.map(settle).join('');
 
   // the route is a Roman road: a paved ribbon between dark kerbs once travelled, a faint dashed track ahead
-  const edges = SCENARIOS.slice(1).map((s, i) => { if (!mine(i + 1)) return ''; const [x1, y1] = pts[i], [x2, y2] = pts[i + 1], done = i + 1 <= idx;
+  const edges = SCENARIOS.slice(1).map((s, i) => { if (!mine(i + 1) || !mine(i)) return ''; const [x1, y1] = pts[i], [x2, y2] = pts[i + 1], done = i + 1 <= idx;
     return done ? `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#2a1f0e" stroke-width="${6.2 * k}" stroke-linecap="round"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#e3d29c" stroke-width="${3.8 * k}" stroke-linecap="round"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#a89258" stroke-width="${0.9 * k}" stroke-dasharray="${4 * k} ${5 * k}"/>`
       : `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#e8c36a" stroke-opacity=".55" stroke-width="${2.4 * k}" stroke-dasharray="${7 * k} ${7 * k}" stroke-linecap="round"/>`; }).join('');
   const icoG = (name, r, col, sw = 2) => `<g transform="scale(${r / 12}) translate(-12,-12)" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${iconPaths[name]}</g>`;
@@ -162,7 +183,7 @@ export function renderMap(root, c, api) {
   const ships = [[43.0, 7.8, 0.3], [38.2, 14.5, -0.5], [44.4, -5.6, 0.9], [36.0, 26.0, 0.2], [35.6, 4.0, 2.7]].map(([lat, lon, an]) => { const [x, y] = project(lat, lon); if (!inView(x, y)) return '';
     return `<g transform="translate(${x},${y}) rotate(${an * 57.3}) scale(${k * (big ? 1.2 : 1.7)})" opacity=".92"><path d="M-12 2 q12 7 24 0 l-3 -4 h-18z" fill="#6a4a2a" stroke="#14100a" stroke-width=".9"/><line x1="0" y1="-2" x2="0" y2="-14" stroke="#14100a" stroke-width="1"/><path d="M0 -14 q8 4 0 10z" fill="#e8dcc0" stroke="#14100a" stroke-width=".7"/>${[-8, -3, 2, 7].map(o => `<line x1="${o}" y1="1" x2="${o - 2}" y2="6" stroke="#cfc9a8" stroke-width=".7"/>`).join('')}<path d="M-14 6 q14 6 28 0" stroke="rgba(255,255,255,.35)" fill="none" stroke-width=".8"/></g>`; }).join('');
   const [gx, gy] = project(46.6, 5.0);
-  const actLabel = !big ? '' : [['I', 'Act I: Gaul'], ['II', 'Act II: Germania']].map(([a, name]) => {        // one badge per act on the world view
+  const actLabel = !big ? '' : [['I', 'Act I: Gaul'], ['II', 'Act II: Germania'], ['III', 'Act III: Africa'], ['IV', 'Act IV: Pontus'], ['V', 'Act V: Africa and Spain']].map(([a, name]) => {        // one badge per act on the world view
     const ss = SCENARIOS.filter(s => s.act === a); if (!ss.length) return '';
     const ax = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[0], 0) / ss.length, ay = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[1], 0) / ss.length;
     const allDone = ss.every(s => best[s.id] && best[s.id] !== 'defeat'), cur = a === curAct && idx < SCENARIOS.length, col = cur ? '#e8c36a' : allDone ? '#6fcf6f' : '#8a7a58', r = 15 * k;
@@ -172,7 +193,7 @@ export function renderMap(root, c, api) {
   const future = futs.map(o => `<g class="fut" transform="translate(${o.x},${o.y})"><title>${esc(o.f.hint)}</title><circle r="${o.r}" fill="${o.f.rome ? '#7a2a22' : '#3b3120'}" stroke="#14100a" stroke-width="${2 * k}"/></g>`).join('');
 
   // scale bar (Mercator: km per px depends on latitude)
-  const midLat = (view === 'all') ? 45 : 47, pxPerKm = MAP.s * rad(1) / (111.32 * Math.cos(rad(midLat))), km = big ? 500 : curAct === 'II' ? 20 : 100, sbw = km * pxPerKm;
+  const midLat = (view === 'all') ? 45 : actView().lat, pxPerKm = MAP.s * rad(1) / (111.32 * Math.cos(rad(midLat))), km = big ? 500 : actView().km, sbw = km * pxPerKm;
   const sbx = vb.x + 18 * k, sby = vb.y + vb.h - 34 * k;
   const scale = `<g><rect x="${sbx - 6 * k}" y="${sby - 16 * k}" width="${sbw + 12 * k}" height="${30 * k}" fill="rgba(10,8,4,0.6)"/><line x1="${sbx}" y1="${sby}" x2="${sbx + sbw}" y2="${sby}" stroke="#e8c36a" stroke-width="${2.5 * k}"/><line x1="${sbx}" y1="${sby - 5 * k}" x2="${sbx}" y2="${sby + 5 * k}" stroke="#e8c36a" stroke-width="${2 * k}"/><line x1="${sbx + sbw}" y1="${sby - 5 * k}" x2="${sbx + sbw}" y2="${sby + 5 * k}" stroke="#e8c36a" stroke-width="${2 * k}"/><text x="${sbx}" y="${sby - 7 * k}" class="gl" style="font-size:${10 * k}px;fill:#e8c36a">${km} km</text></g>`;
   const north = `<g transform="translate(${vb.x + vb.w - 28 * k},${vb.y + 34 * k})"><path d="M0 ${-16 * k} L${6 * k} ${8 * k} L0 ${3 * k} L${-6 * k} ${8 * k} Z" fill="#e8c36a"/><text y="${22 * k}" text-anchor="middle" class="gl" style="font-size:${11 * k}px;fill:#e8c36a">N</text></g>`;
@@ -186,7 +207,7 @@ export function renderMap(root, c, api) {
   const rose = `<g transform="translate(${vb.x + vb.w - 52 * k},${vb.y + vb.h - 58 * k})"><circle r="${30 * k}" fill="rgba(10,8,4,0.45)" stroke="#e8c36a" stroke-opacity=".6" stroke-width="${1 * k}"/>${[0, 90, 180, 270].map(a => `<polygon points="0,${-28 * k} ${4.5 * k},${-4.5 * k} 0,0 ${-4.5 * k},${-4.5 * k}" transform="rotate(${a})" fill="#e8c36a"/>`).join('')}${[45, 135, 225, 315].map(a => `<polygon points="0,${-18 * k} ${3 * k},${-3 * k} 0,0 ${-3 * k},${-3 * k}" transform="rotate(${a})" fill="#a88a45"/>`).join('')}<text y="${-33 * k}" text-anchor="middle" class="gl" style="font-size:${11 * k}px">N</text></g>`;
   const decor = `<rect x="${fx0}" y="${fy0}" width="${fw}" height="${fh}" class="frame" style="stroke-width:${2 * k}px"/><rect x="${fx0 + 4 * k}" y="${fy0 + 4 * k}" width="${fw - 8 * k}" height="${fh - 8 * k}" class="frame" style="stroke-width:${0.8 * k}px"/>`
     + [[fx0, fy0], [fx0 + fw, fy0], [fx0, fy0 + fh], [fx0 + fw, fy0 + fh]].map(([x, y]) => `<rect x="${x - 4 * k}" y="${y - 4 * k}" width="${8 * k}" height="${8 * k}" transform="rotate(45 ${x} ${y})" fill="#e8c36a"/>`).join('')
-    + `<g><rect x="${cx0 - cw / 2}" y="${cy0}" width="${cw}" height="${38 * k}" rx="${4 * k}" class="cart" style="stroke-width:${1.4 * k}px"/><text x="${cx0}" y="${cy0 + 19 * k}" class="cartt" style="font-size:${16 * k}px">${big ? 'ORBIS ROMANUS' : curAct === 'II' ? 'GALLIA ET GERMANIA' : 'GALLIA TRANSALPINA'}</text><text x="${cx0}" y="${cy0 + 32 * k}" class="carts" style="font-size:${10.5 * k}px">${big ? 'The Roman world' : 'The Gallic campaigns, 58 BC'}</text></g>` + rose;
+    + `<g><rect x="${cx0 - cw / 2}" y="${cy0}" width="${cw}" height="${38 * k}" rx="${4 * k}" class="cart" style="stroke-width:${1.4 * k}px"/><text x="${cx0}" y="${cy0 + 19 * k}" class="cartt" style="font-size:${16 * k}px">${big ? 'ORBIS ROMANUS' : actView().title}</text><text x="${cx0}" y="${cy0 + 32 * k}" class="carts" style="font-size:${10.5 * k}px">${big ? 'The Roman world' : actView().sub}</text></g>` + rose;
   const done = idx >= SCENARIOS.length;
   const army = c.cohorts.map(h => `<li>${esc(h.name)} <span class="muted">- ${h.men}/${h.maxMen}</span></li>`).join('');
   const hrows = (c.history || []).slice(-6).reverse().map(h => { const s = [PROLOGUE, ...SCENARIOS].find(x => x.id === h.id); return `<div><span style="color:${OUT[h.outcome]}">${h.outcome.toUpperCase()}</span> - ${esc(s ? s.name : h.id)}</div>`; }).join('');
@@ -194,7 +215,7 @@ export function renderMap(root, c, api) {
   root.innerHTML = `<div class="camp mapscreen">
     <header><h2>The Road to Rome</h2><div class="res"><span>${icon('coin')} Denarii <b>${c.gold}</b></span><span>${icon('grain')} Supplies <b>${c.supplies}</b></span><span>${icon('helmet')} Army <b>${totalMen(c)}</b></span><span>${icon('day')} Day <b>${c.day}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
     <div class="card mapcard">
-      <div class="row maptools"><button id="v-act" class="${view === 'act' ? 'on' : ''}">${curAct === 'II' ? 'Act II: Germania' : 'Act I: Gaul'}</button><button id="v-all" class="${view === 'all' ? 'on' : ''}">Whole Roman world</button><span class="muted small">Coastlines, rivers and lakes: Natural Earth (public domain). Mercator; Roman place names as they stood in 58 BC (later foundations such as Lugdunum, Londinium and Augusta Treverorum are left off), positions approximate.</span></div>
+      <div class="row maptools"><button id="v-act" class="${view === 'act' ? 'on' : ''}">${actView().tab}</button><button id="v-all" class="${view === 'all' ? 'on' : ''}">Whole Roman world</button><span class="muted small">Coastlines, rivers and lakes: Natural Earth (public domain). Mercator; Roman place names as they stood in 58 BC (later foundations such as Lugdunum, Londinium and Augusta Treverorum are left off), positions approximate.</span></div>
       <svg viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" id="mapsvg" role="img" aria-label="Campaign map of the Roman world">
         <defs><radialGradient id="seag" cx=".5" cy=".5" r=".75"><stop offset="0" stop-color="#27495c"/><stop offset="1" stop-color="#14262f"/></radialGradient>
           <filter id="mgrain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="${(0.55 / k).toFixed(3)}" numOctaves="3" seed="9" result="t"/><feColorMatrix in="t" values="0 0 0 0 .16  0 0 0 0 .12  0 0 0 0 .04  0 0 0 .75 -.18" result="g"/><feComposite in="g" in2="SourceGraphic" operator="in"/></filter></defs>
@@ -204,12 +225,12 @@ export function renderMap(root, c, api) {
         ${placeDots}${future}${nodes}${armyMark}${actLabel}${scale}${north}${decor}</svg></div>
     <div class="col">
       <div class="card"><h3>${done ? `Act ${curAct} complete` : `Act ${scn.act} - battle ${idx + 1} of ${SCENARIOS.length}`}</h3>
-        ${done ? `<p>Ariovistus has fled across the Rhine and Gaul is free of the Germans and the Helvetii alike. Acts III onward (Britannia, the civil war and Rome itself) are the next milestones.</p>`
+        ${done ? `<p>Munda is won, and with it the civil war. In October 45 BC Caesar rides into Rome in triumph, and your cohorts march behind him.</p><div class="row"><button class="primary" id="m-triumph">The triumph in Rome</button></div><p class="small muted"></p>`
           : `<p><b>${esc(scn.name)}</b>${scn.kind === 'named' ? ' <span class="pill">Named battle</span>' : ''}${scn.phaseCount ? ` <span class="pill">stage ${scn.phaseIdx + 1} of ${scn.phaseCount}</span>` : ''}${scn.rewardMult > 1.4 ? ' <span class="pill">Dangerous - rich spoils</span>' : ''}<br><span class="small muted">${esc(scn.geo.place)} (${scn.geo.lat.toFixed(2)}&deg;N, ${scn.geo.lon.toFixed(2)}&deg;E)</span><br><span class="muted">${esc(scn.briefing)}</span></p>
           <p class="small muted">${esc(scn.objective)}</p>
           ${routePending(c) ? `<div class="decision"><div class="dhead"><div><b>Choose your line of march</b><div class="small muted">How you come to this fight decides how well fed and how rested you arrive. One choice; it cannot be changed.</div></div></div>${ROUTES.map(r => `<button class="regimen" data-route="${r.id}" style="width:100%;text-align:left;margin-top:6px"><b>${r.name}</b><span class="t">${r.text}</span><div class="eff">${r.effects.map(e => `<span>${e}</span>`).join('')}</div></button>`).join('')}</div>`
             : `<div class="row"><button class="primary" id="m-camp">Make camp</button><button id="m-march">${c.phase > 0 ? 'Back into the battle' : 'March at once'}</button>${canSkip(c) ? '<button id="m-skip" title="An optional fight: you may pass it by">March past</button>' : ''}</div>${scn.optional ? '<div class="small muted" style="margin-top:6px">This is a side fight. Winning it helps in the named battle to come; you may also march past it.</div>' : ''}`}
-          <div class="small muted" style="margin-top:6px">You have <b>${c.daysLeft} day${c.daysLeft === 1 ? '' : 's'}</b> before the enemy moves. Every camp activity (a drill, foraging, a purchase) takes one day, so you can do about ${c.daysLeft} thing${c.daysLeft === 1 ? '' : 's'}. Marching at once saves them but you fight as you are.</div>`}
+          <div class="small muted" style="margin-top:6px">In camp you can do as much as your denarii, supplies and men allow; there is no time limit. The march to the battle takes ${scn.daysToPrepare || 3} days of rations, paid when you march.</div>`}
         <div class="row" style="margin-top:8px"><button id="m-menu">Main menu</button></div></div>
       <div class="card"><h3>${esc((c.player && c.player.name) || 'Your command')}</h3><div class="small muted">${esc(picksNames(c).join(' - ') || 'Veteran commander')}</div>${describe(c).lines.map(([a, b]) => `<div class="kvl"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}</div>
       <div class="card"><h3>Your army</h3><ul class="armylist">${army}</ul></div>
@@ -219,8 +240,26 @@ export function renderMap(root, c, api) {
   if (q('#m-camp')) q('#m-camp').onclick = () => api.camp();
   if (q('#m-march')) q('#m-march').onclick = () => api.march();
   q('#m-menu').onclick = () => api.menu();
+  if (q('#m-triumph')) q('#m-triumph').onclick = () => showTriumph(c);
   root.querySelectorAll('[data-route]').forEach(b => b.onclick = () => api.route(b.dataset.route));
   if (q('#m-skip')) q('#m-skip').onclick = () => api.skip();
   q('#v-act').onclick = () => { view = 'act'; renderMap(root, c, api); };
   q('#v-all').onclick = () => { view = 'all'; renderMap(root, c, api); };
 }
+
+// The end of the campaign: the triumph over Spain (October 45 BC) and an account of the commander's whole war.
+export function showTriumph(c) {
+  const h = (c.history || []).filter(x => x.id !== 'prologue' && x.outcome !== 'skipped');
+  const n = (o) => h.filter(x => x.outcome === o).length, fallen = (c.officers || []).filter(o => !o.alive);
+  const units = c.cohorts.length, men = totalMen(c), career = CAREER.filter(k => careerLv(c, k.id) > 0).map(k => `${k.name} ${careerLv(c, k.id)}`).join(', ');
+  const named = h.filter(x => { const s = SCENARIOS.find(y => y.id === x.id); return s && s.kind === 'named' && x.outcome !== 'defeat'; }).map(x => SCENARIOS.find(y => y.id === x.id).name);
+  inform('The triumph in Rome, October 45 BC', [
+    `From the Rhone fords to Munda: <b>${h.length}</b> battles fought, <b>${n('victory')}</b> won, <b>${n('draw')}</b> drawn, <b>${n('defeat')}</b> lost.`,
+    named.length ? `The named battles you came through: ${named.join(', ')}.` : 'You came through the war.',
+    `You march into Rome at the head of <b>${units}</b> units and <b>${men}</b> men${(c.officers || []).length ? `; ${fallen.length ? `${fallen.length} of your officers did not live to see it` : 'every one of your officers lived to see it'}` : ''}.`,
+    career ? `Your own career: ${career}.` : 'Your career was the army itself.',
+    'Caesar is dictator now, and the Republic is his. Five months later, on the Ides of March, he will be dead at the foot of Pompey\'s statue, and the wars will begin again. But that is another campaign.',
+    'Thank you for playing <b>LEGIO</b>. Your campaign stays saved in its slot; start a new one from the main menu to try another road.'
+  ], 'Ave');
+}
+

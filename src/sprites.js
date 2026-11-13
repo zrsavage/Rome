@@ -204,7 +204,7 @@ function gaul(g, t, v, kind) {
 // A horse seen from above, with real proportions: a long, narrow barrel (about three times as long as it is wide), a slightly broader croup,
 // a long tapering neck ending in a small head with ears, a mane along the crest, and a tail. Gallic ponies were small and sturdy.
 const COATS = [{ body: '#7a4a2a', dark: '#1f1610' }, { body: '#9a5a2a', dark: '#6b3a1a' }, { body: '#a69d88', dark: '#4a4036' }, { body: '#cfcfca', dark: '#8a8a86' }];   // bay, chestnut, dun, grey
-function horse(g, v, harness = true) {
+function horse(g, v, harness = true, bridle = true) {
   const { body, dark } = COATS[v];
   for (const a of [-0.3, 0, 0.3]) { g.strokeStyle = dark; g.lineWidth = 2.4; g.lineCap = 'round'; g.beginPath(); g.moveTo(9, C); g.quadraticCurveTo(4, C + a * 8, 0.5, C + a * 17); g.stroke(); }
   const parts = [[14.5, C, 8, 7.4], [25, C, 9.5, 6.6], [35, C, 7.2, 6.3], [53.5, C, 6.6, 3.1], [60, C, 3, 2.5]];
@@ -218,7 +218,7 @@ function horse(g, v, harness = true) {
   ell(g, 49.5, C - 3.4, 1.4, 2.2, shade(body, 0.8), OUT, 0.8, 0.4, false); ell(g, 49.5, C + 3.4, 1.4, 2.2, shade(body, 0.8), OUT, 0.8, -0.4, false);   // ears
   line(g, 38, C, 51, C, dark, 2.6);                                                                                     // mane along the crest
   line(g, 10, C, 34, C, shade(body, 0.8), 0.9);                                                                         // the spine
-  line(g, 51, C - 1.6, 57, C - 1.2, '#3a2a18', 0.9); line(g, 51, C + 1.6, 57, C + 1.2, '#3a2a18', 0.9);                // bridle cheek-straps
+  if (bridle) { line(g, 51, C - 1.6, 57, C - 1.2, '#3a2a18', 0.9); line(g, 51, C + 1.6, 57, C + 1.2, '#3a2a18', 0.9); }   // bridle cheek-straps (Numidians rode without)
   if (harness) { line(g, 36.5, C - 6, 36.5, C + 6, '#5a3a1a', 1.3); for (const y of [C - 4, C - 1.5, C + 1.5, C + 4]) ell(g, 36.5, y, 0.9, 0.9, '#d8b24a', null, 0, 0, false); }   // breast-strap with bronze phalerae
 }
 function horseman(g, t, v, gaulish, noble) {
@@ -317,12 +317,104 @@ function general(g, t) {
   line(g, 22, C + 13, 40, C + 11, '#8a6a3a', 1.6); poly(g, [[40, C + 7.4], [52, C + 8.6], [52, C + 13.6], [40, C + 14.4]], '#b3261e', OUT, 0.7);   // his vexillum, streaming
 }
 
+// ---- Act III: Africa ----
+// A Numidian rider: no saddle and no bridle, only a rope round the horse's neck and a switch; a short tunic, a small round leather shield and
+// a bundle of light javelins. Dark curled hair, sun-darkened skin.
+const AFR_SKIN = ['#a8744c', '#8e5f3c', '#b88458'], AFR_HAIR = ['#2a1e14', '#1e160e', '#3a2a1a'];
+function numidHorse(g, t, v) {
+  const skin = AFR_SKIN[v], tunic = ['#e4d8b8', '#d8c8a0', '#cdbf9a'][v];
+  shadow(g, true);
+  horse(g, v, false, false);
+  line(g, 40, C - 5.4, 40, C + 5.4, '#8a6a3a', 1.4);                                                                     // the neck rope
+  ell(g, 25.5, C - 7.6, 5, 2.2, skin, OUT, 1, 0.1); ell(g, 25.5, C + 7.6, 5, 2.2, skin, OUT, 1, -0.1);                   // bare legs, no saddle
+  ell(g, 26.5, C, 5, 8, tunic, OUT, 1.1);
+  arm(g, 29, C - 5, 0.15, 7, skin); arm(g, 29, C + 5.5, 0.05, 8, skin);
+  for (const dy of [0, 1.6, 3.2]) line(g, 22, C + 9 + dy * 0.4, 52, C + 6 + dy, WOOD, 1.1);                             // a bundle of javelins
+  poly(g, [[54, C + 5.6], [50, C + 4], [50.4, C + 7.6]], '#d7dbe0', OUT, 0.4);
+  ell(g, 27, C - 13.5, 5.2, 5.2, shade(t.color, 0.95), OUT, 1.4); ell(g, 27, C - 13.5, 2.6, 2.6, null, shade(t.trim, 0.85), 0.8, 0, false);   // small round leather shield
+  ell(g, 28, C, 5.2, 5.4, AFR_HAIR[v], OUT, 1.2); for (const a of [-0.6, 0, 0.6]) ell(g, 27 + a, C + a * 5, 1.4, 1.4, shade(AFR_HAIR[v], 1.3), null, 0, 0, false);   // tight curls
+}
+function numidFoot(g, t, v) {
+  const skin = AFR_SKIN[v], tunic = ['#e4d8b8', '#d8c8a0', '#cdbf9a'][v];
+  shadow(g);
+  ell(g, 31, C, 9.4, 17, tunic, OUT, 1.2);
+  ell(g, 29, C, 6, 15, shade(t.color, 0.85), null, 0, 0, false);                                                        // a coloured cloak over one shoulder
+  arm(g, 36, 47, 0.2, 9, skin);
+  for (const dy of [0, 2]) line(g, 30, 52 + dy, 62, 45 + dy, WOOD, 1.4);                                                 // javelins
+  poly(g, [[64, 44.6], [58.6, 42.4], [59.2, 47.2]], '#cfd4da', OUT, 0.5);
+  ell(g, 44, 22, 7.6, 7.6, shade(t.color, 1), OUT, 1.5); ell(g, 44, 22, 3.6, 3.6, null, shade(t.trim, 0.85), 0.9, 0, false);   // small round shield: right for Numidians
+  arm(g, 36, 15, -0.45, 9, skin);
+  ell(g, 31, C, 7, 7.2, AFR_HAIR[v], OUT, 1.3); for (const a of [-1, 0, 1]) ell(g, 30 + a, C + a * 4, 1.5, 1.5, shade(AFR_HAIR[v], 1.35), null, 0, 0, false);
+}
+// A North African forest elephant from above: smaller than the Indian kind and without a tower; the driver sits on its neck with a goad.
+function elephant(g, t, v) {
+  const hide = ['#8a8478', '#7c776c', '#948d80'][v], dark = shade(hide, 0.75);
+  ell(g, C + 3, C + 5, 30, 21, 'rgba(0,0,0,0.28)', null, 0, 0, false);
+  line(g, 4, C, 1, C + 4, dark, 2);                                                                                       // tail
+  ell(g, 24, C, 20, 16, hide, OUT, 1.8);                                                                                  // the body
+  g.save(); g.beginPath(); g.ellipse(24, C, 20, 16, 0, 0, 7); g.clip(); g.strokeStyle = 'rgba(0,0,0,0.12)'; g.lineWidth = 0.8; for (let x = 8; x < 44; x += 4) { g.beginPath(); g.moveTo(x, C - 16); g.quadraticCurveTo(x + 2, C, x, C + 16); g.stroke(); } g.restore();
+  ell(g, 43, C - 11, 7, 10, shade(hide, 0.92), OUT, 1.4, -0.3); ell(g, 43, C + 11, 7, 10, shade(hide, 0.92), OUT, 1.4, 0.3);   // the great ears
+  ell(g, 45, C, 9, 8, hide, OUT, 1.6);                                                                                    // the head
+  line(g, 52, C - 3, 61, C - 6.5, '#f0ead8', 2.2); line(g, 52, C + 3, 61, C + 6.5, '#f0ead8', 2.2);                       // tusks
+  g.strokeStyle = OUT; g.lineWidth = 4.6; g.beginPath(); g.moveTo(52, C); g.quadraticCurveTo(58, C + 1, 62, C + 4); g.stroke();
+  g.strokeStyle = hide; g.lineWidth = 3; g.beginPath(); g.moveTo(52, C); g.quadraticCurveTo(58, C + 1, 62, C + 4); g.stroke();   // trunk
+  rect(g, 30, C - 6, 9, 12, shade(t.color, 0.9), OUT, 1, 2);                                                              // a saddle-cloth
+  ell(g, 38, C, 3.6, 5, '#e4d8b8', OUT, 1); ell(g, 38.5, C, 2.8, 2.8, AFR_HAIR[v], OUT, 0.9);                              // the driver
+  line(g, 39, C + 3, 46, C + 6, WOOD, 0.9);
+}
+
+// ---- Act IV: Pontus and the steppe ----
+// Sarmatian horse archer: a light rider in a felt cap and belted coat, the short composite bow, a gorytos (bow-case and quiver) at the hip.
+function steppeArcher(g, t, v) {
+  const skin = SKIN[v], coat = ['#8a6a3a', '#7a5a34', '#9a7a48'][v];
+  shadow(g, true);
+  horse(g, v, false);
+  rect(g, 20, C - 6.6, 12, 13.2, '#b8a070', OUT, 1.1, 3);                                                                 // felt saddle pad
+  ell(g, 25.5, C - 7.8, 5, 2.3, '#5a4a32', OUT, 1, 0.1); ell(g, 25.5, C + 7.8, 5, 2.3, '#5a4a32', OUT, 1, -0.1);             // trousers
+  ell(g, 26.5, C, 5.4, 8.4, coat, OUT, 1.1); line(g, 22, C - 6, 31, C + 6, shade(t.trim, 0.8), 0.8);                     // a belted coat
+  rect(g, 18, C + 6, 8, 4, '#6a4a22', OUT, 0.8, 1.5);                                                                      // the gorytos
+  for (const d of [0, 1.2, 2.4]) line(g, 18.5 + d, C + 6.5, 15 + d, C + 4, '#e4dcc8', 0.6);                                 // fletchings
+  arm(g, 29, C - 5, -0.35, 9, skin); arm(g, 29, C + 5, 0.25, 7, skin);
+  g.strokeStyle = '#4a2e14'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(36, C - 14); g.quadraticCurveTo(33, C - 7, 39, C - 4); g.quadraticCurveTo(44, C - 1, 41, C + 6); g.stroke();   // recurved bow
+  line(g, 36.4, C - 13.6, 41, C + 5.6, 'rgba(240,232,210,0.8)', 0.5);
+  ell(g, 28, C, 5.2, 5.4, shade(t.color, 0.9), OUT, 1.2); ell(g, 29.4, C, 2.4, 2.8, shade(t.color, 0.7), null, 0, 0, false);   // pointed felt cap from above
+}
+// Sarmatian lancer: horse and rider in scale armour, the long two-handed lance (kontos) held along the horse's flank.
+function steppeLancer(g, t, v) {
+  shadow(g, true);
+  horse(g, v);
+  g.save(); g.beginPath(); g.ellipse(25, C, 21, 8.6, 0, 0, 7); g.clip();                                                      // a scale bard over the horse's body
+  g.fillStyle = 'rgba(120,108,80,0.55)'; g.fillRect(4, C - 9, 42, 18);
+  g.strokeStyle = 'rgba(40,32,18,0.45)'; g.lineWidth = 0.7; for (let x = 6; x < 46; x += 2.6) for (let y = C - 8; y < C + 8; y += 2.6) { g.beginPath(); g.arc(x + ((y / 2.6) % 2) * 1.3, y, 1.2, 0, Math.PI); g.stroke(); }
+  g.restore();
+  ell(g, 25.5, C - 7.8, 5, 2.3, '#6a6050', OUT, 1, 0.1); ell(g, 25.5, C + 7.8, 5, 2.3, '#6a6050', OUT, 1, -0.1);
+  ell(g, 26.5, C, 5.6, 8.6, '#9a8c68', OUT, 1.2);                                                                          // scale shirt
+  g.save(); g.beginPath(); g.ellipse(26.5, C, 5.4, 8.4, 0, 0, 7); g.clip(); g.strokeStyle = 'rgba(40,32,18,0.5)'; g.lineWidth = 0.6; for (let y = C - 8; y < C + 8; y += 2) { g.beginPath(); g.moveTo(21, y); g.lineTo(32, y + 0.6); g.stroke(); } g.restore();
+  arm(g, 29, C - 4, 0.1, 7, '#9a8c68'); arm(g, 29, C + 4.5, 0.1, 7, '#9a8c68');
+  line(g, 10, C + 7, 66, C + 4, WOOD, 2.4); poly(g, [[67.8, C + 3.8], [61, C + 1.6], [61.4, C + 6.6]], '#d7dbe0', OUT, 0.5);   // the kontos, long and two-handed
+  ell(g, 28, C, 5.6, 5.6, IRON, OUT, 1.3); ell(g, 28, C, 2.6, 2.6, shade(IRON, 1.2)); line(g, 28, C - 5, 28, C + 5, shade(IRON, 0.75), 0.8);   // conical iron helmet
+}
+// A scythed chariot from above: two horses abreast, a small car with the driver, and the curved blades on the axle ends.
+function scythedChariot(g, t, v) {
+  ell(g, C + 2, C + 4, 28, 20, 'rgba(0,0,0,0.25)', null, 0, 0, false);
+  const { body, dark } = COATS[v];
+  for (const dy of [-6.5, 6.5]) { ell(g, 40, C + dy, 11, 4.6, body, OUT, 1.4); ell(g, 51.5, C + dy, 3.6, 2.6, body, OUT, 1.1); line(g, 34, C + dy, 46, C + dy, dark, 1.6); }   // the team
+  line(g, 20, C, 34, C, WOOD, 2.2); line(g, 32, C - 8, 32, C + 8, WOOD, 1.6);                                             // pole and yoke
+  rect(g, 10, C - 8, 12, 16, shade(t.color, 0.95), OUT, 1.4, 3);                                                         // the car
+  line(g, 16, C - 17, 16, C + 17, '#4a3a22', 2);                                                                          // the axle
+  for (const sy of [-1, 1]) { ell(g, 16, C + sy * 13, 4.5, 1.8, '#5a4428', OUT, 1); g.strokeStyle = '#d7dbe0'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(16, C + sy * 17); g.quadraticCurveTo(22, C + sy * 25, 30, C + sy * 24); g.stroke(); }   // wheels and scythe blades
+  ell(g, 15, C, 3.4, 4.6, '#c9b48a', OUT, 1); ell(g, 15.6, C, 2.6, 2.6, '#6a5a3a', OUT, 0.9);                              // the driver
+}
+
 const PAINT = {
   legionary: (g, t, v, a) => roman(g, t, v, a), aux_inf: (g, t, v) => aux(g, t, v), slinger: (g, t, v) => slinger(g, t, v), archer: (g, t, v) => archer(g, t, v),
   warband: (g, t, v) => gaul(g, t, v, 'warband'), gaul_elite: (g, t, v) => gaul(g, t, v, 'elite'), gaul_skirm: (g, t, v) => gaul(g, t, v, 'skirm'),
   equites: (g, t, v) => horseman(g, t, v, false, true), aux_cav: (g, t, v) => horseman(g, t, v, true, false), gaul_cav: (g, t, v) => horseman(g, t, v, true, true),
   baggage: (g, t, v) => wagon(g, t, v), antesignani: (g, t, v, a) => roman(g, t, v, a),
   suebi: (g, t, v) => german(g, t, v), german_cav: (g, t, v) => germanHorse(g, t, v), laager: (g, t, v) => wagon(g, t, v),
+  numid_cav: (g, t, v) => numidHorse(g, t, v), numid_inf: (g, t, v) => numidFoot(g, t, v), elephant: (g, t, v) => elephant(g, t, v), pompeian: (g, t, v, a) => roman(g, t, v, a),
+  pomp_cav: (g, t, v) => horseman(g, t, v, false, true), pomp_missile: (g, t, v) => archer(g, t, v), pontic: (g, t, v, a) => roman(g, t, v, a), pomp_levy: (g, t, v, a) => roman(g, t, v, a),
+  horse_archer: (g, t, v) => steppeArcher(g, t, v), lancer: (g, t, v) => steppeLancer(g, t, v), chariot: (g, t, v) => scythedChariot(g, t, v),
   centurion: (g, t, v) => centurion(g, t, v), signifer: (g, t, v) => signifer(g, t, v), general: (g, t) => general(g, t)
 };
 

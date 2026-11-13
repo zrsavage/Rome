@@ -29,10 +29,11 @@ function paintRelief(g, scn) {
 
 export function paintTerrain(g, scn) {
   const rnd = mulberry32(7), A = WORLD.w * WORLD.h / 1.6e6;          // everything below scales with the size of the battlefield
-  g.fillStyle = '#6f9150'; g.fillRect(0, 0, WORLD.w, WORLD.h);
+  const dry = !!scn.dry;                                          // Africa: sun-bleached scrub, not the green fields of Gaul
+  g.fillStyle = dry ? '#a99a63' : '#6f9150'; g.fillRect(0, 0, WORLD.w, WORLD.h);
   // soft colour variation, dry patches, then grass tufts, flowers and stones
   for (let i = 0; i < Math.round(2600 * A); i++) {
-    g.fillStyle = rnd() > 0.5 ? 'rgba(90,125,60,0.35)' : 'rgba(135,160,90,0.3)';
+    g.fillStyle = dry ? (rnd() > 0.5 ? 'rgba(150,128,78,0.35)' : 'rgba(196,178,120,0.3)') : rnd() > 0.5 ? 'rgba(90,125,60,0.35)' : 'rgba(135,160,90,0.3)';
     const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 6 + rnd() * 22;
     g.beginPath(); g.ellipse(x, y, r, r * 0.6, 0, 0, 7); g.fill();
   }
@@ -40,10 +41,10 @@ export function paintTerrain(g, scn) {
   g.lineCap = 'round';
   for (let i = 0; i < Math.round(5200 * A); i++) {
     const x = rnd() * WORLD.w, y = rnd() * WORLD.h, l = 2 + rnd() * 3;
-    g.strokeStyle = rnd() > 0.5 ? 'rgba(52,88,34,0.5)' : 'rgba(168,190,104,0.45)'; g.lineWidth = 1;
+    g.strokeStyle = dry ? (rnd() > 0.5 ? 'rgba(110,104,58,0.45)' : 'rgba(196,184,120,0.4)') : rnd() > 0.5 ? 'rgba(52,88,34,0.5)' : 'rgba(168,190,104,0.45)'; g.lineWidth = 1;
     g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 2, y - l); g.moveTo(x + 2, y); g.lineTo(x + 2 + (rnd() - 0.5) * 2, y - l * 0.8); g.stroke();
   }
-  for (let i = 0; i < Math.round(260 * A); i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h; g.fillStyle = ['#f3e7a8', '#ffffff', '#d98cc4', '#e8b04a'][i & 3]; g.globalAlpha = 0.75; g.beginPath(); g.arc(x, y, 1.1, 0, 7); g.fill(); }
+  for (let i = 0; i < Math.round((dry ? 40 : 260) * A); i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h; g.fillStyle = ['#f3e7a8', '#ffffff', '#d98cc4', '#e8b04a'][i & 3]; g.globalAlpha = 0.75; g.beginPath(); g.arc(x, y, 1.1, 0, 7); g.fill(); }
   g.globalAlpha = 1;
   for (let i = 0; i < Math.round(70 * A); i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 2 + rnd() * 3.5; g.fillStyle = 'rgba(40,38,30,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, r, r * 0.6, 0, 0, 7); g.fill(); g.fillStyle = '#a7a396'; g.beginPath(); g.ellipse(x, y, r, r * 0.65, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.ellipse(x - 0.8, y - 0.8, r * 0.5, r * 0.3, 0, 0, 7); g.fill(); }
   const trees = [];
@@ -77,17 +78,17 @@ export function paintTerrain(g, scn) {
   }
   paintRelief(g, scn);
   // trees last, far to near, so canopies overlap properly and stand over the hillshade
-  for (let i = 0; i < Math.round(70 * A); i++) {               // lone trees and thickets out in the open
+  for (let i = 0; i < Math.round((dry ? 30 : 70) * A); i++) {               // lone trees and thickets out in the open (fewer in Africa)
     const x = rnd() * WORLD.w, y = rnd() * WORLD.h, kind = terrainAt(scn, x, y).kind, k = rnd(), sz = 4 + rnd() * 5, cl = rnd() < 0.4 ? 3 : 1;
     if (kind !== 'grass') continue;
     for (let j = 0; j < cl; j++) trees.push({ x: x + (rnd() - 0.5) * 22 * (cl > 1), y: y + (rnd() - 0.5) * 16 * (cl > 1), r: sz * (0.7 + rnd() * 0.5), k });
   }
-  for (let i = 0; i < Math.round(260 * A); i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h; if (terrainAt(scn, x, y).kind !== 'grass') continue; g.fillStyle = 'rgba(52,84,34,0.55)'; g.beginPath(); g.ellipse(x, y, 3 + rnd() * 4, 2 + rnd() * 2.5, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(120,150,70,0.35)'; g.beginPath(); g.ellipse(x - 1, y - 1, 1.8, 1.2, 0, 0, 7); g.fill(); }
+  for (let i = 0; i < Math.round(260 * A); i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h; if (terrainAt(scn, x, y).kind !== 'grass') continue; g.fillStyle = dry ? 'rgba(98,96,52,0.5)' : 'rgba(52,84,34,0.55)'; g.beginPath(); g.ellipse(x, y, 3 + rnd() * 4, 2 + rnd() * 2.5, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(120,150,70,0.35)'; g.beginPath(); g.ellipse(x - 1, y - 1, 1.8, 1.2, 0, 0, 7); g.fill(); }
   for (const t of trees) if (t.under) { g.fillStyle = 'rgba(18,34,16,0.13)'; g.beginPath(); g.arc(t.x, t.y, t.r * 2.1, 0, 7); g.fill(); }   // the dark floor of a wood
   trees.sort((a, b) => a.y - b.y);
   for (const t of trees) {
     g.fillStyle = 'rgba(8,20,8,0.3)'; g.beginPath(); g.ellipse(t.x + t.r * 0.4, t.y + t.r * 0.55, t.r * 1.05, t.r * 0.7, 0, 0, 7); g.fill();
-    g.fillStyle = `rgb(${28 + t.k * 16},${62 + t.k * 28},${30 + t.k * 14})`; g.beginPath(); g.arc(t.x, t.y, t.r, 0, 7); g.fill();
+    g.fillStyle = dry ? `rgb(${78 + t.k * 20},${88 + t.k * 20},${52 + t.k * 12})` : `rgb(${28 + t.k * 16},${62 + t.k * 28},${30 + t.k * 14})`;   // olive and scrub in Africa g.beginPath(); g.arc(t.x, t.y, t.r, 0, 7); g.fill();
     g.fillStyle = `rgba(${86 + t.k * 30},${140 + t.k * 30},${70},0.55)`; g.beginPath(); g.arc(t.x - t.r * 0.28, t.y - t.r * 0.32, t.r * 0.62, 0, 7); g.fill();
     g.fillStyle = 'rgba(210,235,150,0.18)'; g.beginPath(); g.arc(t.x - t.r * 0.4, t.y - t.r * 0.45, t.r * 0.28, 0, 7); g.fill();
   }
@@ -146,7 +147,10 @@ export class Renderer {
     if (b.shake > 0.05) ctx.translate((Math.random() - 0.5) * b.shake * 2, (Math.random() - 0.5) * b.shake * 2);   // the thud of a charge
     if (this.bg) ctx.drawImage(this.bg, 0, 0, WORLD.w, WORLD.h);
     // retreat edge
-    if (b.retreating) { ctx.fillStyle = 'rgba(232,195,106,0.25)'; ctx.fillRect(0, WORLD.h - 16, WORLD.w, 16); }
+    if (b.retreating && b.retreatOrder) {   // the way out: a band on the map edge the army is withdrawing toward
+      const { dx, dy } = b.retreatOrder; ctx.fillStyle = 'rgba(232,195,106,0.25)';
+      if (Math.abs(dy) >= Math.abs(dx)) ctx.fillRect(0, dy > 0 ? WORLD.h - 16 : 0, WORLD.w, 16); else ctx.fillRect(dx > 0 ? WORLD.w - 16 : 0, 0, 16, WORLD.h);
+    }
     // bodies
     ctx.lineWidth = 1.8; ctx.lineCap = 'round';
     for (const side of ['rome', 'gaul']) {          // the fallen, as small figures lying on the ground
@@ -231,6 +235,7 @@ export class Renderer {
     if (rome && b.general && u.state !== 'routing' && !b.inCommand(u)) { ctx.strokeStyle = 'rgba(190,190,190,0.55)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.strokeRect(-u.d / 2 - 2, -u.w / 2 - 2, u.d + 4, u.w + 4); ctx.setLineDash([]); }
     if (u.formation === 'wedge') { ctx.strokeStyle = 'rgba(255,176,70,0.95)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(u.d / 2 + 6, 0); ctx.lineTo(-u.d / 2, -u.w / 2 - 2); ctx.lineTo(-u.d / 2, u.w / 2 + 2); ctx.closePath(); ctx.stroke(); }
     if (u.formation === 'orb') { ctx.strokeStyle = 'rgba(150,200,255,0.95)'; ctx.lineWidth = 1.6; ctx.strokeRect(-u.d / 2, -u.w / 2, u.d, u.w); }
+    if (u.lanes) { ctx.strokeStyle = 'rgba(232,195,106,0.8)'; ctx.lineWidth = 1.2; ctx.setLineDash([3, 3]); for (const f of [-1 / 6, 1 / 6]) { ctx.beginPath(); ctx.moveTo(-u.d / 2, f * u.w); ctx.lineTo(u.d / 2, f * u.w); ctx.stroke(); } ctx.setLineDash([]); }   // open ranks: the lanes
     if (u.formation === 'close') { ctx.strokeStyle = 'rgba(232,195,106,0.9)'; ctx.lineWidth = 1.4; ctx.strokeRect(-u.d / 2, -u.w / 2, u.d, u.w); }
     // soldiers: front row at +x. Each is a little figure with a shield; a testudo is a roof of locked shields; routers scatter.
     const lod = Math.max(u.w, u.d) * this.cam.zoom < 30;     // zoomed far out, a unit is one solid block rather than hundreds of figures
@@ -253,8 +258,8 @@ export class Renderer {
           continue;
         }
         // each man is a real top-down figure (see sprites.js): helmet or hair, shoulders, shield and weapon, facing the way the unit faces
-        const cav = t.cat === 'cav', sz = t.wagon ? 36 : cav ? Math.min(Math.max(Math.min(sx * 1.08, sy * 2.7), 11), 32) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
-        ctx.drawImage(soldierSprite(u.typeKey, (k * 7 + u.id) % 3, u.typeKey !== 'legionary' || u.pilumLeft > 0), xx - sz / 2, y - sz / 2, sz, sz);   // a legionary who has thrown his pila draws the gladius
+        const cav = t.cat === 'cav', sz = t.big ? 40 : t.wagon ? 36 : cav ? Math.min(Math.max(Math.min(sx * 1.08, sy * 2.7), 11), 32) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
+        ctx.drawImage(soldierSprite(u.typeKey, (k * 7 + u.id) % 3, !['legionary', 'pompeian', 'pontic', 'pomp_levy'].includes(u.typeKey) || u.pilumLeft > 0), xx - sz / 2, y - sz / 2, sz, sz);   // a legionary who has thrown his pila draws the gladius
       }
     }
     if (!lod && rome && u.typeKey === 'legionary' && !roof) {     // the signifer stands in the front rank, the centurion at its right end

@@ -12,12 +12,13 @@ Each act: a few short minor fights, then a large named battle.
 
 | Act | Theatre | Notes |
 |---|---|---|
-| I | Gaul | Short, small skirmishes; ends with a named battle (e.g. Bibracte/Alesia-style). |
-| II | Germania | Forest/ambush terrain, the Atuatuca ambush of 54 BC (Sabinus and Cotta) as the forest-ambush set piece, and Ariovistus in 58 BC (Roman-defeat template -> larger rewards for win/draw). |
-| III | Britannia | **Longer, a slog**: more skirmishes, attrition, supply pressure, chariots, Watling Street finale. |
-| IV | Hispania / Africa / East | Elephants, Parthian horse archers, multi-legion armies. |
-| V | Civil war | Mirror matches, Pharsalus-style. |
-| Finale | Rome | Hard final battle with fortifications. |
+| I | Gaul, 58 BC | Done: the Helvetii, ending at Bibracte. |
+| II | Upper Rhine, 58 BC | Done: Ariovistus and the Suebi. |
+| III | Africa, 49 BC | The old lands of Carthage: Curio's campaign against Juba of Numidia and the Pompeians; the Bagradas as a historical defeat. |
+| IV | Pontus and the Bosporus, 48-47 BC | Pharnaces II with Sarmatian steppe horse (the Scythians' heirs); Nicopolis, then Zela. |
+| V | Africa and Spain, 46-45 BC | Roman against Roman: Ruspina, Thapsus, Munda. Epilogue: the triumphs in Rome. |
+
+The full layout, with battles, new units, new rules and the history notes, is in `docs/ACTS.md`.
 
 Historical-defeat scenarios use `rewardMult > 1` so a win or draw pays out a lot more troops and supplies.
 
