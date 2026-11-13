@@ -283,4 +283,8 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
   come over to you when your name is good. At most three of either per battle. The briefing shows both chances.
 - **Painted camp ready:** upload the camp picture as `assets/art/camp.jpg` and the camp screen uses it, with the buildings' hotspots placed
   on it. Unbuilt buildings are dimmed with a question mark. Without the file the drawn camp is used.
+- **Photographic battlefield ground:** the grass and forest textures (`assets/art/terrain_grass.jpg`, `terrain_forest.webp`) replace the drawn
+  ground and woods: the grass laid as feathered, randomly flipped copies so no seam or repeat shows, woods cut to their real outline with a
+  soft edge and shadow, lone trees cut from the canopy, and everything tinted to dry straw in Africa and high summer. It paints faster than the
+  old drawn ground (0.26 s against 0.6 s at the start of a battle).
 

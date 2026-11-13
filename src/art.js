@@ -4,6 +4,7 @@
 import { UNIT_TYPES, WORLD, setWorld } from './data.js';
 import { soldierSprite } from './sprites.js';
 import { paintTerrain } from './render.js';
+import { setTexture } from './textures.js';
 
 let manifest = {};
 const cache = new Map();
@@ -15,10 +16,20 @@ export async function initArt() {
   try {
     const r = await fetch('assets/art/manifest.json');
     if (r.ok) manifest = await r.json();
-    // the camp painting is optional: if the manifest names a file that has not been added yet, fall back to the drawn camp
-    const cf = manifest.camp && manifest.camp.main;
-    if (cf && !cf.startsWith('data:')) { const h = await fetch(`assets/art/${cf}`, { method: 'HEAD' }).catch(() => null); if (!h || !h.ok) delete manifest.camp; }
+    // the camp painting and terrain textures are optional: if the manifest names a file that has not been added yet, the game draws its own
+    for (const kind of ['camp', 'terrain']) for (const [k, f] of Object.entries(manifest[kind] || {})) {
+      if (f.startsWith('data:')) continue;
+      const h = await fetch(`assets/art/${f}`, { method: 'HEAD' }).catch(() => null); if (!h || !h.ok) delete manifest[kind][k];
+    }
   } catch { /* offline or blocked: placeholders only */ }
+  await loadTerrain();
+}
+// Terrain textures (assets/art/terrain_grass.jpg, terrain_forest.png) are decoded once and handed to the battlefield painter.
+async function loadTerrain() {
+  if (typeof Image === 'undefined') return;
+  await Promise.all(Object.entries(manifest.terrain || {}).map(([k, f]) => new Promise((res) => {
+    const im = new Image(); im.onload = () => { setTexture(k, im); res(); }; im.onerror = () => res(); im.src = f.startsWith('data:') ? f : `assets/art/${f}`;
+  })));
 }
 
 export function hasRealArt(kind, key) { return !!(manifest[kind] && manifest[kind][key]); }
