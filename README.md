@@ -233,7 +233,7 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
 ## Playtest pass (v0.6)
 - **No day limit in camp.** Every camp action costs only denarii, supplies or men, and you can do as many as you can pay for. The march to each
   battle takes `daysToPrepare` days of rations (men / 60 a day), paid once when the battle starts (`breakCamp` in `src/camp.js`). Some returns fall
-  off within one camp so nothing is free and unlimited: each foraging party brings back 70% of the last, grain merchants raise their price 25% each
+  off within one camp so nothing is free and unlimited: each kind of foraging party (cautious, wide, requisition) can go out once between battles, grain merchants raise their price 25% each
   time, each tribute demand brings 60% of the last, re-drilling the same unit costs +50% each time, and only the first rest brings the lightly wounded
   back. Rest costs a day's rations, fortifying 25 supplies a step, scouting 40 denarii. Instructors drill their cohort on the march. The forced march now
   makes the next host 10% smaller instead of giving a day.

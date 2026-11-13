@@ -129,7 +129,7 @@ export class Camp {
   drillCost(x, key) { return Math.round(REGIMENS[key].sup * 2 * (1 + 0.5 * this.used('d' + x.id))); }
   // The best man for the drill leads it, you or the officer whose skill suits it: no need to choose.
   bestLeader(h, key) { let best = 'self', top = -1; for (const id of ['self', ...this.c.officers.filter(o => o.alive).map(o => o.id)]) { const p = planDrill(this.c, h, key, id); if (p.xp + p.dr > top + 0.01) { top = p.xp + p.dr; best = id; } } return best; }
-  forageYield(kind) { const lg = bestOfficer(this.c, 'logistics'), fm = modsOf(this.c).forage, k = Math.pow(0.7, this.used('forage')); return Math.round((kind === 'wide' ? 70 + 12 * lg : kind === 'requisition' ? 60 + 10 * lg : 35 + 8 * lg) * fm * k); }
+  forageYield(kind) { const lg = bestOfficer(this.c, 'logistics'), fm = modsOf(this.c).forage, k = 1; return Math.round((kind === 'wide' ? 70 + 12 * lg : kind === 'requisition' ? 60 + 10 * lg : 35 + 8 * lg) * fm * k); }
   grainPrice() { return Math.round(90 * (1 + 0.25 * this.used('buy'))); }
   tributeYield() { return Math.round((90 + 15 * bestOfficer(this.c, 'diplomacy')) * (hasPerk(this.c, 'tribute') ? 1.3 : 1) * Math.pow(0.6, this.used('tribute'))); }
   restCost() { return dailyFood(this.c); }
@@ -163,13 +163,14 @@ export class Camp {
       this.regimen = null; this.done();
     });
   }
-  // Four ways to feed the army, each with a different price: risk, goodwill or coin. The land near camp is stripped as you go:
-  // each foraging party in the same camp brings back less, and merchants raise their price.
+  // Four ways to feed the army, each with a different price: risk, goodwill or coin. Each kind of sweep can be sent once per camp (the
+  // country within reach has been searched); merchants can be paid again, but raise their price each time.
   forageDo(kind) {
     const c = this.c, lg = bestOfficer(c, 'logistics'); let got = 0, extra = '', text;
     if (kind === 'buy') { const pr = this.grainPrice(); if (c.gold < pr) return; c.gold -= pr; got = 60; this.bump('buy'); text = `Merchants sell you grain for ${pr} denarii`; }
     else {
-      got = this.forageYield(kind); this.bump('forage');
+      if (this.used('f_' + kind)) return;                               // one party of each kind between battles
+      got = this.forageYield(kind); this.bump('forage'); this.bump('f_' + kind);
       if (kind === 'requisition') { c.favour = Math.max(-3, c.favour - 1); text = 'Requisitioned grain arrives; the villagers are not pleased (goodwill -1)'; }
       else {
         text = 'Foraging party returns';
@@ -451,11 +452,12 @@ export class Camp {
       }
       case 'depot': {
         const food = dailyFood(c), low = Math.ceil(totalMen(c) / 60 * 2), due = rationsDue(c, scn), proj = c.supplies - due, lg = bestOfficer(c, 'logistics'), nf = this.used('forage'), gp = this.grainPrice();
-        const adv = `The march to the next battle takes ${marchDays(scn)} days and eats ${due} supplies, taken when you march. After that you would have about ${Math.max(0, proj)}. ${proj < low ? `Below ${low} your men fight at -8 morale, so you need more.` : `That is above the ${low} you need, so more food is spare for drills and rest.`}${nf ? ` The land near camp is being stripped: each party brings back less (${Math.round(Math.pow(0.7, nf) * 100)}% now).` : ''}`;
+        const adv = `The march to the next battle takes ${marchDays(scn)} days and eats ${due} supplies, taken when you march. After that you would have about ${Math.max(0, proj)}. ${proj < low ? `Below ${low} your men fight at -8 morale, so you need more.` : `That is above the ${low} you need, so more food is spare for drills and rest.`}${nf ? ` ${nf} of the 3 kinds of foraging party have gone out from this camp; each can go once between battles.` : ' Each kind of foraging party can go out once between battles.'}`;
+        const sent = (k) => this.used('f_' + k) ? [['sent out: again after the next battle', 'b']] : [];
         const opts = [
-          ['cautious', 'Cautious sweep', 'Foragers stay close to camp.', [[`+${this.forageYield('cautious')} supplies`, 'g'], ['no risk', '']], true],
-          ['wide', 'Wide sweep', 'Parties range far across the countryside.', [[`+${this.forageYield('wide')} supplies`, 'g'], [`${Math.round((0.35 - 0.03 * lg) * 100)}% risk of an ambush`, 'b']], true],
-          ['requisition', 'Requisition from the villages', 'Take grain from nearby Gallic farms by order.', [[`+${this.forageYield('requisition')} supplies`, 'g'], ['goodwill -1', 'b'], ['no ambush', '']], true],
+          ['cautious', 'Cautious sweep', 'Foragers stay close to camp.', [...sent('cautious'), [`+${this.forageYield('cautious')} supplies`, 'g'], ['no risk', '']], !this.used('f_cautious')],
+          ['wide', 'Wide sweep', 'Parties range far across the countryside.', [...sent('wide'), [`+${this.forageYield('wide')} supplies`, 'g'], [`${Math.round((0.35 - 0.03 * lg) * 100)}% risk of an ambush`, 'b']], !this.used('f_wide')],
+          ['requisition', 'Requisition from the villages', 'Take grain from nearby Gallic farms by order.', [...sent('requisition'), [`+${this.forageYield('requisition')} supplies`, 'g'], ['goodwill -1', 'b'], ['no ambush', '']], !this.used('f_requisition')],
           ['buy', 'Buy grain from merchants', 'Pay traders in coin and ask no questions. They raise the price each time.', [['+60 supplies', 'g'], [`${gp} denarii`, 'b'], ['no risk', '']], c.gold >= gp]
         ];
         return `<div class="advicebox"><b>The quartermaster's advice.</b> ${esc(adv)}</div><div class="sumtiles"><div><b>${c.supplies}</b><span>Supplies</span></div><div><b>${food}</b><span>Eaten per day</span></div><div><b>${due}</b><span>Rations for the march</span></div><div><b>${c.favour > 0 ? '+' : ''}${c.favour}</b><span>Goodwill</span></div></div>
