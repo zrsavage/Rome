@@ -61,6 +61,24 @@ export const UNIT_TYPES = {
     speed: 56, turn: 2.5, morale: 56, charge: 1.7, space: 3.2, fragile: 1.1,
     color: '#2a4a8c', trim: '#d8d2b0', blurb: 'Noble horsemen, quick to hit your rear.'
   },
+  // ----- Side act: Britannia, 55-54 BC -----
+  // Britons fought much as Gauls did, with one difference Caesar describes at length (Gallic War IV.33): two-wheeled war chariots. They drive
+  // along the line throwing javelins, the warriors leap down to fight on foot, and the drivers wait close by to carry them off if pressed.
+  britons: {
+    name: 'British Warriors', side: 'gaul', cat: 'inf', perDot: 8, atk: 0.058, def: 0.12,
+    speed: 29, turn: 1.7, morale: 58, charge: 1.05, space: 1.25, fragile: 1.2,
+    color: '#3a6a8a', trim: '#d8d2b0', blurb: 'Warriors of the British tribes: brave, quick to charge, and gone into the woods when it goes badly.'
+  },
+  brit_chariot: {
+    name: 'British War Chariots', side: 'gaul', cat: 'cav', perDot: 3, atk: 0.07, def: 0.18, native: true,
+    speed: 60, turn: 2.4, morale: 58, charge: 1.2, range: 60, rate: 0.02, ammo: 40, space: 3.2, fragile: 1.05,
+    color: '#5a7a5a', trim: '#d8d2b0', blurb: 'Light two-horse chariots: they race along your line throwing javelins, set warriors down to fight, and carry them off again. No scythes.'
+  },
+  brit_cav: {
+    name: 'British Horse', side: 'gaul', cat: 'cav', perDot: 4, atk: 0.075, def: 0.2,
+    speed: 57, turn: 2.5, morale: 55, charge: 1.5, space: 3.2, fragile: 1.1,
+    color: '#2f5a7a', trim: '#d8d2b0', blurb: 'British horsemen, fighting beside the chariots.'
+  },
   // ----- Act III: Africa, 49 BC (Juba of Numidia and the Pompeians) -----
   // Numidians rode without saddle or bridle, guiding the horse with a neck rope and a switch; small round leather shields and a bundle of
   // javelins. They threw and wheeled away; they did not stand.
@@ -168,6 +186,8 @@ export const RAISE = {
   aux_cav: { men: 50, max: 70, gold: 240, supplies: 15 },
   aux_inf: { men: 250, max: 350, gold: 340, supplies: 30 }
 };
+// How an act is named on screen: the side act is not numbered.
+export const actLabel = (a) => a === 'B' ? 'Side act: Britannia' : `Act ${a}`;
 export const START_TYPES = ['legionary', 'slinger', 'equites'];
 export const TYPE_UNLOCKS = { arar: ['aux_cav'], convoy: ['archer'], oppidum: ['aux_inf'] };
 
@@ -576,6 +596,98 @@ export const SCENARIOS = [
     rewards: { gold: 800, supplies: 320, recruits: 160, xpBase: 76, officerXp: 76 }, rewardMult: 1,
     unlock: []
   },
+  // ======================= SIDE ACT: Britannia (55-54 BC), optional =======================
+  // Caesar's two expeditions across the Ocean (Gallic War IV.20-36, V.1-23). Chosen or passed by as a whole on reaching it on the map.
+  {
+    id: 'landing', posture: 'assault', odds: 0.85, chief: { name: 'the Cantii', style: 'aggressive' }, act: 'B', theater: 'Britannia', year: '55 BC', name: 'The Landing in Britain', kind: 'skirmish',
+    geo: { lat: 51.22, lon: 1.40, place: 'The shingle beach near Deal, Kent', note: 'Caesar landed on an open beach some miles from the cliffs of Dover (Gallic War IV.23-26); site probable, not certain' },
+    briefing: "The warships cannot come close in: the legionaries must jump into the sea in full armour and wade ashore under a rain of javelins, while British chariots and horsemen ride into the surf to meet them. The men hang back. Then the eagle-bearer of the Tenth leaps down: 'Jump, soldiers, unless you want to betray your eagle to the enemy!'",
+    objective: 'Take the beach (the gold marker) and hold it for 90 seconds, or break the Britons. Your men start in the water, slowed and in loose order; get them onto dry ground and into line.',
+    timeLimit: 600, daysToPrepare: 4,
+    deploy: { mode: 'line', cx: 800, cy: 900 },
+    objectives: [{ id: 'beach', name: 'The Beach', x: 800, y: 700, r: 90, owner: 'gaul' }],
+    rule: { holdSecs: 90, attacker: 'rome' },
+    terrain: [{ kind: 'ford', x: 0, y: 830, w: 1600, h: 170 }, { kind: 'hill', cx: 800, cy: 260, rx: 520, ry: 110, h: 35 }, { kind: 'forest', cx: 220, cy: 300, rx: 200, ry: 120 }],
+    enemy: [
+      { type: 'brit_chariot', men: 120, x: 450, y: 600, ai: { kind: 'numidian' } },
+      { type: 'brit_chariot', men: 120, x: 1150, y: 600, ai: { kind: 'numidian', delay: 4 } },
+      { type: 'britons', men: 420, x: 640, y: 560, ai: { kind: 'rush', delay: 20 } },
+      { type: 'britons', men: 420, x: 960, y: 560, ai: { kind: 'rush', delay: 22 } },
+      { type: 'brit_cav', men: 120, x: 1350, y: 620, ai: { kind: 'flank', delay: 30 } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 560, supplies: 300, recruits: 150, xpBase: 78, officerXp: 78 }, rewardMult: 1,
+    unlock: []
+  },
+  {
+    id: 'seventh', posture: 'ambush', chief: { name: 'the Cantii', style: 'cunning' }, fog: true, act: 'B', theater: 'Britannia', year: '55 BC', name: 'The Seventh at the Harvest', kind: 'skirmish',
+    geo: { lat: 51.18, lon: 1.25, place: 'Cornfields in Kent', note: 'The Seventh Legion was ambushed while reaping (Gallic War IV.32-34); site illustrative' },
+    briefing: "The storm has wrecked half the fleet and the army is short of grain. Only one field nearby is still unharvested, and the Seventh is out reaping it, arms stacked, when dust rises from the woods. The Britons have waited for exactly this. Hold together in the corn until Caesar comes up with the cohorts on guard.",
+    objective: 'Survive until Caesar arrives with the relief cohorts: break the Britons, or still have at least 45% of your army with the standards when time runs out.',
+    timeLimit: 480, daysToPrepare: 3,
+    deploy: { mode: 'grid', cx: 800, cy: 560, cols: 3, dx: 110, dy: 80 },
+    terrain: [{ kind: 'forest', cx: 250, cy: 450, rx: 260, ry: 330 }, { kind: 'forest', cx: 1350, cy: 450, rx: 260, ry: 330 }, { kind: 'forest', cx: 800, cy: 90, rx: 380, ry: 100 }],
+    enemy: [
+      { type: 'brit_chariot', men: 110, x: 420, y: 420, ai: { kind: 'numidian' } },
+      { type: 'brit_chariot', men: 110, x: 1180, y: 420, ai: { kind: 'numidian', delay: 3 } },
+      { type: 'brit_chariot', men: 100, x: 800, y: 230, ai: { kind: 'numidian', delay: 6 } },
+      { type: 'britons', men: 380, x: 500, y: 300, ai: { kind: 'ambush', trigger: 380, maxDelay: 20, quiet: true } },
+      { type: 'britons', men: 380, x: 1100, y: 300, ai: { kind: 'ambush', trigger: 380, maxDelay: 25, quiet: true } },
+      { type: 'brit_cav', men: 110, x: 1300, y: 760, ai: { kind: 'flank', delay: 30 } }
+    ],
+    reinforcements: [
+      { at: 150, side: 'rome', msg: 'Caesar comes up at the double with the cohorts that were on guard. The Britons pause.', unit: { type: 'legionary', men: 420, x: 800, y: 1010, f: -1.5708, name: 'Guard Cohorts', xp: 300 } }
+    ],
+    rewards: { gold: 480, supplies: 360, recruits: 130, xpBase: 72, officerXp: 72 }, rewardMult: 1.3,
+    unlock: []
+  },
+  {
+    id: 'bigbury', posture: 'assault', optional: true, chief: { name: 'the Cantii', style: 'stubborn' }, fog: true, act: 'B', theater: 'Britannia', year: '54 BC', name: 'The Hillfort in the Woods', kind: 'skirmish',
+    geo: { lat: 51.27, lon: 1.03, place: 'Bigbury hillfort, near the Stour', note: "The Seventh took a fort in the woods by testudo and a ramp (Gallic War V.9); usually identified with Bigbury" },
+    briefing: "The second expedition: five legions this time. The Britons have fallen back on a fort in the woods, its entrances blocked with felled trees. The Seventh Legion goes up under locked shields, throws up a ramp against the rampart and storms it.",
+    objective: 'Take the fort (the gold marker) and hold it for 100 seconds, or break the defenders. Locked shields (testudo, T) blunt the missiles on the way up. A side fight: you may march past it.',
+    timeLimit: 600, daysToPrepare: 4,
+    deploy: { mode: 'line', cx: 800, cy: 880 },
+    objectives: [{ id: 'fort', name: 'The Hillfort', x: 800, y: 300, r: 95, owner: 'gaul' }],
+    rule: { holdSecs: 100, attacker: 'rome' },
+    terrain: [{ kind: 'hill', cx: 800, cy: 300, rx: 360, ry: 170, h: 50 }, { kind: 'forest', cx: 300, cy: 520, rx: 260, ry: 220 }, { kind: 'forest', cx: 1300, cy: 520, rx: 260, ry: 220 }],
+    enemy: [
+      { type: 'britons', men: 400, x: 680, y: 300, ai: { kind: 'ambush', trigger: 150, maxDelay: 130 } },
+      { type: 'britons', men: 400, x: 920, y: 300, ai: { kind: 'ambush', trigger: 150, maxDelay: 130 } },
+      { type: 'gaul_skirm', men: 200, x: 800, y: 380, ai: { kind: 'skirm' } },
+      { type: 'brit_chariot', men: 100, x: 1350, y: 420, ai: { kind: 'numidian', delay: 30 } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 480, supplies: 320, recruits: 120, xpBase: 72, officerXp: 72 }, rewardMult: 1,
+    unlock: []
+  },
+  {
+    id: 'cassivellaunus', posture: 'assault', chief: { name: 'Cassivellaunus', style: 'cunning' }, fog: true, act: 'B', theater: 'Britannia', year: '54 BC', name: 'The Stronghold of Cassivellaunus', kind: 'named',
+    geo: { lat: 51.80, lon: -0.30, place: 'North of the Thames', note: "Caesar forced the Thames and took Cassivellaunus' stronghold among woods and marshes (Gallic War V.18-21); the site is uncertain" },
+    briefing: "Cassivellaunus has sent most of his men home and kept four thousand charioteers to harry the column. You force the Thames, where the bank and the ford are planted with sharpened stakes, and march on his stronghold in the woods, protected by marsh and a rampart. Take it, and the tribes will sue for peace.",
+    objective: 'Take the stronghold (the gold marker) and hold it for 110 seconds, or break his army. The ford in front of you is staked: crossing it is slow.',
+    links: [
+      { from: 'seventh', morale: 3, text: 'The Seventh has not forgotten the harvest field (+3 morale).' },
+      { from: 'bigbury', scale: { britons: 0.85 }, text: 'The hillfort in the woods fell: fewer warriors stand with Cassivellaunus.' }
+    ],
+    timeLimit: 720, daysToPrepare: 4,
+    deploy: { mode: 'line', cx: 800, cy: 900 },
+    objectives: [{ id: 'oppidum', name: 'The Stronghold', x: 800, y: 210, r: 100, owner: 'gaul' }],
+    rule: { holdSecs: 110, attacker: 'rome' },
+    terrain: [{ kind: 'ford', x: 0, y: 700, w: 1600, h: 70 }, { kind: 'forest', cx: 300, cy: 300, rx: 280, ry: 220 }, { kind: 'forest', cx: 1300, cy: 300, rx: 280, ry: 220 }, { kind: 'hill', cx: 800, cy: 210, rx: 260, ry: 110, h: 30 }],
+    enemy: [
+      { type: 'britons', men: 420, x: 600, y: 560, ai: { kind: 'rush', delay: 15 } },
+      { type: 'britons', men: 420, x: 1000, y: 560, ai: { kind: 'rush', delay: 15 } },
+      { type: 'britons', men: 400, x: 800, y: 240, ai: { kind: 'ambush', trigger: 180, maxDelay: 240 } },
+      { type: 'brit_chariot', men: 120, x: 350, y: 520, ai: { kind: 'numidian', delay: 5 } },
+      { type: 'brit_chariot', men: 120, x: 1250, y: 520, ai: { kind: 'numidian', delay: 8 } },
+      { type: 'brit_chariot', men: 100, x: 800, y: 420, ai: { kind: 'numidian', delay: 30 } },
+      { type: 'brit_cav', men: 120, x: 1400, y: 300, ai: { kind: 'flank', delay: 60 } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 900, supplies: 460, recruits: 240, xpBase: 100, officerXp: 105 }, rewardMult: 1,
+    unlock: [{ type: 'legionary', name: 'Cohors Britannica', men: 420, maxMen: 480, xp: 140, drill: 35, msg: 'Veterans of both crossings of the Ocean form a new cohort.' }]
+  },
   // ======================= ACT III: Africa, the old lands of Carthage (49 BC) =======================
   // Caesar's legate Gaius Scribonius Curio crosses from Sicily to take Africa from the Pompeian Attius Varus and his ally, King Juba I of
   // Numidia (Caesar, Civil War II.23-44). Open, hot country; nearly every enemy is on a horse.
@@ -971,7 +1083,7 @@ PROLOGUE.enemy.push(...PROLOGUE.reinforcements.map(r => ({ ...r.unit, ai: { kind
 // Battles are all or nothing: the whole enemy host is on the field from the start. The only reinforcements are the ones authored
 // into a scenario as a deliberate surprise (a flank attack, an ambush party, allies arriving late).
 // ---------------------------------------------------------------------------
-const TIME_LIMITS = { ruspina: 1080, uzitta: 1080, thapsus: 1320, ategua: 1200, munda: 1560, pharsalus: 1320, comana: 1080, steppe: 1080, nicopolis: 1320, zela: 1080, anquillaria: 1080, castra: 1080, utica: 1320, water: 1080, bagradas: 1080, ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500, parley: 800, supply: 1080, lessercamp: 1200, ariovistus: 1800, rhine: 900 };
+const TIME_LIMITS = { landing: 1080, seventh: 840, bigbury: 1080, cassivellaunus: 1320, ruspina: 1080, uzitta: 1080, thapsus: 1320, ategua: 1200, munda: 1560, pharsalus: 1320, comana: 1080, steppe: 1080, nicopolis: 1320, zela: 1080, anquillaria: 1080, castra: 1080, utica: 1320, water: 1080, bagradas: 1080, ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500, parley: 800, supply: 1080, lessercamp: 1200, ariovistus: 1800, rhine: 900 };
 for (const scn of SCENARIOS) scn.timeLimit = TIME_LIMITS[scn.id] || scn.timeLimit;
 for (const scn of SCENARIOS) if (scn.act === 'III') scn.dry = true;   // Africa is drawn as dry, open country
 

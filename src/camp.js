@@ -63,6 +63,10 @@ const TRAINING_ADVICE = {
   steppe: 'Horse archers wear a line down from a distance. Steady, well-drilled men who will not break under arrows matter most.',
   nicopolis: 'An attack on trenches, and the new men will be shaky. Drill and rest them, and keep a reserve for when the green legion wavers.',
   zela: 'They will come uphill at us. Steady men with full pila, and every cohort drilled to open its ranks for the chariots.',
+  landing: 'The men will come ashore wet, loose and under javelins. Formation drill: they must find their places in the line fast.',
+  seventh: 'Caught in the open by chariots. Men who can close up and turn will hold until help comes.',
+  bigbury: 'An assault under missiles: drill the testudo.',
+  cassivellaunus: 'A long march under chariot attacks, a staked ford, then a rampart. Fit men, and the testudo again.',
   ruspina: 'If we are caught in the open by their horse, only cohorts that can turn about and face both ways will live. Drill formations.',
   uzitta: 'Uphill against men who know our drill. Seasoned troops, fit enough for the climb.',
   thapsus: 'Elephants on both wings again. Drill the men to open their ranks, and keep them steady: the veterans are too eager as it is.',
@@ -70,7 +74,7 @@ const TRAINING_ADVICE = {
   munda: 'The longest, hardest day of the war. Every cohort fit, every reserve fresh. Rotation will win it, not the first charge.'
 };
 // What the next enemy is made of, in words the player can act on.
-const ENEMY_NAMES = { warband: 'warbands', gaul_elite: 'armoured champions', gaul_skirm: 'javelineers', gaul_cav: 'horsemen', suebi: 'Suebi warbands', german_cav: 'Germanic horse and runners', laager: 'wagon laagers', numid_cav: 'Numidian horse', numid_inf: 'Numidian foot', elephant: 'war elephants', pompeian: 'Pompeian legionaries', pomp_cav: 'Pompeian horse', pomp_missile: 'archers and slingers', pontic: 'Pontic infantry', horse_archer: 'Sarmatian horse archers', lancer: 'Sarmatian lancers', chariot: 'scythed chariots', pomp_levy: 'Pompeian levies' };
+const ENEMY_NAMES = { warband: 'warbands', gaul_elite: 'armoured champions', gaul_skirm: 'javelineers', gaul_cav: 'horsemen', suebi: 'Suebi warbands', german_cav: 'Germanic horse and runners', laager: 'wagon laagers', numid_cav: 'Numidian horse', numid_inf: 'Numidian foot', elephant: 'war elephants', pompeian: 'Pompeian legionaries', pomp_cav: 'Pompeian horse', pomp_missile: 'archers and slingers', pontic: 'Pontic infantry', horse_archer: 'Sarmatian horse archers', lancer: 'Sarmatian lancers', chariot: 'scythed chariots', pomp_levy: 'Pompeian levies', britons: 'British warriors', brit_chariot: 'war chariots', brit_cav: 'British horse' };
 function enemyProfile(scn) {
   const all = [...scn.enemy, ...scn.reinforcements.filter(r => r.side !== 'rome').map(r => r.unit)], tot = all.reduce((a, e) => a + e.men, 0), by = {};
   all.forEach(e => { by[e.type] = (by[e.type] || 0) + e.men; });

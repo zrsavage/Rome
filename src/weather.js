@@ -18,6 +18,7 @@ const ODDS = {
   bibracte: { clear: 7, rain: 3 },
   anquillaria: { heat: 6, clear: 4 }, castra: { heat: 5, clear: 5 }, utica: { heat: 6, clear: 4 }, water: { heat: 9, clear: 1 }, bagradas: { heat: 8, clear: 2 },
   pharsalus: { heat: 5, clear: 5 }, comana: { clear: 6, rain: 2, fog: 2 }, steppe: { clear: 7, rain: 3 }, nicopolis: { rain: 4, frost: 3, clear: 3 }, zela: { clear: 6, heat: 4 },
+  landing: { clear: 6, rain: 3, fog: 1 }, seventh: { clear: 7, rain: 3 }, bigbury: { rain: 4, clear: 4, fog: 2 }, cassivellaunus: { clear: 5, rain: 3, fog: 2 },
   ruspina: { clear: 7, rain: 3 }, uzitta: { clear: 6, heat: 2, rain: 2 }, thapsus: { clear: 6, heat: 4 }, ategua: { rain: 5, frost: 3, fog: 2 }, munda: { clear: 6, rain: 4 }
 };
 const hash = (s) => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };

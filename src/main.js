@@ -1,4 +1,4 @@
-import { SCENARIOS, DIFFICULTY, UNIT_TYPES, PROLOGUE } from './data.js';
+import { SCENARIOS, DIFFICULTY, UNIT_TYPES, PROLOGUE, actLabel } from './data.js';
 import { romeSpecs, applyResult, modsOf, forceScale, postureOf, baseStrength, ENEMY_WEIGHT } from './state.js';
 import { ORIGINS, DEFAULT_NAME, buildCampaign, describe } from './origins.js';
 import { Camp, totalMen, breakCamp, rationsDue } from './camp.js';
@@ -8,7 +8,7 @@ import { artSrc, initArt } from './art.js';
 import { ask, inform } from './ui.js';
 import { resultHtml, mountResult } from './result.js';
 let stopResult = null;
-import { currentScn, battleExtras, linksFor, STYLES, prisonerOptions, careerLv, chooseRoute, skipBattle } from './campaign.js';
+import { currentScn, battleExtras, linksFor, STYLES, prisonerOptions, careerLv, chooseRoute, skipBattle, skipBritain } from './campaign.js';
 import { music, mountMusicUI, gameOpts } from './music.js';
 import { pickWeather, WEATHER } from './weather.js';
 import { snapshot, backups, restoreBackup, clearBackups, exportCampaign, parseImport } from './saves.js';
@@ -88,7 +88,12 @@ async function importSave(file) {
 }
 $('btn-import').onclick = () => $('file-import').click();
 $('file-import').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importSave(f); };
-function openCampaign(c, n) { campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; if (c.prologueDone === false) showBrief(PROLOGUE); else showMap(); }
+// Saves from before the side act in Britain was added (version 3) point at battles by position; four battles now sit before Act III.
+function migrate(c) {
+  if ((c.version || 0) < 4) { if (c.scenario >= 11) { c.scenario += 4; c.britain = 'skipped'; } c.version = 4; }
+  return c;
+}
+function openCampaign(c, n) { migrate(c); campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; if (c.prologueDone === false) showBrief(PROLOGUE); else showMap(); }
 function toMenu() { show('screen-menu'); refreshMenu(); }
 refreshMenu();
 initArt().then(() => { /* real art, if any, is picked up on the next render */ });
@@ -100,6 +105,16 @@ function showMap() {
     march: () => marchGuard(),
     menu: () => toMenu(),
     route: (id) => { const msg = chooseRoute(campaign, id); if (msg) camp.note(msg, 'info'); save(); showMap(); },
+    britain: (go) => {
+      if (go) {
+        campaign.britain = 'go'; save(); showMap();
+        inform('Side act: Britannia, 55-54 BC', [
+          'Gaul seems quiet, and Caesar looks across the Ocean. The Britons have sent help to the Gauls; nobody in Rome knows what lies over the water. In late summer of 55 BC the legions sail.',
+          'The Britons fight much as the Gauls do, with one difference: <b>war chariots</b>. They race along your line throwing javelins, set warriors down to fight on foot, and carry them away again before you can close. Do not chase them; hold the line and use missiles.',
+          'Expect storms, short grain and a landing in the surf. The next summer a larger army goes back, forces the <b>Thames</b> and marches on the stronghold of <b>Cassivellaunus</b>.'
+        ], 'Sail');
+      } else { skipBritain(campaign); camp.note('You leave Britain to others. The army marches on.', 'info'); save(); showMap(); }
+    },
     skip: async () => { if (await ask('March past this fight? You gain nothing from it, and a later battle may be harder for it.', 'March past', 'Stay and fight')) { const msg = skipBattle(campaign); if (msg) camp.note(msg, 'info'); save(); showMap(); } }
   });
   const cs = SCENARIOS[campaign.scenario];
@@ -164,7 +179,7 @@ function showBrief(scnArg) {
   const waveKeys = Object.keys(waveMap).map(Number).sort((x, y) => x - y);
   const waveText = waveKeys.length ? `<div class="small" style="margin-top:6px"><b>Scouts report reinforcements:</b><br>${waveKeys.map(k => `about ${mmss(k)}: ~${Math.round(waveMap[k] / 10) * 10} men`).join('<br>')}<br><span class="muted">If you clear the field early, the next wave comes sooner.</span></div>` : '<div class="muted small">Scouts report no reinforcements.</div>';
   const rome = totalMen(c), wxk = opening ? 'clear' : pickWeather(scn, c), wxo = WEATHER[wxk];
-  $('screen-brief').innerHTML = `<div class="panel-page"><div class="muted">${opening ? 'Opening battle' : `Act ${scn.act} - ${esc(scn.theater)}, ${esc(scn.year)} - Battle ${c.scenario + 1} of ${SCENARIOS.length}${scn.kind === 'named' ? ' - NAMED BATTLE' : ''}`}</div>
+  $('screen-brief').innerHTML = `<div class="panel-page"><div class="muted">${opening ? 'Opening battle' : `${actLabel(scn.act)} - ${esc(scn.theater)}, ${esc(scn.year)} - Battle ${c.scenario + 1} of ${SCENARIOS.length}${scn.kind === 'named' ? ' - NAMED BATTLE' : ''}`}</div>
     <h2>${esc(scn.name)}${scn.phaseCount ? ` <span class="pill">stage ${scn.phaseIdx + 1} of ${scn.phaseCount}: ${esc(scn.phaseName)}</span>` : ''}</h2><img class="banner" alt="" src="${artSrc('scenario', scn.id, 800, 240, { scn })}"><p>${esc(scn.briefing)}</p>
     <div class="card"><h3>Weather: ${esc(wxo.name)}</h3><div class="small">${esc(wxo.text)}</div></div>
     ${scn.chief ? `<div class="card" style="margin-top:12px"><h3>Enemy commander: ${esc(scn.chief.name)}</h3><div class="small">${known ? esc(STYLES[scn.chief.style] || STYLES.balanced) : 'Nothing is known of how he fights. Scouts (at the Chieftains\' Hall) would tell you.'}</div></div>` : ''}
