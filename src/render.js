@@ -259,7 +259,7 @@ export class Renderer {
         }
         // each man is a real top-down figure (see sprites.js): helmet or hair, shoulders, shield and weapon, facing the way the unit faces
         const cav = t.cat === 'cav', sz = t.big ? 40 : t.wagon ? 36 : cav ? Math.min(Math.max(Math.min(sx * 1.08, sy * 2.7), 11), 32) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
-        ctx.drawImage(soldierSprite(u.typeKey, (k * 7 + u.id) % 3, !['legionary', 'pompeian', 'pontic'].includes(u.typeKey) || u.pilumLeft > 0), xx - sz / 2, y - sz / 2, sz, sz);   // a legionary who has thrown his pila draws the gladius
+        ctx.drawImage(soldierSprite(u.typeKey, (k * 7 + u.id) % 3, !['legionary', 'pompeian', 'pontic', 'pomp_levy'].includes(u.typeKey) || u.pilumLeft > 0), xx - sz / 2, y - sz / 2, sz, sz);   // a legionary who has thrown his pila draws the gladius
       }
     }
     if (!lod && rome && u.typeKey === 'legionary' && !roof) {     // the signifer stands in the front rank, the centurion at its right end

@@ -326,6 +326,8 @@ export class BattleUI {
       d.querySelector('.m i').style.width = Math.max(0, Math.min(100, u.morale / u.maxMorale * 100)) + '%';
       d.title = `${u.men} men` + (u.state === 'routing' ? ' (routing)' : u.state === 'gone' ? ' (withdrawn)' : '');
     });
+    // units that join mid-battle (a relief force, a cohort that comes over) get their cards
+    { const n = b.units.filter(u => u.side === 'rome').length; if (n !== this.cardCount) { this.cardCount = n; this.refreshBottom(); } }
     // log
     const lg = $('hud-log');
     // Only the messages that matter, a few at a time, each fading after a few seconds of battle. Routine chatter (pila thrown, ammunition

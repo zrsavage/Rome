@@ -104,6 +104,7 @@ export class Battle {
     this.clearT = 0; this.fieldClear = false; this.callDelay = scn.callDelay || 12;   // breather before the next wave comes on its own
     this.retreating = false; this.broken = { rome: false, gaul: false };
     this.reinf = (scn.reinforcements || []).map(r => ({ ...r, done: false }));
+    this.events = (scn.events || []).map(e => ({ ...e, done: false }));            // scripted moments (an unordered charge, a panic in the enemy line)
     this.floats = [];
     this.stats = { flankTime: 0, rearTime: 0, rangedKills: 0, pilum: 0, routs: { rome: 0, gaul: 0 }, outCmd: 0, engaged: 0, k: { rome: {}, gaul: {} }, rallied: 0, relieved: 0 };
     this.rep = { series: [], events: [], nextSample: 0 };      // battle report: army strength over time and the moments that mattered
@@ -111,6 +112,8 @@ export class Battle {
     this.rule = scn.rule || null; this.hold = { rome: 0, gaul: 0 };
     this.fortLevel = opts.fort || 0; this.scouted = !!opts.scouted; this.shake = 0;
     this.favour = opts.favour || 0;
+    // Roman against Roman: a wavering enemy cohort may come over to you. The better your name for clemency (goodwill), the likelier.
+    this.defectChance = scn.defect ? clamp(0.12 + 0.08 * this.favour, 0.03, 0.4) : 0;
     // enemy strength modifiers: difficulty + local favour (informants and divided tribes)
     const favMult = this.favour >= 2 ? 0.9 : this.favour <= -2 ? 1.1 : 1;
     this.powerScale = opts.forceScale || 1; this.rewardScale = Math.pow(this.powerScale, 0.75);   // bigger hosts carry bigger spoils
@@ -519,6 +522,21 @@ export class Battle {
   }
   withdrawLeft() { return this.retreating ? Math.max(0, WITHDRAW_SECS - (this.t - this.retreatT)) : null; }
 
+  runEvent(ev) {
+    if (ev.kind === 'rashRight') {                   // Thapsus: the veterans on the right force a trumpeter to sound the charge
+      for (const u of this.units) if (u.side === 'rome' && u.active && u.type.cat === 'inf' && u.x > WORLD.w * 0.58 && !u.contacts.some(e => e.active)) { const n = this.nearestEnemy(u); if (n) this.setAttack(u, n.e); }
+      this.say(ev.msg, 'warn');
+    } else if (ev.kind === 'shake') {               // Munda: the enemy line thinks its general is running
+      for (const u of this.units) if (u.side === 'gaul' && u.active) { u.morale -= ev.amount || 12; this.mloss(u, 'panic', ev.amount || 12); }
+      this.say(ev.msg, 'good'); this.mark('commit', ev.msg, 'rome');
+    } else if (ev.msg) this.say(ev.msg, 'info');
+  }
+  // A wavering Pompeian cohort that goes over to you: it becomes yours for the rest of the battle (not your army's afterwards).
+  defect(u) {
+    u.side = 'rome'; u.ai = null; u.order = { kind: 'none' }; u.stance = 'hold'; u.post = { x: u.x, y: u.y }; u.contacts = []; u.prevIds = new Set();
+    u.morale = u.maxMorale * 0.6; u.name = `${u.name} (came over)`; u.defected = true; u.spotted = true; u.f = norm(u.f + Math.PI);
+    this.mark('unitrally', u.name, 'rome'); this.say(`A Pompeian cohort lowers its standards and comes over to you!`, 'good');
+  }
   pendingWaves() { return this.reinf.filter(r => !r.done && r.side !== 'rome'); }
   nextWaveEta() { const p = this.pendingWaves(); return p.length ? Math.max(0, Math.min(...p.map(r => r.at)) - this.t) : null; }
   // Bring the next enemy wave forward to now (everything due within 8 seconds of it comes with it).
@@ -788,6 +806,7 @@ export class Battle {
   update(dt) {
     if (this.result) return;
     this.t += dt; this.sampleReport(); this.recordFrame(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt); this.updateRotation(); this.runPending(); this.updateSupply(dt); this.stepLegates(dt);
+    for (const ev of this.events) if (!ev.done && this.t >= ev.at) { ev.done = true; this.runEvent(ev); }
     for (const r of this.reinf) if (!r.done && this.t >= r.at) {
       r.done = true;
       if (r.side === 'rome') {
@@ -1315,6 +1334,7 @@ export class Battle {
     }
     u.updateDims();
     if (u.state === 'dead' || u.state === 'gone') return;
+    if (this.defectChance && u.side === 'gaul' && u.type.defects && !u.defectRolled && u.state !== 'routing' && u.morale < u.maxMorale * 0.35) { u.defectRolled = true; if (this.rand() < this.defectChance) { this.defect(u); return; } }
     if (u.state !== 'routing') {
       if (!u.contacts.some(e => e.active)) u.morale = Math.min(u.maxMorale, u.morale + (2.2 + (u.officer ? 0.35 * (u.officer.tactics || 0) : 0) + (u.perks.includes('inspire') ? 1.1 : 0)) * (u.auraT > this.t ? 1.25 : 1) * dt * (u.side === 'rome' ? (this.inCommand(u) ? 1.2 : 0.45) : 1));
       if (u.type.wagon) u.morale = Math.max(u.morale, 30);                          // a laager cannot run: it is held until the last man falls
@@ -1392,7 +1412,7 @@ export class Battle {
   retreatFloor() { return Math.max(0.3, 0.45 - 0.05 * this.fortLevel); }
   preserved() { // men Rome keeps if the battle ended now
     let n = 0;
-    for (const u of this.units) if (u.side === 'rome') n += u.state === 'routing' ? u.men * 0.5 : u.state === 'gone' ? (u.exited ? u.men : u.men * 0.5) : u.men;
+    for (const u of this.units) if (u.side === 'rome' && !u.defected) n += u.state === 'routing' ? u.men * 0.5 : u.state === 'gone' ? (u.exited ? u.men : u.men * 0.5) : u.men;
     return n;
   }
 

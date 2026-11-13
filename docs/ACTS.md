@@ -1,6 +1,6 @@
 # Acts III to V: layout (draft)
 
-Status: **Acts III and IV are playable** (five battles each, after Act II). Act V is design only; the map shows its markers as locked.
+Status: **Acts III, IV and V are all playable** (five battles each, after Act II), and the campaign ends with the triumph in Rome.
 
 ## The history problem, and the fix
 
@@ -76,7 +76,7 @@ As built:
 - Unit sizes are capped per type so a large host arrives as several units (elephants 80 men = 8 beasts, chariots 60 = 15 chariots, horse 110).
 - Odds nudges: Comana 0.9, Steppe Riders 1.15, Nicopolis 1.35 (a historical defeat that should feel like one), Zela 0.7. Bot results (normal, 4 runs each): Pharsalus won 4/4 by the smart bot; Comana and the Steppe Riders won at a real cost; Nicopolis mostly lost but drawn 4/4 by a bot that sounds the retreat; Zela about half won before the last easing.
 
-## Act V: Roman against Roman (46-45 BC)
+## Act V: Roman against Roman (46-45 BC) - built
 
 The last Pompeians (Metellus Scipio, Labienus, Cato in Utica) hold Africa with King Juba; then Pompey's sons raise Spain. The enemy
 fights like you, knows your tricks and has the same doctrines.
@@ -113,3 +113,21 @@ New rules for Roman against Roman:
 - Pompeians: the same kit as Caesar's men (mail, scutum, pilum). Not segmentata, and not Imperial helmets.
 - Place names as in 49-45 BC: Utica, Hadrumetum, Thapsus, Ruspina, Zela, Comana, Nicopolis (in Armenia Minor), Panticapaeum (the Bosporan capital), Corduba, Munda (the exact site is disputed).
 - Uncertain points to state in-game: the exact site of Munda, and how many elephants Juba brought in 49 BC.
+
+## Act V as built
+
+- Battles: **Ruspina** (named, ambush: surrounded on the plain; draw by surviving), **The Lines at Uzitta** (side fight: take the crest),
+  **Thapsus** (named: elephants on both wings; a scripted moment at 40 seconds when the veterans on the right charge without orders),
+  **Ategua** (winter assault on the town gate), **Munda** (named finale: uphill against more legions; King Bogud's Moorish horse arrives at
+  300 seconds and at 330 seconds Labienus' move to meet it shakes the whole Pompeian line).
+- New type `pomp_levy` (raw Pompeian legions raised in Spain). `pompeian` and `pomp_levy` units can **come over to you**: in a battle with
+  `defect: true`, a Pompeian cohort that wavers (below 35% morale) rolls once; the chance is 12% plus 8% per point of goodwill (3% to 40%).
+  It becomes yours for the rest of that battle only, and does not count toward the withdrawal threshold.
+- Scripted events (`scn.events`, `runEvent` in `src/sim.js`): `rashRight` (the right wing charges) and `shake` (enemy morale drop).
+- The map: Africa and Further Spain on one view. After Munda the map offers **The triumph in Rome**, a closing account of the whole campaign.
+- Odds: Ruspina 0.8, Thapsus 0.75, Munda 1.55 (the hardest day of the war). Bot results (normal, 4 runs): Ruspina and Thapsus won about half
+  at a real cost; Ategua won by the smart bot; Uzitta mostly drawn by bots that are poor at taking objectives; Munda won 1-2 of 4 after
+  about 24 minutes of fighting. In test runs a Pompeian cohort came over once at Thapsus and three times at Munda.
+- Not built: the "low reputation makes your own cohorts waver" half of the defection idea, and mirror-AI habits for the Pompeians beyond the
+  existing smart AI.
+

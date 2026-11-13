@@ -51,7 +51,7 @@ function refreshMenu() {
     const c = store.get(key(n)), d = document.createElement('div'); d.className = 'slot';
     if (c) {
       const scn = currentScn(c);
-      d.innerHTML = `<div><b>Slot ${n}</b> - ${esc(DIFFICULTY[c.difficulty].name)}<small>${scn ? `Battle ${c.scenario + 1}/${SCENARIOS.length}: ${esc(scn.name)}` : 'Act II complete'} - ${totalMen(c)} men - day ${c.day}</small></div>
+      d.innerHTML = `<div><b>Slot ${n}</b> - ${esc(DIFFICULTY[c.difficulty].name)}<small>${scn ? `Battle ${c.scenario + 1}/${SCENARIOS.length}: ${esc(scn.name)}` : 'Campaign complete'} - ${totalMen(c)} men - day ${c.day}</small></div>
         <div class="row"><button class="primary" data-a="load">Continue</button><button data-a="exp" title="Download this campaign as a file">Export</button><button data-a="bak" title="Rolling backups taken after each battle and at camp">Backups</button><button data-a="del">Delete</button></div>`;
       d.querySelector('[data-a=exp]').onclick = () => exportCampaign(c);
       d.querySelector('[data-a=bak]').onclick = () => showBackups(n);
@@ -130,6 +130,15 @@ function showMap() {
       '<b>Horse archers</b> shoot from the saddle and fall back shooting when you charge them; they carry only so many arrows. <b>Lancers</b> in scale armour are deadly head-on and slow to turn.',
       'At the end waits <b>Zela</b>, and Pharnaces\' <b>scythed chariots</b>: one terrible charge each. Missiles and <b>Open Ranks</b> beat them.'
     ], 'To the East');
+  }
+  if (cs && cs.act === 'V' && !(campaign.actsSeen || []).includes('V')) {
+    campaign.actsSeen = [...(campaign.actsSeen || []), 'V']; save();
+    inform('Act V: Roman against Roman', [
+      'Pompey is dead in Egypt, but his cause is not. <b>Metellus Scipio</b>, <b>Titus Labienus</b> (once your fellow legate in Gaul) and <b>King Juba</b> hold Africa with fourteen legions and the elephants. In 46 BC Caesar lands with too few men, and you with him.',
+      'Then <b>Pompey\'s sons</b> raise Spain, and the last battle of the civil war waits at <b>Munda</b>.',
+      'The enemy fights exactly as you do. But Romans do not want to kill Romans: a <b>wavering Pompeian cohort may come over to you</b> in battle. Your goodwill is now your <b>name for clemency</b>: release prisoners and keep it high, and more of them will.',
+      'Elephants again at Thapsus: missiles and <b>Open Ranks</b>. And watch your own veterans; they are impatient.'
+    ], 'To Africa');
   }
   show('screen-map');
 }

@@ -83,7 +83,7 @@ export const UNIT_TYPES = {
   },
   // Pompeian legionaries wore the same kit as yours; the blue-grey shields are only so you can tell the two sides apart on the field.
   pompeian: {
-    name: 'Pompeian Legionaries', side: 'gaul', cat: 'inf', perDot: 8, atk: 0.056, def: 0.42,
+    name: 'Pompeian Legionaries', side: 'gaul', cat: 'inf', perDot: 8, atk: 0.056, def: 0.42, defects: true,
     speed: 22, turn: 1.7, morale: 70, charge: 0.55, pilum: 2, space: 1, fragile: 0.85, antiCharge: 0.25,
     color: '#5a6a8a', trim: '#e8c36a', blurb: 'Romans like your own: mail, scutum, pilum and gladius, the same drill and the same stubbornness.'
   },
@@ -122,6 +122,13 @@ export const UNIT_TYPES = {
     name: 'Scythed Chariots', side: 'gaul', cat: 'cav', perDot: 4, atk: 0.03, def: 0.2, big: true, oneShot: true, panicky: true,
     speed: 72, turn: 0.9, morale: 50, charge: 3, chargePer: 3.2, space: 1, fragile: 1.6,
     color: '#7a5a3a', trim: '#d8c48a', blurb: 'One straight, terrible charge, then they are spent. Missiles bring the horses down; open ranks let them through.'
+  },
+  // ----- Act V: Africa and Spain, 46-45 BC -----
+  // Pompey's sons raised legions in Spain from local levies, deserters and freed slaves: many, armed like legionaries, but raw.
+  pomp_levy: {
+    name: 'Pompeian Levies', side: 'gaul', cat: 'inf', perDot: 8, atk: 0.05, def: 0.38, defects: true,
+    speed: 22, turn: 1.6, morale: 60, charge: 0.5, pilum: 1, space: 1, fragile: 1.0, antiCharge: 0.2,
+    color: '#6a7a9a', trim: '#c8b070', blurb: "Legions raised in a hurry in Spain: Roman kit, little drill. Many of them, and they may come over if they waver."
   },
   // ----- the Roman train and detachments -----
   baggage: {
@@ -805,6 +812,133 @@ export const SCENARIOS = [
     reinforcements: [],
     rewards: { gold: 1100, supplies: 600, recruits: 320, xpBase: 120, officerXp: 130 }, rewardMult: 1,
     unlock: [{ type: 'legionary', name: 'XIV Cohort', men: 440, maxMen: 480, xp: 120, drill: 40, msg: 'The Sixth Legion, which won Zela almost alone, sends a cohort to your army.' }]
+  },
+  // ======================= ACT V: Roman against Roman (46-45 BC) =======================
+  // The last Pompeians: Metellus Scipio, Labienus and King Juba in Africa (Bellum Africum), then Pompey's sons and Labienus in Spain
+  // (Bellum Hispaniense). The enemy fights like you; a wavering Pompeian cohort may come over to you (goodwill = your name for clemency).
+  {
+    id: 'ruspina', posture: 'ambush', odds: 0.8, defect: true, chief: { name: 'Titus Labienus', style: 'cunning' }, act: 'V', theater: 'Africa', year: '46 BC', name: 'Ruspina', kind: 'named', dry: true,
+    geo: { lat: 35.77, lon: 10.83, place: 'The plain near Ruspina (Monastir)', note: 'Labienus surrounded Caesar here on 4 January 46 BC (Bellum Africum 11-18)' },
+    briefing: "Caesar has landed in Africa with too few men and no horse to speak of. You are out on the plain with a foraging column when Labienus appears: Numidian horse and light foot, his Gallic and German riders, more and more of them, until they are all round you. His men taunt yours: 'Recruits! Caesar has fooled you too!' Caesar orders the line extended and every other cohort turned about, so the army fights facing both ways.",
+    objective: 'Survive: break the host, or still have at least 45% of your army with the standards at nightfall. A well-ordered withdrawal is a draw. Turn cohorts to face both ways (or form orbis) when they ride round you.',
+    timeLimit: 600, daysToPrepare: 4,
+    deploy: { mode: 'grid', cx: 800, cy: 560, cols: 4, dx: 110, dy: 90 },
+    terrain: [{ kind: 'hill', cx: 800, cy: 880, rx: 300, ry: 80, h: 22 }],
+    enemy: [
+      { type: 'numid_cav', men: 180, x: 260, y: 300, ai: { kind: 'numidian' } },
+      { type: 'numid_cav', men: 180, x: 1340, y: 300, ai: { kind: 'numidian', delay: 3 } },
+      { type: 'numid_cav', men: 160, x: 220, y: 760, ai: { kind: 'numidian', delay: 15 } },
+      { type: 'numid_cav', men: 160, x: 1380, y: 760, ai: { kind: 'numidian', delay: 18 } },
+      { type: 'pomp_cav', men: 220, x: 600, y: 200, ai: { kind: 'flank', delay: 40 } },
+      { type: 'pomp_cav', men: 220, x: 1000, y: 200, ai: { kind: 'flank', delay: 45 } },
+      { type: 'numid_inf', men: 340, x: 800, y: 220, ai: { kind: 'rush', delay: 30 } },
+      { type: 'numid_inf', men: 300, x: 800, y: 960, ai: { kind: 'rush', delay: 60 } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 700, supplies: 420, recruits: 220, xpBase: 100, officerXp: 105 }, rewardMult: 1.4,
+    unlock: []
+  },
+  {
+    id: 'uzitta', posture: 'assault', defect: true, chief: { name: 'Metellus Scipio', style: 'cautious' }, optional: true, fog: true, act: 'V', theater: 'Africa', year: '46 BC', name: 'The Lines at Uzitta', kind: 'skirmish', dry: true,
+    geo: { lat: 35.60, lon: 10.72, place: 'The ridges before Uzitta', note: 'Months of siege lines and skirmishes for the high ground (Bellum Africum 37-66); site approximate' },
+    briefing: "For weeks the two armies have dug lines towards each other across the ridges before Uzitta. Scipio holds the next crest with a few cohorts and Numidian foot. Take it, and your lines command the town's water.",
+    objective: 'Take the crest (the gold marker) and hold it for 100 seconds, or break its defenders. A side fight: winning it weakens Scipio\'s army at Thapsus.',
+    timeLimit: 600, daysToPrepare: 3,
+    deploy: { mode: 'line', cx: 800, cy: 860 },
+    objectives: [{ id: 'crest', name: 'The Crest', x: 800, y: 300, r: 95, owner: 'gaul' }],
+    rule: { holdSecs: 100, attacker: 'rome' },
+    terrain: [{ kind: 'hill', cx: 800, cy: 300, rx: 420, ry: 130, h: 40 }],
+    enemy: [
+      { type: 'pompeian', men: 400, x: 640, y: 300, ai: { kind: 'ambush', trigger: 160, maxDelay: 110 } },
+      { type: 'pompeian', men: 400, x: 960, y: 300, ai: { kind: 'ambush', trigger: 160, maxDelay: 110 } },
+      { type: 'numid_inf', men: 320, x: 800, y: 220, ai: { kind: 'skirm' } },
+      { type: 'pomp_missile', men: 180, x: 800, y: 330, ai: { kind: 'skirm' } },
+      { type: 'numid_cav', men: 150, x: 1340, y: 420, ai: { kind: 'numidian', delay: 20 } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 560, supplies: 380, recruits: 150, xpBase: 80, officerXp: 80 }, rewardMult: 1,
+    unlock: []
+  },
+  {
+    id: 'thapsus', posture: 'attack', odds: 0.75, defect: true, chief: { name: 'Metellus Scipio and King Juba', style: 'stubborn' }, fog: true, act: 'V', theater: 'Africa', year: '46 BC', name: 'Thapsus', kind: 'named', dry: true,
+    geo: { lat: 35.62, lon: 11.05, place: 'Before Thapsus', note: 'Caesar destroyed Scipio and Juba here on 6 April 46 BC (Bellum Africum 79-86)' },
+    briefing: "Caesar has bottled Scipio up on the narrow strip of land outside Thapsus, between the sea and a salt lagoon. Scipio has drawn up his legions with Juba's elephants on both wings and the Numidian horse beyond them. Your veterans can see the enemy is nervous. They are impatient to be at them, perhaps too impatient.",
+    objective: "Break Scipio's army (reduce it below 25%). Elephants stand on both wings: missiles drive them mad, and open ranks (.) let them through. Wavering Pompeian cohorts may come over to you.",
+    links: [
+      { from: 'uzitta', scale: { pompeian: 0.85 }, text: 'Scipio lost his crest at Uzitta, and men with it: fewer legionaries stand in his line.' },
+      { from: 'ruspina', morale: 4, text: 'The recruits who came through Ruspina are veterans now (+4 morale).' }
+    ],
+    timeLimit: 720, daysToPrepare: 4,
+    deploy: { mode: 'line', cx: 800, cy: 860 },
+    terrain: [{ kind: 'water', x: 0, y: 0, w: 110, h: 1000 }, { kind: 'water', x: 1490, y: 0, w: 110, h: 1000 }],
+    events: [{ at: 40, kind: 'rashRight', msg: 'On the right the veterans force a trumpeter to sound the charge before Caesar has given the order! The right wing goes in.' }],
+    enemy: [
+      { type: 'pompeian', men: 420, x: 520, y: 320, ai: { kind: 'rush', delay: 30 } },
+      { type: 'pompeian', men: 420, x: 700, y: 315, ai: { kind: 'rush', delay: 30 } },
+      { type: 'pompeian', men: 420, x: 880, y: 315, ai: { kind: 'rush', delay: 30 } },
+      { type: 'pompeian', men: 420, x: 1060, y: 320, ai: { kind: 'rush', delay: 30 } },
+      { type: 'pompeian', men: 380, x: 800, y: 220, ai: { kind: 'rush', delay: 70, reserve: true } },
+      { type: 'elephant', men: 60, x: 330, y: 330, ai: { kind: 'rush', delay: 20 } },
+      { type: 'elephant', men: 60, x: 1260, y: 330, ai: { kind: 'rush', delay: 20 } },
+      { type: 'numid_cav', men: 180, x: 220, y: 260, ai: { kind: 'numidian', delay: 25 } },
+      { type: 'numid_cav', men: 180, x: 1380, y: 260, ai: { kind: 'numidian', delay: 25 } },
+      { type: 'numid_inf', men: 320, x: 800, y: 420, ai: { kind: 'skirm' } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 1200, supplies: 640, recruits: 340, xpBase: 124, officerXp: 130 }, rewardMult: 1,
+    unlock: [{ type: 'legionary', name: 'XV Cohort', men: 440, maxMen: 480, xp: 140, drill: 40, msg: 'Men of the Fifth, who fought the elephants at Thapsus, join your army as the XV Cohort.' }]
+  },
+  {
+    id: 'ategua', posture: 'assault', defect: true, chief: { name: 'the garrison of Ategua', style: 'stubborn' }, fog: true, act: 'V', theater: 'Hispania', year: '45 BC', name: 'Ategua', kind: 'skirmish',
+    geo: { lat: 37.80, lon: -4.62, place: 'Ategua (Teba la Vieja), near Corduba', note: 'Caesar besieged it in the winter of 46-45 BC (Bellum Hispaniense 6-19)' },
+    briefing: "Pompey's sons have raised Spain against Caesar. It is winter, cold and wet, and the army is short of everything. The hill town of Ategua holds Gnaeus Pompeius' supplies. Its walls are on a steep hill and the garrison will fight for every step, while their horse rides at your lines from outside.",
+    objective: 'Take the gate (the gold marker) and hold it for 110 seconds, or break the defenders.',
+    timeLimit: 660, daysToPrepare: 4,
+    deploy: { mode: 'line', cx: 800, cy: 880 },
+    objectives: [{ id: 'gate', name: 'The Town Gate', x: 800, y: 320, r: 90, owner: 'gaul' }],
+    rule: { holdSecs: 110, attacker: 'rome' },
+    terrain: [{ kind: 'hill', cx: 800, cy: 250, rx: 380, ry: 170, h: 55 }, { kind: 'forest', cx: 180, cy: 600, rx: 150, ry: 140 }],
+    enemy: [
+      { type: 'pomp_levy', men: 420, x: 650, y: 320, ai: { kind: 'ambush', trigger: 140, maxDelay: 130 } },
+      { type: 'pomp_levy', men: 420, x: 950, y: 320, ai: { kind: 'ambush', trigger: 140, maxDelay: 130 } },
+      { type: 'pompeian', men: 380, x: 800, y: 240, ai: { kind: 'ambush', trigger: 120, maxDelay: 130 } },
+      { type: 'pomp_missile', men: 200, x: 800, y: 360, ai: { kind: 'skirm' } },
+      { type: 'pomp_cav', men: 180, x: 1380, y: 500, ai: { kind: 'flank', delay: 60 } }
+    ],
+    reinforcements: [],
+    rewards: { gold: 620, supplies: 480, recruits: 170, xpBase: 90, officerXp: 90 }, rewardMult: 1,
+    unlock: []
+  },
+  {
+    id: 'munda', posture: 'assault', odds: 1.55, defect: true, chief: { name: 'Gnaeus Pompeius and Titus Labienus', style: 'stubborn' }, act: 'V', theater: 'Hispania', year: '45 BC', name: 'Munda', kind: 'named',
+    geo: { lat: 37.40, lon: -4.80, place: 'The plain and ridge of Munda', note: 'The last battle of the civil war, 17 March 45 BC (Bellum Hispaniense 27-31); the site is disputed' },
+    briefing: "The last army of the Republic stands on the ridge above Munda: thirteen Pompeian legions, Labienus among them, against Caesar's eight. To reach them you must cross the marshy stream and climb. They will not come down. It will be the hardest day of the war: Caesar himself will say that he often fought for victory, but at Munda he fought for his life. Somewhere on the far flank, King Bogud's Moorish horse is riding for the Pompeian camp.",
+    objective: "Break the Pompeian army (reduce it below 25%). Climb steadily, rotate tired cohorts, and watch for the moment their line wavers. Wavering cohorts may come over to you.",
+    links: [
+      { from: 'ategua', scale: { pomp_levy: 0.85 }, text: "Ategua has fallen with Gnaeus' supplies: his levies are fewer and hungrier." },
+      { from: 'thapsus', morale: 4, text: 'These are the men who won Thapsus (+4 morale).' }
+    ],
+    timeLimit: 900, daysToPrepare: 4,
+    deploy: { mode: 'line', cx: 800, cy: 880 },
+    terrain: [{ kind: 'hill', cx: 800, cy: 260, rx: 640, ry: 190, h: 50 }, { kind: 'ford', x: 120, y: 620, w: 1360, h: 45 }],
+    events: [{ at: 330, kind: 'shake', amount: 14, msg: "Labienus pulls five cohorts out of the line to meet Bogud's horse at the camp. The Pompeians see them go and think he is running: their line shudders!" }],
+    enemy: [
+      { type: 'pompeian', men: 420, x: 420, y: 300, ai: { kind: 'ambush', trigger: 170, maxDelay: 120 } },
+      { type: 'pompeian', men: 420, x: 600, y: 290, ai: { kind: 'ambush', trigger: 170, maxDelay: 120 } },
+      { type: 'pompeian', men: 420, x: 1000, y: 290, ai: { kind: 'ambush', trigger: 170, maxDelay: 120 } },
+      { type: 'pompeian', men: 420, x: 1180, y: 300, ai: { kind: 'ambush', trigger: 170, maxDelay: 120 } },
+      { type: 'pomp_levy', men: 420, x: 800, y: 285, ai: { kind: 'ambush', trigger: 170, maxDelay: 120 } },
+      { type: 'pomp_levy', men: 420, x: 500, y: 190, ai: { kind: 'rush', delay: 150, reserve: true } },
+      { type: 'pomp_levy', men: 420, x: 1100, y: 190, ai: { kind: 'rush', delay: 150, reserve: true } },
+      { type: 'pomp_cav', men: 200, x: 200, y: 360, ai: { kind: 'flank', delay: 60 } },
+      { type: 'pomp_cav', men: 200, x: 1400, y: 360, ai: { kind: 'flank', delay: 70 } },
+      { type: 'pomp_missile', men: 200, x: 800, y: 380, ai: { kind: 'skirm' } }
+    ],
+    reinforcements: [
+      { at: 300, side: 'rome', msg: "King Bogud's Moorish horse ride round the Pompeian flank towards their camp!", unit: { type: 'aux_cav', men: 160, x: 1500, y: 120, f: 3.1416, name: "Bogud's Moorish Horse", xp: 300 } }
+    ],
+    rewards: { gold: 1600, supplies: 800, recruits: 400, xpBase: 150, officerXp: 160 }, rewardMult: 1,
+    unlock: []
   }
 ];
 
@@ -837,7 +971,7 @@ PROLOGUE.enemy.push(...PROLOGUE.reinforcements.map(r => ({ ...r.unit, ai: { kind
 // Battles are all or nothing: the whole enemy host is on the field from the start. The only reinforcements are the ones authored
 // into a scenario as a deliberate surprise (a flank attack, an ambush party, allies arriving late).
 // ---------------------------------------------------------------------------
-const TIME_LIMITS = { pharsalus: 1320, comana: 1080, steppe: 1080, nicopolis: 1320, zela: 1080, anquillaria: 1080, castra: 1080, utica: 1320, water: 1080, bagradas: 1080, ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500, parley: 800, supply: 1080, lessercamp: 1200, ariovistus: 1800, rhine: 900 };
+const TIME_LIMITS = { ruspina: 1080, uzitta: 1080, thapsus: 1320, ategua: 1200, munda: 1560, pharsalus: 1320, comana: 1080, steppe: 1080, nicopolis: 1320, zela: 1080, anquillaria: 1080, castra: 1080, utica: 1320, water: 1080, bagradas: 1080, ford: 1080, arar: 1080, convoy: 1080, oppidum: 1200, silva: 840, bibracte: 1500, parley: 800, supply: 1080, lessercamp: 1200, ariovistus: 1800, rhine: 900 };
 for (const scn of SCENARIOS) scn.timeLimit = TIME_LIMITS[scn.id] || scn.timeLimit;
 for (const scn of SCENARIOS) if (scn.act === 'III') scn.dry = true;   // Africa is drawn as dry, open country
 

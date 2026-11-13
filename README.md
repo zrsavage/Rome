@@ -265,4 +265,8 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
   the named **Nicopolis** (a historical defeat: survive) and the named **Zela** (*veni, vidi, vici*). New enemies: Pompeian horse and archers,
   Pontic infantry drilled in the Roman manner, Sarmatian horse archers who shoot on the move and leave when out of arrows, armoured Sarmatian
   lancers, and scythed chariots (open ranks beat them). A Thessaly-to-Pontus map and an act introduction. Details in `docs/ACTS.md`.
+- **Act V: Roman against Roman, 46-45 BC (playable), and the end of the campaign.** Ruspina, The Lines at Uzitta (side fight), Thapsus (with
+  an unordered charge on your right), Ategua and the finale at **Munda**. Wavering Pompeian cohorts may come over to you: the better your goodwill
+  (now your name for clemency), the likelier. After Munda, **the triumph in Rome** closes the campaign with an account of your war.
+  Twenty-six battles in all. Details in `docs/ACTS.md`.
 
