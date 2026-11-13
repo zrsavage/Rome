@@ -15,6 +15,9 @@ export async function initArt() {
   try {
     const r = await fetch('assets/art/manifest.json');
     if (r.ok) manifest = await r.json();
+    // the camp painting is optional: if the manifest names a file that has not been added yet, fall back to the drawn camp
+    const cf = manifest.camp && manifest.camp.main;
+    if (cf && !cf.startsWith('data:')) { const h = await fetch(`assets/art/${cf}`, { method: 'HEAD' }).catch(() => null); if (!h || !h.ok) delete manifest.camp; }
   } catch { /* offline or blocked: placeholders only */ }
 }
 

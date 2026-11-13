@@ -11,3 +11,8 @@ Do not spend the quota on anything else first. Other findings about the models (
 ## Historical accuracy
 The user wants close, not perfect, historical accuracy (Caesar's Gaul, 58 BC onward). Check names and kit for anachronisms: no segmentata, no
 woad on Gauls, no round Gallic shields, no red cross, only places that existed in 58 BC on the map.
+
+## Shipping changes (user instruction)
+When a piece of work is finished and pushed, always open a pull request into the default branch (`claude/peaceful-ramanujan-qmpfyh`) and
+merge it, without asking first. Run the checks before pushing (`node tools/pathtest.mjs`, the relevant `tools/simtest.mjs` runs, a browser
+smoke test where the UI changed) and rebuild `dist/` with `npm run build`.

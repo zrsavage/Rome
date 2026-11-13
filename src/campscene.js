@@ -1,4 +1,8 @@
-import { campArt } from './campart.js';
+import { campArt, campPainting } from './campart.js';
+// Where each building stands in the painted camp (assets/art/camp.jpg), measured on the 1000 x 620 grid. Used instead of BUILDINGS x/y when the
+// painting is present; the drawn camp keeps the old layout.
+const PAINTED = { praetorium: { x: 503, y: 119 }, barracks: { x: 248, y: 132 }, officers: { x: 739, y: 135 }, forge: { x: 207, y: 226 },
+  hospital: { x: 764, y: 241 }, training: { x: 207, y: 351 }, hall: { x: 503, y: 357 }, depot: { x: 798, y: 364 } };
 // The camp as a place: a painted Roman fort. Each building is one activity, and buildings are drip-fed:
 // you start with one, and every battle won or drawn adds the next.
 
@@ -82,18 +86,30 @@ function art(id) {
 // The camp screen: a painting (campart.js) with an SVG layer of clickable buildings, labels and badges on top.
 export function sceneSvg(c, { visited = [], focus = null, flags = {} } = {}) {
   const un = unlockedBuildings(c), unIds = new Set(un.map(b => b.id)), seen = new Set(visited);
-  const art = campArt([...unIds], BUILDINGS);
+  const art = campArt([...unIds], BUILDINGS), painted = !!campPainting(), K = 0.7;
   let s = `<div class="campstage"><img class="campart" alt="" src="${art}"><svg viewBox="0 0 ${W} ${H}" id="campsvg" role="group" aria-label="Your camp. Click a building to use it.">
     <defs><radialGradient id="glow"><stop offset="0" stop-color="#ffd27a" stop-opacity=".6"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient></defs>`;
-  for (const [fx, fy] of [[446, 338], [554, 262], [250, 262], [750, 338]]) s += `<circle cx="${fx}" cy="${fy - 4}" r="36" fill="url(#glow)" class="flick" pointer-events="none"/>`;
-  s += `<g class="walker" pointer-events="none"><circle r="3.6" fill="#b3261e" stroke="#2a0a08"/><circle cy="-3" r="2.2" fill="#cfcfc4"/></g><g class="walker w2" pointer-events="none"><circle r="3.6" fill="#b3261e" stroke="#2a0a08"/><circle cy="-3" r="2.2" fill="#cfcfc4"/></g>`;
+  if (!painted) for (const [fx, fy] of [[446, 338], [554, 262], [250, 262], [750, 338]]) s += `<circle cx="${fx}" cy="${fy - 4}" r="36" fill="url(#glow)" class="flick" pointer-events="none"/>`;
+  if (!painted) s += `<g class="walker" pointer-events="none"><circle r="3.6" fill="#b3261e" stroke="#2a0a08"/><circle cy="-3" r="2.2" fill="#cfcfc4"/></g><g class="walker w2" pointer-events="none"><circle r="3.6" fill="#b3261e" stroke="#2a0a08"/><circle cy="-3" r="2.2" fill="#cfcfc4"/></g>`;
   // the command tent (always available)
   s += `<g class="bld" data-b="praetorium" tabindex="0" role="button" aria-label="Command tent: march to battle"><title>Command tent: your next battle, and the march</title>
-    <rect x="392" y="52" width="216" height="150" rx="10" class="hit"/>
-    ${flags.praetorium ? `<g class="bldflag" transform="translate(404,22)"><title>A career choice is waiting</title><line x1="0" y1="0" x2="0" y2="58" stroke="#2a1a08" stroke-width="4" stroke-linecap="round"/><line x1="0" y1="0" x2="0" y2="58" stroke="#8a6a3a" stroke-width="2" stroke-linecap="round"/><g class="cloth"><path d="M1 2h34l-8 10 8 10H1z" fill="#c62f25" stroke="#4a0f0b" stroke-width="1.6" stroke-linejoin="round"/><text x="13" y="17" text-anchor="middle" style="font:bold 13px system-ui,sans-serif;fill:#fff3d0">${flags.praetorium}</text></g></g>` : ''}
-    <text x="500" y="216" class="bl" text-anchor="middle">Command Tent</text><text x="500" y="234" class="bs" text-anchor="middle">Next battle and the march</text></g>`;
+    ${painted ? '<rect x="398" y="62" width="210" height="116" rx="10" class="hit"/>' : '<rect x="392" y="52" width="216" height="150" rx="10" class="hit"/>'}
+    ${flags.praetorium ? `<g class="bldflag" transform="translate(${painted ? '410,30' : '404,22'})"><title>A career choice is waiting</title><line x1="0" y1="0" x2="0" y2="58" stroke="#2a1a08" stroke-width="4" stroke-linecap="round"/><line x1="0" y1="0" x2="0" y2="58" stroke="#8a6a3a" stroke-width="2" stroke-linecap="round"/><g class="cloth"><path d="M1 2h34l-8 10 8 10H1z" fill="#c62f25" stroke="#4a0f0b" stroke-width="1.6" stroke-linejoin="round"/><text x="13" y="17" text-anchor="middle" style="font:bold 13px system-ui,sans-serif;fill:#fff3d0">${flags.praetorium}</text></g></g>` : ''}
+    <text x="${painted ? 503 : 500}" y="${painted ? 196 : 216}" class="bl" text-anchor="middle">Command Tent</text><text x="${painted ? 503 : 500}" y="${painted ? 212 : 234}" class="bs" text-anchor="middle">Next battle and the march</text></g>`;
   for (const b of BUILDINGS) {
-    const tx = b.x - 85, ty = b.y - 55;
+    const P = painted ? PAINTED[b.id] : b, tx = b.x - 85, ty = b.y - 55;
+    if (painted) {                                   // the painting shows every building; ones not built yet are dimmed with a question mark
+      const inner = `translate(${-85 * K},${-55 * K}) scale(${K})`;
+      if (!unIds.has(b.id)) { s += `<g transform="translate(${P.x},${P.y})" class="plot" aria-hidden="true"><rect x="-64" y="-40" width="128" height="80" rx="10" fill="rgba(12,8,3,0.62)"/><text y="14" text-anchor="middle" class="plotq" style="opacity:.55">?</text><text y="34" text-anchor="middle" class="bs" style="font-size:11px">not built yet</text></g>`; continue; }
+      const isNew = !seen.has(b.id), isFocus = focus === b.id;
+      s += `<g class="bld ${isFocus ? 'focus' : ''}" data-b="${b.id}" tabindex="0" role="button" aria-label="${b.name}: ${b.sub}" transform="translate(${P.x},${P.y})"><title>${b.name}: ${b.sub}</title>
+        <g transform="${inner}"><rect x="-6" y="-14" width="182" height="146" rx="10" class="hit"/>
+        ${isFocus ? '<rect x="-4" y="-12" width="178" height="142" rx="10" class="pulsebox"/>' : ''}
+        ${isNew ? '<g transform="translate(160,-4)"><circle r="13" fill="#e8c36a" stroke="#2a1a08" stroke-width="2"/><text y="5" text-anchor="middle" class="newb">NEW</text></g>' : ''}
+        ${flags[b.id] ? `<g class="bldflag" transform="translate(8,-34)"><title>${flags[b.id]} decision${flags[b.id] > 1 ? 's' : ''} waiting</title><line x1="0" y1="0" x2="0" y2="58" stroke="#2a1a08" stroke-width="4" stroke-linecap="round"/><g class="cloth"><path d="M1 2h34l-8 10 8 10H1z" fill="#c62f25" stroke="#4a0f0b" stroke-width="1.6" stroke-linejoin="round"/><text x="13" y="17" text-anchor="middle" style="font:bold 13px system-ui,sans-serif;fill:#fff3d0">${flags[b.id]}</text></g></g>` : ''}</g>
+        <text y="52" class="bl" text-anchor="middle">${b.name}</text></g>`;
+      continue;
+    }
     if (!unIds.has(b.id)) { s += `<g transform="translate(${tx},${ty})" class="plot" aria-hidden="true"><text x="85" y="62" text-anchor="middle" class="plotq">?</text></g>`; continue; }
     const isNew = !seen.has(b.id), isFocus = focus === b.id;
     s += `<g class="bld ${isFocus ? 'focus' : ''}" data-b="${b.id}" tabindex="0" role="button" aria-label="${b.name}: ${b.sub}" transform="translate(${tx},${ty})"><title>${b.name}: ${b.sub}</title>

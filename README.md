@@ -272,4 +272,15 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
 - **Side act: Britannia, 55-54 BC (optional).** Between Act II and Act III the map offers Caesar's two crossings to Britain: the landing in the
   surf, the Seventh caught at the harvest, the hillfort in the woods and the stronghold of Cassivellaunus. British war chariots (javelins,
   no scythes). Thirty battles in all. Art hand-off for an image AI: `docs/ART_BRIEF.md` with every prompt in `docs/ART_SHOTLIST.md`.
+- **Smarter enemy lines (measured with `node tools/linetest.mjs`).** The enemy line front waits for stragglers; men waiting in ambush on open
+  ground join the line instead of charging one by one; an enemy attacker hemmed in by its own side picks another target instead of
+  climbing over them. Result: a much tighter advance (at Ariovistus the ragged front went from about 240 to 80 paces) and far less
+  stacking in melee (56-85% of enemy line units overlapping a friend, now 21-64%). Your own units ordered through friends still pass.
+- **Pompeian and Pontic legions fight like Romans:** a front line and a second line behind it. The second line relieves tired cohorts
+  (they fall back to rest), steps into the gap when a cohort breaks, and joins the fight if you reach it. No feigned flights, no stretched lines.
+- **Reputation cuts both ways (Act V and other Roman-against-Roman fights):** with goodwill below zero, a wavering cohort of yours may refuse
+  to fight fellow Romans and march off (8% per point below zero, up to 24%), losing a third of its men. Wavering Pompeian cohorts still
+  come over to you when your name is good. At most three of either per battle. The briefing shows both chances.
+- **Painted camp ready:** upload the camp picture as `assets/art/camp.jpg` and the camp screen uses it, with the buildings' hotspots placed
+  on it. Unbuilt buildings are dimmed with a question mark. Without the file the drawn camp is used.
 

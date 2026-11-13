@@ -972,7 +972,7 @@ export const SCENARIOS = [
     unlock: []
   },
   {
-    id: 'thapsus', posture: 'attack', odds: 0.75, defect: true, chief: { name: 'Metellus Scipio and King Juba', style: 'stubborn' }, fog: true, act: 'V', theater: 'Africa', year: '46 BC', name: 'Thapsus', kind: 'named', dry: true,
+    id: 'thapsus', posture: 'attack', odds: 0.85, defect: true, chief: { name: 'Metellus Scipio and King Juba', style: 'stubborn' }, fog: true, act: 'V', theater: 'Africa', year: '46 BC', name: 'Thapsus', kind: 'named', dry: true,
     geo: { lat: 35.62, lon: 11.05, place: 'Before Thapsus', note: 'Caesar destroyed Scipio and Juba here on 6 April 46 BC (Bellum Africum 79-86)' },
     briefing: "Caesar has bottled Scipio up on the narrow strip of land outside Thapsus, between the sea and a salt lagoon. Scipio has drawn up his legions with Juba's elephants on both wings and the Numidian horse beyond them. Your veterans can see the enemy is nervous. They are impatient to be at them, perhaps too impatient.",
     objective: "Break Scipio's army (reduce it below 25%). Elephants stand on both wings: missiles drive them mad, and open ranks (.) let them through. Wavering Pompeian cohorts may come over to you.",
