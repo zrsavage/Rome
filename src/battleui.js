@@ -321,10 +321,10 @@ export class BattleUI {
     document.querySelectorAll('.ucard').forEach(d => {
       if (d.dataset.gen) { d.classList.toggle('sel', this.genSel); return; }
       const u = b.byId(+d.dataset.id); if (!u) return;
-      d.dataset.stance = u.stance; d.classList.toggle('sel', this.r.selection.has(u.id)); d.classList.toggle('gone', !u.present);
+      d.dataset.stance = u.stance; d.classList.toggle('sel', this.r.selection.has(u.id)); d.classList.toggle('gone', !u.present || u.state === 'surrendered');
       d.querySelector('.x i').style.width = Math.max(0, u.men / u.maxMen * 100) + '%';
       d.querySelector('.m i').style.width = Math.max(0, Math.min(100, u.morale / u.maxMorale * 100)) + '%';
-      d.title = `${u.men} men` + (u.state === 'routing' ? ' (routing)' : u.state === 'gone' ? ' (withdrawn)' : '');
+      d.title = `${u.men} men` + (u.state === 'routing' ? ' (routing)' : u.state === 'surrendered' ? ' (surrendered: reach them while no enemy is close to free them)' : u.state === 'gone' ? ' (withdrawn)' : '');
     });
     // units that join mid-battle (a relief force, a cohort that comes over) get their cards
     { const n = b.units.filter(u => u.side === 'rome').length; if (n !== this.cardCount) { this.cardCount = n; this.refreshBottom(); } }
