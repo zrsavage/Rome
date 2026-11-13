@@ -7,6 +7,7 @@ import { ask } from './ui.js';
 import { icon } from './icons.js';
 import { dragLayout, compass, triplexLayout, saveFormation, recallFormation } from './orders.js';
 import { WEATHER } from './weather.js';
+const NOISY = /crashes into|hurls its pila|refills|fresh pila|loses its formation|cannot hold a formation|Enemy sighted|rallies!|fights harder|charge falters|breaks off and runs/;
 
 const $ = (id) => document.getElementById(id);
 
@@ -199,7 +200,7 @@ export class BattleUI {
     $('btn-retreat').onclick = async () => {
       if (!this.b) return;
       const floor = Math.round(this.b.retreatFloor() * 100);
-      if (await ask(`Sound the retreat? You keep your surviving men, and the withdrawal counts as a draw only if at least ${floor}% of your army gets away.`, 'Sound retreat', 'Keep fighting')) { this.b.retreatAll(); this.setPause(false); $('btn-retreat').disabled = true; }
+      if (await ask(`Sound the retreat? Your army falls back away from the enemy for 30 seconds, men in contact stepping back with their shields to the foe, and then the battle ends. It counts as a draw if at least ${floor}% of your army is still with the standards (routing men count half).`, 'Sound retreat', 'Keep fighting')) { this.b.retreatAll(); this.setPause(false); $('btn-retreat').disabled = true; }
     };
   }
 
@@ -312,7 +313,7 @@ export class BattleUI {
       const o = b.objectives[0], att = b.rule ? b.rule.attacker : null;
       objTxt = `   |  ${o.name}: ${o.contested ? 'CONTESTED' : o.owner === 'rome' ? 'Roman' : 'Gallic'}` + (att ? ` - ${att === 'rome' ? 'you hold' : 'enemy holds'} ${Math.floor(b.hold[att])}/${b.rule.holdSecs}s` : '');
     }
-    const waveTxt = '';
+    const wl = b.withdrawLeft ? b.withdrawLeft() : null, waveTxt = wl != null ? `   |  Withdrawing: ${Math.ceil(wl)}s` : '';
     $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${b.fogOn && b.units.some(u => u.side === 'gaul' && u.active && !u.spotted) ? '?' : Math.round(b.activeMen('gaul'))}   ${gs}`;
     $('hud-sub').textContent = (objTxt + waveTxt).replace(/^\s*\|\s*/, '').replace(/\s+\|\s+/g, '   |   ').trim();
     document.querySelectorAll('.ucard').forEach(d => {
@@ -325,10 +326,14 @@ export class BattleUI {
     });
     // log
     const lg = $('hud-log');
+    // Only the messages that matter, a few at a time, each fading after a few seconds of battle. Routine chatter (pila thrown, ammunition
+    // refilled, a unit rallying, a charge landing) is left out; it is all still in the battle report.
     while (this.logShown < b.log.length) {
-      const m = b.log[this.logShown++], d = document.createElement('div'); d.className = m.kind; d.textContent = m.msg; lg.appendChild(d);
-      while (lg.children.length > 7) lg.removeChild(lg.firstChild);
+      const m = b.log[this.logShown++]; if (m.kind === 'info' || NOISY.test(m.msg) || (m.kind === 'good' && /breaks and flees|annihilated/.test(m.msg))) continue;
+      const d = document.createElement('div'); d.className = m.kind; d.textContent = m.msg; d.dataset.t = m.t; lg.appendChild(d);
+      while (lg.children.length > 3) lg.removeChild(lg.firstChild);
     }
+    for (const d of [...lg.children]) { const age = b.t - +d.dataset.t; if (age > 8) d.remove(); else d.style.opacity = age > 6 ? String(Math.max(0, (8 - age) / 2)) : ''; }
     // left panel
     this.refreshCmds();
     const sel = this.selected(), ins = this.inspect ? b.byId(this.inspect) : null;

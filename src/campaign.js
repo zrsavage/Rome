@@ -11,9 +11,9 @@ export const CAREER = [
   { id: 'economy', name: 'Economy', text: 'Everything you buy (hiring, equipment, raising units) costs 6% less per level.' },
   { id: 'medicine', name: 'Medicine', text: 'Your surgeons save more men: +6% wounded recovered per level.' },
   { id: 'training', name: 'Training', text: 'Cohorts learn 5% faster from battle per level, and veterans cost 10% less to hire.' },
-  { id: 'organisation', name: 'Army organisation', text: 'You can command one more unit per level.' },
+  { id: 'organisation', name: 'Army organisation', text: 'You can command four more units per level.' },
   { id: 'logistics', name: 'Logistics', text: 'The army eats 5% less and foraging brings in 8% more per level.' },
-  { id: 'recon', name: 'Reconnaissance', text: 'Your scouts see 7% farther per level; at level 2 the briefing always gives exact enemy numbers.' }
+  { id: 'recon', name: 'Reconnaissance', text: 'Your scouts see 7% farther per level. Level 1: your advisers in camp learn what the next enemy is made of. Level 2: the briefing always gives exact enemy numbers.' }
 ];
 export const CAREER_MAX = 5;
 export const careerLv = (c, id) => ((c.career && c.career.levels) || {})[id] || 0;
@@ -35,15 +35,15 @@ export const costMult = (c) => 1 - 0.06 * careerLv(c, 'economy');
 // ---------------- the line of march: chosen once, on arriving at a new battle ----------------
 export const ROUTES = [
   { id: 'road', name: 'Keep to the road', text: 'The supply line stays open behind you. The army arrives fed and in order.', effects: ['+45 supplies', 'nothing lost'] },
-  { id: 'forced', name: 'Forced march', text: 'Outrun the wagons and arrive early. The men are tired and the grain is behind you.', effects: ['+1 day to prepare', '-12 condition, every unit', '-25 supplies'] },
-  { id: 'forage', name: 'Live off the land', text: 'Spread out and strip the farms as you go. Slow, and the tribes will not forget it.', effects: ['+90 supplies', '-1 day to prepare', 'goodwill -1'] }
+  { id: 'forced', name: 'Forced march', text: 'Outrun the wagons and fall on the enemy before all his men have come in. The men are tired and the grain is behind you.', effects: ['enemy host 10% smaller', '-12 condition, every unit', '-25 supplies'] },
+  { id: 'forage', name: 'Live off the land', text: 'Spread out and strip the farms as you go. The wagons fill, and the tribes will not forget it.', effects: ['+90 supplies', 'goodwill -1'] }
 ];
 export const routePending = (c) => { const s = SCENARIOS[c.scenario]; return !!s && !(c.phase > 0) && c.routeFor !== s.id; };
 export function chooseRoute(c, id) {
   const s = SCENARIOS[c.scenario]; if (!s || !routePending(c)) return null;
   c.routeFor = s.id;
-  if (id === 'forced') { c.daysLeft += 1; c.cohorts.forEach(h => { h.condition = Math.max(35, h.condition - 12); }); c.supplies = Math.max(0, c.supplies - 25); return 'A forced march: you arrive a day early, tired, with the wagons far behind.'; }
-  if (id === 'forage') { c.supplies += 90; c.daysLeft = Math.max(1, c.daysLeft - 1); c.favour -= 1; return 'The army lives off the land: full wagons, a day lost, and angry farmers.'; }
+  if (id === 'forced') { c.surprise = s.id; c.cohorts.forEach(h => { h.condition = Math.max(35, h.condition - 12); }); c.supplies = Math.max(0, c.supplies - 25); return 'A forced march: you arrive before the enemy has gathered all his men, but tired, with the wagons far behind.'; }
+  if (id === 'forage') { c.supplies += 90; c.favour = Math.max(-3, c.favour - 1); return 'The army lives off the land: full wagons and angry farmers.'; }
   c.supplies += 45; return 'You keep to the road and the grain comes up behind you.';
 }
 
@@ -104,7 +104,7 @@ export function canSkip(c) { const s = SCENARIOS[c.scenario]; return !!s && !!s.
 export function skipBattle(c) {
   const s = SCENARIOS[c.scenario]; if (!canSkip(c)) return null;
   c.history = c.history || []; c.history.push({ id: s.id, outcome: 'skipped', day: c.day });
-  c.scenario++; c.phase = 0; c.scouted = false; const next = SCENARIOS[c.scenario]; c.daysLeft = next ? next.daysToPrepare : 0; if (!next) c.over = true;
+  c.scenario++; c.phase = 0; c.scouted = false; c.campUse = {}; const next = SCENARIOS[c.scenario]; if (!next) c.over = true;
   return `You march past ${s.name}. Nothing is won there and nothing is lost.`;
 }
 export const unitCat = (type) => (UNIT_TYPES[type] || {}).cat;

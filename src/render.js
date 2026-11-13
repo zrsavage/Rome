@@ -146,7 +146,10 @@ export class Renderer {
     if (b.shake > 0.05) ctx.translate((Math.random() - 0.5) * b.shake * 2, (Math.random() - 0.5) * b.shake * 2);   // the thud of a charge
     if (this.bg) ctx.drawImage(this.bg, 0, 0, WORLD.w, WORLD.h);
     // retreat edge
-    if (b.retreating) { ctx.fillStyle = 'rgba(232,195,106,0.25)'; ctx.fillRect(0, WORLD.h - 16, WORLD.w, 16); }
+    if (b.retreating && b.retreatOrder) {   // the way out: a band on the map edge the army is withdrawing toward
+      const { dx, dy } = b.retreatOrder; ctx.fillStyle = 'rgba(232,195,106,0.25)';
+      if (Math.abs(dy) >= Math.abs(dx)) ctx.fillRect(0, dy > 0 ? WORLD.h - 16 : 0, WORLD.w, 16); else ctx.fillRect(dx > 0 ? WORLD.w - 16 : 0, 0, 16, WORLD.h);
+    }
     // bodies
     ctx.lineWidth = 1.8; ctx.lineCap = 'round';
     for (const side of ['rome', 'gaul']) {          // the fallen, as small figures lying on the ground

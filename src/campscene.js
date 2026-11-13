@@ -4,17 +4,17 @@ import { campArt } from './campart.js';
 
 export const BUILDINGS = [
   { id: 'training', name: 'Training Ground', sub: 'Drill your cohorts', x: 190, y: 470,
-    intro: ['Your cohorts improve by <b>drilling</b>. Each drill uses one day and a little food.', 'Lead the drill yourself for the best result, or let an officer do it.', 'Experienced, well-drilled units fight better and break less easily.'] },
+    intro: ['Your cohorts improve by <b>drilling</b>. Each drill costs supplies; nothing in camp is limited by time.', 'The best leader for each drill, you or one of your officers, takes it automatically.', 'Experienced, well-drilled units fight better and break less easily.'] },
   { id: 'barracks', name: 'Barracks', sub: 'Rest, recruit, raise units', x: 190, y: 150,
     intro: ['Rest tired units, recruit replacements and fortify the camp.', 'As you win battles your command grows: <b>raise new units</b> here.'] },
   { id: 'depot', name: 'Supply Depot', sub: 'Forage for food', x: 810, y: 470,
-    intro: ['Your army eats every day. Send <b>foraging parties</b> to refill your supplies.', 'A cautious sweep is safe. A wide sweep brings back more but risks an ambush.'] },
+    intro: ['Your army eats on the march to every battle. Send <b>foraging parties</b> to refill your supplies.', 'A cautious sweep is safe. A wide sweep brings back more but risks an ambush.'] },
   { id: 'officers', name: "Officers' Tent", sub: 'Skills and assignments', x: 810, y: 150,
     intro: ['Each time an officer gains a level he earns <b>one advancement</b>: a choice between two improvements. A raised flag over this tent means one is waiting.', 'Attach an officer to a unit to help it in battle.'] },
-  { id: 'forge', name: 'Armourer', sub: 'Better arms and armour', x: 190, y: 310,
-    intro: ['Spend denarii and supplies to give a cohort better <b>armour and weapons</b>.', 'Each upgrade takes a day. Equip your best units first.'] },
   { id: 'hospital', name: 'Field Hospital', sub: 'Heal the wounded', x: 810, y: 310,
     intro: ['Build a <b>field hospital</b> so more wounded men return to the ranks after each battle.', 'Each level improves recovery.'] },
+  { id: 'forge', name: 'Armourer', sub: 'Better arms and armour', x: 190, y: 310,
+    intro: ['Spend denarii and supplies to give a cohort better <b>armour and weapons</b>.', 'Equip your best units first.'] },
   { id: 'hall', name: "Chieftains' Hall", sub: 'Tribute, gifts, scouts', x: 500, y: 450,
     intro: ['Squeeze local nobles for gold, win their goodwill with gifts, or <b>send scouts</b> to learn what you will face.', 'Goodwill makes the next enemy smaller; ill will makes it larger.'] }
 ];
@@ -109,13 +109,12 @@ export function sceneSvg(c, { visited = [], focus = null, flags = {} } = {}) {
 
 // One plain sentence telling the player what to do next.
 export function advice(c, visited, flags = {}) {
-  const un = unlockedBuildings(c), seen = new Set(visited), days = c.daysLeft;
-  if (days <= 0) return { text: 'No days remain. Click the command tent and march to battle.', focus: 'praetorium' };
+  const un = unlockedBuildings(c), seen = new Set(visited), tail = ' Spend what you can afford: denarii, supplies and men are the only limits in camp.';
   const fresh = un.find(b => !seen.has(b.id));
-  if (un.length === 1 && fresh) return { text: `Welcome to your camp. You have ${days} day${days === 1 ? '' : 's'} before the enemy moves. Click the glowing <b>${fresh.name}</b> to begin.`, focus: fresh.id };
-  if (fresh) return { text: `New: the <b>${fresh.name}</b> is built. Click it to see what it offers. You have ${days} day${days === 1 ? '' : 's'} left.`, focus: fresh.id };
-  if (flags.praetorium) return { text: `<b>A raised flag</b> over the Command Tent: you have earned a step in your own career. It costs no day. You have ${days} day${days === 1 ? '' : 's'} left.`, focus: 'praetorium' };
+  if (un.length === 1 && fresh) return { text: `Welcome to your camp. Click the glowing <b>${fresh.name}</b> to begin.${tail}`, focus: fresh.id };
+  if (fresh) return { text: `New: the <b>${fresh.name}</b> is built. Click it to see what it offers.`, focus: fresh.id };
+  if (flags.praetorium) return { text: '<b>A raised flag</b> over the Command Tent: you have earned a step in your own career.', focus: 'praetorium' };
   const fl = un.find(b => flags[b.id]);
-  if (fl) return { text: `<b>A raised flag</b> over the ${fl.name} means ${fl.id === 'officers' ? 'an officer has earned an advancement' : 'a unit has gained a rank and can choose an improvement'}. It costs no day. You have ${days} day${days === 1 ? '' : 's'} left.`, focus: fl.id };
-  return { text: `You have <b>${days} day${days === 1 ? '' : 's'}</b> left. Each action uses a day. Click any building, or the command tent when you are ready to march.`, focus: null };
+  if (fl) return { text: `<b>A raised flag</b> over the ${fl.name} means ${fl.id === 'officers' ? 'an officer has earned an advancement' : 'a unit has gained a rank and can choose an improvement'}.`, focus: fl.id };
+  return { text: `Click any building, or the command tent when you are ready to march.${tail}`, focus: null };
 }

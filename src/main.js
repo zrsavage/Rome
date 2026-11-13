@@ -1,7 +1,7 @@
 import { SCENARIOS, DIFFICULTY, UNIT_TYPES, PROLOGUE } from './data.js';
-import { romeSpecs, applyResult, modsOf, forceScale } from './state.js';
+import { romeSpecs, applyResult, modsOf, forceScale, postureOf, baseStrength, ENEMY_WEIGHT } from './state.js';
 import { ORIGINS, DEFAULT_NAME, buildCampaign, describe } from './origins.js';
-import { Camp, totalMen } from './camp.js';
+import { Camp, totalMen, breakCamp, rationsDue } from './camp.js';
 import { BattleUI } from './battleui.js';
 import { renderMap } from './map.js';
 import { artSrc, initArt } from './art.js';
@@ -122,12 +122,15 @@ function showBrief(scnArg) {
   const ex = battleExtras(c, scn), known = c.scouted || careerLv(c, 'recon') >= 2, links = linksFor(c, scn);
   const opening = scn.id === 'prologue';
   const diff = DIFFICULTY[c.difficulty];
-  const favMult = c.favour >= 2 ? 0.9 : c.favour <= -2 ? 1.1 : 1, fs = forceScale(c, scn), scale = diff.enemyMult * favMult * (opening ? 1 : 1.1) * fs;
+  const favMult = c.favour >= 2 ? 0.9 : c.favour <= -2 ? 1.1 : 1, fs = forceScale(c, scn), scale = diff.enemyMult * favMult * fs;
   const groups = {};
   [...scn.enemy, ...scn.reinforcements.filter(r => r.side !== 'rome').map(r => r.unit)].forEach(e => { groups[e.type] = (groups[e.type] || 0) + e.men * scale * (scn.boost || 1) * (ex.typeScale[e.type] ?? 1); });
   const total = Object.values(groups).reduce((a, b) => a + b, 0);
   const rnd = (n) => Math.max(0, Math.round(n / 50) * 50);
-  const list = Object.entries(groups).map(([t, n]) => known ? `<li>${UNIT_TYPES[t].name}: <b>${Math.round(n)}</b> men</li>` : `<li>${UNIT_TYPES[t].name}: roughly <b>${rnd(n * 0.75)}-${rnd(n * 1.35)}</b></li>`).join('');
+  const list = Object.entries(groups).map(([t, n]) => known ? `<li>${UNIT_TYPES[t].name}: <b>${Math.round(n)}</b> men</li>` : `<li>${UNIT_TYPES[t].name}: roughly <b>${rnd(n * 0.85)}-${rnd(n * 1.15)}</b></li>`).join('');
+  // How the two armies compare, man for man by fighting value, so the odds are plain: the enemy is sized by the kind of fight, then difficulty and goodwill.
+  const pos = postureOf(scn), myStr = baseStrength(c), foeStr = Object.entries(groups).reduce((a, [t, n]) => a + n * (ENEMY_WEIGHT[t] ?? 1), 0), odds = foeStr / Math.max(1, myStr);
+  const oddsCard = opening ? '' : `<div class="card" style="margin-top:12px"><h3>The odds: ${esc(pos.name)}</h3><div class="small">${esc(pos.text)}${scn.odds && scn.odds < 1 ? ' This fight plays hard, so they bring a little less.' : ''} With ${esc(diff.name)} difficulty${favMult !== 1 ? ' and your goodwill' : ''}, their strength is <b>${odds.toFixed(2)}x</b> yours.</div><div class="odds"><i style="width:${Math.round(100 / (1 + odds))}%"></i></div><div class="small muted">Strength counts men by fighting value: a legionary or a Gallic warrior is 1, a slinger 0.75, a noble champion 1.6, a horseman about 2. Your training, experience and equipment are not counted against you: they are your edge.</div></div>`;
   const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`;
   const waveMap = {}; scn.reinforcements.filter(r => r.side !== 'rome').forEach(r => { const k = Math.round(r.at / 10) * 10; waveMap[k] = (waveMap[k] || 0) + Math.round(r.unit.men * scale); });
   const waveKeys = Object.keys(waveMap).map(Number).sort((x, y) => x - y);
@@ -137,12 +140,12 @@ function showBrief(scnArg) {
     <h2>${esc(scn.name)}${scn.phaseCount ? ` <span class="pill">stage ${scn.phaseIdx + 1} of ${scn.phaseCount}: ${esc(scn.phaseName)}</span>` : ''}</h2><img class="banner" alt="" src="${artSrc('scenario', scn.id, 800, 240, { scn })}"><p>${esc(scn.briefing)}</p>
     <div class="card"><h3>Weather: ${esc(wxo.name)}</h3><div class="small">${esc(wxo.text)}</div></div>
     ${scn.chief ? `<div class="card" style="margin-top:12px"><h3>Enemy commander: ${esc(scn.chief.name)}</h3><div class="small">${known ? esc(STYLES[scn.chief.style] || STYLES.balanced) : 'Nothing is known of how he fights. Scouts (at the Chieftains\' Hall) would tell you.'}</div></div>` : ''}
-    ${links.length ? `<div class="card" style="margin-top:12px"><h3>What earlier fights changed</h3>${links.map(l => `<div class="small">${l.won ? '<b style="color:var(--green)">Won:</b>' : '<span class="muted">Not won:</span>'} ${esc(l.name)} - ${l.won ? esc(l.text) : '<span class="muted">a victory there would have helped here.</span>'}</div>`).join('')}</div>` : ''}
+    ${oddsCard}${links.length ? `<div class="card" style="margin-top:12px"><h3>What earlier fights changed</h3>${links.map(l => `<div class="small">${l.won ? '<b style="color:var(--green)">Won:</b>' : '<span class="muted">Not won:</span>'} ${esc(l.name)} - ${l.won ? esc(l.text) : '<span class="muted">a victory there would have helped here.</span>'}</div>`).join('')}</div>` : ''}
     <div class="card" style="margin-top:12px"><h3>Objective</h3>${esc(scn.objective)}<br><span class="muted small">Time limit ${Math.round(scn.timeLimit / 60)} minutes. A well-ordered withdrawal (keeping at least ${Math.round((0.45 - 0.05 * c.fort) * 100)}% of your men; fortifications lower this) counts as a draw and earns partial spoils.${scn.rewardMult > 1.4 ? ' Historically a dark day for Rome: survival or victory pays handsomely.' : ''}</span></div>
     <div class="row" style="align-items:flex-start;margin-top:12px"><div class="card" style="flex:1"><h3>Your force (${rome} men)</h3><ul>${c.cohorts.length > 10 ? Object.entries(c.cohorts.reduce((g, h) => { (g[h.type] = g[h.type] || { n: 0, men: 0 }).n++; g[h.type].men += h.men; return g; }, {})).map(([t, g]) => `<li>${g.n} x ${esc(UNIT_TYPES[t].name)} - ${g.men} men</li>`).join('') : c.cohorts.map(h => `<li>${esc(h.name)} - ${h.men}</li>`).join('')}</ul></div>
-    <div class="card" style="flex:1"><h3>Enemy${known ? ` (scouted) ~${Math.round(total)}` : ' (estimated)'}</h3><ul>${list}</ul>${fs > 1.05 ? '<div class="muted small">The Gauls gather in proportion to the army you bring: the bigger your host, the bigger theirs.</div>' : ''}${known ? waveText : '<div class="muted small">Without scouts, expect surprises: you will not know how many reinforcements come, or when.</div>'}</div></div>
-    <p class="muted small">Goodwill ${c.favour}. Fort ${c.fort}. Supplies ${c.supplies}${c.supplies < totalMen(c) / 60 * 2 ? ' - LOW, morale will suffer' : ''}.</p>
-    ${opening ? '<p class="small" style="color:var(--gold)">After this fight you will see your army management screen, where you spend days between battles.</p>' : ''}
+    <div class="card" style="flex:1"><h3>Enemy${known ? ` (scouted) ~${Math.round(total)}` : ' (estimated)'}</h3><ul>${list}</ul>${known ? waveText : '<div class="muted small">Without scouts, expect surprises: you will not know how many reinforcements come, or when.</div>'}</div></div>
+    <p class="muted small">Goodwill ${c.favour}. Fort ${c.fort}. Supplies ${c.supplies}${rationsDue(c, scn) ? `, of which ${rationsDue(c, scn)} are eaten on the march` : ''}${c.supplies - rationsDue(c, scn) < totalMen(c) / 60 * 2 ? ' - LOW, morale will suffer' : ''}.</p>
+    ${opening ? '<p class="small" style="color:var(--gold)">After this fight you will see your army management screen, where you prepare between battles.</p>' : ''}
     <div class="row"><button class="primary" id="go">Deploy</button>${opening ? '<button id="back">Main menu</button>' : '<button id="back">Back to map</button>'}</div></div>`;
   $('go').onclick = () => startBattle(scn);
   $('back').onclick = () => (opening ? toMenu() : showMap());
@@ -151,6 +154,7 @@ function showBrief(scnArg) {
 
 function startBattle(scn) {
   const c = campaign;
+  const hungry = breakCamp(c, scn); if (hungry) inform('On the march', [hungry], 'Onward');   // the march rations are paid now, once per battle
   store.set(preKey(c.slot), c);
   show('screen-battle');
   const low = c.supplies < totalMen(c) / 60 * 2, m = modsOf(c), opening = scn.id === 'prologue', extras = battleExtras(c, scn);
@@ -185,7 +189,7 @@ function stopCoach() { if (coach) { coach.stop(); coach = null; } }
 function showManagementIntro() {
   inform('Army management', [
     'This is your <b>campaign map</b>. Each battle is a place on the real map of Gaul; the glowing marker is your next fight.',
-    '<b>Make camp</b> to spend your few days before the battle. Your camp is a drawn fort: each building is one activity. You start with one building and a new one is built after every battle you win or draw.',
+    '<b>Make camp</b> to prepare before the battle: there is no time limit, only your denarii, supplies and men. Your camp is a drawn fort: each building is one activity. You start with one building and a new one is built after every battle you win or draw.',
     'Your <b>background</b> (shown on the map screen) affects how fast wounded men recover, how much your army eats, and how much plunder you win.',
     'Winning or drawing a battle brings spoils, experience and new units. You can always <b>March at once</b> if you are ready.'
   ], 'Begin the campaign');

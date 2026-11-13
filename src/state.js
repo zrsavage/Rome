@@ -21,11 +21,34 @@ export function modsOf(c) {
   return m;
 }
 export const hasPerk = (c, id) => (c.officers || []).some(o => o.alive && (o.perks || []).includes(id));
-// A campaign grows an army from a handful of cohorts to 60-80 units by the final battles.
-export const commandLimit = (c) => Math.min(80, 6 + Math.round((c.history || []).filter(realWin).length * 2.2) + careerLv(c, 'organisation'));
-// ---- Enemy strength follows yours ----
-// The Gauls gather in proportion to the army you bring (a little less than one for one, so a bigger and better army is still an
-// advantage). Early battles are authored for the starting army; as your host grows to seventy units, so do the hosts that meet it.
+// A campaign grows an army from a handful of cohorts to 50-60 units by the final battles, led by you with legates under you:
+// four more units for every battle won or drawn, and four more for each level of Army organisation.
+export const COMMAND_PER_WIN = 4, COMMAND_PER_ORG = 4;
+export const commandLimit = (c) => Math.min(80, 8 + (c.history || []).filter(h => h.id !== 'prologue' && realWin(h)).length * COMMAND_PER_WIN + COMMAND_PER_ORG * careerLv(c, 'organisation'));
+// ---- Fair enemy hosts ----
+// The enemy is sized from your army, by what kind of fight it is: an attacker needs more men than a defender, and men behind a rampart
+// or on a hill need fewer. Strength is counted man for man by fighting value, measured with the balance bot (tools/simtest.mjs): a
+// legionary is 1 and a Gallic warrior is worth about the same in this game (he charges hard; the legionary is armoured and drilled), so an
+// open battle is fought at roughly even numbers. Your army's quality (experience, drill,
+// equipment) is NOT counted: training and arming your men is a real advantage, not something the enemy grows to match.
+export const ENEMY_WEIGHT = { warband: 1.0, gaul_skirm: 0.8, gaul_elite: 1.6, gaul_cav: 2.0, suebi: 1.15, german_cav: 2.1, laager: 0.55 };
+export const POSTURES = {
+  attack: { ratio: 1.0, name: 'Battle in the open', text: 'An open fight: they bring about as much fighting strength as you.' },
+  defend: { ratio: 1.2, name: 'You defend', text: 'They attack your position, so they bring more than you: about 1.2 times your strength.' },
+  assault: { ratio: 0.85, name: 'You attack a strong place', text: 'They hold strong ground, so they need fewer men: about 0.85 times your strength.' },
+  fortdef: { ratio: 1.4, name: 'You defend a fortified camp', text: 'They must storm your rampart, so they come in great numbers: about 1.4 times your strength.' },
+  ambush: { ratio: 1.1, name: 'Ambush', text: 'They chose the ground and the moment: about 1.1 times your strength, and help is on its way.' },
+  pursuit: { ratio: 0.75, name: 'Pursuit', text: 'You are catching a beaten or strung-out enemy: about 0.75 times your strength.' }
+};
+export const postureOf = (scn) => POSTURES[(scn && scn.posture) || 'attack'] || POSTURES.attack;
+const unitWeight = (t) => ENEMY_WEIGHT[t] ?? ((UNIT_TYPES[t] && UNIT_TYPES[t].cost || 60) / 60);
+// Fighting strength of your army, man for man by type (quality is deliberately left out, see above).
+export function baseStrength(c) { return c.cohorts.reduce((a, h) => a + Math.max(0, h.men) * unitWeight(h.type), 0); }
+// Strength of a scenario's host as written (main body and enemy reinforcements), before any scaling.
+export function authoredStrength(scn) {
+  return [...(scn.enemy || []), ...((scn.reinforcements || []).filter(r => r.side !== 'rome').map(r => r.unit))].reduce((a, e) => a + e.men * unitWeight(e.type), 0);
+}
+// Kept for anything that still wants a quality-weighted measure of the army.
 export function armyPower(c) {
   let p = 0;
   for (const h of c.cohorts) {
@@ -35,17 +58,19 @@ export function armyPower(c) {
   }
   return p;
 }
-let POWER_REF = 0;
-export const powerRef = () => POWER_REF || (POWER_REF = armyPower(newCampaign('normal')));
+// The multiplier on the authored host so that its strength is your strength x the posture ratio. Difficulty and goodwill are applied on
+// top of this in the battle (and shown in the briefing); a forced march catches the enemy 10% short.
 export function forceScale(c, scn) {
   if (!scn || scn.id === 'prologue' || scn.practice || scn.id === 'practice') return 1;
-  return Math.max(0.8, Math.min(20, Math.pow(armyPower(c) / powerRef(), 0.9)));
+  const auth = authoredStrength(scn) * (scn.boost || 1); if (auth <= 0) return 1;
+  const surprise = c.surprise && c.surprise === (scn.id || '').split(':')[0] ? 0.9 : 1;
+  return Math.max(0.3, Math.min(20, baseStrength(c) * postureOf(scn).ratio * (scn.odds || 1) * surprise / auth));   // scn.odds: a hand-tuned nudge for a fight that plays harder than its posture
 }
 export const unlockedTypes = (c) => c.unlockedTypes || START_TYPES;
 
 export function newCampaign(difficulty = 'normal') {
   return {
-    version: 3, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, daysLeft: SCENARIOS[0].daysToPrepare,
+    version: 3, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, campUse: {},
     gold: 300, supplies: 160, fort: 0, favour: 0, scouted: false, log: [], over: false,
     cohorts: [
       { id: 1, name: 'I Cohort',   type: 'legionary', men: 400, maxMen: 480, xp: 60, drill: 30, condition: 90, officerId: 1 },
@@ -134,7 +159,7 @@ export function applyResult(c, result, scn) {
   if (result.wagonsTaken) notes.push(`${result.wagonsTaken} enemy wagon camp${result.wagonsTaken > 1 ? 's were' : ' was'} taken: grain and plunder for the army.`);
   // a battle fought in stages: between stages there is no camp, no levy and no rest, only the wounded who can still stand
   if (scn.phases && result.outcome !== 'defeat' && scn.phaseIdx < scn.phaseCount - 1) {
-    c.phase = scn.phaseIdx + 1; c.daysLeft = 0;
+    c.phase = scn.phaseIdx + 1;
     notes.push(`Stage ${scn.phaseIdx + 1} of ${scn.phaseCount} is won, but the day is not over. Your losses go with you into the next stage.`);
     return notes;
   }
@@ -169,7 +194,7 @@ export function applyResult(c, result, scn) {
     c.career = c.career || { points: 0, levels: {} }; c.career.points++; notes.push('You have earned a career point. A flag over the Command Tent marks the choice.');
   }
   const next = SCENARIOS[c.scenario];
-  c.daysLeft = next ? next.daysToPrepare : 0;
+  c.campUse = {};                                             // a new camp: the countryside near it has not been stripped yet
   if (!next) c.over = true;
   else if (scn && next.act !== scn.act && result.outcome !== 'defeat') notes.push(`Act ${scn.act} is won. Caesar now turns to the next threat: Act ${next.act}, ${next.theater}.`);
   return notes;

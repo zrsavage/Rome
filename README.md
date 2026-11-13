@@ -19,7 +19,7 @@ python3 -m http.server 8080   # then open http://localhost:8080
 - **Six battles:** Fords of the Rhone at Genava (small skirmish), The Foragers' Road (defend the wagons), The Hill Fort of the Sequani
   (storm a hilltop), The Crossing of the Arar (catch stragglers), Ambush in the Silva (historical-defeat style: survive, big
   rewards) and the named **Battle of Bibracte** with a flank/rear attack by the Boii and Tulingi.
-- **Camp phase** between battles (limited days): training is a decision, not a minigame: pick *what* to drill (formation drill, weapons practice or field exercises, each with different gains, tiredness, casualty risk and supply cost), informed by the centurion's advice on the next battle, then *who* leads it (specialist officers beat you at their own drill). A short skippable scene shows it being run or delegate to an officer, forage,
+- **Camp phase** between battles (no time limit: only denarii, supplies and men limit what you do): training is a decision, not a minigame: pick *what* to drill (formation drill, weapons practice or field exercises, each with different gains, tiredness, casualty risk and supply cost), informed by the centurion's advice on the next battle, and the best leader in camp (you or a specialist officer) runs it automatically. A short skippable scene shows it being run. Also forage,
   fortify, rest, recruit, scout, demand tribute or give gifts. Fortifications improve morale and make orderly withdrawals easier.
 - **Rewards:** victories and **draws** (orderly withdrawal or surviving to the time limit) give spoils and new units
   (Cretan archers, IV-VII Cohorts, allied Gallic horse). Defeat keeps you on the same battle; there is a replacement floor so a
@@ -229,3 +229,29 @@ Gallic infantry no longer converge on your army as a swarm. The host forms a **m
 and third rank when the host is wide, the units nearest your army taking the front rank, each rank ordered by where its men stand so nobody crosses through a friend), the line
 front marches at the pace of its slowest unit and halts short of you, and the host surges together once most units are in their places. When it surges, targets are spread so units
 do not all pile onto the same cohort. Wings and the champions' reserve still act separately (`formLine` in `src/sim.js`).
+
+## Playtest pass (v0.6)
+- **No day limit in camp.** Every camp action costs only denarii, supplies or men, and you can do as many as you can pay for. The march to each
+  battle takes `daysToPrepare` days of rations (men / 60 a day), paid once when the battle starts (`breakCamp` in `src/camp.js`). Some returns fall
+  off within one camp so nothing is free and unlimited: each foraging party brings back 70% of the last, grain merchants raise their price 25% each
+  time, each tribute demand brings 60% of the last, re-drilling the same unit costs +50% each time, and only the first rest brings the lightly wounded
+  back. Rest costs a day's rations, fortifying 25 supplies a step, scouting 40 denarii. Instructors drill their cohort on the march. The forced march now
+  makes the next host 10% smaller instead of giving a day.
+- **Training:** the best leader for the chosen drill is picked automatically; the unit record is shorter (notable men in one line, deeds on hover).
+- **Advisers know less at first:** the camp prefect and armourer only describe the enemy's make-up after you scout (Chieftains' Hall) or with
+  Reconnaissance 1 in your career.
+- **Hiring:** the Barracks says plainly that the 20/50/100/200 chips set how many men both hire offers buy, with the price per man.
+- **Command limit:** 8 units, +4 per battle won or drawn, +4 per level of Army organisation (cap 80), so a full campaign reaches 50-60 units in
+  several legions under legates.
+- **Fair enemy hosts:** the enemy is sized from your army's fighting strength by the kind of fight (`posture` on each scenario and Bibracte stage,
+  `POSTURES` in `src/state.js`): open battle 1.0x, you defend 1.2x, you storm a strong place 0.85x, ambush 1.1x, pursuit 0.75x (fortified camp 1.4x
+  is ready for later acts), then difficulty and goodwill. Strength counts men by type (a legionary or a Gallic warrior 1, a horseman about 2); your
+  experience, drill and equipment are not counted, so they stay your edge. The weights were calibrated with the smart bot. The briefing shows the odds.
+- **Sound Retreat works:** the army falls back away from the enemy (men in contact step back facing the foe, the rest march off) and the battle ends
+  after 30 seconds: a draw if enough men are still with the standards. Tested with `STRATS=lateretreat` (fight, then retreat after losing a third):
+  draws in every Act I battle.
+- **Pathing:** units no longer circle or bounce. A unit whose destination is taken stops alongside and the two dress into a line; a unit that makes no
+  headway for 2.5 seconds files through friends at 60% pace; steering tries both sides. `node tools/pathtest.mjs` checks the cases.
+- **Battle HUD:** at most three messages at a time in the top right, important ones only, each fading after a few seconds (all still in the report).
+- **Buildings:** the Field Hospital now comes before the Armourer.
+
