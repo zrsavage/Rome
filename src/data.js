@@ -219,16 +219,16 @@ export const RAISE = {
 // What really happened at the named battles, shown on the result screen beside your own result. Ancient figures are given as the sources
 // state them, and they are often exaggerated; romeLoss is the Roman loss in men where a source gives one.
 export const HISTORY = {
-  bibracte: { text: 'Caesar beat the Helvetii from midday until evening, with the hardest fighting at their wagon laager after dark. He does not give his own losses, but he stayed three days to bury the dead and tend the wounded. Of the 368,000 Helvetii and allies who set out, he says 110,000 went home.', source: 'Caesar, Gallic War I.24-29' },
-  ariovistus: { text: 'The German line broke after hard fighting, Publius Crassus saving the Roman left with the third line. The Germans fled about fifty miles to the Rhine; Ariovistus escaped in a small boat. Later writers put the German dead at 80,000. Roman losses are not recorded.', source: 'Caesar, Gallic War I.51-53; Plutarch, Caesar 19' },
-  cassivellaunus: { text: "Caesar forced the staked ford of the Thames and stormed Cassivellaunus' stronghold in the woods, taking many prisoners and cattle. Cassivellaunus gave hostages and agreed to a yearly tribute, and Caesar left Britain before the autumn storms. No Roman losses are recorded.", source: 'Caesar, Gallic War V.18-23' },
-  bagradas: { text: "Juba's army surrounded Curio's on the plain. Curio refused to leave his men and died fighting; almost the whole army was killed or taken. A few horsemen and the men left in camp escaped to the ships, and many of those were captured too. Your result here is better than history's if anyone came home at all.", source: 'Caesar, Civil War II.39-44' },
-  pharsalus: { text: "Caesar's fourth line routed Pompey's cavalry and then fell on his left; Pompey fled to Egypt, where he was murdered. Caesar says he lost about 200 men and 30 centurions, and that 15,000 Pompeians were killed and 24,000 surrendered.", source: 'Caesar, Civil War III.88-99', romeLoss: 200 },
-  nicopolis: { text: "Calvinus' attack failed. The legion raised in Pontus was almost destroyed and the allied Galatian legions fled; the veteran Thirty-Sixth fell back in good order with the loss of fewer than 250 men. Pharnaces took back Pontus, until Caesar came.", source: 'Bellum Alexandrinum 39-40' },
-  zela: { text: "Pharnaces' army charged uphill at Caesar's half-built camp, scythed chariots first, and was routed in about four hours. Pharnaces fled to the Bosporus and was killed there soon afterwards. Caesar summed it up in three words: veni, vidi, vici.", source: 'Bellum Alexandrinum 74-77; Suetonius, Julius 37' },
-  ruspina: { text: "Labienus surrounded Caesar's foraging force on the plain. Caesar extended his line and turned every other cohort about, broke out by charging both ways at once, and got back to camp by nightfall. Losses on both sides were light.", source: 'Bellum Africum 11-18' },
-  thapsus: { text: "Caesar's veterans charged before the order; the elephants, panicked by slingers and archers, wrecked their own left. The Pompeian army collapsed and many who tried to surrender were cut down. Ancient writers claim 10,000 Pompeians killed for about 50 of Caesar's men.", source: 'Bellum Africum 79-86; Plutarch, Caesar 53', romeLoss: 50 },
-  munda: { text: "The hardest battle of the war: the lines fought evenly for hours until Labienus' move to meet Bogud's horse was taken for a retreat. Labienus and some 30,000 Pompeians died; Gnaeus Pompeius was caught and killed weeks later. Caesar lost about 1,000 killed and 500 wounded.", source: 'Bellum Hispaniense 30-31', romeLoss: 1000 }
+  bibracte: { text: "Caesar fought the Helvetii from midday into the night, hardest at their wagons. He gives no losses of his own, but spent three days burying the dead. Of 368,000 who set out, he says 110,000 went home.", source: 'Caesar, Gallic War I.24-29' },
+  ariovistus: { text: "Crassus saved the Roman left with the third line, and the Germans fled fifty miles to the Rhine. Ariovistus escaped by boat. Roman losses are not recorded.", source: 'Caesar, Gallic War I.51-53; Plutarch, Caesar 19' },
+  cassivellaunus: { text: "Caesar forced the Thames and stormed the stronghold. Cassivellaunus gave hostages and tribute, and Caesar left before the autumn storms.", source: 'Caesar, Gallic War V.18-23' },
+  bagradas: { text: "Juba surrounded Curio's army. Curio refused to flee and died fighting; almost all his men were killed or taken. If anyone came home, you beat history.", source: 'Caesar, Civil War II.39-44' },
+  pharsalus: { text: "The fourth line routed Pompey's horse and turned his flank. Pompey fled to Egypt and was murdered. Caesar claims 200 of his own lost against 15,000 Pompeians killed.", source: 'Caesar, Civil War III.88-99', romeLoss: 200 },
+  nicopolis: { text: "Calvinus' attack failed. The Pontic legion was almost destroyed, but the veteran Thirty-Sixth withdrew in good order, losing under 250 men.", source: 'Bellum Alexandrinum 39-40' },
+  zela: { text: "Pharnaces charged uphill at the half-built camp and was routed in four hours. Caesar's report: veni, vidi, vici.", source: 'Bellum Alexandrinum 74-77; Suetonius, Julius 37' },
+  ruspina: { text: "Caesar turned every other cohort about, broke out both ways and was back in camp by nightfall. Losses were light.", source: 'Bellum Africum 11-18' },
+  thapsus: { text: "Caesar's veterans charged without orders, and the panicked elephants wrecked their own side. Ancient writers claim 10,000 Pompeians dead for 50 of Caesar's.", source: 'Bellum Africum 79-86; Plutarch, Caesar 53', romeLoss: 50 },
+  munda: { text: "The lines fought evenly for hours, until a Pompeian move was mistaken for a retreat. Labienus and 30,000 Pompeians died. Caesar lost about 1,000.", source: 'Bellum Hispaniense 30-31', romeLoss: 1000 }
 };
 // How an act is named on screen: the side act is not numbered.
 export const actLabel = (a) => a === 'B' ? 'Side act: Britannia' : `Act ${a}`;
@@ -315,8 +315,8 @@ export const SCENARIOS = [
   {
     id: 'ford', odds: 0.8, posture: 'defend', chief: { name: "Nammeius", style: 'cautious' }, act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Fords of the Rhone', kind: 'skirmish',
     geo: { lat: 46.20, lon: 6.15, place: 'Genava (Geneva)', note: 'Fords of the Rhone, where the Helvetii tried to cross' },
-    briefing: 'The Helvetii mean to cross the Rhone near Genava and march west through the Province. Your legion has cut the bridge and holds the river line. A few shallow fords are the only easy crossings, and warbands are probing them. Beat them back, or bloody them enough that they look for another road.',
-    objective: 'Break the Gallic host (reduce it below 25%), or withdraw in good order with at least 45% of your men.',
+    briefing: 'The Helvetii want to cross the Rhone into the Province. You hold the river; warbands are probing the fords. Throw them back.',
+    objective: 'Break the host (below 25%), or withdraw with 45% of your men.',
     timeLimit: 540, daysToPrepare: 4,
     deploy: { mode: 'line', cx: 800, cy: 880 },
     terrain: [
@@ -336,8 +336,8 @@ export const SCENARIOS = [
   {
     id: 'arar', posture: 'pursuit', chief: { name: "Divico", style: 'stubborn' }, fog: true, act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Crossing of the Arar', kind: 'skirmish',
     geo: { lat: 45.94, lon: 4.77, place: 'The Arar (Saone) near Trevoux', note: 'Site of the Tigurini crossing is approximate' },
-    briefing: 'The Helvetii are crossing the Arar, and the Tigurini clan is still on your bank, strung out and unready. Strike hard before the rest can return. The river is deep: only the ford and the banks allow easy movement, and the warbands across the water are watching.',
-    objective: 'Destroy the stragglers (reduce the host below 25%), or withdraw with at least 45% of your men.',
+    briefing: 'The Tigurini are still on your bank of the Arar, strung out and unready. Strike before the rest return. The river is deep: use the ford.',
+    objective: 'Destroy the stragglers (below 25%), or withdraw with 45% of your men.',
     timeLimit: 480, daysToPrepare: 3,
     deploy: { mode: 'line', cx: 700, cy: 900 },
     terrain: [
@@ -358,8 +358,8 @@ export const SCENARIOS = [
   {
     id: 'convoy', odds: 0.85, posture: 'defend', chief: { name: "Verucloetius", style: 'cunning' }, act: 'I', theater: 'Gaul', year: '58 BC', name: "The Foragers' Road", kind: 'skirmish',
     geo: { lat: 46.78, lon: 4.85, place: 'Cabillonum (Chalon-sur-Saone)', note: 'Aeduan country; the road is illustrative' },
-    briefing: 'Your supply train is crawling along a forest road when scouts report raiders closing in. The wagons carry the legion\'s grain. Hold the wagons and drive the raiders off, because if the Gauls seize them and hold them, the campaign starves.',
-    objective: 'Keep the supply wagons (the gold marker) in Roman hands. If the Gauls hold them for 90 seconds the convoy is lost. Break the raiders to win.',
+    briefing: 'Raiders are closing on your grain train on a forest road. Lose the wagons and the army starves.',
+    objective: 'Keep the wagons (gold marker). If the Gauls hold them 90 s, the convoy is lost. Break the raiders to win.',
     timeLimit: 450, daysToPrepare: 3,
     deploy: { mode: 'line', cx: 800, cy: 745 },
     objectives: [{ id: 'wagons', name: 'Supply Wagons', x: 800, y: 700, r: 70, owner: 'rome' }],
@@ -382,8 +382,8 @@ export const SCENARIOS = [
   {
     id: 'oppidum', posture: 'assault', chief: { name: "Casticus of the Sequani", style: 'stubborn' }, optional: true, fog: true, act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Hill Fort of the Sequani', kind: 'skirmish',
     geo: { lat: 47.24, lon: 6.02, place: 'Vesontio (Besancon)', note: 'Great oppidum of the Sequani on a loop of the Doubs' },
-    briefing: 'A local chieftain has fortified a hilltop and refuses to supply your army. The slopes are steep and the defenders are dug in. Soften them with missiles, lure them down, or storm the crest.',
-    objective: 'Capture the hill fort summit by holding it for 150 seconds, or break the defenders. Fighting uphill is costly.',
+    briefing: 'A chieftain has fortified a hilltop and refuses you grain. Soften the defenders with missiles, lure them down, or storm the crest.',
+    objective: 'Hold the summit 150 s, or break the defenders. Fighting uphill is costly.',
     timeLimit: 600, daysToPrepare: 3,
     deploy: { mode: 'line', cx: 800, cy: 900 },
     objectives: [{ id: 'fort', name: 'Hill Fort', x: 800, y: 270, r: 90, owner: 'gaul' }],
@@ -407,8 +407,8 @@ export const SCENARIOS = [
   {
     id: 'silva', posture: 'ambush', chief: { name: "Dumnorix's partisans", style: 'cunning' }, fog: true, act: 'I', theater: 'Gaul', year: '58 BC', name: 'Ambush in the Silva', kind: 'skirmish',
     geo: { lat: 47.15, lon: 4.00, place: 'Forests of the Morvan', note: 'Illustrative ambush site' },
-    briefing: 'Dense forest closes around your column. The Gauls know every path; you are caught in a clearing with enemies on both flanks. This is the sort of day that has broken Roman armies before. Hold together, survive until your rearguard arrives, and the spoils of a hard-won escape will be rich.',
-    objective: 'Survive until the relief column arrives and the Gauls withdraw: break the host, or hold on until the time runs out with at least 45% of your army.',
+    briefing: 'The Gauls spring an ambush in dense forest, on both your flanks. Hold together until the rearguard arrives.',
+    objective: 'Survive: break the host, or keep 45% of your army until time runs out.',
     timeLimit: 360, daysToPrepare: 2,
     deploy: { mode: 'grid', cx: 800, cy: 620, cols: 3, dx: 110, dy: 80 },
     terrain: [
@@ -432,8 +432,8 @@ export const SCENARIOS = [
   {
     id: 'bibracte', odds: 0.8, posture: 'defend', chief: { name: "the Helvetian war council", style: 'aggressive' }, act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Battle of Bibracte', kind: 'named',
     geo: { lat: 46.93, lon: 4.03, place: 'Bibracte (Mont Beuvray)', note: 'Oppidum of the Aedui' },
-    briefing: 'The Helvetii turn and attack your column near Bibracte. You hold the slope with the legion in triplex acies; the enemy mass on the ridge beyond, thousands strong, with elite retinues in the van. Break their assault with pila and the gladius, and be ready: their allies, the Boii and Tulingi, will fall on your flank and rear when the fight is at its height.',
-    objective: 'Break the Helvetii host. Hold the line, keep your reserve fresh, and survive the flank attack. A well-ordered withdrawal still counts as a draw.',
+    briefing: 'The Helvetii turn on your column at Bibracte. Break their assault with pila and sword, and watch your flank: the Boii and Tulingi will strike at the height of the fight.',
+    objective: 'Break the Helvetii. Keep a fresh reserve for the flank attack. A clean withdrawal is a draw.',
     links: [
       { from: 'silva', scale: { gaul_elite: 0.65 }, text: 'Their champions fell in the forest ambush: fewer nobles stand in the line.' },
       { from: 'oppidum', scale: { gaul_skirm: 0.6 }, text: 'The Sequani hill fort is yours: fewer javelin men have joined the Helvetii.' },
@@ -466,8 +466,8 @@ export const SCENARIOS = [
     phases: [
       {
         phaseName: 'The Assault on the Hill', posture: 'defend',
-        briefing: 'The Helvetii turn on your column near Bibracte. You have drawn the legion up on a hill in three lines, with the baggage behind; they come on in a dense mass, shields overlapping, up the slope at you. Break the first assault with pila from the high ground and the sword after.',
-        objective: 'Break the assault (reduce it below 25%). Stay on the hill: charges uphill are weak and your pila hit harder from above.',
+        briefing: 'The Helvetii come up the slope at your three lines in a dense mass. Break them with pila from the high ground, then the sword.',
+        objective: 'Break the assault (below 25%). Stay on the hill: uphill charges are weak.',
         timeLimit: 600, deploy: { mode: 'line', cx: 800, cy: 790 }, objectives: [], rule: null,
         terrain: [{ kind: 'hill', cx: 800, cy: 260, rx: 520, ry: 190, h: 60 }, { kind: 'hill', cx: 800, cy: 790, rx: 440, ry: 130, h: 40 }, { kind: 'forest', cx: 160, cy: 470, rx: 180, ry: 140 }, { kind: 'forest', cx: 1460, cy: 480, rx: 150, ry: 130 }, { kind: 'water', x: 0, y: 620, w: 330, h: 50 }],
         enemy: [
@@ -480,8 +480,8 @@ export const SCENARIOS = [
       },
       {
         phaseName: 'The Boii and the Tulingi', posture: 'ambush',
-        briefing: 'The Helvetii give ground to a ridge a mile off, and you follow. As your lines climb, fifteen thousand Boii and Tulingi, the rearguard of their column, come up on your open right flank and rear. The Helvetii on the ridge see it and press forward again. Your third line must turn about and face the new enemy while the first two fight uphill.',
-        objective: 'Take the ridge (hold the gold marker for 150 seconds) or break the host. Keep a reserve: the Boii and Tulingi will strike your right and rear.',
+        briefing: 'You follow the Helvetii towards a ridge, and the Boii and Tulingi fall on your right and rear. Turn your third line to face them.',
+        objective: 'Hold the ridge (gold marker) 150 s, or break the host. Keep a reserve for your right and rear.',
         timeLimit: 780, deploy: { mode: 'line', cx: 780, cy: 860 },
         objectives: [{ id: 'ridge', name: 'The Ridge', x: 800, y: 420, r: 110, owner: 'gaul' }], rule: { holdSecs: 150, attacker: 'rome' },
         terrain: [{ kind: 'hill', cx: 800, cy: 260, rx: 520, ry: 190, h: 60 }, { kind: 'hill', cx: 800, cy: 760, rx: 420, ry: 110, h: 30 }, { kind: 'forest', cx: 160, cy: 470, rx: 180, ry: 140 }, { kind: 'forest', cx: 1460, cy: 480, rx: 150, ry: 130 }, { kind: 'water', x: 0, y: 620, w: 330, h: 50 }],
@@ -497,8 +497,8 @@ export const SCENARIOS = [
       },
       {
         phaseName: 'The Fight at the Wagons', posture: 'assault',
-        briefing: 'It is evening. The Helvetii have fallen back on their baggage and made a rampart of the wagons; they throw spears down from the top of it and thrust pikes out between the wheels. The fighting at the wagons will go on deep into the night. Take the camp and the war is over.',
-        objective: 'Take the wagon camp (hold the gold marker for 120 seconds) or break the defenders before night ends the battle.',
+        briefing: 'Evening. The Helvetii make a rampart of their wagons and fight from it. Take the camp and the war is over.',
+        objective: 'Hold the wagon camp (gold marker) 120 s, or break the defenders before nightfall.',
         timeLimit: 540, deploy: { mode: 'line', cx: 800, cy: 890 },
         objectives: [{ id: 'wagons', name: 'The Wagon Camp', x: 800, y: 300, r: 105, owner: 'gaul' }], rule: { holdSecs: 120, attacker: 'rome' },
         terrain: [{ kind: 'hill', cx: 800, cy: 300, rx: 300, ry: 110, h: 20 }, { kind: 'forest', cx: 220, cy: 420, rx: 190, ry: 140 }, { kind: 'forest', cx: 1400, cy: 460, rx: 180, ry: 150 }],
@@ -521,8 +521,8 @@ export const SCENARIOS = [
   {
     boost: 1.25, id: 'parley', odds: 0.7, posture: 'defend', chief: { name: "Ariovistus' horsemen", style: 'aggressive' }, optional: true, fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Parley on the Mound', kind: 'skirmish',
     geo: { lat: 47.62, lon: 7.28, place: 'The Upper Rhine plain (Alsace)', note: 'The mound where Caesar and Ariovistus met; the exact site is not known' },
-    briefing: 'Ariovistus has agreed to meet you on a broad mound in the open plain, each side bringing only mounted escorts. You do not trust German horse with your Gallic cavalry, so men of the Tenth have been put on their horses. The talks are short: German riders edge towards the mound, throwing stones and spears at your escort. Break off the parley, take the mound and hold it until your army is up.',
-    objective: 'Hold the mound (the gold marker) for 110 seconds against the German horse, or break their riders. Their horse is fast and they will go for your flanks.',
+    briefing: 'The parley with Ariovistus breaks down as his riders attack your mounted escort. Take the mound and hold it until the army comes up.',
+    objective: 'Hold the mound (gold marker) 110 s, or break the riders. Watch your flanks: they are fast.',
     timeLimit: 540, daysToPrepare: 3,
     deploy: { mode: 'line', cx: 800, cy: 840 },
     objectives: [{ id: 'mound', name: 'The Mound', x: 800, y: 540, r: 85, owner: 'rome' }],
@@ -542,8 +542,8 @@ export const SCENARIOS = [
   {
     boost: 1.15, id: 'supply', posture: 'defend', chief: { name: "Ariovistus", style: 'cunning' }, fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Cut Supply Line', kind: 'skirmish',
     geo: { lat: 47.55, lon: 6.80, place: 'The gap between the Vosges and the Jura', note: 'The road from the Sequani; the exact place is illustrative' },
-    briefing: 'Ariovistus has camped behind you and his horse are cutting the road to the Sequani, from whom your grain comes. A column of wagons is coming up the road with a thin escort. The Germans ride fast and come in from every side at once: hold the wagons and the legion eats; lose them and it will not fight.',
-    objective: 'Keep the supply wagons (the gold marker) in Roman hands. If the Germans hold them for 100 seconds the grain is lost. Break the raiders to win.',
+    briefing: 'German horse are cutting your grain road. A wagon column is coming up with a thin escort. Hold it.',
+    objective: 'Keep the wagons (gold marker). If the Germans hold them 100 s, the grain is lost. Break the raiders to win.',
     timeLimit: 480, daysToPrepare: 3,
     deploy: { mode: 'line', cx: 800, cy: 760 },
     objectives: [{ id: 'wagons', name: 'Supply Wagons', x: 800, y: 700, r: 75, owner: 'rome' }],
@@ -564,8 +564,8 @@ export const SCENARIOS = [
   {
     boost: 1.3, id: 'lessercamp', posture: 'attack', chief: { name: "the camp's elders", style: 'stubborn' }, optional: true, fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Lesser Camp', kind: 'skirmish',
     geo: { lat: 47.78, lon: 7.05, place: 'The Upper Rhine plain (Alsace)', note: 'The smaller German camp Caesar attacked; the place is approximate' },
-    briefing: 'Ariovistus will not come out to fight, so you go to him. You march past his main camp and assault the smaller one, ringed with wagons. The Germans must come out to save it: your scouts report warbands in the brush, horse on the flanks and the families waiting behind the wagons.',
-    objective: 'Capture the camp (the gold marker) by holding it for 100 seconds, or break the host. Wagons cannot move, and men who have the wagons behind them will not run.',
+    briefing: 'Ariovistus will not fight, so you assault his smaller wagon camp to draw him out. Warbands wait in the brush, horse on the flanks.',
+    objective: 'Hold the camp (gold marker) 100 s, or break the host. Men with wagons at their backs will not run.',
     timeLimit: 600, daysToPrepare: 3,
     deploy: { mode: 'line', cx: 800, cy: 900 },
     objectives: [{ id: 'camp', name: 'The Lesser Camp', x: 800, y: 290, r: 105, owner: 'gaul' }],
@@ -589,8 +589,8 @@ export const SCENARIOS = [
   {
     boost: 1.45, id: 'ariovistus', posture: 'attack', chief: { name: "Ariovistus", style: 'cunning' }, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Battle Against Ariovistus', kind: 'named',
     geo: { lat: 47.90, lon: 7.33, place: 'The Upper Rhine plain (Alsace)', note: 'Battlefield not securely identified; the plain between the Vosges and the Rhine' },
-    briefing: 'The Germans have been forced out. Ariovistus draws up his tribes in a line, the Harudes, Marcomanni, Tribocci, Vangiones, Nemetes, Sedusii and Suebi, and rings the whole host behind with wagons and carts so that no one can flee; the women stand on the wagons begging the men not to let them be taken as slaves. You have formed the legion in three lines. You lead the right, where the Germans are weakest. Young Publius Crassus commands the cavalry: watch your left, and when it is pressed, his third line will come.',
-    objective: 'Break the German host. Your left will be hard pressed and the third line will relieve it. A well-ordered withdrawal is only a draw.',
+    briefing: 'Ariovistus draws up his tribes with wagons behind them so no one can flee. You lead the right, where they are weakest. Crassus holds the cavalry and the third line.',
+    objective: 'Break the German host. Your left will be pressed: the third line relieves it. A withdrawal is only a draw.',
     links: [
       { from: 'supply', scale: { german_cav: 0.6 }, text: 'The German horse were mauled on the supply road: fewer riders are on his wings.' },
       { from: 'lessercamp', scale: { laager: 0.6 }, text: 'The lesser camp is taken: fewer wagons stand behind his line.' },
@@ -630,8 +630,8 @@ export const SCENARIOS = [
   {
     boost: 1.35, id: 'rhine', posture: 'pursuit', chief: { name: "the rearguard chiefs", style: 'cautious' }, fog: true, act: 'II', theater: 'Germania', year: '58 BC', name: 'The Pursuit to the Rhine', kind: 'skirmish',
     geo: { lat: 47.95, lon: 7.58, place: 'The left bank of the Rhine', note: 'The pursuit ran towards the Rhine; the point is illustrative' },
-    briefing: 'The German line has broken and the host is running for the Rhine, wagons and all. Ariovistus himself is across in a small boat. Your cavalry and light troops are on their heels: catch the wagons and the rearguard before they reach the water. A rearguard that has nowhere to go will stand and sell its life dearly.',
-    objective: 'Break the rearguard (reduce it below 25%) before the time runs out. Fresh cavalry are ruinous against men who are running.',
+    briefing: 'The Germans are running for the Rhine. Catch the rearguard before it reaches the water. Cornered men fight hard.',
+    objective: 'Break the rearguard (below 25%) before time runs out. Fresh cavalry are deadly against runners.',
     timeLimit: 420, daysToPrepare: 2,
     deploy: { mode: 'line', cx: 800, cy: 900 },
     terrain: [{ kind: 'water', x: 0, y: 110, w: 1600, h: 90 }, { kind: 'forest', cx: 240, cy: 540, rx: 220, ry: 150 }, { kind: 'forest', cx: 1380, cy: 600, rx: 220, ry: 160 }],
@@ -655,8 +655,8 @@ export const SCENARIOS = [
   {
     id: 'landing', posture: 'assault', odds: 0.85, chief: { name: 'the Cantii', style: 'aggressive' }, act: 'B', theater: 'Britannia', year: '55 BC', name: 'The Landing in Britain', kind: 'skirmish',
     geo: { lat: 51.22, lon: 1.40, place: 'The shingle beach near Deal, Kent', note: 'Caesar landed on an open beach some miles from the cliffs of Dover (Gallic War IV.23-26); site probable, not certain' },
-    briefing: "The warships cannot come close in: the legionaries must jump into the sea in full armour and wade ashore under a rain of javelins, while British chariots and horsemen ride into the surf to meet them. The men hang back. Then the eagle-bearer of the Tenth leaps down: 'Jump, soldiers, unless you want to betray your eagle to the enemy!'",
-    objective: 'Take the beach (the gold marker) and hold it for 90 seconds, or break the Britons. Your men start in the water, slowed and in loose order; get them onto dry ground and into line.',
+    briefing: 'The legions must wade ashore in armour against chariots in the surf. Then the eagle-bearer of the Tenth jumps: \'Jump, soldiers!\'',
+    objective: 'Hold the beach (gold marker) 90 s, or break the Britons. You start in the water: get into line on dry ground.',
     timeLimit: 600, daysToPrepare: 4,
     deploy: { mode: 'line', cx: 800, cy: 900 },
     objectives: [{ id: 'beach', name: 'The Beach', x: 800, y: 700, r: 90, owner: 'gaul' }],
@@ -676,8 +676,8 @@ export const SCENARIOS = [
   {
     id: 'seventh', posture: 'ambush', chief: { name: 'the Cantii', style: 'cunning' }, fog: true, act: 'B', theater: 'Britannia', year: '55 BC', name: 'The Seventh at the Harvest', kind: 'skirmish',
     geo: { lat: 51.18, lon: 1.25, place: 'Cornfields in Kent', note: 'The Seventh Legion was ambushed while reaping (Gallic War IV.32-34); site illustrative' },
-    briefing: "The storm has wrecked half the fleet and the army is short of grain. Only one field nearby is still unharvested, and the Seventh is out reaping it, arms stacked, when dust rises from the woods. The Britons have waited for exactly this. Hold together in the corn until Caesar comes up with the cohorts on guard.",
-    objective: 'Survive until Caesar arrives with the relief cohorts: break the Britons, or still have at least 45% of your army with the standards when time runs out.',
+    briefing: 'The Seventh is out reaping, arms stacked, when the Britons strike from the woods. Hold together until Caesar comes.',
+    objective: 'Survive: break the Britons, or keep 45% of your army until time runs out.',
     timeLimit: 480, daysToPrepare: 3,
     deploy: { mode: 'grid', cx: 800, cy: 560, cols: 3, dx: 110, dy: 80 },
     terrain: [{ kind: 'forest', cx: 250, cy: 450, rx: 260, ry: 330 }, { kind: 'forest', cx: 1350, cy: 450, rx: 260, ry: 330 }, { kind: 'forest', cx: 800, cy: 90, rx: 380, ry: 100 }],
@@ -698,8 +698,8 @@ export const SCENARIOS = [
   {
     id: 'bigbury', posture: 'assault', optional: true, chief: { name: 'the Cantii', style: 'stubborn' }, fog: true, act: 'B', theater: 'Britannia', year: '54 BC', name: 'The Hillfort in the Woods', kind: 'skirmish',
     geo: { lat: 51.27, lon: 1.03, place: 'Bigbury hillfort, near the Stour', note: "The Seventh took a fort in the woods by testudo and a ramp (Gallic War V.9); usually identified with Bigbury" },
-    briefing: "The second expedition: five legions this time. The Britons have fallen back on a fort in the woods, its entrances blocked with felled trees. The Seventh Legion goes up under locked shields, throws up a ramp against the rampart and storms it.",
-    objective: 'Take the fort (the gold marker) and hold it for 100 seconds, or break the defenders. Locked shields (testudo, T) blunt the missiles on the way up. A side fight: you may march past it.',
+    briefing: 'The Britons hold a fort in the woods, its gates blocked with felled trees. Go up under locked shields and storm it.',
+    objective: 'Hold the fort (gold marker) 100 s, or break the defenders. Testudo (T) blunts the missiles. Optional fight.',
     timeLimit: 600, daysToPrepare: 4,
     deploy: { mode: 'line', cx: 800, cy: 880 },
     objectives: [{ id: 'fort', name: 'The Hillfort', x: 800, y: 300, r: 95, owner: 'gaul' }],
@@ -718,8 +718,8 @@ export const SCENARIOS = [
   {
     id: 'cassivellaunus', posture: 'assault', chief: { name: 'Cassivellaunus', style: 'cunning' }, fog: true, act: 'B', theater: 'Britannia', year: '54 BC', name: 'The Stronghold of Cassivellaunus', kind: 'named',
     geo: { lat: 51.80, lon: -0.30, place: 'North of the Thames', note: "Caesar forced the Thames and took Cassivellaunus' stronghold among woods and marshes (Gallic War V.18-21); the site is uncertain" },
-    briefing: "Cassivellaunus has sent most of his men home and kept four thousand charioteers to harry the column. You force the Thames, where the bank and the ford are planted with sharpened stakes, and march on his stronghold in the woods, protected by marsh and a rampart. Take it, and the tribes will sue for peace.",
-    objective: 'Take the stronghold (the gold marker) and hold it for 110 seconds, or break his army. The ford in front of you is staked: crossing it is slow.',
+    briefing: 'Force the staked ford of the Thames and storm Cassivellaunus\' stronghold in the marsh. Take it, and the tribes will sue for peace.',
+    objective: 'Hold the stronghold (gold marker) 110 s, or break his army. The staked ford is slow to cross.',
     links: [
       { from: 'seventh', morale: 3, text: 'The Seventh has not forgotten the harvest field (+3 morale).' },
       { from: 'bigbury', scale: { britons: 0.85 }, text: 'The hillfort in the woods fell: fewer warriors stand with Cassivellaunus.' }
@@ -748,8 +748,8 @@ export const SCENARIOS = [
   {
     id: 'anquillaria', odds: 0.85, posture: 'defend', chief: { name: "Varus' Numidian horse", style: 'cunning' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'The Landing at Anquillaria', kind: 'skirmish',
     geo: { lat: 36.93, lon: 11.03, place: 'Anquillaria, on the Cape Bon peninsula', note: 'Curio landed here (Civil War II.23); the exact beach is not known' },
-    briefing: 'The transports from Sicily are running onto the beach at Anquillaria. The legions are ashore but the baggage and the horses are still coming off the ships. Numidian horsemen have seen the sails and are riding in from every side, and the foot are not far behind. Hold the beach until the landing is finished.',
-    objective: 'Hold the landing beach (the gold marker) for the whole fight: if the enemy holds it for 100 seconds the landing fails. Break the raiders to win. Numidian horse will not stand: missiles and a steady line beat them, not a chase.',
+    briefing: 'You are landing at Anquillaria and the horses are still on the ships. Numidian riders are closing from every side. Hold the beach.',
+    objective: 'Don\'t let them hold the beach (gold marker) 100 s. Break the raiders to win. Missiles and a steady line beat Numidians; chasing does not.',
     timeLimit: 600, daysToPrepare: 4,
     deploy: { mode: 'line', cx: 800, cy: 780 },
     objectives: [{ id: 'beach', name: 'The Landing Beach', x: 800, y: 860, r: 85, owner: 'rome' }],
@@ -769,8 +769,8 @@ export const SCENARIOS = [
   {
     id: 'castra', odds: 0.9, posture: 'defend', chief: { name: "Varus' foragers", style: 'cautious' }, optional: true, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'Castra Cornelia', kind: 'skirmish',
     geo: { lat: 37.14, lon: 10.12, place: 'Castra Cornelia, the ridge north of Utica', note: "Scipio's camp of 204 BC, from the wars against Carthage (Civil War II.24); site approximate" },
-    briefing: "A long ridge runs out to the sea north of Utica: Castra Cornelia, where Scipio camped when Rome went to war with Carthage. Its old ditch is still there. Curio wants it as a base, and Varus' men want to stop you digging in. Hold the crest while the legions re-cut Scipio's ditch.",
-    objective: 'Hold the crest of the ridge (the gold marker): if the enemy holds it for 110 seconds you lose the camp. Break them to win. A side fight: winning gives the army a safe base for the rest of the campaign.',
+    briefing: 'Hold the ridge of Castra Cornelia, Scipio\'s old camp, while the legions re-cut its ditch.',
+    objective: 'Don\'t let them hold the crest (gold marker) 110 s. Break them to win. Optional: a win gives you a safe base.',
     timeLimit: 600, daysToPrepare: 3,
     deploy: { mode: 'line', cx: 800, cy: 620 },
     objectives: [{ id: 'crest', name: "Scipio's Ridge", x: 800, y: 520, r: 90, owner: 'rome' }],
@@ -790,8 +790,8 @@ export const SCENARIOS = [
   {
     id: 'utica', odds: 0.9, posture: 'attack', chief: { name: 'Publius Attius Varus', style: 'stubborn' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'The Walls of Utica', kind: 'skirmish',
     geo: { lat: 37.05, lon: 10.06, place: 'Before Utica', note: 'Curio beat Varus in the valley before the town (Civil War II.34-35)' },
-    briefing: "Varus has drawn up his legions before Utica with a steep-sided valley between his line and yours, and Juba's Numidians on his wings. Many of his men once served Caesar's enemies at Corfinium and were pardoned; they may not fight hard for Pompey. For the first time you face Romans: the same armour, the same pila, the same drill.",
-    objective: 'Break Varus\' army (reduce it below 25%). His legionaries fight exactly as yours do; his Numidian horse will try to get round you.',
+    briefing: 'Varus waits before Utica beyond a steep valley, with Juba\'s Numidians on his wings. For the first time you face Romans. Many of his men were pardoned by Caesar once.',
+    objective: 'Break Varus\' army (below 25%). His legions fight like yours; his horse will go round you.',
     timeLimit: 720, daysToPrepare: 3,
     deploy: { mode: 'line', cx: 800, cy: 860 },
     terrain: [{ kind: 'hill', cx: 800, cy: 280, rx: 560, ry: 150, h: 30 }, { kind: 'hill', cx: 800, cy: 820, rx: 520, ry: 130, h: 26 }],   // a steep valley between the two lines
@@ -811,8 +811,8 @@ export const SCENARIOS = [
   {
     id: 'water', posture: 'defend', chief: { name: "Juba's raiders", style: 'cunning' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'Water and Forage', kind: 'skirmish',
     geo: { lat: 36.97, lon: 9.93, place: 'The plain of the Bagradas below Utica', note: 'Illustrative: the army had to fetch water and forage under Numidian raids' },
-    briefing: 'The siege lines round Utica need water, and there is little of it. Every party sent to the wells is ridden at by Numidians, who throw their javelins and are gone before a cohort can reach them. A string of water carts is at the wells now. Keep it, and break the raiders when they finally close.',
-    objective: 'Keep the water carts at the wells (the gold marker) in Roman hands: if the enemy holds them for 100 seconds the army goes thirsty. Break the raiders to win.',
+    briefing: 'Numidians ride at every water party outside Utica. Hold the carts at the wells, and break the raiders when they close.',
+    objective: 'Keep the water carts (gold marker). If the enemy holds them 100 s, the army goes thirsty. Break the raiders to win.',
     timeLimit: 600, daysToPrepare: 3,
     deploy: { mode: 'line', cx: 800, cy: 760 },
     objectives: [{ id: 'wells', name: 'The Wells', x: 800, y: 680, r: 80, owner: 'rome' }],
@@ -833,8 +833,8 @@ export const SCENARIOS = [
   {
     id: 'bagradas', odds: 0.9, posture: 'ambush', chief: { name: 'Saburra, general of King Juba', style: 'cunning' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'The Bagradas', kind: 'named',
     geo: { lat: 36.84, lon: 9.78, place: 'The plain of the Bagradas (Medjerda)', note: 'Curio was destroyed here (Civil War II.38-42); the exact field is not known' },
-    briefing: "Deserters say Juba has gone home and only his general Saburra waits on the Bagradas with a small force. You march at night to catch him, and at dawn his men are there, and give way before you. It is a trap. Juba's whole army is behind the hills: thousands of Numidian horse, his foot, his elephants. Curio died on this field. Keep the army together until dark.",
-    objective: 'Survive: break the host, or still have at least 45% of your army with the standards when night falls. A well-ordered withdrawal is a draw. Historically a disaster, so a draw here pays handsomely.',
+    briefing: 'You march at night to catch a small force on the Bagradas. It is a trap: Juba\'s whole army waits behind the hills. Curio died here. Keep the army together until dark.',
+    objective: 'Survive: break the host, or keep 45% of your army until nightfall. A draw here pays well.',
     links: [
       { from: 'castra', morale: 4, text: "Scipio's camp is held behind you: the men know where to fall back to (+4 morale)." },
       { from: 'utica', scale: { numid_inf: 0.75 }, text: "Varus' beaten legions are shut up in Utica: fewer foot march with Juba." },
@@ -865,8 +865,8 @@ export const SCENARIOS = [
   {
     id: 'pharsalus', posture: 'attack', chief: { name: 'Gnaeus Pompeius Magnus', style: 'cautious' }, optional: true, act: 'IV', theater: 'Greece', year: '48 BC', name: 'Pharsalus', dry: true, kind: 'skirmish',
     geo: { lat: 39.29, lon: 22.38, place: 'The plain of Pharsalus, Thessaly', note: 'Caesar against Pompey, 9 August 48 BC; the exact field is disputed' },
-    briefing: "You reached Caesar in Greece. Now Pompey has come down into the plain of Pharsalus with twice your numbers in foot and seven times your horse, all massed on his left under Labienus. Caesar has taken cohorts from his third line and hidden them behind his right as a fourth line. Your part of the line faces Pompey's legions: hold them, and trust the fourth line to deal with the horse.",
-    objective: "Break Pompey's army (reduce it below 25%). His legions fight like yours. His great mass of horse will come round your right; Caesar's fourth line will meet it.",
+    briefing: 'Pompey has twice your foot and seven times your horse, massed on his left. Caesar has hidden a fourth line behind his right. Hold Pompey\'s legions and trust the fourth line.',
+    objective: 'Break Pompey\'s army (below 25%). His horse will come round your right; the fourth line meets it.',
     timeLimit: 720, daysToPrepare: 4,
     deploy: { mode: 'line', cx: 760, cy: 860 },
     terrain: [{ kind: 'water', x: 0, y: 0, w: 70, h: 1000 }, { kind: 'hill', cx: 1350, cy: 250, rx: 220, ry: 90, h: 25 }],   // the Enipeus guards the left of both armies
@@ -889,8 +889,8 @@ export const SCENARIOS = [
   {
     id: 'comana', posture: 'attack', odds: 0.9, chief: { name: "Pharnaces' raiders", style: 'cautious' }, fog: true, act: 'IV', theater: 'Pontus', year: '48 BC', name: 'The Road to Comana', kind: 'skirmish',
     geo: { lat: 40.36, lon: 36.60, place: 'Near Comana Pontica', note: 'Illustrative: Calvinus marched on Pharnaces through Pontus; the fight is not recorded' },
-    briefing: 'Calvinus has gathered what he can: one veteran legion, a legion just raised in Pontus, and the Galatian legions of King Deiotarus. Pharnaces has overrun Pontus and Armenia Minor. On the road by the temple town of Comana, his raiders are driving off the herds. Clear them off the road.',
-    objective: "Break the raiders (reduce them below 25%). A first look at Pharnaces' Roman-drilled infantry and at the steppe horse archers.",
+    briefing: 'Pharnaces has overrun Pontus. Near Comana his raiders are driving off the herds. Clear the road.',
+    objective: 'Break the raiders (below 25%). Your first look at his Roman-drilled foot and steppe horse archers.',
     timeLimit: 600, daysToPrepare: 4,
     deploy: { mode: 'line', cx: 800, cy: 860 },
     terrain: [{ kind: 'hill', cx: 330, cy: 380, rx: 260, ry: 140, h: 40 }, { kind: 'hill', cx: 1280, cy: 360, rx: 260, ry: 140, h: 40 }, { kind: 'forest', cx: 800, cy: 120, rx: 260, ry: 80 }],
@@ -907,8 +907,8 @@ export const SCENARIOS = [
   {
     id: 'steppe', odds: 1.15, posture: 'defend', chief: { name: 'the Sarmatian chiefs', style: 'aggressive' }, fog: true, act: 'IV', theater: 'Pontus', year: '48 BC', name: 'The Steppe Riders', kind: 'skirmish',
     geo: { lat: 40.90, lon: 36.20, place: 'The road from Amisus', note: 'Illustrative: Sarmatian horse of the Siraces and Aorsi served Pharnaces (Strabo 11.5.8)' },
-    briefing: "The column is strung out on the road with the grain wagons in the middle when the horsemen come over the skyline: Sarmatians from beyond the Maeotis, the steppe people who came after the Scythians. Archers who shoot from the saddle, and nobles in scale armour with lances as long as two men. They want the wagons.",
-    objective: 'Keep the grain wagons (the gold marker) in Roman hands: if the enemy holds them for 100 seconds the grain is lost. Break the riders to win. Horse archers fall back shooting when charged and carry only so many arrows; lancers are deadly head-on and slow to turn.',
+    briefing: 'Sarmatian riders come over the skyline for your grain wagons: horse archers and lancers in scale armour.',
+    objective: 'Keep the wagons (gold marker). If they hold them 100 s, the grain is lost. Horse archers retreat while shooting and run out of arrows; lancers are deadly head-on but slow to turn.',
     timeLimit: 600, daysToPrepare: 3,
     deploy: { mode: 'line', cx: 800, cy: 720 },
     objectives: [{ id: 'grain', name: 'Grain Wagons', x: 800, y: 660, r: 80, owner: 'rome' }],
@@ -929,8 +929,8 @@ export const SCENARIOS = [
   {
     id: 'nicopolis', posture: 'assault', odds: 1.35, chief: { name: 'Pharnaces II', style: 'cunning' }, fog: true, act: 'IV', theater: 'Armenia Minor', year: '48 BC', name: 'Nicopolis', kind: 'named',
     geo: { lat: 40.15, lon: 37.85, place: 'Nicopolis in Armenia Minor', note: 'Calvinus was defeated here in December 48 BC (Bellum Alexandrinum 38-40); site approximate' },
-    briefing: "Pharnaces is drawn up before Nicopolis behind two trenches, with his best foot between them and horse on both wings. Calvinus attacks anyway. The veterans of the Thirty-Sixth go forward on the right of your line; on the left stands the new legion raised in Pontus, which has never fought. If the green legion goes, the whole army is in danger.",
-    objective: 'Break Pharnaces\' army, or survive: still have at least 45% of your army with the standards when night falls. A well-ordered withdrawal is a draw. Historically a defeat, so a draw here pays handsomely.',
+    briefing: 'Pharnaces stands behind two trenches before Nicopolis. On your left stands a green legion raised in Pontus. If it breaks, the army is in danger.',
+    objective: 'Break Pharnaces, or keep 45% of your army until nightfall. A draw here pays well.',
     links: [
       { from: 'comana', morale: 3, text: 'The road to Comana was cleared: the men have beaten these troops before (+3 morale).' },
       { from: 'steppe', scale: { horse_archer: 0.8, lancer: 0.8 }, text: 'The Sarmatians were mauled at the grain wagons: fewer of them ride with Pharnaces.' }
@@ -957,8 +957,8 @@ export const SCENARIOS = [
   {
     id: 'zela', posture: 'fortdef', odds: 0.7, chief: { name: 'Pharnaces II', style: 'aggressive' }, act: 'IV', theater: 'Pontus', year: '47 BC', name: 'Zela', dry: true, kind: 'named',
     geo: { lat: 40.30, lon: 35.89, place: 'Zela (Zile), Pontus', note: 'Caesar beat Pharnaces here on 2 August 47 BC: veni, vidi, vici (Bellum Alexandrinum 72-77)' },
-    briefing: "Caesar has come himself, fast from Egypt with few men. He has taken the hill across the valley from Pharnaces' camp, the hill where Mithridates once beat a Roman army, and the legions are digging the camp. Nobody expects an attack: to reach you the enemy must come down into the valley and climb straight up at you. Pharnaces does exactly that. The scythed chariots are coming first, and half your men still have spades in their hands.",
-    objective: 'Hold the camp on the hill (the gold marker): if the enemy holds it for 100 seconds it is lost. Break his army to win. Open ranks (.) and missiles beat the chariots; the slope is on your side.',
+    briefing: 'Pharnaces charges up the hill while your men are still digging the camp. Scythed chariots come first.',
+    objective: 'Don\'t let him hold the camp (gold marker) 100 s. Break his army to win. Open ranks (.) and missiles beat chariots.',
     links: [{ from: 'nicopolis', morale: 4, text: 'The men who came through Nicopolis want their revenge (+4 morale).' }],
     timeLimit: 600, daysToPrepare: 4,
     deploy: { mode: 'line', cx: 800, cy: 640 },
@@ -985,8 +985,8 @@ export const SCENARIOS = [
   {
     id: 'ruspina', posture: 'ambush', odds: 0.8, defect: true, chief: { name: 'Titus Labienus', style: 'cunning' }, act: 'V', theater: 'Africa', year: '46 BC', name: 'Ruspina', kind: 'named', dry: true,
     geo: { lat: 35.77, lon: 10.83, place: 'The plain near Ruspina (Monastir)', note: 'Labienus surrounded Caesar here on 4 January 46 BC (Bellum Africum 11-18)' },
-    briefing: "Caesar has landed in Africa with too few men and no horse to speak of. You are out on the plain with a foraging column when Labienus appears: Numidian horse and light foot, his Gallic and German riders, more and more of them, until they are all round you. His men taunt yours: 'Recruits! Caesar has fooled you too!' Caesar orders the line extended and every other cohort turned about, so the army fights facing both ways.",
-    objective: 'Survive: break the host, or still have at least 45% of your army with the standards at nightfall. A well-ordered withdrawal is a draw. Turn cohorts to face both ways (or form orbis) when they ride round you.',
+    briefing: 'Caught foraging on the plain, you are surrounded by Labienus\' horse. Caesar orders every other cohort to turn about and fight both ways.',
+    objective: 'Survive: break the host, or keep 45% of your army until nightfall. Face both ways, or form orbis.',
     timeLimit: 600, daysToPrepare: 4,
     deploy: { mode: 'grid', cx: 800, cy: 560, cols: 4, dx: 110, dy: 90 },
     terrain: [{ kind: 'hill', cx: 800, cy: 880, rx: 300, ry: 80, h: 22 }],
@@ -1007,8 +1007,8 @@ export const SCENARIOS = [
   {
     id: 'uzitta', posture: 'assault', defect: true, chief: { name: 'Metellus Scipio', style: 'cautious' }, optional: true, fog: true, act: 'V', theater: 'Africa', year: '46 BC', name: 'The Lines at Uzitta', kind: 'skirmish', dry: true,
     geo: { lat: 35.60, lon: 10.72, place: 'The ridges before Uzitta', note: 'Months of siege lines and skirmishes for the high ground (Bellum Africum 37-66); site approximate' },
-    briefing: "For weeks the two armies have dug lines towards each other across the ridges before Uzitta. Scipio holds the next crest with a few cohorts and Numidian foot. Take it, and your lines command the town's water.",
-    objective: 'Take the crest (the gold marker) and hold it for 100 seconds, or break its defenders. A side fight: winning it weakens Scipio\'s army at Thapsus.',
+    briefing: 'Scipio holds the next crest before Uzitta. Take it, and your lines command the town\'s water.',
+    objective: 'Hold the crest (gold marker) 100 s, or break the defenders. Optional: a win weakens Scipio at Thapsus.',
     timeLimit: 600, daysToPrepare: 3,
     deploy: { mode: 'line', cx: 800, cy: 860 },
     objectives: [{ id: 'crest', name: 'The Crest', x: 800, y: 300, r: 95, owner: 'gaul' }],
@@ -1028,8 +1028,8 @@ export const SCENARIOS = [
   {
     id: 'thapsus', posture: 'attack', odds: 0.85, defect: true, chief: { name: 'Metellus Scipio and King Juba', style: 'stubborn' }, fog: true, act: 'V', theater: 'Africa', year: '46 BC', name: 'Thapsus', kind: 'named', dry: true,
     geo: { lat: 35.62, lon: 11.05, place: 'Before Thapsus', note: 'Caesar destroyed Scipio and Juba here on 6 April 46 BC (Bellum Africum 79-86)' },
-    briefing: "Caesar has bottled Scipio up on the narrow strip of land outside Thapsus, between the sea and a salt lagoon. Scipio has drawn up his legions with Juba's elephants on both wings and the Numidian horse beyond them. Your veterans can see the enemy is nervous. They are impatient to be at them, perhaps too impatient.",
-    objective: "Break Scipio's army (reduce it below 25%). Elephants stand on both wings: missiles drive them mad, and open ranks (.) let them through. Wavering Pompeian cohorts may come over to you.",
+    briefing: 'Scipio is trapped outside Thapsus between sea and lagoon, elephants on his wings. Your veterans are eager, perhaps too eager.',
+    objective: 'Break Scipio\'s army (below 25%). Missiles madden elephants; open ranks (.) let them through. Wavering Pompeians may defect.',
     links: [
       { from: 'uzitta', scale: { pompeian: 0.85 }, text: 'Scipio lost his crest at Uzitta, and men with it: fewer legionaries stand in his line.' },
       { from: 'ruspina', morale: 4, text: 'The recruits who came through Ruspina are veterans now (+4 morale).' }
@@ -1057,8 +1057,8 @@ export const SCENARIOS = [
   {
     id: 'ategua', posture: 'assault', defect: true, chief: { name: 'the garrison of Ategua', style: 'stubborn' }, fog: true, act: 'V', theater: 'Hispania', year: '45 BC', name: 'Ategua', kind: 'skirmish',
     geo: { lat: 37.80, lon: -4.62, place: 'Ategua (Teba la Vieja), near Corduba', note: 'Caesar besieged it in the winter of 46-45 BC (Bellum Hispaniense 6-19)' },
-    briefing: "Pompey's sons have raised Spain against Caesar. It is winter, cold and wet, and the army is short of everything. The hill town of Ategua holds Gnaeus Pompeius' supplies. Its walls are on a steep hill and the garrison will fight for every step, while their horse rides at your lines from outside.",
-    objective: 'Take the gate (the gold marker) and hold it for 110 seconds, or break the defenders.',
+    briefing: 'Winter in Spain. Storm the hill town of Ategua, where Pompey\'s son keeps his supplies, while his horse attack your lines.',
+    objective: 'Hold the gate (gold marker) 110 s, or break the defenders.',
     timeLimit: 660, daysToPrepare: 4,
     deploy: { mode: 'line', cx: 800, cy: 880 },
     objectives: [{ id: 'gate', name: 'The Town Gate', x: 800, y: 320, r: 90, owner: 'gaul' }],
@@ -1078,8 +1078,8 @@ export const SCENARIOS = [
   {
     id: 'munda', posture: 'assault', odds: 1.55, defect: true, chief: { name: 'Gnaeus Pompeius and Titus Labienus', style: 'stubborn' }, act: 'V', theater: 'Hispania', year: '45 BC', name: 'Munda', kind: 'named',
     geo: { lat: 37.40, lon: -4.80, place: 'The plain and ridge of Munda', note: 'The last battle of the civil war, 17 March 45 BC (Bellum Hispaniense 27-31); the site is disputed' },
-    briefing: "The last army of the Republic stands on the ridge above Munda: thirteen Pompeian legions, Labienus among them, against Caesar's eight. To reach them you must cross the marshy stream and climb. They will not come down. It will be the hardest day of the war: Caesar himself will say that he often fought for victory, but at Munda he fought for his life. Somewhere on the far flank, King Bogud's Moorish horse is riding for the Pompeian camp.",
-    objective: "Break the Pompeian army (reduce it below 25%). Climb steadily, rotate tired cohorts, and watch for the moment their line wavers. Wavering cohorts may come over to you.",
+    briefing: 'The last Pompeian army holds the ridge above Munda: thirteen legions against Caesar\'s eight. Cross the marshy stream and climb. Caesar said that here he fought for his life.',
+    objective: 'Break the Pompeian army (below 25%). Climb steadily, rotate tired cohorts. Wavering cohorts may defect.',
     links: [
       { from: 'ategua', scale: { pomp_levy: 0.85 }, text: "Ategua has fallen with Gnaeus' supplies: his levies are fewer and hungrier." },
       { from: 'thapsus', morale: 4, text: 'These are the men who won Thapsus (+4 morale).' }
@@ -1112,8 +1112,8 @@ export const SCENARIOS = [
 export const PROLOGUE = {
   id: 'prologue', act: 'I', theater: 'Gaul', year: '58 BC', name: 'First Blood at the Border', kind: 'skirmish',
   geo: { lat: 45.52, lon: 4.87, place: 'Vienna (Vienne) on the Rhone', note: 'Border of the Province, Allobroges country' },
-  briefing: 'You have taken command of a legion on the edge of the Province. A small band of raiders has crossed the Rhone and is plundering farms within sight of your camp. Drive them off. This is an easy fight against a weak enemy, and hints will appear as you play to show you how things work.',
-  objective: 'Drive off the raiders: break their warbands. You vastly outnumber them, so take your time and try the controls.',
+  briefing: 'Raiders have crossed the Rhone and are burning farms in sight of your camp. Drive them off. An easy fight: hints will show you the controls.',
+  objective: 'Break their warbands. You far outnumber them, so take your time.',
   timeLimit: 720, callDelay: 45, daysToPrepare: 0, deploy: { mode: 'line', cx: 800, cy: 880 },
   terrain: [{ kind: 'hill', cx: 1220, cy: 700, rx: 170, ry: 90 }, { kind: 'forest', cx: 300, cy: 330, rx: 160, ry: 90 }],
   enemy: [

@@ -2,14 +2,14 @@
 const $ = (id) => document.getElementById(id);
 
 const TIPS = [
-  { id: 'start', when: () => true, until: ['move', 'attack'], text: 'Press <b>Q</b> to select your whole army, then <b>right-click</b> the ground ahead to advance. <b>Space</b> starts and pauses the battle, and you can still give orders while it is paused.' },
-  { id: 'enemy', when: (b) => b.units.some(u => u.side === 'rome' && u.active && (b.nearestEnemy(u) || { gap: 9e9 }).gap < 330), text: 'Gauls ahead! <b>Right-click an enemy</b> to attack it, or simply wait for them: a unit fights whatever comes near it, then goes back to its place. Your cohorts throw their pila just before contact. More orders (holding a position, falling back) are taught at the training ground in camp.' },
-  { id: 'fight', when: (b) => b.units.some(u => u.side === 'rome' && u.fighting), text: 'The coloured arcs under a selected unit show its <span style="color:#6c6">front</span>, <span style="color:#dc4">flanks</span> and <span style="color:#e55">rear</span>. Hitting an enemy from the side or behind does far more damage, so send your cavalry around.' },
-  { id: 'morale', when: (b) => b.stats.routs.gaul >= 1 || b.units.some(u => u.side === 'gaul' && u.active && u.morale < u.maxMorale * 0.45), text: 'The blue bars are morale. When one runs out the unit breaks and flees. Press on while the enemy wavers.' },
-  { id: 'tired', when: (b) => b.units.some(u => u.side === 'rome' && u.active && u.fatigue > 45), text: 'Tired units fight worse. Right-click behind your line to pull one back and rest, then send it in again.' },
-  { id: 'command', when: (b) => b.general && b.t > 20 && b.units.some(u => u.side === 'rome' && u.active && !b.inCommand(u)), text: 'A cohort has strayed outside the <b>gold command ring</b> around your general. Out there it recovers morale slowly and charges raggedly. Press <b>E</b> (or click the banner) to select the general, then <b>right-click</b> to move the ring where it is needed.' },
-  { id: 'wave', when: (b) => b.reinf.some(r => r.done && r.side !== 'rome'), text: 'More enemies have appeared that you did not expect. Keep your cohorts together and do not chase too far.' },
-  { id: 'finish', when: (b) => b.activeMen('gaul') < b.startGaul * 0.4, text: 'Nearly there. The battle is won when the enemy host falls below a quarter of its strength, so finish off the broken units.' }
+  { id: 'start', when: () => true, until: ['move', 'attack'], text: '<b>Q</b> selects your army; <b>right-click</b> ahead to advance. <b>Space</b> pauses; you can give orders while paused.' },
+  { id: 'enemy', when: (b) => b.units.some(u => u.side === 'rome' && u.active && (b.nearestEnemy(u) || { gap: 9e9 }).gap < 330), text: 'Gauls ahead! <b>Right-click an enemy</b> to attack, or wait: units fight whatever comes near. Pila fly just before contact.' },
+  { id: 'fight', when: (b) => b.units.some(u => u.side === 'rome' && u.fighting), text: 'Arcs show a unit\'s <span style="color:#6c6">front</span>, <span style="color:#dc4">flanks</span> and <span style="color:#e55">rear</span>. Hits from the side or behind hurt far more: send cavalry around.' },
+  { id: 'morale', when: (b) => b.stats.routs.gaul >= 1 || b.units.some(u => u.side === 'gaul' && u.active && u.morale < u.maxMorale * 0.45), text: 'Blue bars are morale. At zero a unit flees. Press on while they waver.' },
+  { id: 'tired', when: (b) => b.units.some(u => u.side === 'rome' && u.active && u.fatigue > 45), text: 'Tired units fight worse. Pull one back behind the line to rest.' },
+  { id: 'command', when: (b) => b.general && b.t > 20 && b.units.some(u => u.side === 'rome' && u.active && !b.inCommand(u)), text: 'A cohort is outside your general\'s <b>gold ring</b>, where it rallies slowly. Press <b>E</b> and <b>right-click</b> to move him.' },
+  { id: 'wave', when: (b) => b.reinf.some(r => r.done && r.side !== 'rome'), text: 'Enemy reinforcements! Keep together; do not chase too far.' },
+  { id: 'finish', when: (b) => b.activeMen('gaul') < b.startGaul * 0.4, text: 'Nearly there: the battle is won when the enemy falls below a quarter.' }
 ];
 
 export class Coach {
