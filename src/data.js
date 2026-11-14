@@ -1113,7 +1113,7 @@ export const PROLOGUE = {
   id: 'prologue', act: 'I', theater: 'Gaul', year: '58 BC', name: 'First Blood at the Border', kind: 'skirmish',
   geo: { lat: 45.52, lon: 4.87, place: 'Vienna (Vienne) on the Rhone', note: 'Border of the Province, Allobroges country' },
   briefing: 'Raiders have crossed the Rhone and are burning farms in sight of your camp. Drive them off. An easy fight: hints will show you the controls.',
-  objective: 'Break their warbands. You far outnumber them, so take your time.',
+  objective: 'Break their warbands. Take your time and learn the controls.',
   timeLimit: 720, callDelay: 45, daysToPrepare: 0, deploy: { mode: 'line', cx: 800, cy: 880 },
   terrain: [{ kind: 'hill', cx: 1220, cy: 700, rx: 170, ry: 90 }, { kind: 'forest', cx: 300, cy: 330, rx: 160, ry: 90 }],
   enemy: [
