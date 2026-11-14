@@ -6,6 +6,12 @@ import { levelFor } from './sim.js';
 import { careerLv, realWin, legionsOf } from './campaign.js';
 import { awardHonours, promoteFromRanks, decoMorale } from './heroes.js';
 
+// The field hospital: five levels, each dearer than the last, one level per camp. Levels 1-3 add 30% wounded recovery each, 4 and 5
+// add 15% each and bring a unique upgrade: the Surgeons' school (level 4) doubles what treating the badly wounded saves, and the
+// Valetudinarium (level 5) widens the medici's ring and lets them save half the men hit inside it.
+export const HOSP_MAX = 5, HOSP_COST = [250, 500, 800, 1200, 1700], HOSP_SUP = [20, 30, 40, 60, 80];
+export const HOSP_NAMES = ['Field dressing station', 'Hospital tents', 'Field hospital', "Surgeons' school", 'Valetudinarium'];
+export const hospRecovery = (l) => 1 + 0.3 * Math.min(l, 3) + 0.15 * Math.max(0, l - 3);
 export const DEFAULT_MODS = { recovery: 1, supplyUse: 1, spoils: 1, forage: 1, levy: 1, morale: 0, xp: 1 };
 // Effective campaign modifiers: origins, plus officer perks and the field hospital.
 export function modsOf(c) {
@@ -14,7 +20,7 @@ export function modsOf(c) {
   if (has('quartermaster')) m.supplyUse *= 0.9;
   if (has('forager')) m.forage *= 1.2;
   if (has('surgeon')) m.recovery *= 1.2;
-  m.recovery *= 1 + 0.30 * (c.hospital || 0);
+  m.recovery *= hospRecovery(c.hospital || 0);
   // the commander's career
   m.recovery *= 1 + 0.06 * careerLv(c, 'medicine'); m.supplyUse *= 1 - 0.05 * careerLv(c, 'logistics'); m.forage *= 1 + 0.08 * careerLv(c, 'logistics');
   m.xp *= 1 + 0.05 * careerLv(c, 'training'); m.spoils *= 1 + 0.05 * careerLv(c, 'politics'); m.recruits = 1 + 0.10 * careerLv(c, 'politics');

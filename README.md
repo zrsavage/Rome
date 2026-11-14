@@ -136,7 +136,7 @@ still fills units automatically so a new player is not left with an unexplained 
 - **Equipment:** upgrade armour and weapons per cohort (3 tiers, denarii + supplies + a day).
 - **Every building is a decision, not a checkbox:** each opens with an adviser's note tied to your army and the next enemy (quartermaster, camp prefect, armourer, physician, interpreter), live previews of what each choice does, and a real tradeoff. Foraging has four options (cautious, wide, requisition for goodwill, buy for coin); the Barracks weighs rest against recruiting (which dilutes experience) against fortifying; the Armourer shows per-man cost and effect; the Hospital shows how many men it would actually have saved last battle; the Hall shows what goodwill does to the enemy's size; scouting reveals reinforcement timing in the briefing.
 - **Instructors:** assign an officer to train a cohort automatically every day.
-- **Field hospital:** up to 3 levels, better wound recovery.
+- **Field hospital:** up to 5 levels (250, 500, 800, 1200, 1700 denarii; one level per camp), better wound recovery; see v0.8 below.
 - **Raise units:** build new cohorts, slingers, archers and cavalry; the command limit grows with each battle won or drawn;
   new unit types unlock as you progress (allied cavalry, archers, allied infantry).
 - **Veteran traits** by experience level, and a **choose-one bonus** after every victory or draw (plunder, captured arms,
@@ -332,3 +332,13 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
   (more with Medicine in your career), for 2 denarii and half a supply each. They join the veterans waiting at the Barracks.
 - **Every unit type now deploys:** scorpiones, Galatians, caetrati and Moorish horse were left out of the battle line by mistake; they now
   take their places (infantry in the line, missile troops behind, horse on the wings, medici at the rear).
+
+## Hospital levels 4-5 and the army test (v0.9)
+- **The hospital has five levels, one per camp:** 250, 500, 800, 1200 and 1700 denarii (20-80 supplies). Levels 1-3 add 30% wounded
+  recovery each; level 3 unlocks the medici. Level 4, the **Surgeons' school**, adds 15% and doubles what "Treat the badly wounded"
+  saves (30% instead of 15%). Level 5, the **Valetudinarium**, adds 15% and makes the medici better: a 200-pace ring, and they save half
+  the men hit inside it instead of 35%.
+- **`node tools/armytest.mjs [runs] [opponent|all] [slots|cost]`** fights armies of different make-up (all legions, legions with
+  archers and horse, slingers, scorpiones, medici...) against the same enemies (a Pompeian mirror army, a mixed Pompeian army, a Gallic
+  host, a Numidian army) on open ground, with the smart test bot in command. 'slots' gives every army 20 units; 'cost' gives every
+  army the same denarii.

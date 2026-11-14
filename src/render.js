@@ -256,7 +256,7 @@ export class Renderer {
     this.drawObjectives(ctx, b);
     for (const f of b.fx) if (f.kind === 'dust') this.drawDust(ctx, f);
     for (const id of new Set([...this.selection, this.hover])) { const u = b.byId(id); if (u && u.present && u.state !== 'routing') this.drawArcs(ctx, u); }
-    for (const u of order) if (this.showRange || this.selection.has(u.id)) this.drawRange(ctx, u);
+    for (const u of order) if (this.showRange || this.selection.has(u.id)) this.drawRange(ctx, u, b);
     for (const u of order) this.drawUnit(ctx, u, b);
     for (const f of b.fx) if (f.kind !== 'dust') this.drawFx(ctx, f);
     this.drawLegates(ctx, b);
@@ -539,9 +539,9 @@ export class Renderer {
     const sector = (from, to, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(u.x, u.y); ctx.arc(u.x, u.y, R, u.f + from, u.f + to); ctx.closePath(); ctx.fill(); };
     sector(-a1, a1, 'rgba(90,210,90,0.17)'); sector(a1, a2, 'rgba(235,205,70,0.2)'); sector(-a2, -a1, 'rgba(235,205,70,0.2)'); sector(a2, Math.PI * 2 - a2, 'rgba(225,70,60,0.22)');
   }
-  drawRange(ctx, u) {
+  drawRange(ctx, u, b = null) {
     const t = u.type, ext = Math.max(u.w, u.d) / 2; let r = null, col = 'rgba(255,255,255,0.35)';
-    if (t.heal) { r = t.heal + ext; col = 'rgba(120,220,140,0.45)'; } else if (t.range) r = t.range + ext; else if (t.cat === 'cav') { r = 110 + ext; col = 'rgba(255,170,120,0.35)'; } else if (t.pilum && u.pilumLeft > 0) { r = 30 + ext; col = 'rgba(255,225,150,0.4)'; }
+    if (t.heal) { r = t.heal * ((b && b.healRing) || 1) + ext; col = 'rgba(120,220,140,0.45)'; } else if (t.range) r = t.range + ext; else if (t.cat === 'cav') { r = 110 + ext; col = 'rgba(255,170,120,0.35)'; } else if (t.pilum && u.pilumLeft > 0) { r = 30 + ext; col = 'rgba(255,225,150,0.4)'; }
     if (!r) return;
     ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.setLineDash([5, 6]); ctx.beginPath(); ctx.arc(u.x, u.y, r, 0, 7); ctx.stroke(); ctx.setLineDash([]);
   }

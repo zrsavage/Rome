@@ -23,7 +23,7 @@ function campaignAt(i, difficulty) {
 
 // A bot that plays like a person who knows the rules: it forms the triplex acies, fights with the front line, rotates tired cohorts, keeps a reserve
 // for trouble, sends horse into the rear of engaged enemies, falls back skirmishers through the line, keeps the general near the front and rallies.
-function smartBot(b, rome, S) {
+export function smartBot(b, rome, S) {
   const dt = 0.1, active = (u) => u.active && u.present;
   if (b.t < 0.2) {
     const live = rome.filter(active), gs = b.units.filter(u => u.side === 'gaul' && active(u));

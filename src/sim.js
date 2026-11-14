@@ -123,6 +123,7 @@ export class Battle {
     // a campaign battle's host is already sized to your army by its posture (state.js forceScale); older callers get the authored host, a little lighter
     this.enemyScale = this.diff.enemyMult * favMult * (scn.id === 'prologue' || scn.practice || opts.forceScale ? 1 : 0.9);
     this.recoveryMult = opts.recovery ?? 1;
+    this.healRing = opts.healL5 ? 200 / 150 : 1; this.healRate = opts.healL5 ? 0.5 : 0.35;   // a level 5 hospital (Valetudinarium) makes the medici better
     const rb = this.diff.romeMorale + Math.min(12, this.fortLevel * 4) + (opts.suppliesLow ? -8 : 0) + (opts.moraleBonus || 0);
     this.romeBonus = rb;
     for (const s of romeSpecs) this.units.push(new Unit({ ...s, side: 'rome', moraleBonus: rb + (s.moraleBonus || 0) }));
@@ -203,7 +204,7 @@ export class Battle {
   // Is this unit inside the ring of a working team of medici? Checked at most twice a second per unit.
   medicCover(u) {
     if ((u.medT || -1) > this.t) return u.medOn; u.medT = this.t + 0.5;
-    u.medOn = this.units.some(m => m.type.medic && m.side === u.side && m.active && m.state !== 'routing' && m !== u && Math.hypot(m.x - u.x, m.y - u.y) < m.type.heal + Math.max(u.w, u.d) / 2);
+    u.medOn = this.units.some(m => m.type.medic && m.side === u.side && m.active && m.state !== 'routing' && m !== u && Math.hypot(m.x - u.x, m.y - u.y) < m.type.heal * this.healRing + Math.max(u.w, u.d) / 2);
     return u.medOn;
   }
   // Medici left to themselves follow the fight: every two seconds an idle team walks up behind the nearest friendly unit in melee, so
@@ -1578,7 +1579,7 @@ export class Battle {
       if (u.state === 'routing' || (u.state === 'gone' && !u.exited)) survivors = Math.round(u.men * 0.5);
       const casualties = u.startMen - survivors;
       const recovered = Math.round(Math.max(0, casualties - (u.captured || 0)) * (outcome === 'defeat' ? 0.1 : 0.22) * this.recoveryMult);   // men led away as prisoners do not come back
-      const healed = Math.round(Math.min(u.tended || 0, Math.max(0, casualties - (u.captured || 0) - recovered)) * (outcome === 'defeat' ? 0.15 : 0.35));   // men hit near the medici
+      const healed = Math.round(Math.min(u.tended || 0, Math.max(0, casualties - (u.captured || 0) - recovered)) * this.healRate * (outcome === 'defeat' ? 0.45 : 1));   // men hit near the medici
       if (healed) this.stats.healed = (this.stats.healed || 0) + healed;
       const endMen = Math.min(u.maxMen, survivors + recovered + healed);
       const xpMult = outcome === 'victory' ? 1 : outcome === 'draw' ? 0.75 : 0.5;
