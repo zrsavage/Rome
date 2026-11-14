@@ -91,6 +91,11 @@ $('file-import').onchange = (e) => { const f = e.target.files[0]; e.target.value
 // Saves from before the side act in Britain was added (version 3) point at battles by position; four battles now sit before Act III.
 function migrate(c) {
   if ((c.version || 0) < 4) { if (c.scenario >= 11) { c.scenario += 4; c.britain = 'skipped'; } c.version = 4; }
+  if (c.version < 5) {     // horse and missile units became wings and auxiliary cohorts (about twice the men): old saves grow to match
+    const NEW = { slinger: 260, archer: 240, equites: 140, aux_cav: 150, moor_cav: 150 };
+    for (const h of c.cohorts) { const m = NEW[h.type]; if (m && h.maxMen < m) { const k = m / h.maxMen; h.maxMen = m; h.men = Math.min(m, Math.round(h.men * k)); } }
+    c.version = 5;
+  }
   return c;
 }
 function openCampaign(c, n) { migrate(c); campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; if (c.prologueDone === false) showBrief(PROLOGUE); else showMap(); }

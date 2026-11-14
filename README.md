@@ -342,3 +342,16 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
   archers and horse, slingers, scorpiones, medici...) against the same enemies (a Pompeian mirror army, a mixed Pompeian army, a Gallic
   host, a Numidian army) on open ground, with the smart test bot in command. 'slots' gives every army 20 units; 'cost' gives every
   army the same denarii.
+
+## Balance: every unit earns its place (v0.9)
+An army test (`tools/armytest.mjs`) showed that with one command slot per unit, 20 legionary cohorts beat every mixed army, against
+every enemy: 17 wins in 24 battles, against 3-7 for armies with horse and missile troops. Support units were a fraction of a cohort's
+size in a full slot. The fix:
+- **Half slots:** horse, slingers, archers, scorpiones and medici take half a command slot; a cohort of foot takes a whole one.
+- **Bigger support units:** slingers 260 men, archers 240, equites 140 (a wing, not a turma), allied and Moorish horse 150, priced to
+  match. Saves from before this change have their support units enlarged in proportion.
+- **Hammer and anvil:** horse that strike the flank or rear of foot already held by your line hit 40% harder and shake it 40% more.
+- **Missiles into a mass:** arrows and sling-shot do 15% more against packed foot (not a testudo), and their hits shake morale a little more.
+
+Result (20 command slots each, 24 battles against four armies): a balanced mix of 17 cohorts with 2 archers, 2 slingers and 2 horse
+won 19 and lost 2; legions with archers and horse 16-3; legions with slingers 14-4; all legions 13-3; legions with scorpiones 12-2.

@@ -22,7 +22,7 @@ export const UNIT_TYPES = {
     cost: 45, color: '#c46a2b', trim: '#e8c36a', blurb: 'Skirmishers. Lead shot punishes massed warbands.'
   },
   equites: {
-    name: 'Equites (Cavalry Turma)', side: 'rome', cat: 'cav', perDot: 4, atk: 0.09, def: 0.3,
+    name: 'Equites (Cavalry Wing)', side: 'rome', cat: 'cav', perDot: 4, atk: 0.09, def: 0.3,
     speed: 58, turn: 2.6, morale: 66, charge: 1.6, space: 3.2, fragile: 1,
     cost: 90, color: '#8a3a8f', trim: '#e8c36a', blurb: 'Fast shock cavalry. Ruinous against flanks and routers.'
   },
@@ -213,14 +213,14 @@ export const UNIT_TYPES = {
 // What it costs to raise a fresh unit of each Roman type at camp (and its full strength).
 export const RAISE = {
   legionary: { men: 300, max: 480, gold: 420, supplies: 40 },
-  slinger: { men: 120, max: 150, gold: 130, supplies: 10 },
-  equites: { men: 50, max: 60, gold: 300, supplies: 20 },
-  archer: { men: 100, max: 130, gold: 200, supplies: 12 },
-  aux_cav: { men: 50, max: 70, gold: 240, supplies: 15 },
+  slinger: { men: 210, max: 260, gold: 190, supplies: 14 },
+  equites: { men: 110, max: 140, gold: 420, supplies: 28 },
+  archer: { men: 190, max: 240, gold: 280, supplies: 16 },
+  aux_cav: { men: 120, max: 150, gold: 340, supplies: 22 },
   aux_inf: { men: 250, max: 350, gold: 340, supplies: 30 },
   galatian: { men: 300, max: 450, gold: 330, supplies: 30 },
   caetrati: { men: 250, max: 350, gold: 260, supplies: 20 },
-  moor_cav: { men: 60, max: 80, gold: 260, supplies: 15 },
+  moor_cav: { men: 120, max: 150, gold: 340, supplies: 22 },
   scorpion: { men: 40, max: 40, gold: 420, supplies: 30 },
   medici: { men: 30, max: 30, gold: 260, supplies: 30 }
 };
@@ -361,7 +361,7 @@ export const SCENARIOS = [
     ],
     reinforcements: [{ at: 120, msg: 'Warbands from across the Arar wade back to rescue their kin!', unit: { type: 'gaul_elite', men: 240, x: 620, y: 300, ai: { kind: 'rush', delay: 0 } } }],
     rewards: { gold: 360, supplies: 160, recruits: 80, xpBase: 44, officerXp: 50 }, rewardMult: 1.1,
-    unlock: [{ type: 'aux_cav', name: 'Allied Gallic Horse', men: 60, maxMen: 70, xp: 20, drill: 15, msg: 'Aeduan cavalry ride in to support Rome.' }]
+    unlock: [{ type: 'aux_cav', name: 'Allied Gallic Horse', men: 120, maxMen: 150, xp: 20, drill: 15, msg: 'Aeduan cavalry ride in to support Rome.' }]
   },
   {
     id: 'convoy', odds: 0.85, posture: 'defend', chief: { name: "Verucloetius", style: 'cunning' }, act: 'I', theater: 'Gaul', year: '58 BC', name: "The Foragers' Road", kind: 'skirmish',
@@ -385,7 +385,7 @@ export const SCENARIOS = [
     ],
     reinforcements: [{ at: 100, msg: 'More raiders pour out of the eastern woods!', unit: { type: 'warband', men: 295, x: 1500, y: 420, ai: { kind: 'raid', obj: 'wagons' } } }],
     rewards: { gold: 180, supplies: 260, recruits: 50, xpBase: 34, officerXp: 40 }, rewardMult: 1,
-    unlock: [{ type: 'archer', name: 'Cretan Archers', men: 100, maxMen: 130, xp: 25, drill: 20, msg: 'Cretan mercenary archers join your column.' }]
+    unlock: [{ type: 'archer', name: 'Cretan Archers', men: 190, maxMen: 240, xp: 25, drill: 20, msg: 'Cretan mercenary archers join your column.' }]
   },
   {
     id: 'oppidum', posture: 'assault', chief: { name: "Casticus of the Sequani", style: 'stubborn' }, optional: true, fog: true, act: 'I', theater: 'Gaul', year: '58 BC', name: 'The Hill Fort of the Sequani', kind: 'skirmish',

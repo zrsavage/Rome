@@ -19,14 +19,14 @@ export const PRACTICE_OPTIONS = {
 export const PRACTICE_DEFAULTS = { army: 'medium', enemy: 'medium', terrain: 'open', tactics: 'mixed', difficulty: 'normal', weather: 'clear' };
 
 const ARMIES = {
-  small: [['I Cohort', 'legionary', 480], ['II Cohort', 'legionary', 480], ['Balearic Slingers', 'slinger', 150], ['Equites Turma', 'equites', 60]],
-  medium: [['I Cohort', 'legionary', 480], ['II Cohort', 'legionary', 480], ['III Cohort', 'legionary', 480], ['IV Cohort', 'legionary', 480], ['Balearic Slingers', 'slinger', 150], ['Cretan Archers', 'archer', 130], ['Equites Turma', 'equites', 60], ['Allied Gallic Horse', 'aux_cav', 70]],
+  small: [['I Cohort', 'legionary', 480], ['II Cohort', 'legionary', 480], ['Balearic Slingers', 'slinger', 260], ['Equites', 'equites', 140]],
+  medium: [['I Cohort', 'legionary', 480], ['II Cohort', 'legionary', 480], ['III Cohort', 'legionary', 480], ['IV Cohort', 'legionary', 480], ['Balearic Slingers', 'slinger', 260], ['Cretan Archers', 'archer', 240], ['Equites', 'equites', 140], ['Allied Gallic Horse', 'aux_cav', 150]],
   large: [['I Cohort', 'legionary', 480], ['II Cohort', 'legionary', 480], ['III Cohort', 'legionary', 480], ['IV Cohort', 'legionary', 480], ['V Cohort', 'legionary', 480], ['VI Cohort', 'legionary', 480], ['VII Cohort', 'legionary', 480], ['VIII Cohort', 'legionary', 480],
-    ['Balearic Slingers', 'slinger', 150], ['Cretan Archers', 'archer', 130], ['Equites Turma', 'equites', 60], ['Allied Gallic Horse', 'aux_cav', 70]]
+    ['Balearic Slingers', 'slinger', 260], ['Cretan Archers', 'archer', 240], ['Equites', 'equites', 140], ['Allied Gallic Horse', 'aux_cav', 150]]
 };
 // The late-game scale: about seventy units a side on a four-thousand-unit field.
 const GRAND_ARMY = [...Array.from({ length: 36 }, (_, i) => [`Cohort ${i + 1}`, 'legionary', 480]), ...Array.from({ length: 10 }, (_, i) => [`Allied Foot ${i + 1}`, 'aux_inf', 300]),
-  ...Array.from({ length: 8 }, (_, i) => [`Slingers ${i + 1}`, 'slinger', 150]), ...Array.from({ length: 8 }, (_, i) => [`Archers ${i + 1}`, 'archer', 130]), ...Array.from({ length: 8 }, (_, i) => [`Turma ${i + 1}`, 'equites', 60])];
+  ...Array.from({ length: 8 }, (_, i) => [`Slingers ${i + 1}`, 'slinger', 260]), ...Array.from({ length: 8 }, (_, i) => [`Archers ${i + 1}`, 'archer', 240]), ...Array.from({ length: 8 }, (_, i) => [`Turma ${i + 1}`, 'equites', 60])];
 const GRAND_ENEMY = [...Array.from({ length: 34 }, () => ['warband', 480]), ...Array.from({ length: 10 }, () => ['gaul_elite', 300]), ...Array.from({ length: 14 }, () => ['gaul_skirm', 150]), ...Array.from({ length: 12 }, () => ['gaul_cav', 70])];
 const ENEMIES = {
   small: [['warband', 240], ['warband', 240], ['warband', 220], ['gaul_skirm', 100], ['gaul_cav', 50]],

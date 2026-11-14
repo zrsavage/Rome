@@ -70,7 +70,7 @@ function unitIcon(key, w, h) {
   g.save(); g.translate(w / 2, h * 0.43); g.rotate(-Math.PI / 2); const sz = Math.min(w, h) * 0.8; g.drawImage(soldierSprite(key, 0), -sz / 2, -sz / 2, sz, sz); g.restore();
   g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, h * 0.8, w, h * 0.2);
   g.fillStyle = '#f0e4c8'; g.font = `bold ${Math.round(h * 0.085)}px Cinzel, Georgia, serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText((UNIT_TYPES[key] ? UNIT_TYPES[key].name : key).replace('Cohort', '').replace('(Cavalry Turma)', '').trim().slice(0, 22), w / 2, h * 0.9);
+  g.fillText((UNIT_TYPES[key] ? UNIT_TYPES[key].name : key).replace('Cohort', '').replace('(Cavalry Wing)', '').trim().slice(0, 22), w / 2, h * 0.9);
   tag(g, w, h * 0.8);
   return c.toDataURL();
 }

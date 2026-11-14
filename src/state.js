@@ -30,6 +30,10 @@ export const hasPerk = (c, id) => (c.officers || []).some(o => o.alive && (o.per
 // A campaign grows an army from a handful of cohorts to 50-60 units by the final battles, led by you with legates under you:
 // four more units for every battle won or drawn, and four more for each level of Army organisation.
 export const COMMAND_PER_WIN = 4, COMMAND_PER_ORG = 4;
+// Command is counted in slots: a cohort of foot takes a whole slot; horse, missile troops, engines and medici, which are smaller and
+// work in support, take half a slot each. (Army tests showed that at one slot each, an army of nothing but legions won most often.)
+export const slotOf = (type) => (UNIT_TYPES[type] && UNIT_TYPES[type].cat !== 'inf' ? 0.5 : 1);
+export const slotsUsed = (c) => c.cohorts.reduce((a, h) => a + slotOf(h.type), 0);
 export const commandLimit = (c) => Math.min(80, 8 + (c.history || []).filter(h => h.id !== 'prologue' && realWin(h)).length * COMMAND_PER_WIN + COMMAND_PER_ORG * careerLv(c, 'organisation'));
 // ---- Fair enemy hosts ----
 // The enemy is sized from your army, by what kind of fight it is: an attacker needs more men than a defender, and men behind a rampart
@@ -80,14 +84,14 @@ export function unlockedTypes(c) {
 
 export function newCampaign(difficulty = 'normal') {
   return {
-    version: 4, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, campUse: {},
+    version: 5, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, campUse: {},
     gold: 300, supplies: 160, fort: 0, favour: 0, scouted: false, log: [], over: false,
     cohorts: [
       { id: 1, name: 'I Cohort',   type: 'legionary', men: 400, maxMen: 480, xp: 60, drill: 30, condition: 90, officerId: 1 },
       { id: 2, name: 'II Cohort',  type: 'legionary', men: 380, maxMen: 480, xp: 30, drill: 20, condition: 90, officerId: 2 },
       { id: 3, name: 'III Cohort', type: 'legionary', men: 360, maxMen: 480, xp: 10, drill: 15, condition: 90, officerId: null },
-      { id: 4, name: 'Balearic Slingers', type: 'slinger', men: 120, maxMen: 150, xp: 20, drill: 20, condition: 95, officerId: null },
-      { id: 5, name: 'Equites Turma', type: 'equites', men: 50, maxMen: 60, xp: 20, drill: 25, condition: 95, officerId: 4 }
+      { id: 4, name: 'Balearic Slingers', type: 'slinger', men: 210, maxMen: 260, xp: 20, drill: 20, condition: 95, officerId: null },
+      { id: 5, name: 'Equites', type: 'equites', men: 110, maxMen: 140, xp: 20, drill: 25, condition: 95, officerId: 4 }
     ],
     officers: [
       { id: 1, name: 'Titus Pullo', rank: 'Centurion', tactics: 3, drill: 2, logistics: 1, diplomacy: 0, xp: 40, level: 1, points: 1, perks: [], alive: true, temper: 'bold', rival: 2, bio: 'A brawler who leads from the front line.' },
