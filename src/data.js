@@ -22,7 +22,7 @@ export const UNIT_TYPES = {
     cost: 45, color: '#c46a2b', trim: '#e8c36a', blurb: 'Skirmishers. Lead shot punishes massed warbands.'
   },
   equites: {
-    name: 'Equites (Cavalry Turma)', side: 'rome', cat: 'cav', perDot: 4, atk: 0.09, def: 0.3,
+    name: 'Equites (Cavalry Wing)', side: 'rome', cat: 'cav', perDot: 4, atk: 0.09, def: 0.3,
     speed: 58, turn: 2.6, morale: 66, charge: 1.6, space: 3.2, fragile: 1,
     cost: 90, color: '#8a3a8f', trim: '#e8c36a', blurb: 'Fast shock cavalry. Ruinous against flanks and routers.'
   },

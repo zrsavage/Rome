@@ -291,7 +291,7 @@ export class Camp {
     c.gold -= price; c.supplies -= r.supplies * k;
     for (let q = 0; q < k; q++) {
     const id = Math.max(0, ...c.cohorts.map(x => x.id)) + 1, n = c.cohorts.filter(x => x.type === type).length + 1;
-    const name = { legionary: `${roman(c.cohorts.filter(x => x.type === 'legionary').length + 1)} Cohort`, slinger: `Slingers ${n}`, archer: `Archers ${n}`, equites: `Turma ${n}`, aux_cav: `Allied Horse ${n}`, aux_inf: `Allied Infantry ${n}`, galatian: `Galatians ${n}`, medici: `Medici ${n}`, caetrati: `Caetrati ${n}`, moor_cav: `Moorish Horse ${n}`, scorpion: `Scorpiones ${n}` }[type];
+    const name = { legionary: `${roman(c.cohorts.filter(x => x.type === 'legionary').length + 1)} Cohort`, slinger: `Slingers ${n}`, archer: `Archers ${n}`, equites: `Equites ${n}`, aux_cav: `Allied Horse ${n}`, aux_inf: `Allied Infantry ${n}`, galatian: `Galatians ${n}`, medici: `Medici ${n}`, caetrati: `Caetrati ${n}`, moor_cav: `Moorish Horse ${n}`, scorpion: `Scorpiones ${n}` }[type];
     c.cohorts.push({ id, name, type, men: r.men, maxMen: r.max, xp: 0, drill: 10, condition: 100, officerId: null });
     this.sel = id; if (q === k - 1) this.note(k > 1 ? `${k} new units are raised: ${name} and its sisters.` : `${name} is raised (${r.men} men).`, 'good');
     }
