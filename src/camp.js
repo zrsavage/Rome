@@ -1,11 +1,11 @@
 // Between-battle camp phase: training, foraging, fortifying, diplomacy, recruiting. Nothing here is limited by time, only by denarii,
 // supplies and men; a few returns fall off when repeated in the same camp.
-import { LEVEL_NAMES, SCENARIOS, DIFFICULTY, UNIT_TYPES, RAISE, XP_LEVELS } from './data.js';
+import { LEVEL_NAMES, SCENARIOS, DIFFICULTY, UNIT_TYPES, RAISE, XP_LEVELS, REGION_NAMES, regionOf } from './data.js';
 import { PERKS, perkById, LEVEL_TRAITS, UPGRADES, MAX_TIER, upgradeCost } from './perks.js';
 const upCost = (c, x, k) => { const u = upgradeCost(x, k); return { ...u, gold: Math.round(u.gold * costMult(c)) }; };   // Economy makes equipment cheaper
 import { levelFor } from './sim.js';
 import { TEMPERS, temperOf, rivalOf, tierOf, rankFor, TIER_TEXT } from './officers.js';
-import { CAREER, CAREER_MAX, careerLv, careerPoints, careerOffer, chooseCareer, costMult, legionsOf, legateOf, setLegate, ROMAN, currentScn } from './campaign.js';
+import { CAREER, CAREER_MAX, careerLv, careerPoints, careerOffer, chooseCareer, costMult, legionsOf, legateOf, setLegate, ROMAN, currentScn, legateTraits, LEGATE_TRAITS } from './campaign.js';
 import { heroesOf, DECORATIONS, decoMorale } from './heroes.js';
 import { officerPending, chooseOfficer, officerTrack, officerKind, OFFICER_KINDS, unitPending, chooseUnit, unitChosen, unitRecord, standsOut, unitTrack } from './promote.js';
 import { officerById, modsOf, hasPerk, commandLimit, unlockedTypes, COMMAND_PER_WIN, COMMAND_PER_ORG } from './state.js';
@@ -85,7 +85,7 @@ const enemyLine = (p) => `The enemy will be mostly ${p.parts.slice(0, 3).map(([n
 const knowsEnemy = (c) => !!c.scouted || careerLv(c, 'recon') >= 1;
 const enemyHint = (c, p) => knowsEnemy(c) ? enemyLine(p) + ' ' : '';
 const enemyScaleFor = (favour) => favour >= 2 ? 0.9 : favour <= -2 ? 1.1 : 1;
-const TYPE_ROLE = { legionary: 'Holds the line against charges.', slinger: 'Punishes massed warbands from behind the line.', archer: 'Long-range fire; outranges javelineers.', equites: 'Flank charges and running down routers.', aux_cav: 'Cheap flankers and pursuers.', aux_inf: 'Cheap and fierce, but less disciplined.' };
+const TYPE_ROLE = { scorpion: 'Bolt-throwers: outrange everything and break packed foot. Keep them behind the line; they are helpless if reached.', galatian: 'Roman-drilled allies: a solid line, a little less steady than legions.', caetrati: 'Fast light foot with javelins: flank and skirmish.', moor_cav: 'Javelin horse: harass from range, never melee.', legionary: 'Holds the line against charges.', slinger: 'Punishes massed warbands from behind the line.', archer: 'Long-range fire; outranges javelineers.', equites: 'Flank charges and running down routers.', aux_cav: 'Cheap flankers and pursuers.', aux_inf: 'Cheap and fierce, but less disciplined.' };
 // Leading a drill yourself is the generalist choice: decent at everything (a little better if you rose through the ranks), but a specialist
 // officer beats you at their own drill. An officer is judged on the trait the regimen needs.
 export function selfQuality(c) { const p = c.player && c.player.picks; return p && p.career === 'ranks' ? 0.75 : 0.65; }
@@ -136,6 +136,7 @@ export class Camp {
   scoutCost() { return hasPerk(this.c, 'spymaster') ? 0 : 40; }
 
   selected() { return this.c.cohorts.find(h => h.id === this.sel); }
+  storesLine() { const st = this.stores(); return `<div class="small" style="margin:4px 0 8px"><span class="muted">Captured stores:</span> <b>${st.mail}</b> mail shirts, <b>${st.arms}</b> weapons, <b>${st.horses}</b> horses <span class="muted">(taken from the field after a win; they pay for equipment and new horse)</span></div>`; }
   // With a big army you cannot do everything one unit at a time: orders can cover every unit of the same kind at once.
   targets(h = this.selected()) { return this.scope === 'group' ? this.c.cohorts.filter(x => x.type === h.type) : [h]; }
   scopeChips(h) {
@@ -268,20 +269,29 @@ export class Camp {
     if (!k || !chooseOfficer(o, pid)) return;
     this.note(`${o.name}: ${k.name}.`, 'good'); this.api.save(); this.render();
   }
-  upgrade(kind) {
+  // Captured stores (mail, weapons, horses taken from the field) and what they replace: a quarter of a mail shirt or weapon per man pays three
+  // quarters of an upgrade's denarii; one horse per rider halves the price of new cavalry.
+  stores() { return this.c.captured = this.c.captured || { mail: 0, arms: 0, horses: 0 }; }
+  capNeed(tg, kind) { return { res: kind === 'armour' ? 'mail' : 'arms', n: tg.reduce((a, x) => a + Math.ceil(x.men * 0.25), 0) }; }
+  upgrade(kind, useCap = false) {
     const c = this.c, h = this.selected(), names = UPGRADES[UNIT_TYPES[h.type].cat], tg = this.targets(h).filter(x => upCost(this.c, x, kind).tier < MAX_TIER);
-    const gold = tg.reduce((a, x) => a + upCost(this.c, x, kind).gold, 0), sup = tg.reduce((a, x) => a + upCost(this.c, x, kind).supplies, 0);
+    let gold = tg.reduce((a, x) => a + upCost(this.c, x, kind).gold, 0); const sup = tg.reduce((a, x) => a + upCost(this.c, x, kind).supplies, 0), need = this.capNeed(tg, kind);
+    if (useCap) { if (this.stores()[need.res] < need.n) return; gold = Math.round(gold * 0.25); }
     if (!tg.length || c.gold < gold || c.supplies < sup) return;
+    if (useCap) this.stores()[need.res] -= need.n;
     c.gold -= gold; c.supplies -= sup; for (const x of tg) { x.upg = { armour: 0, weapon: 0, ...(x.upg || {}) }; x.upg[kind]++; }
     this.note(tg.length > 1 ? `${tg.length} units: ${names[kind]} upgraded.` : `${h.name}: ${names[kind]} upgraded to tier ${h.upg[kind]}.`, 'good'); this.done();
   }
-  raise(type) {
+  raise(type, useCap = false) {
     const c = this.c, r = RAISE[type], k = Math.max(1, Math.min(this.raiseN || 1, commandLimit(c) - c.cohorts.length));
-    if (!r || c.cohorts.length >= commandLimit(c) || c.gold < Math.round(r.gold * costMult(c)) * k || c.supplies < r.supplies * k) return;
-    c.gold -= Math.round(r.gold * costMult(c)) * k; c.supplies -= r.supplies * k;
+    const horses = r && UNIT_TYPES[type].cat === 'cav' ? r.men * k : 0, price = Math.round(r.gold * costMult(c) * (useCap ? 0.5 : 1)) * k;
+    if (useCap && (!horses || this.stores().horses < horses)) return;
+    if (!r || c.cohorts.length >= commandLimit(c) || c.gold < price || c.supplies < r.supplies * k) return;
+    if (useCap) this.stores().horses -= horses;
+    c.gold -= price; c.supplies -= r.supplies * k;
     for (let q = 0; q < k; q++) {
     const id = Math.max(0, ...c.cohorts.map(x => x.id)) + 1, n = c.cohorts.filter(x => x.type === type).length + 1;
-    const name = { legionary: `${roman(c.cohorts.filter(x => x.type === 'legionary').length + 1)} Cohort`, slinger: `Slingers ${n}`, archer: `Archers ${n}`, equites: `Turma ${n}`, aux_cav: `Allied Horse ${n}`, aux_inf: `Allied Infantry ${n}` }[type];
+    const name = { legionary: `${roman(c.cohorts.filter(x => x.type === 'legionary').length + 1)} Cohort`, slinger: `Slingers ${n}`, archer: `Archers ${n}`, equites: `Turma ${n}`, aux_cav: `Allied Horse ${n}`, aux_inf: `Allied Infantry ${n}`, galatian: `Galatians ${n}`, caetrati: `Caetrati ${n}`, moor_cav: `Moorish Horse ${n}`, scorpion: `Scorpiones ${n}` }[type];
     c.cohorts.push({ id, name, type, men: r.men, maxMen: r.max, xp: 0, drill: 10, condition: 100, officerId: null });
     this.sel = id; if (q === k - 1) this.note(k > 1 ? `${k} new units are raised: ${name} and its sisters.` : `${name} is raised (${r.men} men).`, 'good');
     }
@@ -364,8 +374,10 @@ export class Camp {
     const c = this.c, lg = legionsOf(c); if (lg.count < 2) return `<h4 class="sect">Legions</h4><div class="small muted">Your army is one legion, under your own command. When you have more than ten legionary cohorts it will form a second, and you can give each a legate.</div>`;
     const free = c.officers.filter(o => o.alive), rows = [];
     for (let k = 1; k <= lg.count; k++) { const n = c.cohorts.filter(h => lg.of[h.id] === k).length, cur = legateOf(c, k);
-      rows.push(`<div class="row small" style="margin-top:4px"><b>Legio ${ROMAN[k] || k}</b><span class="muted">${n} units</span><span class="muted">legate</span><select data-legate="${k}"><option value="">- you, from the general's ring -</option>${free.map(o => `<option value="${o.id}" ${cur && cur.id === o.id ? 'selected' : ''}>${esc(o.name)} (tactics ${o.tactics})</option>`).join('')}</select></div>`); }
-    return `<h4 class="sect">Legions</h4><div class="small muted">A legate rides behind his legion; its units inside his ring count as in command. An officer made legate leaves his cohort. In battle, Alt+1, Alt+2... select a legion.</div>${rows.join('')}`;
+      const tr = (o) => legateTraits(o).map(t => LEGATE_TRAITS[t].name).join(', ');
+      rows.push(`<div class="row small" style="margin-top:4px"><b>Legio ${ROMAN[k] || k}</b><span class="muted">${n} units</span><span class="muted">legate</span><select data-legate="${k}"><option value="">- you, from the general's ring -</option>${free.map(o => `<option value="${o.id}" ${cur && cur.id === o.id ? 'selected' : ''}>${esc(o.name)} (${esc(tr(o))}; tactics ${o.tactics})</option>`).join('')}</select></div>`
+        + (cur ? `<div class="small" style="margin:2px 0 6px 12px">${legateTraits(cur).map(t => `<span class="pill" title="${esc(LEGATE_TRAITS[t].text)}">${esc(LEGATE_TRAITS[t].name)}</span> <span class="muted">${esc(LEGATE_TRAITS[t].text)}</span>`).join('<br>')}<br><span class="muted">Command ring ${Math.round(85 + 6 * (cur.tactics || 0))}% of yours (tactics ${cur.tactics}).</span></div>` : '')); }
+    return `<h4 class="sect">Legions</h4><div class="small muted">A legate rides behind his legion; its units inside his ring count as in command and fight with his trait (from his temperament, and Drillmaster for a drill of 3 or more). An officer made legate leaves his cohort. In battle, Alt+1, Alt+2... select a legion.</div>${rows.join('')}`;
   }
   // A cohort that has gained a rank chooses one of two improvements. Only the first waiting cohort is shown: one decision at a time.
   promoHtml() {
@@ -471,7 +483,9 @@ export class Camp {
         const have = { ranged: c.cohorts.filter(x => UNIT_TYPES[x.type].cat === 'ranged').length, cav: c.cohorts.filter(x => UNIT_TYPES[x.type].cat === 'cav').length, inf: c.cohorts.filter(x => UNIT_TYPES[x.type].cat === 'inf').length };
         const sug = (t) => { const cat = UNIT_TYPES[t].cat; return (cat === 'ranged' && have.ranged < 1) || (cat === 'cav' && have.cav < 2) || (cat === 'inf' && have.inf < 4); };
         const raise = unlockedTypes(c).map(t => { const r = RAISE[t], ok = room > 0 && c.gold >= Math.round(r.gold * costMult(c)) * rk && c.supplies >= r.supplies * rk;
-          return card(`data-a="raise" data-m="${t}"`, `${esc(UNIT_TYPES[t].name)}${sug(t) ? ' <span class="pill">your army lacks this</span>' : ''}`, esc(TYPE_ROLE[t] || ''), [[`${r.men * rk} men${rk > 1 ? ` in ${rk} units` : ''}`, 'g'], [`${Math.round(r.gold * costMult(c)) * rk} denarii`, 'b'], [`${r.supplies * rk} supplies`, '']], ok); }).join('');
+          const hn2 = UNIT_TYPES[t].cat === 'cav' ? r.men * rk : 0, hp = Math.round(r.gold * costMult(c) * 0.5) * rk;
+          const hb = hn2 ? `<button class="act capbtn" data-a="raisecap" data-m="${t}" ${room > 0 && this.stores().horses >= hn2 && c.gold >= hp && c.supplies >= r.supplies * rk ? '' : 'disabled'}>Use ${hn2} captured horses (you have ${this.stores().horses}): ${hp} denarii</button>` : '';
+          return '<div>' + card(`data-a="raise" data-m="${t}"`, `${esc(UNIT_TYPES[t].name)}${sug(t) ? ' <span class="pill">your army lacks this</span>' : ''}`, esc(TYPE_ROLE[t] || ''), [[`${r.men * rk} men${rk > 1 ? ` in ${rk} units` : ''}`, 'g'], [`${Math.round(r.gold * costMult(c)) * rk} denarii`, 'b'], [`${r.supplies * rk} supplies`, '']], ok) + hb + '</div>'; }).join('');
         return `<div class="advicebox"><b>The camp prefect's advice.</b> ${esc(adv)}</div><h4 class="sect">Muster roll</h4>${this.musterHtml(act)}
           <h4 class="sect">Rest and dig</h4><div class="regimens two">
           ${card('data-a="rest"', 'Rest the army', 'Everyone sleeps, eats and mends kit.', [['+20 condition, every unit', 'g'], ...(this.restBack() ? [[`about ${this.restBack()} lightly wounded return as veterans`, 'g']] : []), [`${this.restCost()} supplies (a day's rations)`, 'b'], [`${weary.length} unit${weary.length === 1 ? '' : 's'} below 75% would benefit`, '']], c.supplies >= this.restCost())}
@@ -481,7 +495,7 @@ export class Camp {
           <div class="regimens two">
           ${card('data-a="hire"', `Hire ${hn} volunteers`, 'Raw recruits sign on for pay. Cheap, but they dilute a unit\'s experience.', [[`+${hn} recruits`, 'g'], [`${hcost} denarii (${(hcost / hn).toFixed(1)} each)`, 'b']], c.gold >= hcost)}
           ${card('data-a="hirevets"', `Hire ${hn} veterans`, 'Time-served men re-enlist. They cost far more, but they do not dilute a unit\'s experience.', [[`+${hn} veterans`, 'g'], [`${vcost} denarii (${(vcost / hn).toFixed(1)} each)`, 'b']], c.gold >= vcost)}</div>
-          <h4 class="sect">Raise a unit <span class="pill">${c.cohorts.length}/${commandLimit(c)} units</span></h4><div class="small muted">Your command limit grows by ${COMMAND_PER_WIN} with every battle you win or draw, and by ${COMMAND_PER_ORG} with each level of Army organisation in your career. More than ten legionary cohorts form a second legion under a legate.${room <= 0 ? ' <b>You are at the limit.</b>' : ''}</div>${room > 1 ? `<div class="row small" style="margin-top:6px"><span class="muted">Raise how many at once?</span><div class="chips">${[1, 5, 10].filter(k => k <= room || k === 1).map(k => `<button class="chip ${rk === k ? 'sel' : ''}" data-raisen="${k}">${k} unit${k > 1 ? 's' : ''}</button>`).join('')}</div></div>` : ''}<div class="regimens" style="margin-top:6px">${raise}</div>${note}`; }
+          <h4 class="sect">Raise a unit <span class="pill">${c.cohorts.length}/${commandLimit(c)} units</span></h4>${this.storesLine()}<div class="small muted">Recruiting in <b>${esc(REGION_NAMES[regionOf(scn)])}</b>: local troops can only be raised where they live (Gallic infantry in Gaul, Galatians in Pontus, Spanish caetrati in Spain, Moorish horse in Africa in 46 BC). Units you already have stay with you everywhere.</div><div class="small muted">Your command limit grows by ${COMMAND_PER_WIN} with every battle you win or draw, and by ${COMMAND_PER_ORG} with each level of Army organisation in your career. More than ten legionary cohorts form a second legion under a legate.${room <= 0 ? ' <b>You are at the limit.</b>' : ''}</div>${room > 1 ? `<div class="row small" style="margin-top:6px"><span class="muted">Raise how many at once?</span><div class="chips">${[1, 5, 10].filter(k => k <= room || k === 1).map(k => `<button class="chip ${rk === k ? 'sel' : ''}" data-raisen="${k}">${k} unit${k > 1 ? 's' : ''}</button>`).join('')}</div></div>` : ''}<div class="regimens" style="margin-top:6px">${raise}</div>${note}`; }
       case 'officers': {
         // one decision at a time: the first officer with a step waiting on his ladder
         const waiting = offs.filter(o => officerPending(o)), o1 = waiting[0], pend = o1 && officerPending(o1);
@@ -501,8 +515,10 @@ export class Camp {
         const adv = `${enemyHint(c, prof)}${knowsEnemy(c) && heavy > 50 ? 'Warbands are lightly armoured and win by charging: armour blunts their charge, better weapons win the melee. ' : ''}Spend on the units that will take the brunt, usually the front line, not on every cohort.`;
         const effect = { armour: `+6% armour per tier: every enemy blow does about 6% less damage`, weapon: `+10% attack per tier${cat === 'inf' ? '; tier 2 adds an extra pilum volley' : ''}` };
         const tgf = this.targets(h), gear = ['armour', 'weapon'].map(k => { const el = tgf.filter(x => upCost(this.c, x, k).tier < MAX_TIER), cost = { tier: upCost(this.c, h, k).tier, gold: el.reduce((a, x) => a + upCost(this.c, x, k).gold, 0), supplies: el.reduce((a, x) => a + upCost(this.c, x, k).supplies, 0) }, maxed = !el.length, ok = !maxed && c.gold >= cost.gold && c.supplies >= cost.supplies;
-          return `<button class="regimen act" data-a="upgrade" data-m="${k}" ${act && ok ? '' : 'disabled'}><b>${esc(names[k])}: tier ${u[k]}/${MAX_TIER}</b><span class="t">${esc(effect[k])}</span><div class="eff">${maxed ? '<span class="g">Fully equipped</span>' : `<span class="g">tier ${u[k] + 1}</span><span class="b">${cost.gold} denarii</span><span>${cost.supplies} supplies</span><span class="muted">${(cost.gold / Math.max(1, tgf.reduce((a, x) => a + x.men, 0))).toFixed(1)} denarii per man${tgf.length > 1 ? `, ${el.length} unit${el.length === 1 ? '' : 's'}` : ''}</span>`}</div></button>`; }).join('');
-        return `<div class="advicebox"><b>The armourer's advice.</b> ${esc(adv)}</div><p class="muted">Pick a unit, then decide where its money goes.</p>${this.unitList(['str', 'gear'])}${this.scopeChips(h)}<h4 class="sect">Equip ${esc(tgf.length > 1 ? `${tgf.length} units` : h.name)}</h4><div class="small muted" style="margin-bottom:6px">${lt ? `Veteran trait: <b style="color:var(--gold)">${esc(lt.name)}</b> - ${esc(lt.text)}` : 'No veteran trait yet. Reach Veteran (level 2) for the first.'}</div><div class="regimens two">${gear}</div>${note}`; }
+          const need = this.capNeed(el, k), have = this.stores()[need.res], capOk = !maxed && have >= need.n && c.gold >= Math.round(cost.gold * 0.25) && c.supplies >= cost.supplies;
+          const capBtn = maxed ? '' : `<button class="act capbtn" data-a="upgradecap" data-m="${k}" ${capOk ? '' : 'disabled'}>Use ${need.n} captured ${need.res === 'mail' ? 'mail shirts' : 'weapons'} (you have ${have}): ${Math.round(cost.gold * 0.25)} denarii</button>`;
+          return `<div><button class="regimen act" data-a="upgrade" data-m="${k}" ${act && ok ? '' : 'disabled'}><b>${esc(names[k])}: tier ${u[k]}/${MAX_TIER}</b><span class="t">${esc(effect[k])}</span><div class="eff">${maxed ? '<span class="g">Fully equipped</span>' : `<span class="g">tier ${u[k] + 1}</span><span class="b">${cost.gold} denarii</span><span>${cost.supplies} supplies</span><span class="muted">${(cost.gold / Math.max(1, tgf.reduce((a, x) => a + x.men, 0))).toFixed(1)} denarii per man${tgf.length > 1 ? `, ${el.length} unit${el.length === 1 ? '' : 's'}` : ''}</span>`}</div></button>${capBtn}</div>`; }).join('');
+        return `<div class="advicebox"><b>The armourer's advice.</b> ${esc(adv)}</div><p class="muted">Pick a unit, then decide where its money goes.</p>${this.storesLine()}${this.unitList(['str', 'gear'])}${this.scopeChips(h)}<h4 class="sect">Equip ${esc(tgf.length > 1 ? `${tgf.length} units` : h.name)}</h4><div class="small muted" style="margin-bottom:6px">${lt ? `Veteran trait: <b style="color:var(--gold)">${esc(lt.name)}</b> - ${esc(lt.text)}` : 'No veteran trait yet. Reach Veteran (level 2) for the first.'}</div><div class="regimens two">${gear}</div>${note}`; }
       case 'hospital': { const hosp = c.hospital || 0, cost = 120 * (hosp + 1), cur = modsOf(c).recovery, nxt = cur / (1 + 0.3 * hosp) * (1 + 0.3 * (hosp + 1));
         const lost = c.lastLoss || 0, back = c.lastBack || 0, more = lost ? Math.round(back * nxt / Math.max(0.01, cur)) - back : 0;
         const adv = lost ? `In your last battle you lost ${lost} men and ${back} returned to the ranks. ${hosp < 3 ? `A level ${hosp + 1} hospital would have returned about ${more} more.` : 'The hospital is fully built.'} Weigh that against what else ${cost} denarii could buy.` : 'You have not fought a campaign battle yet. A hospital pays off only after battles with heavy casualties.';
@@ -555,7 +571,7 @@ export class Camp {
     R.querySelectorAll('.act').forEach(b => b.onclick = () => {
       const a = b.dataset.a, m = b.dataset.m;
       if (a === 'learn') this.learn(m); else if (a === 'upgrade') this.upgrade(m); else if (a === 'raise') this.raise(m); else if (a === 'doctrine') this.learnDoctrine(m);
-      else if (a === 'tribute') this.tribute(m === '1'); else this[a]();
+      else if (a === 'tribute') this.tribute(m === '1'); else if (a === 'upgradecap') this.upgrade(m, true); else if (a === 'raisecap') this.raise(m, true); else this[a]();
     });
     q('#march').onclick = () => this.api.march(); q('#tomap').onclick = () => this.api.map();
     if (q('#march2')) q('#march2').onclick = () => this.api.march(); if (q('#tomap2')) q('#tomap2').onclick = () => this.api.map();

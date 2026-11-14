@@ -196,10 +196,12 @@ export class Renderer {
     this.clampCam();
   }
   fit() { this.resize(); this.cam.zoom = this.fitZoom; this.cam.x = WORLD.w / 2; this.cam.y = WORLD.h / 2; this.clampCam(); }
-  // The range the camera centre may occupy so that the picture fills the screen (or is centred, when the whole field fits).
+  // The range the camera centre may occupy. The border is soft: the view may run past the edge of the field by up to 40% of the screen, so a
+  // unit standing at the very edge can be brought near the middle and clicked easily. Units themselves can never leave the field.
   bounds() {
-    const hw = this.vw / this.cam.zoom / 2, hh = this.vh / this.cam.zoom / 2;
-    return { minX: hw * 2 >= WORLD.w ? WORLD.w / 2 : hw, maxX: hw * 2 >= WORLD.w ? WORLD.w / 2 : WORLD.w - hw, minY: hh * 2 >= WORLD.h ? WORLD.h / 2 : hh, maxY: hh * 2 >= WORLD.h ? WORLD.h / 2 : WORLD.h - hh };
+    const hw = this.vw / this.cam.zoom / 2, hh = this.vh / this.cam.zoom / 2, px = hw * 0.8, py = hh * 0.8;
+    const lo = (half, size, pad) => (half * 2 >= size ? size / 2 : half) - pad, hi = (half, size, pad) => (half * 2 >= size ? size / 2 : size - half) + pad;
+    return { minX: lo(hw, WORLD.w, px), maxX: hi(hw, WORLD.w, px), minY: lo(hh, WORLD.h, py), maxY: hi(hh, WORLD.h, py) };
   }
   // margin (screen pixels) lets the camera drift a little past the edge; it springs back on its own (see BattleUI.pan)
   clampCam(margin = 0) {
@@ -228,6 +230,14 @@ export class Renderer {
     ctx.translate(this.vw / 2, this.vh / 2); ctx.scale(z, z); ctx.translate(-this.cam.x, -this.cam.y);
     if (b.shake > 0.05) ctx.translate((Math.random() - 0.5) * b.shake * 2, (Math.random() - 0.5) * b.shake * 2);   // the thud of a charge
     if (this.bg) ctx.drawImage(this.bg, 0, 0, WORLD.w, WORLD.h);
+    for (const w of b.works || []) {                                 // fieldworks: a ditch in front, the rampart behind it, stakes along its crest
+      ctx.save(); ctx.translate(w.x, w.y); ctx.rotate(w.ang);
+      ctx.fillStyle = 'rgba(70,48,24,0.85)'; ctx.fillRect(-w.depth / 2 + 6, -w.len / 2, w.depth / 2, w.len);
+      ctx.fillStyle = 'rgba(150,118,72,0.9)'; ctx.fillRect(-w.depth / 2, -w.len / 2, w.depth / 2 + 2, w.len);
+      ctx.strokeStyle = '#4a3016'; ctx.lineWidth = 1.4; for (let yy = -w.len / 2 + 5; yy < w.len / 2; yy += 8) { ctx.beginPath(); ctx.moveTo(-w.depth / 2 + 2, yy); ctx.lineTo(-w.depth / 2 + 9, yy + 2); ctx.stroke(); }
+      ctx.restore();
+    }
+    { ctx.save(); ctx.strokeStyle = 'rgba(232,195,106,0.35)'; ctx.lineWidth = 3 / z; ctx.setLineDash([14 / z, 10 / z]); ctx.strokeRect(0, 0, WORLD.w, WORLD.h); ctx.restore(); }   // the edge of the field, past which no unit can go
     // retreat edge
     if (b.retreating && b.retreatOrder) {   // the way out: a band on the map edge the army is withdrawing toward
       const { dx, dy } = b.retreatOrder; ctx.fillStyle = 'rgba(232,195,106,0.25)';
@@ -340,7 +350,7 @@ export class Renderer {
           continue;
         }
         // each man is a real top-down figure (see sprites.js): helmet or hair, shoulders, shield and weapon, facing the way the unit faces
-        const cav = t.cat === 'cav', sz = t.big ? 40 : t.wagon ? 36 : cav ? Math.min(Math.max(Math.min(sx * 1.08, sy * 2.7), 11), 32) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
+        const cav = t.cat === 'cav', sz = t.big ? 40 : t.engine ? 26 : t.wagon ? 36 : cav ? Math.min(Math.max(Math.min(sx * 1.08, sy * 2.7), 11), 32) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
         ctx.drawImage(soldierSprite(u.typeKey, (k * 7 + u.id) % 3, !captive && (!['legionary', 'pompeian', 'pontic', 'pomp_levy'].includes(u.typeKey) || u.pilumLeft > 0)), xx - sz / 2, y - sz / 2, sz, sz);   // a legionary who has thrown his pila draws the gladius
       }
     }

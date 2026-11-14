@@ -187,6 +187,7 @@ export class BattleUI {
       if (keyCmd && !e.ctrlKey && !e.metaKey) this.cmd(keyCmd);
       if (k === ',' && !e.ctrlKey && !e.metaKey) this.cmd('detach');
       if (k === '.' && !e.ctrlKey && !e.metaKey) this.cmd('lanes');
+      if (k === ';' && !e.ctrlKey && !e.metaKey) this.cmd('digin');
       if (/^[1-9]$/.test(k) && e.altKey) { e.preventDefault(); const ids = this.b.units.filter(u => u.side === 'rome' && u.active && u.legion === +k && u.type.cat !== 'train').map(u => u.id); if (ids.length) { this.select(ids); this.showBanner(`Legio ${['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'][+k]}`, 700); } }
       if (k === 'b' && !e.metaKey) { e.preventDefault(); this.cmd(e.ctrlKey ? 'saveform' : e.altKey ? 'recallform' : 'array'); }
       if (k === 'e') { const now = performance.now(); this.selectGeneral(this.genSel || now - (this.lastE || 0) < 450); this.lastE = now; }   // E selects him; again (or double-tap) centres the camera on him
@@ -236,6 +237,12 @@ export class BattleUI {
       case 'testudo': if (need('testudo') && inf.length) { inf.forEach(u => b.toggleFormation(u)); this.emit('formation', { count: inf.length }); } break;
       case 'extend': if (need('extend') && inf.length) { inf.forEach(u => b.cycleWide(u)); const w = inf[0].wide || 1; this.showBanner(w > 1 ? `Extended line x${w.toFixed(1)}: more men fight, but it is thin` : 'Normal depth', 1000); this.emit('formation', { count: inf.length }); } break;
       case 'wedge': if (need('wedge') && inf.length) { inf.forEach(u => b.toggleWedge(u)); this.emit('formation', { count: inf.length }); } break;
+      case 'digin': {
+        if (!b.deploying) { this.showBanner('Works can only be dug while deploying, before the battle starts.', 1600); break; }
+        if (!b.canDig()) { this.showBanner(b.orders.has('works') ? 'You dig in only when you are defending.' : 'You have not learned Fieldworks yet. Train it at camp.', 1600); break; }
+        let dug = 0, rem = 0, full = false; inf.forEach(u => { const r = b.digIn(u); if (r === 'dug') dug++; else if (r === 'removed') rem++; else if (r === 'limit') full = true; });
+        this.showBanner(dug ? `${dug} cohort${dug > 1 ? 's dig' : ' digs'} in (${b.works.length}/${b.worksLimit()} works)` : rem ? `Works filled in (${b.works.length}/${b.worksLimit()})` : full ? `No more works: at most ${b.worksLimit()}, half your infantry` : 'Select infantry to dig in', 1400); this.cmdSig = null; break;
+      }
       case 'lanes': if (need('lanes') && inf.length) { inf.forEach(u => b.toggleLanes(u)); this.showBanner(inf.every(u => u.lanes) ? 'Open ranks: elephants will run down the lanes' : 'Ranks closed', 1000); } break;
       case 'orbis': if (need('orbis') && inf.length) { inf.forEach(u => b.toggleOrbis(u)); this.emit('formation', { count: inf.length }); } break;
       case 'relieve': if (need('relieve') && inf.length) inf.forEach(u => this.send(u, () => b.relieve(u))); break;
@@ -272,14 +279,14 @@ export class BattleUI {
     const b = this.b, sel = this.selected(), el = $('hud-cmds');
     const has = (c) => sel.some(u => u.type.cat === c);
     const list = [['hold', 'Hold', 'H', b.orders.has('hold')], ['defend', 'Defend post', 'G', b.orders.has('hold')], ['fallback', 'Fall back', 'R', b.orders.has('fallback')],
-      ['extend', 'Extend', 'L', b.orders.has('extend') && has('inf')], ['testudo', 'Testudo', 'T', b.orders.has('testudo') && has('inf')], ['wedge', 'Wedge', 'U', b.orders.has('wedge') && has('inf')], ['orbis', 'Orbis', 'O', b.orders.has('orbis') && has('inf')], ['lanes', 'Open ranks', '.', b.orders.has('lanes') && has('inf')], ['relieve', 'Relieve', 'Y', b.orders.has('relieve') && has('inf')],
+      ['extend', 'Extend', 'L', b.orders.has('extend') && has('inf')], ['testudo', 'Testudo', 'T', b.orders.has('testudo') && has('inf')], ['wedge', 'Wedge', 'U', b.orders.has('wedge') && has('inf')], ['orbis', 'Orbis', 'O', b.orders.has('orbis') && has('inf')], ['lanes', 'Open ranks', '.', b.orders.has('lanes') && has('inf')], ['digin', 'Dig in', ';', b.canDig() && has('inf')], ['relieve', 'Relieve', 'Y', b.orders.has('relieve') && has('inf')],
       ['pursue', 'Pursue', 'P', b.orders.has('pursue') && has('cav')], ['holdfire', 'Hold fire', 'J', b.orders.has('holdfire') && has('ranged')],
       ['rotate', 'Rotate', 'K', b.orders.has('rotate') && has('inf')], ['cycle', 'Hit & rally', 'M', b.orders.has('cycle') && has('cav')], ['priority', 'Target', 'I', b.orders.has('priority') && has('ranged')],
       ['detach', 'Antesignani', ',', b.orders.has('detach') && sel.some(u => u.typeKey === 'legionary' || u.parentId != null)],
       ['array', 'Array', 'B', b.orders.has('array')], ['queue', 'Waypoints', 'N', b.orders.has('queue')]]
       .filter(x => x[3]).map(x => ({ id: x[0], label: x[1], key: x[2] }));
     if (this.genSel && b.orders.has('rally')) list.push({ id: 'rally', label: 'Rally', key: 'F' });
-    const sig = (sel.length || this.genSel ? list.map(x => x.id).join() : '') + '|' + sel.map(u => (u.holdFire ? 'f' : '') + (u.lanes ? 'l' : '') + u.formation + u.stance).join();
+    const sig = (b.deploying ? 'D' + b.works.length : '') + (sel.length || this.genSel ? list.map(x => x.id).join() : '') + '|' + sel.map(u => (u.holdFire ? 'f' : '') + (u.lanes ? 'l' : '') + u.formation + u.stance).join();
     if (sig === this.cmdSig) return; this.cmdSig = sig;
     el.innerHTML = ''; if (!sel.length && !this.genSel) return;
     el.classList.toggle('compact', list.length > 9);          // a long list shows icons and keys only; the name is in the tooltip
@@ -355,6 +362,6 @@ export class BattleUI {
       kv('Experience', lvl) + kv('Drill', Math.round(u.drill)) +
       (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics}${u.temper ? ', ' + u.temper : ''}${u.tier ? ', ' + ['', 'Pilus Prior', 'Primus Pilus'][u.tier] : ''})` : 'none') + kv('Stance', u.stance === 'hold' ? 'Hold (never leaves)' : 'Defend post') + kv('Formation', u.formation === 'close' ? 'Testudo' : u.formation === 'orb' ? 'Orbis' : u.formation === 'wedge' ? 'Wedge' : 'Normal') + kv('Line', (u.wide || 1) > 1.05 ? `Extended x${u.wide.toFixed(1)}` : 'Normal depth') + kv('Command', b.inCommand(u) ? 'in command' : 'OUT OF COMMAND') : '') +
       (t.pilum ? kv('Pila volleys', u.pilumLeft) : '') + (t.range ? kv('Ammo', Math.max(0, Math.round(u.ammo / t.ammo * 100)) + '%') : '') +
-      kv('State', u.state);
+      kv('State', u.type.setup && b.t < (u.readyT || 0) ? `setting up (${Math.ceil(u.readyT - b.t)}s)` : u.state);
   }
 }

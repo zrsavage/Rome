@@ -181,6 +181,7 @@ regenerates `src/mapdata.js`. Battle sites: Genava (Rhone fords), the Arar (Saon
 | `V` | Toggle range rings for all units |
 | `H` / `G` | **Hold** (never leaves its spot) / **Defend post** (fights nearby enemies, then returns to its post) |
 | `T` / `R` | Toggle testudo (loose order for skirmishers) / fall back and rest |
+| `;` | Dig in the selected infantry (deployment only, once Fieldworks is learned and you are defending) |
 | WASD, wheel | Pan, zoom |
 
 ## Layout
@@ -297,3 +298,26 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
   When the battle ends, your surrendered men are freed if you win and lost as prisoners if you draw or lose; enemy units that surrendered to you
   join the prisoners you can ransom, sell, enrol or release. Bots see it about once a battle, three or four times at the Bagradas and Munda.
 
+
+## Spoils, engines and the wider war (v0.7)
+- **Soft map edge:** the camera can now pan about 40% of a screen beyond the battlefield, so units deployed on the edge are easy to click.
+  The field edge is drawn as a dashed gold line; units still cannot leave the field.
+- **Captured equipment:** after a win your men strip the field. Armoured foes (Gallic nobles, Pompeian and Pontic legions, lancers, Galatians)
+  leave mail, every enemy leaves weapons, horsemen leave horses; surrendered units give almost everything, the dead much less; a draw gives a quarter.
+  The result screen shows what was taken. At camp the Armourer can refit a cohort from the stores for a quarter of the denarii (25 men per item),
+  and the Barracks can mount new horse from captured horses at half price.
+- **Scorpiones (field artillery):** a bolt-thrower battery (40 men), unlocked after the landing at Anquillaria and raised everywhere. Long range
+  (230), bolts that go through armour and shields, and hit dense formations hardest (half as well against skirmishers or a testudo). It must set
+  up for 5 seconds after every move before it can shoot, and it cannot fight hand to hand.
+- **Fieldworks (learned order, 2 wins, from a drill officer):** while deploying for a defensive battle, select infantry and press `;` (or "Dig in")
+  to throw up a ditch and a staked rampart just in front of them. At most one work for every two infantry units. Men behind or in the works
+  take 30% less from missiles; a charge into them hits at 35% of its force; an attacker crossing them is slowed and fights at 85%. Press again to
+  fill a work in; moving the unit during deployment fills it in.
+- **Regional recruits:** the Barracks raises local troops only where they live: Gallic infantry in Gaul, Galatians (armoured, Roman-drilled)
+  in Pontus, Spanish caetrati (light, quick swordsmen) in Spain, Moorish horse (javelin cavalry) in Africa in 46 BC. Legionaries, slingers,
+  archers, equites, auxiliary horse and scorpiones can be raised anywhere; units you already have stay with you everywhere.
+- **Legates with traits:** when you have more than ten legionary cohorts, each legion's legate takes a trait from his temper: Aggressive
+  (bold or rash: charges 12% harder, fights 5% harder), Steady (8% less morale loss), Careful (15% less morale loss while holding without orders)
+  and, with drill 3 or more, Drillmaster (15% less fatigue). Traits apply only to cohorts of his legion inside his ring. The Officers' tent shows them.
+- **What really happened:** after each named battle a card gives the historical outcome, the source (Caesar, the Alexandrian, African and
+  Spanish Wars) and, where an ancient figure exists, your losses against Caesar's.

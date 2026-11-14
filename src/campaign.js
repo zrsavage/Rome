@@ -1,6 +1,7 @@
 // Campaign rules that sit between battles: the commander's career, the line of march, legions and legates, links between battles,
 // prisoners, and the commanders you face. No DOM here; the screens call these.
 import { SCENARIOS, UNIT_TYPES, phaseScn } from './data.js';
+import { temperOf } from './officers.js';
 
 export const realWin = (h) => h.outcome === 'victory' || h.outcome === 'draw';       // a fight passed by is neither a win nor a defeat
 export const currentScn = (c) => { const s = SCENARIOS[c.scenario]; return s && s.phases ? phaseScn(s, c.phase || 0) : s; };
@@ -56,6 +57,19 @@ export function legionsOf(c) {
   return { count: n, of: map };
 }
 export const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+// A legate's temperament sets how his legion fights while inside his command ring; a good drill officer adds a second trait.
+export const LEGATE_TRAITS = {
+  aggressive: { name: 'Aggressive', text: 'His legion charges 12% harder and attacks 5% harder.' },
+  steady: { name: 'Steady', text: 'Casualties shake his legion 8% less.' },
+  careful: { name: 'Careful', text: 'Units of his legion that are holding their ground lose 15% less morale.' },
+  drillmaster: { name: 'Drillmaster', text: 'His legion tires 15% more slowly.' }
+};
+export function legateTraits(o) {
+  if (!o) return [];
+  const t = temperOf(o), out = [t === 'bold' || t === 'rash' ? 'aggressive' : t === 'steady' ? 'steady' : 'careful'];
+  if ((o.drill || 0) >= 3) out.push('drillmaster');
+  return out;
+}
 export function legateOf(c, legion) { const id = (c.legates || {})[legion]; return id != null ? c.officers.find(o => o.id === id && o.alive) || null : null; }
 export function setLegate(c, legion, officerId) {
   c.legates = c.legates || {};
@@ -75,7 +89,7 @@ export function battleExtras(c, scn) {
   const typeScale = {}; let morale = 0;
   for (const l of linksFor(c, scn)) if (l.won) { for (const [t, v] of Object.entries(l.scale || {})) typeScale[t] = (typeScale[t] ?? 1) * v; morale += l.morale || 0; }
   const lg = legionsOf(c), legates = [];
-  if (lg.count > 1) for (let k = 1; k <= lg.count; k++) { const o = legateOf(c, k); if (o) legates.push({ legion: k, name: o.name, tactics: o.tactics || 0 }); }
+  if (lg.count > 1) for (let k = 1; k <= lg.count; k++) { const o = legateOf(c, k); if (o) legates.push({ legion: k, name: o.name, tactics: o.tactics || 0, traits: legateTraits(o) }); }
   return { typeScale, moraleAdd: morale, legates, sight: 1 + 0.07 * careerLv(c, 'recon') };
 }
 

@@ -1,4 +1,4 @@
-import { SCENARIOS, DIFFICULTY, UNIT_TYPES, PROLOGUE, actLabel } from './data.js';
+import { SCENARIOS, DIFFICULTY, UNIT_TYPES, PROLOGUE, actLabel, HISTORY } from './data.js';
 import { romeSpecs, applyResult, modsOf, forceScale, postureOf, baseStrength, ENEMY_WEIGHT } from './state.js';
 import { ORIGINS, DEFAULT_NAME, buildCampaign, describe } from './origins.js';
 import { Camp, totalMen, breakCamp, rationsDue } from './camp.js';
@@ -220,7 +220,7 @@ function showResult(res, scn) {
   const mid = !!scn.phases && o !== 'defeat' && scn.phaseIdx < scn.phaseCount - 1;                 // more of the same battle to come: no camp, no spoils yet
   const next = SCENARIOS[c.scenario], picks = mid ? [] : rewardOptions(c, scn, o), pris = (mid || opening) ? [] : prisonerOptions(c, res.prisoners);
   const contLabel = mid ? `On to stage ${scn.phaseIdx + 2}: ${esc(scn.phases[scn.phaseIdx + 1].phaseName)}` : opening && o !== 'defeat' ? 'Continue to army management' : o !== 'defeat' && !next ? 'Finish Act II' : opening ? 'Try the opening battle again' : 'Return to the map';
-  $('screen-result').innerHTML = resultHtml({ res, o, flavour: mid ? `${flavour} But the day is not over.` : flavour, banner: artSrc('outcome', o, 800, 200), spoils: res.spoils, mid, picks, pris, notes, contLabel });
+  $('screen-result').innerHTML = resultHtml({ res, o, flavour: mid ? `${flavour} But the day is not over.` : flavour, banner: artSrc('outcome', o, 800, 200), spoils: res.spoils, mid, picks, pris, notes, contLabel , history: mid ? null : HISTORY[scn.id] || null});
   if (stopResult) stopResult();
   stopResult = mountResult($('screen-result'), res, { picks, pris, onPick: (i) => { picks[i].apply(c); save(); }, onPris: (i) => { pris[i].apply(c); save(); } });
   $('cont').onclick = () => { camp.msgs = []; if (mid) { showBrief(); return; } if (opening && o === 'defeat') { const snap = store.get(preKey(c.slot)); if (snap) { campaign = snap; save(); } showBrief(PROLOGUE); return; } camp.note(`After the ${o}, the army makes camp.`); showMap(); if (opening && !c.introShown) { c.introShown = true; save(); showManagementIntro(); } };
