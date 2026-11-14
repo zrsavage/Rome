@@ -136,7 +136,7 @@ export class Camp {
   scoutCost() { return hasPerk(this.c, 'spymaster') ? 0 : 40; }
 
   selected() { return this.c.cohorts.find(h => h.id === this.sel); }
-  storesLine() { const st = this.stores(); return `<div class="small" style="margin:4px 0 8px"><span class="muted">Captured stores:</span> <b>${st.mail}</b> mail shirts, <b>${st.arms}</b> weapons, <b>${st.horses}</b> horses <span class="muted">(taken from the field after a win; they pay for equipment and new horse)</span></div>`; }
+  storesLine() { const st = this.stores(); return `<div class="small" style="margin:4px 0 8px"><span class="muted">Captured stores:</span> <b>${st.mail}</b> mail shirts, <b>${st.arms}</b> weapons, <b>${st.horses}</b> horses <span class="muted">(from won battles)</span></div>`; }
   // With a big army you cannot do everything one unit at a time: orders can cover every unit of the same kind at once.
   targets(h = this.selected()) { return this.scope === 'group' ? this.c.cohorts.filter(x => x.type === h.type) : [h]; }
   scopeChips(h) {
@@ -259,7 +259,7 @@ export class Camp {
         <input class="mslide" type="range" min="${Math.min(30, h.men)}" max="${h.maxMen}" step="1" value="${h.men}" data-id="${h.id}" aria-label="Men in ${esc(h.name)}"><div class="mval">${h.men}/${h.maxMen}</div><div class="mxp small">${LEVEL_NAMES[lv]}${sn && h.xp < sn.xp0 ? ` <span class="b">(diluted by ${Math.round((1 - h.xp / Math.max(1, sn.xp0)) * 100)}%)</span>` : ''}</div><div class="mcond small muted">${Math.round(h.condition)}% fit</div></div>`;
     }).join('');
     const missing = c.cohorts.reduce((a, h) => a + (h.maxMen - h.men), 0);
-    return `<div class="muster"><div class="mhead"><div><b class="poolN big2">${pool}</b> <span>recruits</span> &nbsp; <b class="vetN big2">${vets}</b> <span>veterans</span><div class="small muted">Recruits and levies arrive after battles; you can also hire more. Drag a slider right to send men to a unit, left to take them back. Veterans are placed first and keep a unit's experience; raw recruits dilute it. ${missing} places are empty across the army.</div></div>
+    return `<div class="muster"><div class="mhead"><div><b class="poolN big2">${pool}</b> <span>recruits</span> &nbsp; <b class="vetN big2">${vets}</b> <span>veterans</span><div class="small muted">Drag right to add men, left to take them back. Veterans go first and keep experience; recruits dilute it. ${missing} places empty.</div></div>
       <div class="row"><button id="m-fill" ${pool + vets > 0 && missing > 0 ? '' : 'disabled'}>Fill evenly</button><button id="m-undo" ${this.snap ? '' : 'disabled'}>Undo changes</button></div></div><div class="mlist">${rows}</div></div>`;
   }
   scout() { const c = this.c, cost = this.scoutCost(); if (c.scouted || c.gold < cost) return; c.gold -= cost; c.scouted = true; this.note(cost ? `Scouts report the enemy dispositions (${cost} denarii).` : 'Your spies report the enemy dispositions, free of charge.', 'good'); this.done(); }
@@ -371,7 +371,7 @@ export class Camp {
   }
   // Legions: with more than ten legionary cohorts the army is in several legions, and each can be given a legate with a command ring of his own.
   legionHtml() {
-    const c = this.c, lg = legionsOf(c); if (lg.count < 2) return `<h4 class="sect">Legions</h4><div class="small muted">Your army is one legion, under your own command. When you have more than ten legionary cohorts it will form a second, and you can give each a legate.</div>`;
+    const c = this.c, lg = legionsOf(c); if (lg.count < 2) return `<h4 class="sect">Legions</h4><div class="small muted">One legion, under your command. Over ten cohorts form a second, each with a legate.</div>`;
     const free = c.officers.filter(o => o.alive), rows = [];
     for (let k = 1; k <= lg.count; k++) { const n = c.cohorts.filter(h => lg.of[h.id] === k).length, cur = legateOf(c, k);
       const tr = (o) => legateTraits(o).map(t => LEGATE_TRAITS[t].name).join(', ');
@@ -383,7 +383,7 @@ export class Camp {
   promoHtml() {
     const c = this.c, waiting = c.cohorts.filter(x => unitPending(x)), h1 = waiting[0]; if (!h1) return '';
     const p = unitPending(h1);
-    return `<div class="decision"><div class="dhead">${flagIcon()}<div><b>${esc(h1.name)}</b> has reached the rank of <b>${esc(p.rank)}</b> <span class="pill">choice ${p.row + 1} of ${unitTrack(h1).length}</span><div class="small muted">Every ${esc(UNIT_TYPES[h1.type].cat === 'inf' ? 'cohort of foot' : UNIT_TYPES[h1.type].cat === 'cav' ? 'squadron of horse' : 'unit of missile troops')} gets the same choice at this rank. Pick one; the other is given up.${waiting.length > 1 ? ` ${waiting.length - 1} more unit${waiting.length > 2 ? 's are' : ' is'} waiting.` : ''}</div></div></div>
+    return `<div class="decision"><div class="dhead">${flagIcon()}<div><b>${esc(h1.name)}</b> has reached the rank of <b>${esc(p.rank)}</b> <span class="pill">choice ${p.row + 1} of ${unitTrack(h1).length}</span><div class="small muted">Pick one; the other is lost.${waiting.length > 1 ? ` ${waiting.length - 1} more unit${waiting.length > 2 ? 's are' : ' is'} waiting.` : ''}</div></div></div>
       <div class="choice2">${p.options.map(k => `<button class="regimen" data-pick="unit:${h1.id}:${k.id}"><b>${esc(k.name)}</b><span class="t">${esc(k.text)}</span></button>`).join('<div class="or">or</div>')}</div></div>`;
   }
   // The unit record: what this cohort's numbers are, what it is best at and where it stands out from the others like it.
@@ -434,7 +434,7 @@ export class Camp {
       const why = !t ? `needs an officer with ${d.trait} ${d.req}` : c.gold < d.gold ? 'not enough denarii' : '';
       return `<button class="act" data-a="doctrine" data-m="${d.id}" ${act && !why ? '' : 'disabled'}>${esc(d.name)}<small>${esc(d.text)}</small><small>${d.gold} denarii. ${t ? `Taught by ${esc(t.name)}.` : esc(why)}</small></button>`; }).join('');
     if (!learned && !cards && !next) return '';
-    return `<h4 class="sect">Battle orders</h4><div class="small muted">New formation orders are learned here as the campaign goes on. At first your army knows only how to march and attack; even holding a position has to be taught.</div>
+    return `<h4 class="sect">Battle orders</h4><div class="small muted">Your army starts knowing only march and attack. Learn new orders here.</div>
       ${learned ? `<div class="row" style="margin:6px 0">${learned}</div>` : ''}${cards ? `<div class="actions">${cards}</div>` : ''}
       ${next ? `<div class="small muted" style="margin-top:6px">Another order will be ready to learn after ${next.wins - wins} more victor${next.wins - wins === 1 ? 'y' : 'ies'}.</div>` : ''}`;
   }
@@ -455,12 +455,12 @@ export class Camp {
             <div class="eff"><span class="g">+${p.xp} experience</span><span class="g">+${p.dr} drill</span><span class="${r.cond <= -9 ? 'b' : ''}">condition ${r.cond}</span><span class="${r.risk ? 'b' : ''}">${r.risk ? `${Math.round(r.risk * 100)}% risk of hurt men` : 'no risk'}</span><span class="b">${cost} supplies</span></div></button>`; }).join('');
         const lid = this.regimen ? this.bestLeader(h, this.regimen) : null, lo = lid && lid !== 'self' ? officerById(c, +lid) : null;
         const ledBy = this.regimen ? `Led by ${lo ? `${esc(lo.rank)} ${esc(lo.name)}` : 'you in person'}, the best man in camp for ${esc(REGIMENS[this.regimen].name.toLowerCase())}.` : '';
-        return `${this.promoHtml()}<div class="advicebox"><b>The centurion's advice.</b> ${esc(adv)}</div><p class="muted">Drilling costs supplies, and drilling the same unit again in this camp costs more each time. Hard drills also tire the men, so rest them at the Barracks. Click a unit to see its record.</p>${this.unitList(['str', 'exp', 'drill', 'cond'])}${this.recordHtml(h)}${this.scopeChips(h)}
-          <h4 class="sect">1. What should ${esc(nT > 1 ? 'these units' : h.name)} practise?</h4><div class="regimens">${cards}</div>
+        return `${this.promoHtml()}<div class="advicebox"><b>The centurion's advice.</b> ${esc(adv)}</div><p class="muted">Drills cost supplies, more each time you repeat one here. Hard drills tire the men.</p>${this.unitList(['str', 'exp', 'drill', 'cond'])}${this.recordHtml(h)}${this.scopeChips(h)}
+          <h4 class="sect">1. What should ${esc(nT > 1 ? 'these units' : h.name)} practice?</h4><div class="regimens">${cards}</div>
           ${ledBy ? `<div class="small muted" style="margin-top:6px">${ledBy}</div>` : ''}
           <div class="row" style="margin-top:12px"><button class="primary" id="run-drill" ${act && this.regimen ? '' : 'disabled'}>${this.regimen ? 'Run the drill' : 'Choose a drill first'}</button></div>
           ${this.doctrineHtml(act)}
-          <h4 class="sect">Instructor</h4><div class="row small"><span class="muted">Drills ${esc(h.name)} on the march to every battle, for 6 supplies (a modest, steady gain):</span><select id="instr">${insOpts}</select></div>${note}`;
+          <h4 class="sect">Instructor</h4><div class="row small"><span class="muted">Drills ${esc(h.name)} on every march (6 supplies):</span><select id="instr">${insOpts}</select></div>${note}`;
       }
       case 'depot': {
         const food = dailyFood(c), low = Math.ceil(totalMen(c) / 60 * 2), due = rationsDue(c, scn), proj = c.supplies - due, lg = bestOfficer(c, 'logistics'), nf = this.used('forage'), gp = this.grainPrice();
@@ -490,16 +490,16 @@ export class Camp {
           <h4 class="sect">Rest and dig</h4><div class="regimens two">
           ${card('data-a="rest"', 'Rest the army', 'Everyone sleeps, eats and mends kit.', [['+20 condition, every unit', 'g'], ...(this.restBack() ? [[`about ${this.restBack()} lightly wounded return as veterans`, 'g']] : []), [`${this.restCost()} supplies (a day's rations)`, 'b'], [`${weary.length} unit${weary.length === 1 ? '' : 's'} below 75% would benefit`, '']], c.supplies >= this.restCost())}
           ${card('data-a="fortify"', `Fortify the camp (level ${c.fort}/3)`, 'The men dig ditch and palisade. Two rounds of digging make a level.', [['+4 battle morale per level', 'g'], [`withdrawal draw needs ${floor}% -> ${nextFloor}% of your army`, 'g'], ['25 supplies', 'b']], c.supplies >= 25 && c.fort < 3)}</div>
-          <h4 class="sect">Hire soldiers</h4><div class="small muted">Pick how many men to hire. The number sets the size of both offers below; hired men wait in the pool until you place them on the muster roll above.</div>
+          <h4 class="sect">Hire soldiers</h4><div class="small muted">Hired men wait in the pool until you place them above.</div>
           <div class="row small" style="margin:6px 0"><span class="muted">Men to hire:</span><div class="chips">${[20, 50, 100, 200].map(k => `<button class="chip ${hn === k ? 'sel' : ''}" data-hiren="${k}">${k} men</button>`).join('')}</div></div>
           <div class="regimens two">
           ${card('data-a="hire"', `Hire ${hn} volunteers`, 'Raw recruits sign on for pay. Cheap, but they dilute a unit\'s experience.', [[`+${hn} recruits`, 'g'], [`${hcost} denarii (${(hcost / hn).toFixed(1)} each)`, 'b']], c.gold >= hcost)}
           ${card('data-a="hirevets"', `Hire ${hn} veterans`, 'Time-served men re-enlist. They cost far more, but they do not dilute a unit\'s experience.', [[`+${hn} veterans`, 'g'], [`${vcost} denarii (${(vcost / hn).toFixed(1)} each)`, 'b']], c.gold >= vcost)}</div>
-          <h4 class="sect">Raise a unit <span class="pill">${c.cohorts.length}/${commandLimit(c)} units</span></h4>${this.storesLine()}<div class="small muted">Recruiting in <b>${esc(REGION_NAMES[regionOf(scn)])}</b>: local troops can only be raised where they live (Gallic infantry in Gaul, Galatians in Pontus, Spanish caetrati in Spain, Moorish horse in Africa in 46 BC). Units you already have stay with you everywhere.</div><div class="small muted">Your command limit grows by ${COMMAND_PER_WIN} with every battle you win or draw, and by ${COMMAND_PER_ORG} with each level of Army organisation in your career. More than ten legionary cohorts form a second legion under a legate.${room <= 0 ? ' <b>You are at the limit.</b>' : ''}</div>${room > 1 ? `<div class="row small" style="margin-top:6px"><span class="muted">Raise how many at once?</span><div class="chips">${[1, 5, 10].filter(k => k <= room || k === 1).map(k => `<button class="chip ${rk === k ? 'sel' : ''}" data-raisen="${k}">${k} unit${k > 1 ? 's' : ''}</button>`).join('')}</div></div>` : ''}<div class="regimens" style="margin-top:6px">${raise}</div>${note}`; }
+          <h4 class="sect">Raise a unit <span class="pill">${c.cohorts.length}/${commandLimit(c)} units</span></h4>${this.storesLine()}<div class="small muted">Recruiting in <b>${esc(REGION_NAMES[regionOf(scn)])}</b>. Local troops are raised only in their homeland; units you have stay with you.</div><div class="small muted">Limit +${COMMAND_PER_WIN} per battle won or drawn, +${COMMAND_PER_ORG} per level of Army organisation. Over ten cohorts form a second legion.${room <= 0 ? ' <b>You are at the limit.</b>' : ''}</div>${room > 1 ? `<div class="row small" style="margin-top:6px"><span class="muted">Raise how many at once?</span><div class="chips">${[1, 5, 10].filter(k => k <= room || k === 1).map(k => `<button class="chip ${rk === k ? 'sel' : ''}" data-raisen="${k}">${k} unit${k > 1 ? 's' : ''}</button>`).join('')}</div></div>` : ''}<div class="regimens" style="margin-top:6px">${raise}</div>${note}`; }
       case 'officers': {
         // one decision at a time: the first officer with a step waiting on his ladder
         const waiting = offs.filter(o => officerPending(o)), o1 = waiting[0], pend = o1 && officerPending(o1);
-        const decision = o1 ? `<div class="decision"><div class="dhead">${flagIcon()}<div><b>${esc(rankFor(o1))} ${esc(o1.name)}</b> has earned an advancement <span class="pill">step ${pend.row + 1} of ${officerTrack(o1).length}</span><div class="small muted">${esc(OFFICER_KINDS[officerKind(o1)])}: every officer of this kind chooses from the same ladder. Pick one; the other is given up.${waiting.length > 1 ? ` ${waiting.length - 1} more decision${waiting.length > 2 ? 's' : ''} after this.` : ''}</div></div></div>
+        const decision = o1 ? `<div class="decision"><div class="dhead">${flagIcon()}<div><b>${esc(rankFor(o1))} ${esc(o1.name)}</b> has earned an advancement <span class="pill">step ${pend.row + 1} of ${officerTrack(o1).length}</span><div class="small muted">${esc(OFFICER_KINDS[officerKind(o1)])}: pick one; the other is lost.${waiting.length > 1 ? ` ${waiting.length - 1} more decision${waiting.length > 2 ? 's' : ''} after this.` : ''}</div></div></div>
           <div class="choice2">${pend.options.map(k => `<button class="regimen" data-pick="officer:${o1.id}:${k.id}"><b>${esc(k.name)}</b><span class="t">${esc(k.text)}</span></button>`).join('<div class="or">or</div>')}</div></div>`
           : `<div class="advicebox">No advancement is waiting. An officer earns one step on his ladder each time he gains a level.</div>`;
         const rows = c.officers.map(o => { const kind = officerKind(o), track = officerTrack(o), got = track.map(r => r.find(k => (o.perks || []).includes(k.id))).filter(Boolean), nx = o.alive ? track.findIndex(r => !r.some(k => (o.perks || []).includes(k.id))) : -1;
@@ -509,7 +509,7 @@ export class Camp {
         const unitOpts = c.cohorts.map(x => `<option value="${x.id}" ${x.id === this.sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
         return `${decision}<h4 class="sect">Your officers</h4><table class="offtable">${rows}</table>
           <h4 class="sect">Attach an officer to a unit</h4><div class="row small"><select id="assign-unit">${unitOpts}</select><span class="muted">is led by</span><select id="assign">${assign}</select></div>
-          <div class="small muted" style="margin-top:6px">A centurion's and a prefect's advancements help the unit he leads; a staff officer's mostly help the whole army.</div>${this.legionHtml()}`; }
+          <div class="small muted" style="margin-top:6px">Centurions and prefects help their unit; staff officers help the army.</div>${this.legionHtml()}`; }
       case 'forge': { const cat = UNIT_TYPES[h.type].cat, names = UPGRADES[cat], lt = LEVEL_TRAITS[levelFor(h.xp)], u = { armour: 0, weapon: 0, ...(h.upg || {}) }, prof = enemyProfile(scn);
         const heavy = prof.parts.find(x => x[2] === 'warband') ? prof.parts.find(x => x[2] === 'warband')[1] : 0;
         const adv = `${enemyHint(c, prof)}${knowsEnemy(c) && heavy > 50 ? 'Warbands are lightly armoured and win by charging: armour blunts their charge, better weapons win the melee. ' : ''}Spend on the units that will take the brunt, usually the front line, not on every cohort.`;
