@@ -33,12 +33,12 @@ export const commandLimit = (c) => Math.min(80, 8 + (c.history || []).filter(h =
 // equipment) is NOT counted: training and arming your men is a real advantage, not something the enemy grows to match.
 export const ENEMY_WEIGHT = { warband: 1.0, gaul_skirm: 0.8, gaul_elite: 1.6, gaul_cav: 2.0, suebi: 1.15, german_cav: 2.1, laager: 0.55, numid_cav: 1.6, numid_inf: 0.85, elephant: 2.5, pompeian: 1.15, pomp_cav: 1.9, pomp_missile: 0.8, pontic: 1.1, horse_archer: 1.7, lancer: 2.4, chariot: 3.0, pomp_levy: 0.95, britons: 1.0, brit_chariot: 1.8, brit_cav: 1.9 };
 export const POSTURES = {
-  attack: { ratio: 1.15, name: 'Battle in the open', text: 'An open fight: they bring a little more fighting strength than you, about 1.15 times.' },
-  defend: { ratio: 1.4, name: 'You defend', text: 'They attack your position, so they bring more than you: about 1.4 times your strength.' },
-  assault: { ratio: 1.0, name: 'You attack a strong place', text: 'They hold strong ground, so they need no more men than you: about as strong as you.' },
-  fortdef: { ratio: 1.6, name: 'You defend a fortified camp', text: 'They must storm your rampart, so they come in great numbers: about 1.6 times your strength.' },
+  attack: { ratio: 1.15, name: 'Battle in the open', text: 'An open fight: about 1.15 times your strength.' },
+  defend: { ratio: 1.4, name: 'You defend', text: 'They attack you: about 1.4 times your strength.' },
+  assault: { ratio: 1.0, name: 'You attack a strong place', text: 'They hold strong ground: about your strength.' },
+  fortdef: { ratio: 1.6, name: 'You defend a fortified camp', text: 'They storm your rampart: about 1.6 times your strength.' },
   ambush: { ratio: 1.25, name: 'Ambush', text: 'They chose the ground and the moment: about 1.25 times your strength.' },
-  pursuit: { ratio: 0.85, name: 'Pursuit', text: 'You are catching a beaten or strung-out enemy: about 0.85 times your strength.' }
+  pursuit: { ratio: 0.85, name: 'Pursuit', text: 'A beaten or strung-out enemy: about 0.85 times your strength.' }
 };
 export const postureOf = (scn) => POSTURES[(scn && scn.posture) || 'attack'] || POSTURES.attack;
 const unitWeight = (t) => ENEMY_WEIGHT[t] ?? ((UNIT_TYPES[t] && UNIT_TYPES[t].cost || 60) / 60);
