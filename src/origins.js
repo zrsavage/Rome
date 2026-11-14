@@ -26,7 +26,7 @@ export const ORIGINS = {
       { id: 'ranks', name: 'Rose through the ranks', text: 'You fought as a legionary and centurion.', fx: ['Legion cohorts start with +12 drill', 'Centurions Pullo and Vorenus each +1 skill'],
         apply: (c) => { c.cohorts.forEach(h => { if (h.type === 'legionary') h.drill = Math.min(100, h.drill + 12); }); officer(c, 1).tactics += 1; officer(c, 2).drill += 1; } },
       { id: 'cavalry', name: 'Cavalry prefect', text: 'You made your name leading horse.', fx: ['Cavalry turma +20 men and +40 experience', 'Prefect Fabius: tactics +1'],
-        apply: (c) => { const q = c.cohorts.find(h => h.type === 'equites'); q.men += 20; q.maxMen += 20; q.xp += 40; officer(c, 4).tactics += 1; } }
+        apply: (c) => { const q = c.cohorts.find(h => h.type === 'equites'); q.men += 40; q.maxMen += 40; q.xp += 40; officer(c, 4).tactics += 1; } }
     ]
   },
   approach: {

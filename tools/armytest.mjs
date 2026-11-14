@@ -1,11 +1,13 @@
 // Army composition test: how do different mixes of the same number of units fare against the same enemies?
 //   node tools/armytest.mjs [runs] [opponent|all] [mode]
-// mode 'slots' (default): every army has 20 units at full strength, as the command limit allows.
+// mode 'slots' (default): every army fills 20 command slots at full strength (horse, missile troops, engines and medici take half a slot),
+// topped up with legionary cohorts. mode 'units': 20 units each, whatever they are (the old rule).
 // mode 'cost': every army costs about the same to raise (20 legionary cohorts' worth of denarii).
 // The Roman side is played by the 'smart' test bot (triplex lines, cohorts relieve each other, horse on the wings, missile troops screening).
 import { Battle } from '../src/sim.js';
 import { SCENARIOS, RAISE } from '../src/data.js';
 import { smartBot } from './simtest.mjs';
+import { slotOf } from '../src/state.js';
 
 const RUNS = +process.argv[2] || 6, ONLY = process.argv[3] && process.argv[3] !== 'all' ? process.argv[3] : null, MODE = process.argv[4] || 'slots';
 const XP = 300, DRILL = 30;
@@ -34,6 +36,7 @@ const OPP = {
 // In 'cost' mode the army is scaled to the same denarii as 20 legionary cohorts at full strength, by adding or dropping legionaries.
 function army(comp) {
   const c = { ...comp };
+  if (MODE === 'slots') { const used = () => Object.entries(c).reduce((a, [t, n]) => a + n * slotOf(t), 0); while (used() + 1 <= 20) c.legionary++; }
   if (MODE === 'cost') {
     const cost = (k) => Object.entries(k).reduce((a, [t, n]) => a + n * RAISE[t].gold * (RAISE[t].max / RAISE[t].men), 0), target = 20 * RAISE.legionary.gold * (480 / 300);
     while (cost(c) + RAISE.legionary.gold * 1.6 <= target + 1) c.legionary++;

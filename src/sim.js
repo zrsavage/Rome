@@ -27,7 +27,7 @@ const PASS_SPEED = 0.75;   // marching through a friendly unit that is not fight
 const GHOST_SPEED = 0.6;   // a unit that was stuck files through friendly units at this pace
 // Melee geometry. Fighting a unit head-on is a slow grind; hitting its side or rear, or surrounding it, is decisive.
 const FRONT_GRIND = 0.8, FLANK_DMG = 1.5, REAR_DMG = 2.2;
-const FLANK_MORALE = 1.0, REAR_MORALE = 2.0, SURROUND_MORALE = 1.2;
+const FLANK_MORALE = 1.0, REAR_MORALE = 2.0, SURROUND_MORALE = 1.2, CAV_HAMMER = 1.4;
 // Command: the general's banner sets a radius inside which Roman cohorts recover and rally well. Charges need fresh, steady men.
 const CMD_R = 240, GEN_SPEED = 75, ALL_ORDERS = ['hold', 'fallback', 'holdfire', 'extend', 'testudo', 'sprint', 'guard', 'rally', 'relieve', 'pursue', 'wedge', 'orbis', 'queue', 'array', 'cycle', 'rotate', 'priority', 'detach', 'lanes', 'works'];
 const hgt = (b, u) => elevAt(b.scn, u.x, u.y) / 40;   // height in 'hill units': 1 is an ordinary hilltop
@@ -1343,7 +1343,7 @@ export class Battle {
     const kk = this.stats.k[att.side]; kk[cause] = (kk[cause] || 0) + n;
     if (ranged && att.side === 'rome') this.stats.rangedKills += n;
     def.men -= n; def.casualties += n; if (def.side === 'rome' && this.medicCover(def)) def.tended = (def.tended || 0) + n; att.kills += n; def.shock = (def.shock || 0) + n / Math.max(1, def.maxMen) * 100; def.flash = 0.22; def.floatAcc = (def.floatAcc || 0) + n;
-    let loss = n / def.maxMen * 130 * def.type.fragile * (ranged ? (def.type.panicky ? 1.4 : att.type.setup ? 0.85 : 0.55) : 1) * (def.type.big && cause === 'pilum' ? 0.4 : 1);   // missiles sting an elephant into panic
+    let loss = n / def.maxMen * 130 * def.type.fragile * (ranged ? (def.type.panicky ? 1.4 : att.type.setup ? 0.85 : 0.65) : 1) * (def.type.big && cause === 'pilum' ? 0.4 : 1);   // missiles sting an elephant into panic
     if (def.officer) loss *= 1 - 0.04 * (def.officer.tactics || 0);
     if (def.temper === 'rash') loss *= 1.15; else if (def.temper === 'steady') loss *= 0.9;
     if (def.perks.includes('steadfast')) loss *= 0.8;
@@ -1377,7 +1377,7 @@ export class Battle {
         u.shooting = true;
         const am = this.angleMult(u, tgt).c;
         const prot = this.defOf(tgt, am === 1) * (tgt.formation === 'close' && am === 1 ? 2.2 : tgt.formation === 'orb' ? 1.2 : 0.6) * (1 - (t.pierce || 0));   // bolts go through shields and mail
-        const dense = t.vsDense ? (tgt.type.cat === 'inf' && tgt.formation !== 'close' ? t.vsDense : 0.6) : 1;   // a bolt into a packed mass kills more than one man
+        const dense = t.vsDense ? (tgt.type.cat === 'inf' && tgt.formation !== 'close' ? t.vsDense : 0.6) : (tgt.type.cat === 'inf' && tgt.formation !== 'close' ? 1.15 : 1);   // arrows and shot into a packed mass of foot find a mark more often (not into a testudo)   // a bolt into a packed mass kills more than one man
         const falloff = 1 - 0.4 * clamp(g / t.range, 0, 1);
         u.fireAcc += (this.behindWorks(tgt) ? 0.7 : 1) * dense * (t.shootMoving && u.state === 'moving' ? 0.75 : 1) * u.men * t.rate * dt * (this.atkMult(u) / COMBAT_PACE) * RANGED_PACE * this.wx.missile * falloff * (1 - Math.min(0.9, prot)) * (this.terr(tgt).kind === 'forest' ? 0.6 : 1) * (1 + 0.15 * clamp(hgt(this, u) - hgt(this, tgt), -1, 1));
         u.ammo -= dt;
@@ -1439,8 +1439,9 @@ export class Battle {
       const pressed = u.surrounded ? 0.7 : 1 - 0.15 * Math.min(3, u.flanked || 0);
       const room = ang.c === 1 ? Math.min(1, 3 * (e.wide || 1) / Math.max(1, e.frontCount || 1)) : 1;   // only so many men can fight on one front
       const laneF = e.lanes ? (t.big ? 0.5 : 1.2) : 1;           // open ranks blunt elephants but leave gaps for anyone else
-      u.pending += laneF * share * (1 + 0.25 * ((e.wide || 1) - 1)) * t.atk * dt * am * ang.g * room * pressed * (1 - def) * routingMult * this.terr(e).def;
-      if (ang.c > 1 && e.state !== 'routing') { const ml = (ang.c === 3 ? REAR_MORALE : FLANK_MORALE) * dt / targets.length; e.morale -= ml; this.mloss(e, ang.c === 3 ? 'rear' : 'flank', ml); }
+      const hammer = t.cat === 'cav' && ang.c > 1 && e.state !== 'routing' && e.contacts.some(x => x.active && x !== u && x.type.cat !== 'cav') ? CAV_HAMMER : 1;   // horse into the side or back of foot already held by your line: hammer and anvil
+      u.pending += hammer * laneF * share * (1 + 0.25 * ((e.wide || 1) - 1)) * t.atk * dt * am * ang.g * room * pressed * (1 - def) * routingMult * this.terr(e).def;
+      if (ang.c > 1 && e.state !== 'routing') { const ml = hammer * (ang.c === 3 ? REAR_MORALE : FLANK_MORALE) * dt / targets.length; e.morale -= ml; this.mloss(e, ang.c === 3 ? 'rear' : 'flank', ml); }
       if (u.side === 'rome' && ang.c > 1 && e.state !== 'routing') this.stats[ang.c === 3 ? 'rearTime' : 'flankTime'] += dt / targets.length;
     }
     // allocate the accumulated kills across targets evenly
