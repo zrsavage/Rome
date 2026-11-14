@@ -1,5 +1,5 @@
 import { SCENARIOS, DIFFICULTY, UNIT_TYPES, PROLOGUE, actLabel, HISTORY } from './data.js';
-import { romeSpecs, applyResult, modsOf, forceScale, postureOf, baseStrength, ENEMY_WEIGHT } from './state.js';
+import { romeSpecs, applyResult, modsOf, forceScale, postureOf } from './state.js';
 import { ORIGINS, DEFAULT_NAME, buildCampaign, describe } from './origins.js';
 import { Camp, totalMen, breakCamp, rationsDue } from './camp.js';
 import { BattleUI } from './battleui.js';
@@ -164,13 +164,11 @@ function showBrief(scnArg) {
   const groups = {};
   [...scn.enemy, ...scn.reinforcements.filter(r => r.side !== 'rome').map(r => r.unit)].forEach(e => { groups[e.type] = (groups[e.type] || 0) + e.men * scale * (scn.boost || 1) * (ex.typeScale[e.type] ?? 1); });
   const total = Object.values(groups).reduce((a, b) => a + b, 0);
-  const rnd = (n) => Math.max(0, Math.round(n / 50) * 50);
-  const list = Object.entries(groups).map(([t, n]) => known ? `<li>${UNIT_TYPES[t].name}: <b>${Math.round(n)}</b> men</li>` : `<li>${UNIT_TYPES[t].name}: roughly <b>${rnd(n * 0.85)}-${rnd(n * 1.15)}</b></li>`).join('');
-  // How the two armies compare, man for man by fighting value, so the odds are plain: the enemy is sized by the kind of fight, then difficulty and goodwill.
-  const pos = postureOf(scn), myStr = baseStrength(c), foeStr = Object.entries(groups).reduce((a, [t, n]) => a + n * (ENEMY_WEIGHT[t] ?? 1), 0), odds = foeStr / Math.max(1, myStr);
+  const list = Object.entries(groups).map(([t, n]) => known ? `<li>${UNIT_TYPES[t].name}: <b>${Math.round(n)}</b> men</li>` : `<li>${UNIT_TYPES[t].name}</li>`).join('');
+  const pos = postureOf(scn);
   const fav = c.favour || 0, comeOver = Math.round(Math.max(0.03, Math.min(0.4, 0.12 + 0.08 * fav)) * 100), desert = fav < 0 ? Math.round(Math.min(0.3, -0.08 * fav) * 100) : 0;
   const repLine = scn.defect ? `<div class="small" style="margin-top:6px"><b>Romans against Romans.</b> Your name for clemency (goodwill ${fav > 0 ? '+' : ''}${fav}): a wavering Pompeian cohort has a ${comeOver}% chance of coming over to you.${desert ? ` <span style="color:#ee9a8e">With a bad name, a wavering cohort of yours has a ${desert}% chance of deserting.</span>` : ' None of yours will desert while your name is good.'} Release prisoners and give gifts to raise it.</div>` : '';
-  const oddsCard = opening ? '' : `<div class="card" style="margin-top:12px"><h3>The odds: ${esc(pos.name)}</h3><div class="small">${esc(pos.text)}${scn.odds && scn.odds < 1 ? ' A hard fight, so a little less.' : scn.odds && scn.odds > 1 ? ' This time, more than that.' : ''} With ${esc(diff.name)}${favMult !== 1 ? ' and your goodwill' : ''}, they are <b>${odds.toFixed(2)}x</b> yours.</div><div class="odds"><i style="width:${Math.round(100 / (1 + odds))}%"></i></div><div class="small muted">Counted by fighting value (warrior 1, slinger 0.75, horseman 2). Your training and kit are your edge.</div>${repLine}</div>`;
+  const oddsCard = opening ? '' : `<div class="card" style="margin-top:12px"><h3>${esc(pos.name)}</h3>${known ? '' : '<div class="small muted">How many they bring is unknown until you scout them.</div>'}${repLine}</div>`;
   const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`;
   const waveMap = {}; scn.reinforcements.filter(r => r.side !== 'rome').forEach(r => { const k = Math.round(r.at / 10) * 10; waveMap[k] = (waveMap[k] || 0) + Math.round(r.unit.men * scale); });
   const waveKeys = Object.keys(waveMap).map(Number).sort((x, y) => x - y);
@@ -183,7 +181,7 @@ function showBrief(scnArg) {
     ${oddsCard}${links.length ? `<div class="card" style="margin-top:12px"><h3>What earlier fights changed</h3>${links.map(l => `<div class="small">${l.won ? '<b style="color:var(--green)">Won:</b>' : '<span class="muted">Not won:</span>'} ${esc(l.name)} - ${l.won ? esc(l.text) : '<span class="muted">a victory there would have helped here.</span>'}</div>`).join('')}</div>` : ''}
     <div class="card" style="margin-top:12px"><h3>Objective</h3>${esc(scn.objective)}<br><span class="muted small">Time limit ${Math.round(scn.timeLimit / 60)} min. Withdrawing with ${Math.round((0.45 - 0.05 * c.fort) * 100)}% of your men counts as a draw.${scn.rewardMult > 1.4 ? ' Historically a dark day for Rome: survival or victory pays handsomely.' : ''}</span></div>
     <div class="row" style="align-items:flex-start;margin-top:12px"><div class="card" style="flex:1"><h3>Your force (${rome} men)</h3><ul>${c.cohorts.length > 10 ? Object.entries(c.cohorts.reduce((g, h) => { (g[h.type] = g[h.type] || { n: 0, men: 0 }).n++; g[h.type].men += h.men; return g; }, {})).map(([t, g]) => `<li>${g.n} x ${esc(UNIT_TYPES[t].name)} - ${g.men} men</li>`).join('') : c.cohorts.map(h => `<li>${esc(h.name)} - ${h.men}</li>`).join('')}</ul></div>
-    <div class="card" style="flex:1"><h3>Enemy${known ? ` (scouted) ~${Math.round(total)}` : ' (estimated)'}</h3><ul>${list}</ul>${known ? waveText : '<div class="muted small">Unscouted: reinforcements unknown.</div>'}</div></div>
+    <div class="card" style="flex:1"><h3>Enemy${known ? ` (scouted) ~${Math.round(total)}` : ' (not scouted)'}</h3><ul>${list}</ul>${known ? waveText : '<div class="muted small">Unscouted: reinforcements unknown.</div>'}</div></div>
     <p class="muted small">Goodwill ${c.favour}. Fort ${c.fort}. Supplies ${c.supplies}${rationsDue(c, scn) ? `, of which ${rationsDue(c, scn)} are eaten on the march` : ''}${c.supplies - rationsDue(c, scn) < totalMen(c) / 60 * 2 ? ' - LOW, morale will suffer' : ''}.</p>
     ${opening ? '<p class="small" style="color:var(--gold)">After this fight you will see your army management screen, where you prepare between battles.</p>' : ''}
     <div class="row"><button class="primary" id="go">Deploy</button>${opening ? '<button id="back">Main menu</button>' : '<button id="back">Back to map</button>'}</div></div>`;
