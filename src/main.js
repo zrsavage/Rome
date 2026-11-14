@@ -109,10 +109,10 @@ function showMap() {
       if (go) {
         campaign.britain = 'go'; save(); showMap();
         inform('Side act: Britannia, 55-54 BC', [
-          'Gaul seems quiet, and Caesar looks across the Ocean. The Britons have sent help to the Gauls; nobody in Rome knows what lies over the water. In late summer of 55 BC the legions sail.',
-          'The Britons fight much as the Gauls do, with one difference: <b>war chariots</b>. They race along your line throwing javelins, set warriors down to fight on foot, and carry them away again before you can close. Do not chase them; hold the line and use missiles.',
-          'Expect storms, short grain and a landing in the surf. The next summer a larger army goes back, forces the <b>Thames</b> and marches on the stronghold of <b>Cassivellaunus</b>.'
-        ], 'Sail');
+        'Caesar looks across the Ocean. In late summer of 55 BC the legions sail.',
+        'Britons fight like Gauls, plus <b>war chariots</b>: they throw javelins, drop off warriors and race away. Don\'t chase them; hold the line and use missiles.',
+        'Expect storms, short grain and a landing in the surf, then the <b>Thames</b> and the stronghold of <b>Cassivellaunus</b>.'
+      ], 'Sail');
       } else { skipBritain(campaign); camp.note('You leave Britain to others. The army marches on.', 'info'); save(); showMap(); }
     },
     skip: async () => { if (await ask('March past this fight? You gain nothing from it, and a later battle may be harder for it.', 'March past', 'Stay and fight')) { const msg = skipBattle(campaign); if (msg) camp.note(msg, 'info'); save(); showMap(); } }
@@ -121,39 +121,34 @@ function showMap() {
   if (cs && cs.act === 'II' && !(campaign.actsSeen || []).includes('II')) {
     campaign.actsSeen = [...(campaign.actsSeen || []), 'II']; save();
     inform('Act II: Ariovistus and the Suebi', [
-      'Gaul is quiet, but the Sequani and Aedui have begged Caesar for help against <b>Ariovistus</b>, the Suebian king who has settled his Germans on the west bank of the Rhine.',
-      'These are not the Gauls of Act I. There are few fortified places: the Germans <b>move fast</b>, their horse ride with foot runners at their stirrups, and they fight in tribal blocks.',
-      'Behind the line stand the <b>wagon laagers</b>, with the families on them. Men who have the wagons at their backs will not run, until the wagons fall.',
-      'Expect <b>cut supply lines</b>, raids from every side at once, and a battle where your left may be pressed while the right wins.'
-    ], 'To Germania');
+        'The Gauls beg Caesar for help against <b>Ariovistus</b>, the Suebian king settled west of the Rhine.',
+        'Germans <b>move fast</b>, with foot runners at their horses\' stirrups. Behind their line stand <b>wagon laagers</b>: men with wagons at their backs will not run.',
+        'Expect <b>cut supply lines</b> and raids from every side.'
+      ], 'To Germania');
   }
   if (cs && cs.act === 'III' && !(campaign.actsSeen || []).includes('III')) {
     campaign.actsSeen = [...(campaign.actsSeen || []), 'III']; save();
     inform('Act III: Africa, the old lands of Carthage', [
-      'Nine years pass. Gaul is conquered, the Senate orders Caesar to give up his army, and in January 49 BC he crosses the Rubicon. <b>Civil war.</b>',
-      'Caesar sends his young friend <b>Gaius Scribonius Curio</b> to take Africa from the Pompeian Attius Varus, and you go with him. Utica stands where Carthage once ruled; Carthage itself is a ruin.',
-      'Varus has an ally: <b>King Juba I of Numidia</b>. Almost every enemy here is on a horse. Numidian horsemen throw their javelins and ride away before you can reach them: <b>do not chase them</b>. A steady line, slingers and archers beat them.',
-      'It is hot ("scorching heat" in the briefing). Everyone but the Numidians tires faster: rest the line. Juba has <b>elephants</b>: missiles drive them mad, and a new order, <b>Open Ranks</b>, is taught at the Training Ground.',
-      'Some of the men facing you are <b>Romans</b>, with your armour and your drill.'
-    ], 'To Africa');
+        'January 49 BC: Caesar crosses the Rubicon. <b>Civil war.</b> You go with <b>Curio</b> to take Africa from the Pompeians.',
+        '<b>King Juba of Numidia</b> fights for them. Numidian horse throw javelins and ride off: <b>don\'t chase them</b>. A steady line and missiles beat them.',
+        'The heat tires everyone but Numidians. Juba has <b>elephants</b>: learn <b>Open Ranks</b> at the Training Ground. And some of your enemies are <b>Romans</b>.'
+      ], 'To Africa');
   }
   if (cs && cs.act === 'IV' && !(campaign.actsSeen || []).includes('IV')) {
     campaign.actsSeen = [...(campaign.actsSeen || []), 'IV']; save();
     inform('Act IV: Pharsalus, and the steppe horse', [
-      'You came out of the Bagradas with what was left of the army and crossed to Caesar in Greece. In August 48 BC Pompey offers battle in the plain of <b>Pharsalus</b>: Romans against Romans, with seven horsemen of his to every one of yours. That fight is yours to take or to leave.',
-      'Then you go east with <b>Gnaeus Domitius Calvinus</b>. <b>Pharnaces II</b>, son of Mithridates and king of the Bosporus, has invaded Pontus with his own Roman-drilled foot and <b>Sarmatian horse</b> from the steppe beyond the Maeotis, the heirs of the Scythians.',
-      '<b>Horse archers</b> shoot from the saddle and fall back shooting when you charge them; they carry only so many arrows. <b>Lancers</b> in scale armour are deadly head-on and slow to turn.',
-      'At the end waits <b>Zela</b>, and Pharnaces\' <b>scythed chariots</b>: one terrible charge each. Missiles and <b>Open Ranks</b> beat them.'
-    ], 'To the East');
+        '48 BC: Pompey offers battle at <b>Pharsalus</b>, with seven horsemen to each of yours.',
+        'Then east with <b>Calvinus</b> against <b>Pharnaces II</b>, with his Roman-drilled foot and <b>Sarmatian horse</b>.',
+        '<b>Horse archers</b> fall back shooting and run out of arrows. <b>Lancers</b> are deadly head-on, slow to turn. At <b>Zela</b>, <b>scythed chariots</b>: missiles and <b>Open Ranks</b> beat them.'
+      ], 'To the East');
   }
   if (cs && cs.act === 'V' && !(campaign.actsSeen || []).includes('V')) {
     campaign.actsSeen = [...(campaign.actsSeen || []), 'V']; save();
     inform('Act V: Roman against Roman', [
-      'Pompey is dead in Egypt, but his cause is not. <b>Metellus Scipio</b>, <b>Titus Labienus</b> (once your fellow legate in Gaul) and <b>King Juba</b> hold Africa with fourteen legions and the elephants. In 46 BC Caesar lands with too few men, and you with him.',
-      'Then <b>Pompey\'s sons</b> raise Spain, and the last battle of the civil war waits at <b>Munda</b>.',
-      'The enemy fights exactly as you do. But Romans do not want to kill Romans: a <b>wavering Pompeian cohort may come over to you</b> in battle. Your goodwill is now your <b>name for clemency</b>: release prisoners and keep it high, and more of them will.',
-      'Elephants again at Thapsus: missiles and <b>Open Ranks</b>. And watch your own veterans; they are impatient.'
-    ], 'To Africa');
+        '46 BC: <b>Scipio</b>, <b>Labienus</b> and <b>King Juba</b> hold Africa. Then <b>Pompey\'s sons</b> raise Spain, and the war ends at <b>Munda</b>.',
+        'Wavering Pompeian cohorts may <b>come over to you</b>. Release prisoners to keep your name for clemency high, and more will.',
+        'Elephants again at Thapsus. Watch your own veterans: they are impatient.'
+      ], 'To Africa');
   }
   show('screen-map');
 }
@@ -233,10 +228,9 @@ function startCoach() { stopCoach(); coach = new Coach(battle); coach.start(); }
 function stopCoach() { if (coach) { coach.stop(); coach = null; } }
 function showManagementIntro() {
   inform('Army management', [
-    'This is your <b>campaign map</b>. Each battle is a place on the real map of Gaul; the glowing marker is your next fight.',
-    '<b>Make camp</b> to prepare before the battle: there is no time limit, only your denarii, supplies and men. Your camp is a drawn fort: each building is one activity. You start with one building and a new one is built after every battle you win or draw.',
-    'Your <b>background</b> (shown on the map screen) affects how fast wounded men recover, how much your army eats, and how much plunder you win.',
-    'Winning or drawing a battle brings spoils, experience and new units. You can always <b>March at once</b> if you are ready.'
+    'This is your <b>campaign map</b>. The glowing marker is your next battle.',
+    '<b>Make camp</b> to prepare: no time limit, only denarii, supplies and men. A new building appears after every battle you win or draw.',
+    'Or <b>March at once</b> when you are ready.'
   ], 'Begin the campaign');
 }
 

@@ -2,11 +2,11 @@
 // Numbers are multipliers on the plain battle rules (the sim reads them; the renderer draws them).
 export const WEATHER = {
   clear: { name: 'Clear', text: 'A clear day. Nothing to hinder either army.', speed: 1, cav: 1, missile: 1, charge: 1, sight: 1 },
-  rain:  { name: 'Rain', text: 'Steady rain. The ground turns to mud: marches are slower and horse charges lose their weight; wet bowstrings and sling-cords shorten missile fire.', speed: 0.9, cav: 0.9, missile: 0.8, charge: 0.9, sight: 0.85 },
-  fog:   { name: 'Fog', text: 'A thick morning fog. You will not see the enemy until he is close, and missile fire is hard to aim. Scouts and high ground matter more than ever.', speed: 1, cav: 1, missile: 0.85, charge: 1, sight: 0.5 },
-  storm: { name: 'Storm', text: 'A storm is building. Mud slows every march, missiles are all but useless in the wind and any river will rise: after a time the fords become deep and dangerous.', speed: 0.85, cav: 0.85, missile: 0.55, charge: 0.85, sight: 0.75, floodAt: 100, floodSecs: 80 },
-  heat:  { name: 'Scorching heat', text: 'A white-hot sky over open ground. Everyone but men born to it (Numidians, steppe riders) tires about 40% faster, marching or fighting: rest the line and keep a reserve fresh.', speed: 0.97, cav: 1, missile: 1, charge: 1, sight: 1.1, fatigue: 1.4 },
-  frost: { name: 'Hard frost', text: 'A hard frost has frozen the rivers. Water can be crossed on the ice, though slowly, and the cold slows every march a little.', speed: 0.95, cav: 0.9, missile: 1, charge: 0.95, sight: 1, ice: true }
+  rain:  { name: 'Rain', text: 'Mud slows marches and horse charges; wet strings weaken missiles.', speed: 0.9, cav: 0.9, missile: 0.8, charge: 0.9, sight: 0.85 },
+  fog:   { name: 'Fog', text: 'You see the enemy only up close, and missiles miss more.', speed: 1, cav: 1, missile: 0.85, charge: 1, sight: 0.5 },
+  storm: { name: 'Storm', text: 'Mud slows everything, missiles are nearly useless, and the fords flood after a while.', speed: 0.85, cav: 0.85, missile: 0.55, charge: 0.85, sight: 0.75, floodAt: 100, floodSecs: 80 },
+  heat:  { name: 'Scorching heat', text: 'Everyone but Numidians and steppe riders tires 40% faster. Rest the line.', speed: 0.97, cav: 1, missile: 1, charge: 1, sight: 1.1, fatigue: 1.4 },
+  frost: { name: 'Hard frost', text: 'Rivers are frozen: cross on the ice, slowly. Marches are a little slower.', speed: 0.95, cav: 0.9, missile: 1, charge: 0.95, sight: 1, ice: true }
 };
 // Weather odds for each campaign battle (the prologue is always clear).
 const ODDS = {
