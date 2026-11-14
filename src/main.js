@@ -196,7 +196,7 @@ function startBattle(scn) {
   store.set(preKey(c.slot), c);
   show('screen-battle');
   const low = c.supplies < totalMen(c) / 60 * 2, m = modsOf(c), opening = scn.id === 'prologue', extras = battleExtras(c, scn);
-  battle.start(scn, romeSpecs(c, scn), { difficulty: opening ? 'easy' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale + extras.moraleAdd, typeScale: extras.typeScale, legates: extras.legates, sight: extras.sight, orders: c.doctrines || [], scouted: !!c.scouted, forceScale: forceScale(c, scn), weather: opening ? 'clear' : pickWeather(scn, c), messengers: !opening && gameOpts.messengers }, (res) => showResult(res, scn));
+  battle.start(scn, romeSpecs(c, scn), { difficulty: opening ? 'easy' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale + extras.moraleAdd, typeScale: extras.typeScale, legates: extras.legates, sight: extras.sight, orders: c.doctrines || [], scouted: !!c.scouted, forceScale: forceScale(c, scn), healL5: (c.hospital || 0) >= 5, weather: opening ? 'clear' : pickWeather(scn, c), messengers: !opening && gameOpts.messengers }, (res) => showResult(res, scn));
   if (opening) startCoach(); else stopCoach();
 }
 
