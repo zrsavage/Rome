@@ -37,6 +37,10 @@ const SUBJECT = {
   lancer: 'Sarmatian noble lancer of the 1st century BC: horse and rider in scale armour, conical iron helmet, very long two-handed lance (kontos); NOT medieval knight, NO stirrups',
   chariot: 'Pontic scythed chariot, 47 BC: two horses abreast, small open car with one driver, long curved scythe blades on the axle ends, charging in a cloud of dust',
   pomp_levy: `Raw Pompeian legionary levy raised in Spain, 45 BC: Roman kit (bronze helmet, mail or leather, oval scutum, pilum) worn by young, nervous recruits; blue-grey shields. NOT segmentata`,
+  scorpion: 'Roman scorpio bolt-thrower of the late Republic on a tripod stand, two torsion springs, wooden frame, crew of two legionaries; NOT a medieval crossbow',
+  galatian: 'Galatian legionary of King Deiotarus, 48 BC: Celtic features, armed and drilled as a Roman legionary (bronze helmet, mail, oval scutum, pilum)',
+  caetrati: 'Spanish caetratus, 45 BC: light infantry, short white tunic with red border, small round caetra shield, falcata sword, javelins; NOT medieval',
+  moor_cav: 'Moorish (Mauretanian) light horseman of 46 BC riding bareback with a neck rope, small round shield, javelins; NOT Arab, NOT medieval',
   britons: 'British warrior of 55-54 BC: long hair, moustache, checked cloak and trousers, long oval or rectangular shield, spear and long sword; NO woad body paint, NOT Viking',
   brit_cav: 'British horseman of 54 BC, like a Gallic horseman: checked cloak, spear, oval shield, small horse; NO woad, NOT Viking',
   brit_chariot: 'British war chariot of 54 BC: light two-wheeled wicker-sided chariot pulled by two small ponies, a driver and a spear-armed warrior who leaps down to fight; NO scythes'

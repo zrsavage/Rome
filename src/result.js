@@ -9,7 +9,7 @@ import { DECORATIONS } from './heroes.js';
 const TITLE = { victory: 'Victory', draw: 'Draw', defeat: 'Defeat' };
 const tile = (big, small, cls = '') => `<div class="rtile ${cls}"><b>${big}</b><span>${small}</span></div>`;
 
-export function resultHtml({ res, o, flavour, banner, spoils, mid, practice, picks = [], pris = [], notes = [], contLabel, extraButtons = '' }) {
+export function resultHtml({ res, o, flavour, banner, spoils, mid, practice, picks = [], pris = [], notes = [], contLabel, extraButtons = '', history = null }) {
   const lost = res.rows.reduce((a, r) => a + r.casualties, 0), start = res.rows.reduce((a, r) => a + r.startMen, 0) || 1;
   const kills = res.rows.reduce((a, r) => a + r.kills, 0), mm = `${Math.floor(res.time / 60)}:${String(Math.floor(res.time % 60)).padStart(2, '0')}`;
   const tiles = [
@@ -17,6 +17,7 @@ export function resultHtml({ res, o, flavour, banner, spoils, mid, practice, pic
     tile(`${lost}`, `your men lost (${Math.round(100 * lost / start)}%)`, lost / start > 0.3 ? 'bad' : ''),
     tile(`${res.enemyDead}`, `of ${res.enemyStart} enemy fell`, 'good'),
     res.prisoners ? tile(`${res.prisoners}`, 'prisoners taken') : '',
+    res.captured && (res.captured.mail || res.captured.arms || res.captured.horses) ? tile(`${res.captured.arms}`, `weapons taken, ${res.captured.mail} mail, ${res.captured.horses} horses`) : '',
     !practice && !mid && o !== 'defeat' ? tile(`+${spoils.gold}`, `denarii, +${spoils.supplies} supplies, +${spoils.recruits} recruits`) : ''
   ].join('');
   const decisions = [
@@ -37,6 +38,7 @@ export function resultHtml({ res, o, flavour, banner, spoils, mid, practice, pic
   return `<div class="panel-page result">
     <div class="rhead"><img class="banner" alt="" src="${banner}"><div class="rtitle ${o}">${TITLE[o]}</div><p>${esc(flavour)}</p></div>
     <div class="rtiles">${tiles}</div>
+    ${history ? `<div class="card rhist"><h4>What really happened</h4><p class="small">${esc(history.text)}</p>${history.romeLoss ? `<p class="small"><b>You lost ${lost} men; Caesar's army lost about ${history.romeLoss}.</b></p>` : ''}<p class="muted small">${esc(history.source)}. Ancient figures are often exaggerated.</p></div>` : ''}
     ${decisions ? `<div class="card rdecs">${decisions}</div>` : ''}
     <div class="rtabs" role="tablist">${tabs.map((t, i) => `<button role="tab" class="rtab ${i ? '' : 'on'}" data-tab="${t[0]}">${t[1]}</button>`).join('')}</div>
     ${tabs.map((t, i) => `<div class="rpanel card ${i ? 'hidden' : ''}" data-panel="${t[0]}">${t[2]}</div>`).join('')}

@@ -37,6 +37,8 @@ export const DOCTRINES = [
     text: 'A cohort set to rotate is relieved by a fresh one from behind as soon as it tires or wavers, without you giving the order. Select cohorts and press K.' },
   { id: 'wedge', name: 'The Wedge (cuneus)', key: 'U', wins: 5, trait: 'drill', req: 3, gold: 150,
     text: 'A narrow, deep column that hits much harder on the charge but is weaker on its flanks and slower. Press U before the charge.' },
+  { id: 'works', name: 'Fieldworks', key: 'Dig in (deployment)', wins: 2, trait: 'drill', req: 1, gold: 60,
+    text: 'When you are defending, cohorts can dig a ditch and rampart across their front during deployment (select them, then Dig in). Enemies crossing it are slowed, fight worse and cannot charge home; the men behind it take less from missiles. Up to half your infantry.' },
   { id: 'lanes', name: 'Open Ranks', key: '. (period)', wins: 7, trait: 'drill', req: 2, gold: 120,
     text: 'The cohort opens lanes between its maniples. A charging elephant runs down a lane and is speared from both sides, and terrifies the men far less. Any other enemy finds the gaps: about 20% more damage. Press . (period) to open and close.' },
   { id: 'orbis', name: 'The Orbis', key: 'O', wins: 6, trait: 'drill', req: 4, gold: 150,

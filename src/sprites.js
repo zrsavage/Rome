@@ -420,6 +420,20 @@ function britChariot(g, t, v) {
   ell(g, 12, C + 9, 4.6, 3.2, shade(t.color, 0.95), OUT, 1);                                                                // shield on the side
 }
 
+// A scorpio from above: a frame holding two torsion springs, two curved arms with the bowstring drawn back, a slider with a bolt pointing
+// forward, on a small tripod; the crew of two beside it.
+function scorpio(g, t, v) {
+  shadow(g);
+  for (const [x2, y2] of [[14, C - 12], [14, C + 12], [30, C]]) line(g, 30, C, x2, y2, '#5a4428', 2);                     // tripod legs
+  rect(g, 18, C - 2.5, 30, 5, WOOD, OUT, 1, 1.5);                                                                          // the slider
+  rect(g, 36, C - 8, 6, 16, '#6a4a22', OUT, 1.2, 1.5);                                                                     // the frame and springs
+  ell(g, 39, C - 6, 2.2, 2.2, '#3a2a14', null, 0, 0, false); ell(g, 39, C + 6, 2.2, 2.2, '#3a2a14', null, 0, 0, false);
+  g.strokeStyle = '#4a3016'; g.lineWidth = 2; g.beginPath(); g.moveTo(39, C - 8); g.quadraticCurveTo(33, C - 16, 27, C - 17); g.moveTo(39, C + 8); g.quadraticCurveTo(33, C + 16, 27, C + 17); g.stroke();   // the arms
+  line(g, 27, C - 17, 22, C, 'rgba(230,220,190,0.9)', 0.7); line(g, 27, C + 17, 22, C, 'rgba(230,220,190,0.9)', 0.7);   // the drawn string
+  line(g, 22, C, 54, C, '#3a2a14', 1.2); poly(g, [[57, C], [52, C - 1.8], [52, C + 1.8]], '#c9cdd2', OUT, 0.4);           // the bolt
+  for (const [cx, cy] of [[16, C - 15], [18, C + 15]]) { ell(g, cx, cy, 4.6, 6, shade('#a8281f', 0.92 + v * 0.05), OUT, 1); ell(g, cx + 1, cy, 3, 3, BRONZE, OUT, 0.8); }   // two crewmen
+}
+
 const PAINT = {
   legionary: (g, t, v, a) => roman(g, t, v, a), aux_inf: (g, t, v) => aux(g, t, v), slinger: (g, t, v) => slinger(g, t, v), archer: (g, t, v) => archer(g, t, v),
   warband: (g, t, v) => gaul(g, t, v, 'warband'), gaul_elite: (g, t, v) => gaul(g, t, v, 'elite'), gaul_skirm: (g, t, v) => gaul(g, t, v, 'skirm'),
@@ -427,6 +441,7 @@ const PAINT = {
   baggage: (g, t, v) => wagon(g, t, v), antesignani: (g, t, v, a) => roman(g, t, v, a),
   suebi: (g, t, v) => german(g, t, v), german_cav: (g, t, v) => germanHorse(g, t, v), laager: (g, t, v) => wagon(g, t, v),
   numid_cav: (g, t, v) => numidHorse(g, t, v), numid_inf: (g, t, v) => numidFoot(g, t, v), elephant: (g, t, v) => elephant(g, t, v), pompeian: (g, t, v, a) => roman(g, t, v, a),
+  scorpion: (g, t, v) => scorpio(g, t, v), galatian: (g, t, v, a) => roman(g, t, v, a), caetrati: (g, t, v) => numidFoot(g, t, v), moor_cav: (g, t, v) => numidHorse(g, t, v),
   britons: (g, t, v) => gaul(g, t, v, 'warband'), brit_cav: (g, t, v) => horseman(g, t, v, true, false), brit_chariot: (g, t, v) => britChariot(g, t, v),
   pomp_cav: (g, t, v) => horseman(g, t, v, false, true), pomp_missile: (g, t, v) => archer(g, t, v), pontic: (g, t, v, a) => roman(g, t, v, a), pomp_levy: (g, t, v, a) => roman(g, t, v, a),
   horse_archer: (g, t, v) => steppeArcher(g, t, v), lancer: (g, t, v) => steppeLancer(g, t, v), chariot: (g, t, v) => scythedChariot(g, t, v),

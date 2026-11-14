@@ -1,5 +1,5 @@
 // Campaign state: cohorts, officers, resources. Plain JSON so it saves to localStorage.
-import { XP_LEVELS, SCENARIOS, WORLD, START_TYPES, TYPE_UNLOCKS, UNIT_TYPES, actLabel } from './data.js';
+import { XP_LEVELS, SCENARIOS, WORLD, START_TYPES, TYPE_UNLOCKS, UNIT_TYPES, actLabel, EVERYWHERE, regionalExtras } from './data.js';
 import { PERKS } from './perks.js';
 import { promote } from './officers.js';
 import { levelFor } from './sim.js';
@@ -66,7 +66,11 @@ export function forceScale(c, scn) {
   const surprise = c.surprise && c.surprise === (scn.id || '').split(':')[0] ? 0.9 : 1;
   return Math.max(0.3, Math.min(20, baseStrength(c) * postureOf(scn).ratio * (scn.odds || 1) * surprise / auth));   // scn.odds: a hand-tuned nudge for a fight that plays harder than its posture
 }
-export const unlockedTypes = (c) => c.unlockedTypes || START_TYPES;
+// What can be raised now: the types the campaign has unlocked that are available where the army is, plus that region's local troops.
+export function unlockedTypes(c) {
+  const base = c.unlockedTypes || START_TYPES, scn = SCENARIOS[Math.min(c.scenario || 0, SCENARIOS.length - 1)], local = regionalExtras(scn);
+  return [...base.filter(t => EVERYWHERE.includes(t) || local.includes(t)), ...local.filter(t => !base.includes(t))];
+}
 
 export function newCampaign(difficulty = 'normal') {
   return {
@@ -155,6 +159,10 @@ export function applyResult(c, result, scn) {
   result.honours = awardHonours(c, result, scn.phaseName || scn.name);
   c.lastLoss = result.rows.reduce((x, r) => x + r.casualties, 0); c.lastBack = result.rows.reduce((x, r) => x + Math.max(0, r.endMen - (r.startMen - r.casualties)), 0);
   c.gold += result.spoils.gold; c.supplies += result.spoils.supplies;
+  if (result.captured && (result.captured.mail || result.captured.arms || result.captured.horses)) {     // the stripped field goes into the stores
+    const st = c.captured = c.captured || { mail: 0, arms: 0, horses: 0 }; for (const k of ['mail', 'arms', 'horses']) st[k] += result.captured[k] || 0;
+    notes.push(`Taken from the field: ${result.captured.mail} mail shirts, ${result.captured.arms} weapons and ${result.captured.horses} horses. The armourer and the barracks can use them.`);
+  }
   if (result.baggageLost) { const lost = Math.round(c.supplies * 0.25); c.supplies -= lost; notes.push(`Your baggage train was taken: ${lost} supplies are lost with it.`); }
   if (result.wagonsTaken) notes.push(`${result.wagonsTaken} enemy wagon camp${result.wagonsTaken > 1 ? 's were' : ' was'} taken: grain and plunder for the army.`);
   // a battle fought in stages: between stages there is no camp, no levy and no rest, only the wounded who can still stand

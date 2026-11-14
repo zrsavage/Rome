@@ -61,6 +61,32 @@ export const UNIT_TYPES = {
     speed: 56, turn: 2.5, morale: 56, charge: 1.7, space: 3.2, fragile: 1.1,
     color: '#2a4a8c', trim: '#d8d2b0', blurb: 'Noble horsemen, quick to hit your rear.'
   },
+  // Scorpiones: torsion bolt-throwers worked by a small crew. Caesar used them from his ships at the landing in Britain (Gallic War IV.25) and on
+  // his siege lines. Long range, bolts that go through shields and mail, deadly into a packed mass; slow, and they must be set up after each move.
+  scorpion: {
+    name: 'Scorpiones (bolt-throwers)', side: 'rome', cat: 'ranged', perDot: 4, atk: 0.01, def: 0.1, engine: true, setup: 5, pierce: 0.5, vsDense: 1.5,
+    speed: 13, turn: 1.1, morale: 52, charge: 0, range: 230, rate: 0.065, ammo: 45, space: 2.2, fragile: 1.2,
+    cost: 120, color: '#8a5a2a', trim: '#e8c36a', blurb: 'Bolt-throwers: the longest range on the field and bolts that pierce armour, deadliest into packed infantry. Slow, 5 seconds to set up after moving, helpless if reached.'
+  },
+  // ----- Regional recruits (raised only where the army is) -----
+  // King Deiotarus of Galatia armed and drilled his men as Roman legions; two of them fought for Calvinus (Bellum Alexandrinum 34).
+  galatian: {
+    name: 'Galatian Legionaries', side: 'rome', cat: 'inf', perDot: 8, atk: 0.054, def: 0.36, pilum: 1,
+    speed: 22, turn: 1.7, morale: 60, charge: 0.6, space: 1, fragile: 1.0, antiCharge: 0.15,
+    cost: 50, color: '#9a3a2e', trim: '#e8c36a', blurb: "King Deiotarus' Galatians, armed and drilled as Romans. Solid, but greener than your legions."
+  },
+  // Spanish light foot: the caetra, a small round shield, the falcata and javelins. Quick and hard to pin down.
+  caetrati: {
+    name: 'Spanish Caetrati', side: 'rome', cat: 'inf', perDot: 8, atk: 0.055, def: 0.16, pilum: 1,
+    speed: 30, turn: 2.0, morale: 56, charge: 0.85, space: 1.3, fragile: 1.1,
+    cost: 38, color: '#c8b48a', trim: '#a8281f', blurb: 'Spanish light infantry with small round shields, javelins and the curved falcata. Fast flankers and skirmishers.'
+  },
+  // King Bogud of Mauretania and the adventurer Sittius fought for Caesar in Africa and Spain, 46-45 BC: Moorish light horse.
+  moor_cav: {
+    name: 'Moorish Horse', side: 'rome', cat: 'cav', perDot: 4, atk: 0.055, def: 0.12, native: true,
+    speed: 64, turn: 3.0, morale: 54, charge: 0.9, range: 70, rate: 0.02, ammo: 45, space: 3.0, fragile: 1.15,
+    cost: 65, color: '#b4783a', trim: '#e8c36a', blurb: "Light javelin horse from Caesar's Moorish allies. They throw from range; hold them still to shoot, keep them out of the melee."
+  },
   // ----- Side act: Britannia, 55-54 BC -----
   // Britons fought much as Gauls did, with one difference Caesar describes at length (Gallic War IV.33): two-wheeled war chariots. They drive
   // along the line throwing javelins, the warriors leap down to fight on foot, and the drivers wait close by to carry them off if pressed.
@@ -184,12 +210,40 @@ export const RAISE = {
   equites: { men: 50, max: 60, gold: 300, supplies: 20 },
   archer: { men: 100, max: 130, gold: 200, supplies: 12 },
   aux_cav: { men: 50, max: 70, gold: 240, supplies: 15 },
-  aux_inf: { men: 250, max: 350, gold: 340, supplies: 30 }
+  aux_inf: { men: 250, max: 350, gold: 340, supplies: 30 },
+  galatian: { men: 300, max: 450, gold: 330, supplies: 30 },
+  caetrati: { men: 250, max: 350, gold: 260, supplies: 20 },
+  moor_cav: { men: 60, max: 80, gold: 260, supplies: 15 },
+  scorpion: { men: 40, max: 40, gold: 420, supplies: 30 }
+};
+// What really happened at the named battles, shown on the result screen beside your own result. Ancient figures are given as the sources
+// state them, and they are often exaggerated; romeLoss is the Roman loss in men where a source gives one.
+export const HISTORY = {
+  bibracte: { text: 'Caesar beat the Helvetii from midday until evening, with the hardest fighting at their wagon laager after dark. He does not give his own losses, but he stayed three days to bury the dead and tend the wounded. Of the 368,000 Helvetii and allies who set out, he says 110,000 went home.', source: 'Caesar, Gallic War I.24-29' },
+  ariovistus: { text: 'The German line broke after hard fighting, Publius Crassus saving the Roman left with the third line. The Germans fled about fifty miles to the Rhine; Ariovistus escaped in a small boat. Later writers put the German dead at 80,000. Roman losses are not recorded.', source: 'Caesar, Gallic War I.51-53; Plutarch, Caesar 19' },
+  cassivellaunus: { text: "Caesar forced the staked ford of the Thames and stormed Cassivellaunus' stronghold in the woods, taking many prisoners and cattle. Cassivellaunus gave hostages and agreed to a yearly tribute, and Caesar left Britain before the autumn storms. No Roman losses are recorded.", source: 'Caesar, Gallic War V.18-23' },
+  bagradas: { text: "Juba's army surrounded Curio's on the plain. Curio refused to leave his men and died fighting; almost the whole army was killed or taken. A few horsemen and the men left in camp escaped to the ships, and many of those were captured too. Your result here is better than history's if anyone came home at all.", source: 'Caesar, Civil War II.39-44' },
+  pharsalus: { text: "Caesar's fourth line routed Pompey's cavalry and then fell on his left; Pompey fled to Egypt, where he was murdered. Caesar says he lost about 200 men and 30 centurions, and that 15,000 Pompeians were killed and 24,000 surrendered.", source: 'Caesar, Civil War III.88-99', romeLoss: 200 },
+  nicopolis: { text: "Calvinus' attack failed. The legion raised in Pontus was almost destroyed and the allied Galatian legions fled; the veteran Thirty-Sixth fell back in good order with the loss of fewer than 250 men. Pharnaces took back Pontus, until Caesar came.", source: 'Bellum Alexandrinum 39-40' },
+  zela: { text: "Pharnaces' army charged uphill at Caesar's half-built camp, scythed chariots first, and was routed in about four hours. Pharnaces fled to the Bosporus and was killed there soon afterwards. Caesar summed it up in three words: veni, vidi, vici.", source: 'Bellum Alexandrinum 74-77; Suetonius, Julius 37' },
+  ruspina: { text: "Labienus surrounded Caesar's foraging force on the plain. Caesar extended his line and turned every other cohort about, broke out by charging both ways at once, and got back to camp by nightfall. Losses on both sides were light.", source: 'Bellum Africum 11-18' },
+  thapsus: { text: "Caesar's veterans charged before the order; the elephants, panicked by slingers and archers, wrecked their own left. The Pompeian army collapsed and many who tried to surrender were cut down. Ancient writers claim 10,000 Pompeians killed for about 50 of Caesar's men.", source: 'Bellum Africum 79-86; Plutarch, Caesar 53', romeLoss: 50 },
+  munda: { text: "The hardest battle of the war: the lines fought evenly for hours until Labienus' move to meet Bogud's horse was taken for a retreat. Labienus and some 30,000 Pompeians died; Gnaeus Pompeius was caught and killed weeks later. Caesar lost about 1,000 killed and 500 wounded.", source: 'Bellum Hispaniense 30-31', romeLoss: 1000 }
 };
 // How an act is named on screen: the side act is not numbered.
 export const actLabel = (a) => a === 'B' ? 'Side act: Britannia' : `Act ${a}`;
 export const START_TYPES = ['legionary', 'slinger', 'equites'];
-export const TYPE_UNLOCKS = { arar: ['aux_cav'], convoy: ['archer'], oppidum: ['aux_inf'] };
+// Where the army is decides who can be raised. Legionaries, slingers, archers, equites and Gallic horse go everywhere; local troops only locally.
+export const REGION_NAMES = { gaul: 'Gaul', africa: 'Africa', greece: 'Greece', east: 'Pontus and Armenia', spain: 'Spain' };
+export const RECRUITS = { gaul: ['aux_inf'], africa: [], greece: [], east: ['galatian'], spain: ['caetrati'] };   // Deiotarus' Galatians fought for Pompey at Pharsalus: none in Greece
+export const EVERYWHERE = ['legionary', 'slinger', 'archer', 'equites', 'aux_cav', 'scorpion'];
+export function regionOf(scn) {
+  const th = (scn && scn.theater) || 'Gaul';
+  return th === 'Africa' ? 'africa' : th === 'Hispania' ? 'spain' : th === 'Greece' ? 'greece' : ['Pontus', 'Armenia Minor'].includes(th) ? 'east' : 'gaul';
+}
+// troops a region offers on top of the usual ones (Bogud's Moors only once Caesar himself is in Africa, 46 BC)
+export const regionalExtras = (scn) => { const r = regionOf(scn); return r === 'africa' && scn && scn.act === 'V' ? ['moor_cav'] : RECRUITS[r]; };
+export const TYPE_UNLOCKS = { arar: ['aux_cav'], convoy: ['archer'], oppidum: ['aux_inf'], landing: ['scorpion'], anquillaria: ['scorpion'] };   // bolt-throwers after the landing in Britain, or the first fight in Africa
 
 export const DIFFICULTY = {
   easy:      { name: 'Tiro',       enemyMult: 0.8,  enemyMorale: -6, romeMorale: 8,  officerRisk: 0.0,  reward: 0.9,  desc: 'Forgiving. Officers cannot die.' },

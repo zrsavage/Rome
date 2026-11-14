@@ -409,3 +409,5 @@ input.mslide{width:100%;accent-color:#e8c36a;height:6px;cursor:pointer}
 .heroes>span{grid-column:1/-1}
 .pill.dec{border-color:#c9a24a;color:#e8c36a}
 .odds{height:10px;margin:8px 0 6px;border-radius:5px;background:#3f5f9a;overflow:hidden;border:1px solid var(--line)}.odds i{display:block;height:100%;background:#b3261e}
+.rhist{margin:12px 0;border-left:3px solid var(--gold)}.rhist h4{margin:0 0 6px;color:var(--gold)}
+.capbtn{display:block;width:100%;margin-top:4px;font-size:12px;padding:4px 8px}
