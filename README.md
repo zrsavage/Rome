@@ -321,3 +321,14 @@ do not all pile onto the same cohort. Wings and the champions' reserve still act
   and, with drill 3 or more, Drillmaster (15% less fatigue). Traits apply only to cohorts of his legion inside his ring. The Officers' tent shows them.
 - **What really happened:** after each named battle a card gives the historical outcome, the source (Caesar, the Alexandrian, African and
   Spanish Wars) and, where an ancient figure exists, your losses against Caesar's.
+
+## Field hospital, medici and deployment (v0.8)
+- **Medici (orderlies):** with a level 3 hospital you can train teams of 30 orderlies (260 denarii, 30 supplies, one unit of command).
+  They do not fight. Any friendly unit that loses men inside a team's ring (green, 150 paces) gets an extra 35% of those men back after the
+  battle (15% in a defeat), on top of the usual recovery. Left alone, a team walks up behind the nearest unit in melee and runs for cover
+  behind a friendly unit when an enemy comes within 60 paces; a move order is obeyed first, and Hold keeps it still. In bot tests at
+  Bibracte one team saved about 100 men a battle. The result screen shows how many they saved.
+- **Treat the badly wounded:** once per camp, the hospital's surgeons can save 15% of the men lost in the last battle that did not return
+  (more with Medicine in your career), for 2 denarii and half a supply each. They join the veterans waiting at the Barracks.
+- **Every unit type now deploys:** scorpiones, Galatians, caetrati and Moorish horse were left out of the battle line by mistake; they now
+  take their places (infantry in the line, missile troops behind, horse on the wings, medici at the rear).

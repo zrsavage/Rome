@@ -17,6 +17,7 @@ export function resultHtml({ res, o, flavour, banner, spoils, mid, practice, pic
     tile(`${lost}`, `your men lost (${Math.round(100 * lost / start)}%)`, lost / start > 0.3 ? 'bad' : ''),
     tile(`${res.enemyDead}`, `of ${res.enemyStart} enemy fell`, 'good'),
     res.prisoners ? tile(`${res.prisoners}`, 'prisoners taken') : '',
+    res.healed ? tile(`${res.healed}`, 'wounded saved by the medici') : '',
     res.captured && (res.captured.mail || res.captured.arms || res.captured.horses) ? tile(`${res.captured.arms}`, `weapons taken, ${res.captured.mail} mail, ${res.captured.horses} horses`) : '',
     !practice && !mid && o !== 'defeat' ? tile(`+${spoils.gold}`, `denarii, +${spoils.supplies} supplies, +${spoils.recruits} recruits`) : ''
   ].join('');

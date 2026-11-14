@@ -112,13 +112,15 @@ export function romeSpecs(c, scn) {
 function cohortSpecs(c, scn) {
   const d = scn?.deploy || { mode: 'line', cx: 800, cy: 880 };
   const live = c.cohorts.filter(h => h.men > 0);
-  const inf = live.filter(h => h.type === 'legionary' || h.type === 'aux_inf');
-  const ranged = live.filter(h => h.type === 'slinger' || h.type === 'archer');
-  const cav = live.filter(h => h.type === 'equites' || h.type === 'aux_cav');
+  const cat = (h) => (UNIT_TYPES[h.type] || {}).cat;                        // every kind deploys: legions first, then allies and regional troops
+  const inf = live.filter(h => cat(h) === 'inf').sort((a, b) => (b.type === 'legionary') - (a.type === 'legionary'));
+  const ranged = live.filter(h => cat(h) === 'ranged');
+  const cav = live.filter(h => cat(h) === 'cav');
+  const medics = live.filter(h => UNIT_TYPES[h.type] && UNIT_TYPES[h.type].medic);
   const specs = [];
   const mk = (h, x, y) => specs.push({ type: h.type, name: h.name, cohortId: h.id, men: h.men, maxMen: h.maxMen, xp: h.xp, drill: h.drill, condition: h.condition, officer: officerById(c, h.officerId), upg: h.upg, ups: h.ups, moraleBonus: decoMorale(h), x, y, f: d.f, stance: 'aggressive' });
   if (d.mode === 'grid') {
-    [...inf, ...ranged, ...cav].forEach((h, i) => { const col = i % d.cols, row = Math.floor(i / d.cols); mk(h, d.cx + (col - (d.cols - 1) / 2) * d.dx, d.cy + row * d.dy); });
+    [...inf, ...ranged, ...cav, ...medics].forEach((h, i) => { const col = i % d.cols, row = Math.floor(i / d.cols); mk(h, d.cx + (col - (d.cols - 1) / 2) * d.dx, d.cy + row * d.dy); });
     return specs;
   }
   if (inf.length > 12 || ranged.length > 14 || cav.length > 8) {
@@ -129,6 +131,7 @@ function cohortSpecs(c, scn) {
     ranged.forEach((h, i) => { const r = Math.floor(i / 14), k = i % 14, cnt = Math.min(14, ranged.length - r * 14); mk(h, d.cx + (k - (cnt - 1) / 2) * 80, cy + rowsI * 85 + 20 + r * 70); });
     const half = (Math.min(perRow, n) - 1) / 2 * sp + 120;
     cav.forEach((h, i) => { const side = i % 2 ? 1 : -1, idx = Math.floor(i / 2); mk(h, d.cx + side * (half + Math.floor(idx / 4) * 80), cy + 20 + (idx % 4) * 60); });
+    medics.forEach((h, i) => mk(h, d.cx + (i - (medics.length - 1) / 2) * 260, cy + rowsI * 85 + rowsR * 70 + 30));
     return specs;
   }
   const sp = 100, n = inf.length, front = n <= 4 ? n : Math.ceil(n / 2), back = n - front;
@@ -139,6 +142,7 @@ function cohortSpecs(c, scn) {
   ranged.forEach((h, i) => mk(h, d.cx + (i - (ranged.length - 1) / 2) * 80, d.cy + (back ? 170 : 58)));
   const half = Math.max(0, (front - 1) / 2) * sp + 110;
   cav.forEach((h, i) => mk(h, d.cx + (i % 2 ? 1 : -1) * (half + Math.floor(i / 2) * 75), d.cy + 25));
+  medics.forEach((h, i) => mk(h, d.cx + (i - (medics.length - 1) / 2) * 260, d.cy + (back ? 240 : 130)));
   return specs;
 }
 

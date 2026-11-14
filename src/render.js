@@ -541,7 +541,7 @@ export class Renderer {
   }
   drawRange(ctx, u) {
     const t = u.type, ext = Math.max(u.w, u.d) / 2; let r = null, col = 'rgba(255,255,255,0.35)';
-    if (t.range) r = t.range + ext; else if (t.cat === 'cav') { r = 110 + ext; col = 'rgba(255,170,120,0.35)'; } else if (t.pilum && u.pilumLeft > 0) { r = 30 + ext; col = 'rgba(255,225,150,0.4)'; }
+    if (t.heal) { r = t.heal + ext; col = 'rgba(120,220,140,0.45)'; } else if (t.range) r = t.range + ext; else if (t.cat === 'cav') { r = 110 + ext; col = 'rgba(255,170,120,0.35)'; } else if (t.pilum && u.pilumLeft > 0) { r = 30 + ext; col = 'rgba(255,225,150,0.4)'; }
     if (!r) return;
     ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.setLineDash([5, 6]); ctx.beginPath(); ctx.arc(u.x, u.y, r, 0, 7); ctx.stroke(); ctx.setLineDash([]);
   }
