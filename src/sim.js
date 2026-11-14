@@ -200,9 +200,38 @@ export class Battle {
     if (!live.length && !this._lgDown) { this._lgDown = true; for (const u of this.units) if (u.side === 'gaul' && u.active) u.morale -= 10; this.say('The wagon laager is overrun - the Germans have lost their last refuge!', 'good'); this.mark('laager', 'The wagon laager is overrun', 'gaul'); }
   }
   // ----- the baggage train: units beside it refill; losing it costs you -----
+  // Is this unit inside the ring of a working team of medici? Checked at most twice a second per unit.
+  medicCover(u) {
+    if ((u.medT || -1) > this.t) return u.medOn; u.medT = this.t + 0.5;
+    u.medOn = this.units.some(m => m.type.medic && m.side === u.side && m.active && m.state !== 'routing' && m !== u && Math.hypot(m.x - u.x, m.y - u.y) < m.type.heal + Math.max(u.w, u.d) / 2);
+    return u.medOn;
+  }
+  // Medici left to themselves follow the fight: every two seconds an idle team walks up behind the nearest friendly unit in melee, so
+  // the men it loses are inside the ring. A player's move order is obeyed first; Hold keeps them where they are.
+  updateMedici(dt) {
+    this.medT = (this.medT || 0) - dt; if (this.medT > 0 || this.deploying) return; this.medT = 1;
+    for (const m of this.units) {
+      if (!m.type.medic || !m.active || m.state === 'routing' || m.contacts.some(e => e.active)) continue;
+      const near = this.nearestEnemy(m, (e) => e.active && e.state !== 'routing' && e.state !== 'surrendered');   // enemies close: carry the wounded back out of reach
+      if (near && near.gap < 60 && (m.order.kind === 'none' || m.order.auto)) {
+        let shel = null, sd = 1e9;                                     // run for shelter behind the nearest friendly fighting unit that is not itself beset
+        for (const u of this.units) if (u.side === m.side && u.active && !u.type.medic && u.type.cat !== 'train' && u.state !== 'routing') { const d = Math.hypot(u.x - m.x, u.y - m.y), de = Math.hypot(u.x - near.e.x, u.y - near.e.y); if (d < sd && de > 80) { sd = d; shel = u; } }
+        const a = Math.atan2(m.y - near.e.y, m.x - near.e.x), tx = shel ? shel.x - Math.cos(shel.f) * (shel.d / 2 + 40) : m.x + Math.cos(a) * 140, ty = shel ? shel.y - Math.sin(shel.f) * (shel.d / 2 + 40) : m.y + Math.sin(a) * 140;
+        this.setMove(m, tx, ty, m.f); m.order.auto = true; continue;
+      }
+      if (m.stance === 'hold' || !(m.order.kind === 'none' || m.order.auto) || (this.t % 2) > 1) continue;
+      let best = null, bd = 1e9;
+      for (const u of this.units) if (u.side === m.side && u.active && !u.type.medic && u.type.cat !== 'train' && u.contacts.some(e => e.active)) { const d = Math.hypot(u.x - m.x, u.y - m.y); if (d < bd) { bd = d; best = u; } }
+      if (!best) continue;
+      const back = best.d / 2 + 55, tx = best.x - Math.cos(best.f) * back, ty = best.y - Math.sin(best.f) * back;
+      if (Math.hypot(tx - m.x, ty - m.y) < 35) continue;
+      if (this.units.some(e => e.side !== m.side && e.active && Math.hypot(e.x - tx, e.y - ty) < 30 + Math.max(e.w, e.d) / 2)) continue;   // not into the press itself
+      this.setMove(m, tx, ty, best.f); m.order.auto = true;
+    }
+  }
   updateSupply(dt) {
     this.supT = (this.supT || 0) - dt; if (this.supT > 0) return; this.supT = 1;
-    const bags = this.units.filter(u => u.side === 'rome' && u.type.cat === 'train');
+    const bags = this.units.filter(u => u.side === 'rome' && u.type.cat === 'train' && !u.type.medic);
     if (!bags.length) return;
     const live = bags.filter(u => u.active);
     if (!live.length) { if (!this.stats.baggageLost) { this.stats.baggageLost = true; for (const u of this.units) if (u.side === 'rome' && u.active) u.morale -= 3; this.say('Your baggage train is taken! No more ammunition, and the stores on it are lost.', 'bad'); this.mark('baggage', 'Your baggage train is taken', 'rome'); } return; }
@@ -658,7 +687,7 @@ export class Battle {
       if (avoid && e === avoid && this.units.some(o => o !== e && o.side !== u.side && o.active)) continue;   // blocked from that one: pick another
       let sc = this.gap(u, e) + this.rand() * 30;
       if (e.type.cat === 'ranged') sc -= 90;
-      if (e.type.cat === 'train') sc -= (this.style === 'cunning' ? 140 : 60);              // the wagons are the richest prize on the field
+      if (e.type.cat === 'train' && !e.type.medic) sc -= (this.style === 'cunning' ? 140 : 60);              // the wagons are the richest prize on the field
       if (e.flanked || e.surrounded) sc -= 60;
       if (e.formation !== 'normal') sc += 70;
       if (e.morale < e.maxMorale * 0.5) sc -= 40;
@@ -858,7 +887,7 @@ export class Battle {
   // ---------- main step ----------
   update(dt) {
     if (this.result) return;
-    this.t += dt; this.sampleReport(); this.recordFrame(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt); this.updateRotation(); this.runPending(); this.updateSupply(dt); this.stepLegates(dt);
+    this.t += dt; this.sampleReport(); this.recordFrame(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt); this.updateRotation(); this.runPending(); this.updateSupply(dt); this.updateMedici(dt); this.stepLegates(dt);
     for (const ev of this.events) if (!ev.done && this.t >= ev.at) { ev.done = true; this.runEvent(ev); }
     for (const r of this.reinf) if (!r.done && this.t >= r.at) {
       r.done = true;
@@ -992,7 +1021,7 @@ export class Battle {
       const ec = this.nearestEnemy(u, (e) => e.active && e.type.cat === 'cav' && e.spotted !== false); u.ccCd = this.t + 3;
       if (ec && ec.gap < 170 && ec.gap > 25 && (u.side !== 'gaul' || this.aiLevel >= 2)) { this.setAttack(u, ec.e, true); u.order.sprint = true; }
     }
-    if (u.order.kind === 'none' && u.stance === 'aggressive' && !engaged) {
+    if (u.order.kind === 'none' && u.stance === 'aggressive' && !engaged && !t.medic) {
       const n = this.nearestEnemy(u, (e) => e.active);
       const shooter = t.cat === 'ranged' || (t.range && u.ammo > 0);      // javelin horse with javelins left fight like missile troops
       const aggro = shooter ? t.range * 1.25 : 60;
@@ -1312,7 +1341,7 @@ export class Battle {
     cause = cause || (ranged ? 'missile' : 'frontal');
     const kk = this.stats.k[att.side]; kk[cause] = (kk[cause] || 0) + n;
     if (ranged && att.side === 'rome') this.stats.rangedKills += n;
-    def.men -= n; def.casualties += n; att.kills += n; def.shock = (def.shock || 0) + n / Math.max(1, def.maxMen) * 100; def.flash = 0.22; def.floatAcc = (def.floatAcc || 0) + n;
+    def.men -= n; def.casualties += n; if (def.side === 'rome' && this.medicCover(def)) def.tended = (def.tended || 0) + n; att.kills += n; def.shock = (def.shock || 0) + n / Math.max(1, def.maxMen) * 100; def.flash = 0.22; def.floatAcc = (def.floatAcc || 0) + n;
     let loss = n / def.maxMen * 130 * def.type.fragile * (ranged ? (def.type.panicky ? 1.4 : att.type.setup ? 0.85 : 0.55) : 1) * (def.type.big && cause === 'pilum' ? 0.4 : 1);   // missiles sting an elephant into panic
     if (def.officer) loss *= 1 - 0.04 * (def.officer.tactics || 0);
     if (def.temper === 'rash') loss *= 1.15; else if (def.temper === 'steady') loss *= 0.9;
@@ -1544,12 +1573,14 @@ export class Battle {
       if (u.side === 'rome' && !freed) { u.captured = u.men; u.casualties += u.men; u.men = 0; u.state = 'dead'; } else if (freed) u.state = 'idle';
     }
     for (const u of this.units) {
-      if (u.side !== 'rome' || u.parentId != null || u.type.cat === 'train') continue;
+      if (u.side !== 'rome' || u.parentId != null || (u.type.cat === 'train' && !u.type.medic)) continue;
       let survivors = u.men;
       if (u.state === 'routing' || (u.state === 'gone' && !u.exited)) survivors = Math.round(u.men * 0.5);
       const casualties = u.startMen - survivors;
       const recovered = Math.round(Math.max(0, casualties - (u.captured || 0)) * (outcome === 'defeat' ? 0.1 : 0.22) * this.recoveryMult);   // men led away as prisoners do not come back
-      const endMen = Math.min(u.maxMen, survivors + recovered);
+      const healed = Math.round(Math.min(u.tended || 0, Math.max(0, casualties - (u.captured || 0) - recovered)) * (outcome === 'defeat' ? 0.15 : 0.35));   // men hit near the medici
+      if (healed) this.stats.healed = (this.stats.healed || 0) + healed;
+      const endMen = Math.min(u.maxMen, survivors + recovered + healed);
       const xpMult = outcome === 'victory' ? 1 : outcome === 'draw' ? 0.75 : 0.5;
       const xpGain = Math.round((rw.xpBase * xpMult + u.kills * 0.3) * (u.state === 'routing' ? 0.6 : 1) * (u.perks.includes('mentor') ? 1.25 : 1));
       let fate = null;
@@ -1578,7 +1609,7 @@ export class Battle {
     const prisoners = (outcome === 'victory' ? Math.round(broken * 0.3) : outcome === 'draw' ? Math.round(broken * 0.08) : 0) + surrenderedFoes;   // and every enemy who surrendered
     const wagonsTaken = outcome === 'defeat' ? 0 : this.units.filter(u => u.side === 'gaul' && u.type.wagon && u.state === 'dead').length;
     this.result = {
-      outcome, time: this.t, rows, enemyDead, enemyStart, prisoners, captured: cap, wagonsTaken, baggageLost: !!this.stats.baggageLost, report: { wx: this.wxKey, series: this.rep.series, frames: this.rep.frames, meta: this.rep.meta, world: { w: WORLD.w, h: WORLD.h }, events: this.rep.events, stats: this.stats, startRome: this.startRome, startGaul: this.startGaul },
+      outcome, time: this.t, rows, enemyDead, enemyStart, prisoners, captured: cap, wagonsTaken, baggageLost: !!this.stats.baggageLost, healed: this.stats.healed || 0, report: { wx: this.wxKey, series: this.rep.series, frames: this.rep.frames, meta: this.rep.meta, world: { w: WORLD.w, h: WORLD.h }, events: this.rep.events, stats: this.stats, startRome: this.startRome, startGaul: this.startGaul },
       spoils: {
         gold: Math.round(rw.gold * mult * rewardMult),
         supplies: Math.round(rw.supplies * mult * rewardMult) + wagonsTaken * 35,

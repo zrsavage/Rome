@@ -73,7 +73,7 @@ export function play(strategy, i, difficulty, seed, mutate = null, phase = null)
   if (mutate) mutate(c, seed);   // camp decisions applied before the battle (used by tools/campbalance.mjs)
   const m = modsOf(c);
   const b = new Battle(scn, romeSpecs(c, scn), { difficulty, seed, fort: c.fort, recovery: m.recovery, moraleBonus: m.morale, forceScale: process.env.AUTHORED ? undefined : forceScale(c, scn) });   // the host is sized to the army as in the game (AUTHORED=1 for the written sizes)
-  const rome = b.units.filter(u => u.side === 'rome');
+  const rome = b.units.filter(u => u.side === 'rome' && !u.type.medic);   // the medici look after themselves
   const dt = 0.1;
   let guard = 0;
   while (!b.result && guard++ < 20000) {

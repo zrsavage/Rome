@@ -68,6 +68,13 @@ export const UNIT_TYPES = {
     speed: 13, turn: 1.1, morale: 52, charge: 0, range: 230, rate: 0.065, ammo: 45, space: 2.2, fragile: 1.2,
     cost: 120, color: '#8a5a2a', trim: '#e8c36a', blurb: 'Bolt-throwers: the longest range on the field and bolts that pierce armour, deadliest into packed infantry. Slow, 5 seconds to set up after moving, helpless if reached.'
   },
+  // Medici (capsarii): orderlies who bind wounds and carry men out of the press. They do not fight; men hit within their reach are more
+  // often wounded than killed, and more of them come back after the battle.
+  medici: {
+    name: 'Medici (orderlies)', side: 'rome', cat: 'train', medic: true, heal: 150, perDot: 6, atk: 0.008, def: 0.2,
+    speed: 26, turn: 2.2, morale: 58, charge: 0, space: 2, fragile: 1.0,
+    color: '#e8e0c8', trim: '#3f7a4a', blurb: 'Orderlies who carry the wounded out of the fight. Units that lose men within their ring get more of them back after the battle. They cannot fight.'
+  },
   // ----- Regional recruits (raised only where the army is) -----
   // King Deiotarus of Galatia armed and drilled his men as Roman legions; two of them fought for Calvinus (Bellum Alexandrinum 34).
   galatian: {
@@ -214,7 +221,8 @@ export const RAISE = {
   galatian: { men: 300, max: 450, gold: 330, supplies: 30 },
   caetrati: { men: 250, max: 350, gold: 260, supplies: 20 },
   moor_cav: { men: 60, max: 80, gold: 260, supplies: 15 },
-  scorpion: { men: 40, max: 40, gold: 420, supplies: 30 }
+  scorpion: { men: 40, max: 40, gold: 420, supplies: 30 },
+  medici: { men: 30, max: 30, gold: 260, supplies: 30 }
 };
 // What really happened at the named battles, shown on the result screen beside your own result. Ancient figures are given as the sources
 // state them, and they are often exaggerated; romeLoss is the Roman loss in men where a source gives one.

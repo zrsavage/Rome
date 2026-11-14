@@ -441,7 +441,7 @@ const PAINT = {
   baggage: (g, t, v) => wagon(g, t, v), antesignani: (g, t, v, a) => roman(g, t, v, a),
   suebi: (g, t, v) => german(g, t, v), german_cav: (g, t, v) => germanHorse(g, t, v), laager: (g, t, v) => wagon(g, t, v),
   numid_cav: (g, t, v) => numidHorse(g, t, v), numid_inf: (g, t, v) => numidFoot(g, t, v), elephant: (g, t, v) => elephant(g, t, v), pompeian: (g, t, v, a) => roman(g, t, v, a),
-  scorpion: (g, t, v) => scorpio(g, t, v), galatian: (g, t, v, a) => roman(g, t, v, a), caetrati: (g, t, v) => numidFoot(g, t, v), moor_cav: (g, t, v) => numidHorse(g, t, v),
+  scorpion: (g, t, v) => scorpio(g, t, v), medici: (g, t, v, a) => roman(g, t, v, a), galatian: (g, t, v, a) => roman(g, t, v, a), caetrati: (g, t, v) => numidFoot(g, t, v), moor_cav: (g, t, v) => numidHorse(g, t, v),
   britons: (g, t, v) => gaul(g, t, v, 'warband'), brit_cav: (g, t, v) => horseman(g, t, v, true, false), brit_chariot: (g, t, v) => britChariot(g, t, v),
   pomp_cav: (g, t, v) => horseman(g, t, v, false, true), pomp_missile: (g, t, v) => archer(g, t, v), pontic: (g, t, v, a) => roman(g, t, v, a), pomp_levy: (g, t, v, a) => roman(g, t, v, a),
   horse_archer: (g, t, v) => steppeArcher(g, t, v), lancer: (g, t, v) => steppeLancer(g, t, v), chariot: (g, t, v) => scythedChariot(g, t, v),
