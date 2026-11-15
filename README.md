@@ -355,3 +355,22 @@ size in a full slot. The fix:
 
 Result (20 command slots each, 24 battles against four armies): a balanced mix of 17 cohorts with 2 archers, 2 slingers and 2 horse
 won 19 and lost 2; legions with archers and horse 16-3; legions with slingers 14-4; all legions 13-3; legions with scorpiones 12-2.
+
+## Decisive battles, sharper enemies, battle report, events on the march (v0.10)
+- **No more grinding to the time limit:** a head-on melee wears the front ranks out and grows bloodier the longer it lasts (up to 80%
+  more after about two and a half minutes of unbroken fighting; men pulled out of the fight recover). Once an army has lost 60% of its
+  men and wavers, its units still in combat keep losing heart. In the army test, draws by time limit fell from about a third of
+  Roman-against-Roman battles to almost none, and battles are 3-8 minutes shorter.
+- **Cohorts grind down from the front:** every soldier figure keeps its own place and eases into its rank. Men fall on the side taking
+  the blows (the front rank in a head-on fight, a flank, or the rear), their bodies drop there, and the ranks behind step up to fill
+  the gap. Formation changes and losses flow instead of snapping.
+- **Smarter enemy generals,** shaped by each commander's temper: enemy horse waits on the wing (a cautious chief up to two minutes, an
+  aggressive one hardly at all) until your foot is pinned by his, then rides for its flank or rear, seeing off your horse if it comes
+  close; a cunning chief picks shaken or already flanked units. Skirmishers fall back behind their own foot instead of straight away.
+  Reserves are thrown at your weakest unit (as before). At Pharsalus Pompey's horse now does what it was meant to do.
+- **Battle report:** the result screen has a "How they fought" column per unit: kills from flank and rear, in the charge, by missiles
+  and by pila, wounded brought back by the medici, and how many each medici team saved.
+- **Events on the march:** about two marches in three bring one decision on the campaign map, fitted to the theatre: a deserter or
+  local guides (scout the next enemy), a tribe asking for help, fever in camp, a captured noble, traders, bad omens (morale next
+  battle), allied horsemen for hire, Pompeian officers to pardon or ransom, veterans demanding pay (Caesar's "citizens" speech of 47 BC),
+  storms wrecking supply ships. Every button shows its cost and effect. They live in `src/events.js`.

@@ -1,11 +1,12 @@
 import { SCENARIOS, DIFFICULTY, UNIT_TYPES, PROLOGUE, actLabel, HISTORY } from './data.js';
-import { romeSpecs, applyResult, modsOf, forceScale, postureOf } from './state.js';
+import { romeSpecs, applyResult, modsOf, forceScale, postureOf, commandLimit, slotsUsed } from './state.js';
 import { ORIGINS, DEFAULT_NAME, buildCampaign, describe } from './origins.js';
 import { Camp, totalMen, breakCamp, rationsDue } from './camp.js';
 import { BattleUI } from './battleui.js';
 import { renderMap } from './map.js';
 import { artSrc, initArt } from './art.js';
-import { ask, inform, keepScroll } from './ui.js';
+import { ask, inform, keepScroll, choose } from './ui.js';
+import { pendingEvent, resolveEvent } from './events.js';
 import { resultHtml, mountResult } from './result.js';
 let stopResult = null;
 import { currentScn, battleExtras, linksFor, STYLES, prisonerOptions, careerLv, chooseRoute, skipBattle, skipBritain } from './campaign.js';
@@ -156,6 +157,17 @@ function showMap() {
       ], 'To Africa');
   }
   show('screen-map');
+  setTimeout(runMarchEvent, 60);
+}
+// An event on the march, once the act introduction (if any) has been read.
+async function runMarchEvent() {
+  const conf = $('confirm'); if (!conf.classList.contains('hidden')) { setTimeout(runMarchEvent, 400); return; }
+  const c = campaign; if (!c || !$('screen-map') || !$('screen-map').classList.contains('active')) return;
+  const ev = pendingEvent(c); if (!ev) { save(); return; }
+  const room = commandLimit(c) - slotsUsed(c);
+  const i = await choose(ev.title, ev.text, ev.choices.map(ch => ({ label: ch.label, fx: ch.fx, disabled: ch.ok ? !ch.ok(c, room) : false })));
+  const msg = resolveEvent(c, ev, i, room); if (msg) { camp.note(msg, 'info'); await inform(ev.title, [msg], 'Onward'); }
+  save(); showMap();
 }
 
 // ----- briefing -----

@@ -90,6 +90,7 @@ export function battleExtras(c, scn) {
   for (const l of linksFor(c, scn)) if (l.won) { for (const [t, v] of Object.entries(l.scale || {})) typeScale[t] = (typeScale[t] ?? 1) * v; morale += l.morale || 0; }
   const lg = legionsOf(c), legates = [];
   if (lg.count > 1) for (let k = 1; k <= lg.count; k++) { const o = legateOf(c, k); if (o) legates.push({ legion: k, name: o.name, tactics: o.tactics || 0, traits: legateTraits(o) }); }
+  morale += c.nextMorale || 0;                                   // omens and other events on the march
   return { typeScale, moraleAdd: morale, legates, sight: 1 + 0.07 * careerLv(c, 'recon') };
 }
 
