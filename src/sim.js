@@ -98,7 +98,8 @@ export class Battle {
     this.diff = DIFFICULTY[opts.difficulty || 'normal'];
     this.aiLevel = scn.id === 'prologue' ? 0 : Math.max(0, ({ easy: 0, normal: 1, hard: 2, legendary: 3 }[opts.difficulty || 'normal'] ?? 1) - (['ford', 'arar', 'convoy'].includes(scn.id) ? 1 : 0));   // the first three fights stay gentle   // how much of its bag of tricks the Gallic host uses
     this.messengers = !!opts.messengers; this.pending = [];
-    this.style = (scn.chief && scn.chief.style) || 'balanced';                          // the enemy commander's temper shapes how the host fights
+    this.style = (scn.chief && scn.chief.style) || 'balanced';
+    this.foe = ({ Gaul: 'Gallic', Germania: 'German', Britannia: 'British', Africa: 'Pompeian', Greece: 'Pompeian', Hispania: 'Pompeian', Pontus: 'Pontic', 'Armenia Minor': 'Pontic' })[scn.theater] || 'enemy';   // whose host it is, for the battle messages                          // the enemy commander's temper shapes how the host fights
     this.typeScale = opts.typeScale || {}; this.sightMul = opts.sight || 1;
     this.legateSpecs = opts.legates || []; this.legates = []; this.works = [];
     this.rand = mulberry32(opts.seed ?? (Date.now() & 0xffffff));
@@ -401,22 +402,27 @@ export class Battle {
 
   // ---------- geometry ----------
   ext(u, dx, dy, d) { // half extent of u's rectangle along direction (dx,dy)/d
-    const fx = Math.cos(u.f), fy = Math.sin(u.f);
+    if (u._fk !== u.f) { u._fk = u.f; u._fc = Math.cos(u.f); u._fs = Math.sin(u.f); }       // facing's cosine and sine, cached until it turns
+    const fx = u._fc, fy = u._fs;
     const along = Math.abs((dx * fx + dy * fy) / d), side = Math.abs((-dx * fy + dy * fx) / d);
     return along * u.d / 2 + side * u.w / 2;
   }
   gapAt(u, x, y, e) {
-    const dx = e.x - x, dy = e.y - y, d = Math.hypot(dx, dy);
+    const dx = e.x - x, dy = e.y - y, d = Math.sqrt(dx * dx + dy * dy);
     if (d < 0.01) return -1;
-    const fx = Math.cos(u.f), fy = Math.sin(u.f);
+    if (u._fk !== u.f) { u._fk = u.f; u._fc = Math.cos(u.f); u._fs = Math.sin(u.f); }
+    const fx = u._fc, fy = u._fs;
     const eu = Math.abs((dx * fx + dy * fy) / d) * u.d / 2 + Math.abs((-dx * fy + dy * fx) / d) * u.w / 2;
     return d - eu - this.ext(e, dx, dy, d);
   }
   gap(u, e) { return this.gapAt(u, u.x, u.y, e); }
   nearestEnemy(u, filter = (e) => e.active) {
     let best = null, bg = Infinity;
+    const ru = (u.w + u.d) / 2;                                    // no part of a unit lies further than this from its centre
     for (const e of this.units) {
-      if (e.side === u.side || !filter(e)) continue;
+      if (e.side === u.side) continue;
+      if (bg !== Infinity) { const dx = e.x - u.x, dy = e.y - u.y, lim = bg + ru + (e.w + e.d) / 2; if (dx * dx + dy * dy > lim * lim) continue; }   // cannot beat the best so far
+      if (!filter(e)) continue;
       const g = this.gap(u, e);
       if (g < bg) { bg = g; best = e; }
     }
@@ -718,7 +724,7 @@ export class Battle {
     if (u.role === 'feint') { this.feint(u, rc); return; }
     if (u.role === 'champion') {
       let tg = u.order.kind === 'attack' ? this.byId(u.order.targetId) : null;
-      if (!tg || !tg.active) { tg = this.aiLevel >= 1 ? this.weakPoint(u) : this.smartTarget(u); if (tg) { this.setAttack(u, tg, true); if (!this.aiS.champSaid) { this.aiS.champSaid = true; this.say(`The Gallic champions charge ${tg.name} - the weakest point of your line!`, 'warn'); this.mark('champ', `The champions charge ${tg.name}`, 'gaul'); } } }
+      if (!tg || !tg.active) { tg = this.aiLevel >= 1 ? this.weakPoint(u) : this.smartTarget(u); if (tg) { this.setAttack(u, tg, true); if (!this.aiS.champSaid) { this.aiS.champSaid = true; this.say(`Their best men charge ${tg.name} - the weakest point of your line!`, 'warn'); this.mark('champ', `The champions charge ${tg.name}`, 'gaul'); } } }
       return;
     }
     if (u.contacts.some(e => e.active)) return;                                    // fighting: let the melee run
@@ -737,8 +743,8 @@ export class Battle {
         const intel = this.flankIntel(), own = ((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x) >= 0 ? 1 : -1;
         if (this.aiLevel >= 1 && !(intel && (intel.side[1].seen || intel.side[-1].seen)) && this.t < 22) return;          // wait for riders and skirmishers to look at your flanks first
         let side = own;
-        if (intel && this.aiLevel >= 1) { const A = intel.side[1], B = intel.side[-1], weak = (A.seen && B.seen) ? (A.str < B.str ? 1 : -1) : A.seen ? 1 : B.seen ? -1 : own; const lateral = Math.abs((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x); if (weak !== own && lateral < 520) side = weak; if (!S.scoutSaid && (A.seen || B.seen)) { S.scoutSaid = true; this.mark('scout', `Gallic scouts have found your ${weak === 1 ? 'left' : 'right'} flank the weaker`, 'gaul'); } }
-        u.wp = { x: rc.x - a.y * side * -1 * 0 + (-a.y) * side * 720 - a.x * 40, y: rc.y + a.x * side * 720 - a.y * 40 }; if (!this._wingSaid) { this._wingSaid = true; this.say('Gallic warbands are swinging wide around your flank!', 'warn'); this.mark('wing', 'Gallic warbands swing wide round your flank', 'gaul'); } }
+        if (intel && this.aiLevel >= 1) { const A = intel.side[1], B = intel.side[-1], weak = (A.seen && B.seen) ? (A.str < B.str ? 1 : -1) : A.seen ? 1 : B.seen ? -1 : own; const lateral = Math.abs((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x); if (weak !== own && lateral < 520) side = weak; if (!S.scoutSaid && (A.seen || B.seen)) { S.scoutSaid = true; this.mark('scout', `${this.foe === 'enemy' ? 'Enemy' : this.foe} scouts have found your ${weak === 1 ? 'left' : 'right'} flank the weaker`, 'gaul'); } }
+        u.wp = { x: rc.x - a.y * side * -1 * 0 + (-a.y) * side * 720 - a.x * 40, y: rc.y + a.x * side * 720 - a.y * 40 }; if (!this._wingSaid) { this._wingSaid = true; this.say(`${this.foe === 'Gallic' ? 'Gallic warbands are' : 'Enemy troops are'} swinging wide around your flank!`, 'warn'); this.mark('wing', 'Enemy troops swing wide round your flank', 'gaul'); } }
       if (Math.hypot(u.wp.x - u.x, u.wp.y - u.y) > 160 && !u.wpDone) this.setMove(u, u.wp.x, u.wp.y, null, true);
       else { u.wpDone = true; if (S.surge || this.t - (S.t0 ?? this.t) > 60) attack(); else if (u.order.kind === 'move') u.order = { kind: 'none' }; }
     } else if (u.role === 'reserve') {
@@ -807,16 +813,16 @@ export class Battle {
         if (u.type.cat !== 'inf' || u.typeKey === 'gaul_elite' || this.isLegion(lines)) continue;   // drilled legions keep their depth
         if (Math.abs((u.wide || 1) - want) < 0.05 || (want > 1 && u.contacts.some(e => e.active))) continue;
         u.wide = want; u.updateDims();
-        if (want > 1 && !S.extSaid) { S.extSaid = true; this.say('The Gallic host spreads wide to outflank your line!', 'warn'); this.mark('extend', 'The Gallic line stretches to outflank you', 'gaul'); }
+        if (want > 1 && !S.extSaid) { S.extSaid = true; this.say(`The ${this.foe} host spreads wide to outflank your line!`, 'warn'); this.mark('extend', `The ${this.foe} line stretches to outflank you`, 'gaul'); }
       }
     }
     if (!S.surge) {
       const staged = lines.filter(u => u.staged || u.contacts.some(e => e.active)).length;
-      if (!lines.length || (S.lineHalted && staged >= lines.length * 0.85) || (S.t0 !== null && this.t - S.t0 > (this.style === 'cautious' ? 55 : 25)) || (this.style === 'aggressive' && this.t > 4)) { S.surge = true; S.surgeT = this.t; if (lines.length > 2) this.say('The Gallic line howls and surges forward!', 'warn'); this.mark('surge', 'The Gallic line surges forward', 'gaul'); }
+      if (!lines.length || (S.lineHalted && staged >= lines.length * 0.85) || (S.t0 !== null && this.t - S.t0 > (this.style === 'cautious' ? 55 : 25)) || (this.style === 'aggressive' && this.t > 4)) { S.surge = true; S.surgeT = this.t; if (lines.length > 2) this.say(`The ${this.foe} line ${['Gallic', 'German', 'British'].includes(this.foe) ? 'howls and ' : ''}surges forward!`, 'warn'); this.mark('surge', `The ${this.foe} line surges forward`, 'gaul'); }
     } else if (!S.commit) {
       const rs = this.units.filter(u => u.side === 'rome');
       const turned = this.stats.routs.gaul > 0 || this.stats.routs.rome > 0 || this.activeMen('rome') < this.startRome * 0.85;
-      if ((turned && this.t - S.surgeT > [20, 20, 12, 8][this.aiLevel]) || this.t - S.surgeT > [90, 90, 60, 45][this.aiLevel]) { S.commit = true; if (this.units.some(u => u.side === 'gaul' && u.active && u.role === 'reserve')) this.say('The Gallic champions are committed to the fight!', 'warn'); this.mark('commit', 'The Gallic champions are committed', 'gaul'); }
+      if ((turned && this.t - S.surgeT > [20, 20, 12, 8][this.aiLevel]) || this.t - S.surgeT > [90, 90, 60, 45][this.aiLevel]) { S.commit = true; if (this.units.some(u => u.side === 'gaul' && u.active && u.role === 'reserve')) this.say(`The ${this.foe} reserves are committed to the fight!`, 'warn'); this.mark('commit', `The ${this.foe} reserves are committed`, 'gaul'); }
     }
   }
   aiThink() {
@@ -1552,7 +1558,7 @@ export class Battle {
       if (this.activeMen(side) < start * 0.4) {
         this.broken[side] = true;
         for (const u of this.units) if (u.side === side && u.active) u.morale -= 5;
-        this.say(side === 'rome' ? 'Your army wavers - the line is cracking!' : 'The Gallic host wavers!', side === 'rome' ? 'bad' : 'good'); this.mark('waver', side === 'rome' ? 'Your army wavers' : 'The Gallic host wavers', side);
+        this.say(side === 'rome' ? 'Your army wavers - the line is cracking!' : `The ${this.foe} host wavers!`, side === 'rome' ? 'bad' : 'good'); this.mark('waver', side === 'rome' ? 'Your army wavers' : `The ${this.foe} host wavers`, side);
       }
     }
     // A wavering army keeps losing heart wherever it is still fighting: the line breaks instead of grinding on to the time limit.
@@ -1576,7 +1582,7 @@ export class Battle {
     }
     if (!waiting && gaulActive < this.startGaul * 0.25) {
       for (const u of this.units) if (u.side === 'gaul' && u.active) { u.state = 'routing'; }
-      this.say('The Gallic host is broken. Victory!', 'good'); return finish('victory', 4);
+      this.say(`The ${this.foe} host is broken. Victory!`, 'good'); return finish('victory', 4);
     }
     if (!this.retreating && (romeActive < this.startRome * 0.2 || !this.units.some(u => u.side === 'rome' && u.active))) {
       this.say('Your army is shattered.', 'bad'); return finish('defeat', 3);
