@@ -13,15 +13,18 @@ const RUNS = +process.argv[2] || 6, ONLY = process.argv[3] && process.argv[3] !=
 const XP = 300, DRILL = 30;
 
 // Roman armies of 20 units: L legionary, A archer, S slinger, E equites, C allied horse, Q scorpion, M medici
-const COMPS = {
+const ALL_COMPS = {
   '20 legions': { legionary: 20 },
   '15L 3 archers 2 equites': { legionary: 15, archer: 3, equites: 2 },
   '15L 5 slingers': { legionary: 15, slinger: 5 },
   '16L 4 equites': { legionary: 16, equites: 4 },
   '14L 2A 2S 2E': { legionary: 14, archer: 2, slinger: 2, equites: 2 },
   '16L 2A 2 scorpiones': { legionary: 16, archer: 2, scorpion: 2 },
-  '17L 2E 1 medici': { legionary: 17, equites: 2, medici: 1 }
+  '17L 2E 1 medici': { legionary: 17, equites: 2, medici: 1 },
+  '15L 5 archers': { legionary: 15, archer: 5 },
+  '14L 6 evocati': { legionary: 14, evocati: 6 }
 };
+const COMPS = process.env.COMPS ? Object.fromEntries(Object.entries(ALL_COMPS).filter(([k]) => process.env.COMPS.split('|').includes(k))) : ALL_COMPS;
 const line = (n, men, type, y, ai, spread = 115, cx = 2000) => Array.from({ length: n }, (_, i) => ({ type, men, x: cx + (i - (n - 1) / 2) * spread, y, ai }));
 const OPP = {
   pompeian20: () => [...line(12, 480, 'pompeian', 800, { kind: 'rush', delay: 20 }), ...line(8, 480, 'pompeian', 600, { kind: 'rush', delay: 60, reserve: true })],
@@ -34,7 +37,7 @@ const OPP = {
 };
 
 // In 'cost' mode the army is scaled to the same denarii as 20 legionary cohorts at full strength, by adding or dropping legionaries.
-function army(comp) {
+export function army(comp) {
   const c = { ...comp };
   if (MODE === 'slots') { const used = () => Object.entries(c).reduce((a, [t, n]) => a + n * slotOf(t), 0); while (used() + 1 <= 20) c.legionary++; }
   if (MODE === 'cost') {
@@ -47,7 +50,7 @@ function army(comp) {
 }
 
 const base = SCENARIOS.find(s => s.id === 'pharsalus');
-function fight(specs, opp, seed) {
+export function fight(specs, opp, seed) {
   const scn = { ...base, id: 'arena', name: 'Arena', terrain: [], enemy: OPP[opp](), reinforcements: [], timeLimit: 1500, deploy: { mode: 'line', cx: 2000, cy: 2150 }, dry: false, chief: { name: 'test', style: 'balanced' } };
   const b = new Battle(scn, specs.map(s => ({ ...s })), { difficulty: 'normal', seed, forceScale: 1 });
   const rome = b.units.filter(u => u.side === 'rome' && !u.type.medic), S = {};
@@ -58,7 +61,7 @@ function fight(specs, opp, seed) {
 
 const opps = ONLY ? [ONLY] : Object.keys(OPP);
 console.log(`mode ${MODE}, ${RUNS} runs each, Roman xp ${XP} drill ${DRILL}`);
-for (const opp of opps) {
+if (!process.env.NOMAIN) for (const opp of opps) {
   console.log(`\n== vs ${opp} ==`);
   for (const [name, comp] of Object.entries(COMPS)) {
     const specs = army(comp), men = specs.reduce((a, s) => a + s.men, 0), t = { victory: 0, draw: 0, defeat: 0 }; let lost = 0, killed = 0, time = 0;

@@ -97,6 +97,12 @@ function migrate(c) {
     for (const h of c.cohorts) { const m = NEW[h.type]; if (m && h.maxMen < m) { const k = m / h.maxMen; h.maxMen = m; h.men = Math.min(m, Math.round(h.men * k)); } }
     c.version = 5;
   }
+  if (c.version < 6) {     // the Tenth Legion's cohort and the new unit types: campaigns already past the parley get the Tenth, past Utica the evocati, past the hill fort the ballistae
+    const won = (id) => (c.history || []).some(h => h.id === id && h.outcome !== 'defeat');
+    if ((won('parley') || won('ariovistus')) && !c.cohorts.some(h => h.tenth)) { const id = Math.max(0, ...c.cohorts.map(h => h.id)) + 1; c.cohorts.push({ id, name: 'First Cohort of the Tenth', type: 'legionary', men: 480, maxMen: 480, xp: 900, drill: 55, condition: 100, officerId: null, tenth: true }); }
+    if (c.unlockedTypes) { if (won('utica') && !c.unlockedTypes.includes('evocati')) c.unlockedTypes.push('evocati'); if (won('oppidum') && !c.unlockedTypes.includes('ballista')) c.unlockedTypes.push('ballista'); }
+    c.version = 6;
+  }
   return c;
 }
 function openCampaign(c, n) { migrate(c); campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; if (c.prologueDone === false) showBrief(PROLOGUE); else showMap(); }

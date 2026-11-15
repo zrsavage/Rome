@@ -38,6 +38,8 @@ const SUBJECT = {
   chariot: 'Pontic scythed chariot, 47 BC: two horses abreast, small open car with one driver, long curved scythe blades on the axle ends, charging in a cloud of dust',
   pomp_levy: `Raw Pompeian legionary levy raised in Spain, 45 BC: Roman kit (bronze helmet, mail or leather, oval scutum, pilum) worn by young, nervous recruits; blue-grey shields. NOT segmentata`,
   medici: 'Roman capsarii (field orderlies) of the late Republic carrying a wounded legionary on a cloak, plain tunics, no armour, satchels of bandages; NOT a red cross, NOT modern medics',
+  evocati: 'Roman evocati of the late Republic: grizzled time-served legionaries with grey beards, mail shirts, Montefortino helmets, oval scuta, pila; NOT lorica segmentata',
+  ballista: 'Large Roman ballista (two-armed torsion bolt engine) of the late Republic on a heavy wooden frame with a crew of six; NOT a medieval trebuchet or crossbow',
   scorpion: 'Roman scorpio bolt-thrower of the late Republic on a tripod stand, two torsion springs, wooden frame, crew of two legionaries; NOT a medieval crossbow',
   galatian: 'Galatian legionary of King Deiotarus, 48 BC: Celtic features, armed and drilled as a Roman legionary (bronze helmet, mail, oval scutum, pilum)',
   caetrati: 'Spanish caetratus, 45 BC: light infantry, short white tunic with red border, small round caetra shield, falcata sword, javelins; NOT medieval',

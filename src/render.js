@@ -349,7 +349,7 @@ export class Renderer {
       else if (u.fighting && row < 2) { xx += Math.sin(now * 6.5 + k * 1.9) * (row === 0 ? 1.3 : 0.7); y += Math.cos(now * 5.2 + k * 2.7) * 0.7; }     // the front ranks heave against the enemy
       if (roof) { ctx.drawImage(shieldTile(u.typeKey), xx - sx * 0.56, y - sy * 0.56, sx * 1.12, sy * 1.12); continue; }   // a roof of locked shields, each one the real scutum
       // each man is a real top-down figure (see sprites.js): helmet or hair, shoulders, shield and weapon, facing the way the unit faces
-      const cav = t.cat === 'cav', sz = t.big ? 40 : t.engine ? 26 : t.wagon ? 36 : cav ? Math.min(Math.max(Math.min(sx * 1.08, sy * 2.7), 11), 32) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
+      const cav = t.cat === 'cav', sz = t.big ? 40 : t.engine ? (t.siege ? 38 : 26) : t.wagon ? 36 : cav ? Math.min(Math.max(Math.min(sx * 1.08, sy * 2.7), 11), 32) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
       ctx.drawImage(soldierSprite(u.typeKey, fg.v, !captive && (!['legionary', 'pompeian', 'pontic', 'pomp_levy'].includes(u.typeKey) || u.pilumLeft > 0)), xx - sz / 2, y - sz / 2, sz, sz);   // a legionary who has thrown his pila draws his sword
     }
     if (!lod && rome && u.typeKey === 'legionary' && !roof) {     // the signifer stands in the front rank, the centurion at its right end
@@ -367,6 +367,7 @@ export class Renderer {
       ctx.fillStyle = '#d8c46a'; ctx.beginPath(); ctx.moveTo(-u.d / 2 - 12.5, 0); ctx.lineTo(-u.d / 2 - 15, -3.4); ctx.lineTo(-u.d / 2 - 11, -2); ctx.closePath(); ctx.fill();   // a boar's head
       ctx.fillStyle = t.color; ctx.beginPath(); ctx.moveTo(-u.d / 2 - 9, 0); ctx.lineTo(-u.d / 2 - 1, 4.5); ctx.lineTo(-u.d / 2 - 1, -4.5); ctx.closePath(); ctx.fill(); ctx.fillStyle = t.trim; ctx.fillRect(-u.d / 2 - 6, -0.9, 3.5, 1.8);
     }
+    if (u.tenth) { ctx.save(); ctx.translate(-u.d / 2 - 20, 0); ctx.rotate(-u.f); ctx.fillStyle = '#e8c36a'; ctx.strokeStyle = '#3a2a10'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, 7, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#3a2a10'; ctx.font = 'bold 9px Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('X', 0, 0.5); ctx.restore(); }   // the Tenth's mark
     if (sel) { ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 2.2; ctx.strokeRect(-u.d / 2 - 2, -u.w / 2 - 2, u.d + 4, u.w + 4); }
     else if (this.hover === u.id) { ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(-u.d / 2 - 1, -u.w / 2 - 1, u.d + 2, u.w + 2); }
     if (u.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(0.4, u.flash / 0.22 * 0.4)})`; ctx.fillRect(-u.d / 2, -u.w / 2, u.d, u.w); }
