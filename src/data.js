@@ -18,8 +18,8 @@ export const UNIT_TYPES = {
   },
   slinger: {
     name: 'Balearic Slingers', side: 'rome', cat: 'ranged', perDot: 8, atk: 0.028, def: 0.1,
-    speed: 30, turn: 2.4, morale: 52, charge: 0.2, range: 105, rate: 0.016, ammo: 70, space: 1.5, fragile: 1,
-    cost: 45, color: '#c46a2b', trim: '#e8c36a', blurb: 'Skirmishers. Lead shot punishes massed warbands.'
+    speed: 30, turn: 2.4, morale: 52, charge: 0.2, range: 100, rate: 0.016, ammo: 70, space: 1.5, fragile: 1, pierce: 0.5,
+    cost: 45, color: '#c46a2b', trim: '#e8c36a', blurb: 'Short range, but lead shot bruises through mail and shields: the answer to armoured foot.'
   },
   equites: {
     name: 'Equites (Cavalry Wing)', side: 'rome', cat: 'cav', perDot: 4, atk: 0.09, def: 0.3,
@@ -33,8 +33,8 @@ export const UNIT_TYPES = {
   },
   archer: {
     name: 'Cretan Archers', side: 'rome', cat: 'ranged', perDot: 8, atk: 0.025, def: 0.08,
-    speed: 30, turn: 2.4, morale: 50, charge: 0.2, range: 135, rate: 0.019, ammo: 60, space: 1.5, fragile: 1,
-    cost: 55, color: '#d2a23a', trim: '#e8c36a', blurb: 'Long-range archers. Outrange everything the Gauls field.'
+    speed: 30, turn: 2.4, morale: 50, charge: 0.2, range: 155, rate: 0.02, ammo: 60, space: 1.5, fragile: 1, pierce: -0.45,
+    cost: 55, color: '#d2a23a', trim: '#e8c36a', blurb: 'The longest reach of any troops on foot, deadly to the unarmoured; arrows glance off mail and shields.'
   },
   aux_cav: {
     name: 'Allied Gallic Horse', side: 'rome', cat: 'cav', perDot: 4, atk: 0.08, def: 0.22,
@@ -74,6 +74,20 @@ export const UNIT_TYPES = {
     name: 'Medici (orderlies)', side: 'rome', cat: 'train', medic: true, heal: 150, perDot: 6, atk: 0.008, def: 0.2,
     speed: 26, turn: 2.2, morale: 58, charge: 0, space: 2, fragile: 1.0,
     color: '#e8e0c8', trim: '#3f7a4a', blurb: 'Orderlies who carry the wounded out of the fight. Units that lose men within their ring get more of them back after the battle. They cannot fight.'
+  },
+  // Evocati: time-served veterans recalled to the standards, as both sides did in the civil wars. Small, steady, and their experience is
+  // never diluted (they are filled only from veterans).
+  evocati: {
+    name: 'Evocati (recalled veterans)', side: 'rome', cat: 'inf', perDot: 8, atk: 0.068, def: 0.49, noDilute: true,
+    speed: 22, turn: 1.8, morale: 90, charge: 0.65, pilum: 2, space: 1, fragile: 0.7,
+    antiCharge: 0.3, cost: 80, color: '#8e1c16', trim: '#f0d27a', blurb: 'Recalled veterans: few, but the steadiest men in the army. Raised from your veterans, and never diluted by raw recruits.'
+  },
+  // Ballistae: heavy bolt engines for sieges. They smash wagons, gates and men behind ramparts, but are far too slow for open battle, so
+  // they come only to assaults on strong places and wagon camps.
+  ballista: {
+    name: 'Ballistae (siege engines)', side: 'rome', cat: 'ranged', perDot: 5, atk: 0.01, def: 0.1, engine: true, siege: true, setup: 8, pierce: 0.6, vsDense: 1.3, vsWagon: 4,
+    speed: 9, turn: 0.9, morale: 50, charge: 0, range: 300, rate: 0.05, ammo: 30, space: 3, fragile: 1.2,
+    cost: 150, color: '#7a4a22', trim: '#e8c36a', blurb: 'Heavy siege engines: the longest range of all, deadly to wagons and men behind walls. They come only to sieges and wagon camps.'
   },
   // ----- Regional recruits (raised only where the army is) -----
   // King Deiotarus of Galatia armed and drilled his men as Roman legions; two of them fought for Calvinus (Bellum Alexandrinum 34).
@@ -222,7 +236,9 @@ export const RAISE = {
   caetrati: { men: 250, max: 350, gold: 260, supplies: 20 },
   moor_cav: { men: 120, max: 150, gold: 340, supplies: 22 },
   scorpion: { men: 40, max: 40, gold: 420, supplies: 30 },
-  medici: { men: 30, max: 30, gold: 260, supplies: 30 }
+  medici: { men: 30, max: 30, gold: 260, supplies: 30 },
+  evocati: { men: 400, max: 400, gold: 380, supplies: 26, vets: 400, xp: 1400, drill: 60 },
+  ballista: { men: 50, max: 50, gold: 380, supplies: 40 }
 };
 // What really happened at the named battles, shown on the result screen beside your own result. Ancient figures are given as the sources
 // state them, and they are often exaggerated; romeLoss is the Roman loss in men where a source gives one.
@@ -244,14 +260,14 @@ export const START_TYPES = ['legionary', 'slinger', 'equites'];
 // Where the army is decides who can be raised. Legionaries, slingers, archers, equites and Gallic horse go everywhere; local troops only locally.
 export const REGION_NAMES = { gaul: 'Gaul', africa: 'Africa', greece: 'Greece', east: 'Pontus and Armenia', spain: 'Spain' };
 export const RECRUITS = { gaul: ['aux_inf'], africa: [], greece: [], east: ['galatian'], spain: ['caetrati'] };   // Deiotarus' Galatians fought for Pompey at Pharsalus: none in Greece
-export const EVERYWHERE = ['legionary', 'slinger', 'archer', 'equites', 'aux_cav', 'scorpion'];
+export const EVERYWHERE = ['legionary', 'slinger', 'archer', 'equites', 'aux_cav', 'scorpion', 'evocati', 'ballista'];
 export function regionOf(scn) {
   const th = (scn && scn.theater) || 'Gaul';
   return th === 'Africa' ? 'africa' : th === 'Hispania' ? 'spain' : th === 'Greece' ? 'greece' : ['Pontus', 'Armenia Minor'].includes(th) ? 'east' : 'gaul';
 }
 // troops a region offers on top of the usual ones (Bogud's Moors only once Caesar himself is in Africa, 46 BC)
 export const regionalExtras = (scn) => { const r = regionOf(scn); return r === 'africa' && scn && scn.act === 'V' ? ['moor_cav'] : RECRUITS[r]; };
-export const TYPE_UNLOCKS = { arar: ['aux_cav'], convoy: ['archer'], oppidum: ['aux_inf'], landing: ['scorpion'], anquillaria: ['scorpion'] };   // bolt-throwers after the landing in Britain, or the first fight in Africa
+export const TYPE_UNLOCKS = { arar: ['aux_cav'], convoy: ['archer'], oppidum: ['aux_inf', 'ballista'], utica: ['evocati'], landing: ['scorpion'], anquillaria: ['scorpion'] };   // bolt-throwers after the landing in Britain, or the first fight in Africa
 
 export const DIFFICULTY = {
   easy:      { name: 'Tiro',       enemyMult: 0.8,  enemyMorale: -6, romeMorale: 8,  officerRisk: 0.0,  reward: 0.9,  desc: 'Forgiving. Officers cannot die.' },

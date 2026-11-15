@@ -48,12 +48,14 @@ export class Unit {
     this.xp = spec.xp || 0; this.lvl = levelFor(this.xp);
     this.drill = spec.drill || 0;
     this.officer = spec.officer || null;
+    this.tenth = !!spec.tenth;                                   // Caesar's own Tenth Legion: the army watches it
     this.x = spec.x; this.y = spec.y; this.f = spec.f ?? (spec.side === 'rome' ? -Math.PI / 2 : Math.PI / 2);
     this.upg = { armour: 0, weapon: 0, ...(spec.upg || {}) };
     this.perks = (spec.officer && spec.officer.perks) || [];
     this.temper = temperOf(spec.officer); this.tier = tierOf(spec.officer); this.rivalId = rivalOf(spec.officer); this.rashCd = 0; this.auraT = -1; this.rivalNear = false;
     const P = (id) => this.perks.includes(id);
     this.maxMorale = this.type.morale + this.lvl * 3 + this.drill * 0.12 + (spec.moraleBonus || 0) + (P('inspire') ? 4 : 0) + (P('discipline') ? 8 : 0) + (this.lvl >= 5 ? 5 : 0) + (this.temper === 'steady' ? 5 : this.temper === 'cautious' ? 4 : 0) + (this.tier >= 2 ? 6 : 0);
+    if (this.tenth) this.maxMorale += 12;
     const cond = spec.condition ?? 100;
     this.morale = this.maxMorale * (0.88 + 0.12 * cond / 100);
     this.fatigue = (100 - cond) * 0.4;
@@ -209,6 +211,18 @@ export class Battle {
   }
   // Medici left to themselves follow the fight: every two seconds an idle team walks up behind the nearest friendly unit in melee, so
   // the men it loses are inside the ring. A player's move order is obeyed first; Hold keeps them where they are.
+  // Is the Tenth (active, not running) within 180 paces of this unit? Checked at most twice a second.
+  tenthNear(u) {
+    if ((u.tenT || -1) > this.t) return u.tenOn; u.tenT = this.t + 0.5;
+    u.tenOn = this.units.some(x => x.tenth && x.side === u.side && x.active && x.state !== 'routing' && Math.hypot(x.x - u.x, x.y - u.y) < 180);
+    return u.tenOn;
+  }
+  // If the Tenth breaks, the whole army sees it.
+  watchTenth() {
+    if (this.tenthBroke) return;
+    const t = this.units.find(x => x.tenth && x.side === 'rome'); if (!t || (t.state !== 'routing' && t.active)) return;
+    if (t.state === 'routing' || !t.active) { this.tenthBroke = true; for (const u of this.units) if (u.side === 'rome' && u.active && u !== t) u.morale -= 8; this.say('The Tenth breaks! The whole army has seen it.', 'bad'); this.mark('waver', 'The Tenth breaks', 'rome'); }
+  }
   updateMedici(dt) {
     this.medT = (this.medT || 0) - dt; if (this.medT > 0 || this.deploying) return; this.medT = 1;
     for (const m of this.units) {
@@ -904,7 +918,7 @@ export class Battle {
   // ---------- main step ----------
   update(dt) {
     if (this.result) return;
-    this.t += dt; this.sampleReport(); this.recordFrame(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt); this.updateRotation(); this.runPending(); this.updateSupply(dt); this.updateMedici(dt); this.stepLegates(dt);
+    this.t += dt; this.sampleReport(); this.recordFrame(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt); this.updateRotation(); this.runPending(); this.updateSupply(dt); this.updateMedici(dt); this.watchTenth(); this.stepLegates(dt);
     for (const ev of this.events) if (!ev.done && this.t >= ev.at) { ev.done = true; this.runEvent(ev); }
     for (const r of this.reinf) if (!r.done && this.t >= r.at) {
       r.done = true;
@@ -1349,6 +1363,7 @@ export class Battle {
     let d = e.type.def + e.lvl * 0.01 + (e.lvl >= 3 ? 0.02 : 0) + 0.06 * Math.min(MAX_TIER, e.upg.armour) - (e.surrounded ? 0.15 : 0);
     if (e.formation === 'close' && frontal) d += 0.2;
     if (e.formation === 'orb') d += 0.1;
+    if (e.type.holdDef && (e.stance === 'hold' || this.behindWorks(e) || this.inWorks(e.x, e.y))) d += e.type.holdDef;   // a Garrison cohort holding its ground
     return Math.min(0.88, d) ;
   }
 
@@ -1363,6 +1378,8 @@ export class Battle {
     if (def.officer) loss *= 1 - 0.04 * (def.officer.tactics || 0);
     if (def.temper === 'rash') loss *= 1.15; else if (def.temper === 'steady') loss *= 0.9;
     if (def.perks.includes('steadfast')) loss *= 0.8;
+    if (def.side === 'rome' && !def.tenth && this.tenthNear(def)) loss *= 0.9;                // fighting beside the Tenth
+    if (def.type.holdMorale && (def.stance === 'hold' || this.behindWorks(def))) loss *= def.type.holdMorale;
     loss *= 1 - 0.15 * clamp(hgt(this, def), 0, 1.3);          // men on high ground hold their nerve
     { const th = (def.wide || 1) - 1; loss *= 1 + 0.7 * th + 0.6 * th * th; }                  // a thin line has no depth to absorb its losses: casualties shake it harder
     if (def.lvl >= 2) loss *= 0.9;
@@ -1395,7 +1412,7 @@ export class Battle {
         u.shooting = true;
         const am = this.angleMult(u, tgt).c;
         const prot = this.defOf(tgt, am === 1) * (tgt.formation === 'close' && am === 1 ? 2.2 : tgt.formation === 'orb' ? 1.2 : 0.6) * (1 - (t.pierce || 0));   // bolts go through shields and mail
-        const dense = t.vsDense ? (tgt.type.cat === 'inf' && tgt.formation !== 'close' ? t.vsDense : 0.6) : (tgt.type.cat === 'inf' && tgt.formation !== 'close' ? 1.15 : 1);   // arrows and shot into a packed mass of foot find a mark more often (not into a testudo)   // a bolt into a packed mass kills more than one man
+        const dense = t.vsDense ? (tgt.type.cat === 'inf' && tgt.formation !== 'close' ? t.vsDense : 0.6) : (tgt.type.cat === 'inf' && tgt.formation !== 'close' ? 1.15 : 1) * (t.vsWagon && tgt.type.wagon ? t.vsWagon : 1);   // arrows and shot into a packed mass of foot find a mark more often (not into a testudo)   // a bolt into a packed mass kills more than one man
         const falloff = 1 - 0.4 * clamp(g / t.range, 0, 1);
         u.fireAcc += (this.behindWorks(tgt) ? 0.7 : 1) * dense * (t.shootMoving && u.state === 'moving' ? 0.75 : 1) * u.men * t.rate * dt * (this.atkMult(u) / COMBAT_PACE) * RANGED_PACE * this.wx.missile * falloff * (1 - Math.min(0.9, prot)) * (this.terr(tgt).kind === 'forest' ? 0.6 : 1) * (1 + 0.15 * clamp(hgt(this, u) - hgt(this, tgt), -1, 1));
         u.ammo -= dt;
@@ -1459,7 +1476,7 @@ export class Battle {
       const room = ang.c === 1 ? Math.min(1, 3 * (e.wide || 1) / Math.max(1, e.frontCount || 1)) : 1;   // only so many men can fight on one front
       const laneF = e.lanes ? (t.big ? 0.5 : 1.2) : 1;           // open ranks blunt elephants but leave gaps for anyone else
       const hammer = t.cat === 'cav' && ang.c > 1 && e.state !== 'routing' && e.contacts.some(x => x.active && x !== u && x.type.cat !== 'cav') ? CAV_HAMMER : 1;   // horse into the side or back of foot already held by your line: hammer and anvil
-      const wear = ang.c === 1 ? 1 + Math.min(WEAR_MAX, (u.meleeT || 0) / WEAR_T) : 1;   // a long head-on fight wears the front ranks out: it grows bloodier until one side gives
+      const wear = ang.c === 1 ? 1 + Math.min(WEAR_MAX, (u.meleeT || 0) / WEAR_T) * (e.type.wearRes ?? 1) : 1;   // a long head-on fight wears the front ranks out: it grows bloodier until one side gives
       u.pending += wear * hammer * laneF * share * (1 + 0.25 * ((e.wide || 1) - 1)) * t.atk * dt * am * ang.g * room * pressed * (1 - def) * routingMult * this.terr(e).def;
       if (ang.c > 1 && e.state !== 'routing') { const ml = hammer * (ang.c === 3 ? REAR_MORALE : FLANK_MORALE) * dt / targets.length; e.morale -= ml; this.mloss(e, ang.c === 3 ? 'rear' : 'flank', ml); }
       if (u.side === 'rome' && ang.c > 1 && e.state !== 'routing') this.stats[ang.c === 3 ? 'rearTime' : 'flankTime'] += dt / targets.length;

@@ -15,6 +15,9 @@ export const MODS = {
   reach: [['range', '*', 1.1]], shot: [['ammo', '*', 1.25]], aim: [['rate', '*', 1.1]], fleet: [['speed', '*', 1.1]],
   knife: [['atk', '*', 1.2]], cover: [['def', '+', 0.06]], volley: [['rate', '*', 1.08], ['ammo', '*', 1.1]],
   hunt: [['hunt', '*', 1.2]], wheel: [['turn', '*', 1.25]],
+  // specialisations, chosen once at the rank of Veteran (cohorts of foot only)
+  spec_line: [['def', '+', 0.03], ['morale', '+', 4], ['wearRes', '*', 0.6]], spec_shock: [['charge', '*', 1.2], ['hunt', '*', 1.2], ['atk', '*', 1.04]],
+  spec_garrison: [['antiCharge', '+', 0.15], ['holdDef', '+', 0.06], ['holdMorale', '*', 0.85]],
   // officer perks that change the attached unit's numbers (the older perks are handled in the battle code itself)
   pilani: [['pilum', '+', 1]], marcher: [['speed', '*', 1.08], ['tire', '*', 0.85]], ironwall: [['def', '+', 0.05]],
   outrider: [['speed', '*', 1.08]], hunter: [['hunt', '*', 1.25]], horsemaster: [['turn', '*', 1.3]], lancer: [['charge', '*', 1.1]]
@@ -50,17 +53,25 @@ export const UNIT_TRACKS = {
   ]
 };
 export const unitTrack = (h) => UNIT_TRACKS[(UNIT_TYPES[h.type] || {}).cat] || UNIT_TRACKS.inf;
-// The next undecided rank choice this cohort has earned, or null. Row i is earned at rank i+1.
+// A cohort of foot that reaches Veteran also picks one of three specialisations, which sets how it fights for the rest of the campaign.
+export const SPECS = [
+  U('spec_line', 'Line', 'The steady front: +3% armour, +4 morale, and long head-on fights wear it down 40% more slowly.'),
+  U('spec_shock', 'Shock', 'The hammer: charges hit 20% harder, +4% attack, runs down fleeing men 20% faster.'),
+  U('spec_garrison', 'Garrison', 'The rock: enemy charges bite 15% less; holding its ground (Hold, or behind fieldworks) it gets +6% armour and loses 15% less morale.')
+];
+const SPEC_LV = 2;
+// The next undecided rank choice this cohort has earned, or null. Row i is earned at rank i+1; the specialisation comes after the Veteran choice.
 export function unitPending(h) {
   const track = unitTrack(h), lv = Math.min(track.length, lvlOf(h.xp || 0)), ups = h.ups || [];
   for (let i = 0; i < lv; i++) if (!track[i].some(o => ups.includes(o.id))) return { row: i, options: track[i], rank: LEVEL_NAMES[i + 1] };
+  if ((UNIT_TYPES[h.type] || {}).cat === 'inf' && lvlOf(h.xp || 0) >= SPEC_LV && !SPECS.some(o => ups.includes(o.id))) return { row: -1, spec: true, options: SPECS, rank: LEVEL_NAMES[SPEC_LV] };
   return null;
 }
 export function chooseUnit(h, id) {
   const p = unitPending(h); if (!p || !p.options.some(o => o.id === id)) return false;
   h.ups = [...(h.ups || []), id]; return true;
 }
-export const unitChosen = (h) => unitTrack(h).flat().filter(o => (h.ups || []).includes(o.id));
+export const unitChosen = (h) => [...unitTrack(h).flat(), ...SPECS].filter(o => (h.ups || []).includes(o.id));
 
 // ---------------- officers ----------------
 const P = (id, name, text) => ({ id, name, text });

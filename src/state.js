@@ -84,7 +84,7 @@ export function unlockedTypes(c) {
 
 export function newCampaign(difficulty = 'normal') {
   return {
-    version: 5, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, campUse: {},
+    version: 6, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, campUse: {},
     gold: 300, supplies: 160, fort: 0, favour: 0, scouted: false, log: [], over: false,
     cohorts: [
       { id: 1, name: 'I Cohort',   type: 'legionary', men: 400, maxMen: 480, xp: 60, drill: 30, condition: 90, officerId: 1 },
@@ -121,14 +121,16 @@ export function romeSpecs(c, scn) {
 }
 function cohortSpecs(c, scn) {
   const d = scn?.deploy || { mode: 'line', cx: 800, cy: 880 };
-  const live = c.cohorts.filter(h => h.men > 0);
+  // siege engines come only to assaults on strong places and to fights against wagon camps
+  const siege = scn && scn.id !== 'landing' && (scn.posture === 'assault' || (scn.posture !== 'pursuit' && (scn.enemy || []).some(e => (UNIT_TYPES[e.type] || {}).wagon)));
+  const live = c.cohorts.filter(h => h.men > 0 && (siege || !(UNIT_TYPES[h.type] || {}).siege));
   const cat = (h) => (UNIT_TYPES[h.type] || {}).cat;                        // every kind deploys: legions first, then allies and regional troops
   const inf = live.filter(h => cat(h) === 'inf').sort((a, b) => (b.type === 'legionary') - (a.type === 'legionary'));
   const ranged = live.filter(h => cat(h) === 'ranged');
   const cav = live.filter(h => cat(h) === 'cav');
   const medics = live.filter(h => UNIT_TYPES[h.type] && UNIT_TYPES[h.type].medic);
   const specs = [];
-  const mk = (h, x, y) => specs.push({ type: h.type, name: h.name, cohortId: h.id, men: h.men, maxMen: h.maxMen, xp: h.xp, drill: h.drill, condition: h.condition, officer: officerById(c, h.officerId), upg: h.upg, ups: h.ups, moraleBonus: decoMorale(h), x, y, f: d.f, stance: 'aggressive' });
+  const mk = (h, x, y) => specs.push({ type: h.type, name: h.name, cohortId: h.id, men: h.men, maxMen: h.maxMen, xp: h.xp, drill: h.drill, condition: h.condition, officer: officerById(c, h.officerId), upg: h.upg, ups: h.ups, moraleBonus: decoMorale(h), tenth: !!h.tenth, x, y, f: d.f, stance: 'aggressive' });
   if (d.mode === 'grid') {
     [...inf, ...ranged, ...cav, ...medics].forEach((h, i) => { const col = i % d.cols, row = Math.floor(i / d.cols); mk(h, d.cx + (col - (d.cols - 1) / 2) * d.dx, d.cy + row * d.dy); });
     return specs;
@@ -198,7 +200,7 @@ export function applyResult(c, result, scn) {
     if (manual) { levy = Math.min(levy, Math.max(0, c.cohorts.reduce((a, x) => a + x.maxMen - x.men, 0) - c.manpower)); c.manpower += levy; pooled += levy; } else h.men = Math.min(h.maxMen, h.men + levy);   // never more waiting men than empty places
     const floor = Math.ceil(h.maxMen * 0.35);
     if (h.men < floor) { notes.push(`${h.name} is reduced to a remnant; the governor sends replacements.`); h.men = floor; }
-    if (h.men > before && before > 0) h.xp = Math.round(h.xp * (0.6 + 0.4 * before / h.men));
+    if (h.men > before && before > 0 && !(UNIT_TYPES[h.type] || {}).noDilute) h.xp = Math.round(h.xp * (0.6 + 0.4 * before / h.men));
   }
   if (manual && pooled > 0) notes.push(`${pooled} soldiers are available to reinforce your units. Assign them at the Barracks with the sliders.`);
   c.history = c.history || [];
@@ -210,6 +212,12 @@ export function applyResult(c, result, scn) {
       const id = Math.max(0, ...c.cohorts.map(h => h.id)) + 1;
       c.cohorts.push({ id, name: u.name, type: u.type, men: u.men, maxMen: u.maxMen, xp: u.xp, drill: u.drill, condition: 100, officerId: null });
       notes.push(u.msg);
+    }
+    // Caesar's Tenth: after the parley on the mound (or the battle against Ariovistus, if the parley was passed by), a cohort of the Tenth Legion joins you
+    if (['parley', 'ariovistus'].includes(scn.id) && !c.cohorts.some(h => h.tenth)) {
+      const id = Math.max(0, ...c.cohorts.map(h => h.id)) + 1;
+      c.cohorts.push({ id, name: 'First Cohort of the Tenth', type: 'legionary', men: 480, maxMen: 480, xp: 900, drill: 55, condition: 100, officerId: null, tenth: true });
+      notes.push("Caesar sends you the First Cohort of his own Tenth Legion, the men he mounted on horses for the parley. ('He has made us knights,' they joke.) Cohorts that fight beside them hold their nerve better; if they break, the whole army will see it.");
     }
     c.scenario++;
     c.scouted = false; c.favour = Math.round(c.favour * 0.5);

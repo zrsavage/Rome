@@ -374,3 +374,20 @@ won 19 and lost 2; legions with archers and horse 16-3; legions with slingers 14
   local guides (scout the next enemy), a tribe asking for help, fever in camp, a captured noble, traders, bad omens (morale next
   battle), allied horsemen for hire, Pompeian officers to pardon or ransom, veterans demanding pay (Caesar's "citizens" speech of 47 BC),
   storms wrecking supply ships. Every button shows its cost and effect. They live in `src/events.js`.
+
+## New units and unit roles (v0.11)
+- **Slingers and archers differ:** slingers have the shorter reach (100) but lead shot bruises through mail and shields (half the target's
+  armour ignored): the answer to armoured foot. Archers have the longest reach on foot (155) and are deadly to the unarmoured, but
+  arrows glance off mail (45% more armour). Measured: against Pompeian legions slingers kill about 15% more than archers; against Gauls
+  the two are even, with archers safer at range.
+- **Evocati (recalled veterans):** from the civil war (after Utica). A cohort of 400 of the steadiest men in the army, raised at the
+  Barracks by spending 400 of your waiting veterans (plus 380 denarii). Their experience is never diluted. Six cohorts of them beat
+  twenty plain legionary cohorts' worth of slots against a Pompeian army (6-0).
+- **The Tenth Legion:** after the parley with Ariovistus (or the battle against him, if the parley was passed by) Caesar sends you the
+  First Cohort of his own Tenth. It has +12 morale and wears a gold X on the field; cohorts within 180 paces of it lose 10% less
+  morale; if it breaks, every other unit loses 8 morale. Campaigns already past the parley receive it on loading.
+- **Ballistae (siege engines):** unlocked by taking the Sequani hill fort. Range 300, bolts that go through armour, four times as
+  deadly against wagons. Too slow for open battle: they deploy only for assaults on strong places and fights against wagon camps.
+- **Veteran specialisation:** a cohort of foot reaching Veteran picks how it fights for good: **Line** (+3% armour, +4 morale, long
+  head-on fights wear it 40% more slowly), **Shock** (charges 20% harder, +4% attack, pursues 20% faster) or **Garrison** (enemy
+  charges bite 15% less; on Hold or behind fieldworks +6% armour and 15% less morale loss).
