@@ -51,7 +51,8 @@ export class BattleUI {
     if (!this.paused && !this.b.result) {
       this.acc += real * this.speed;
       let n = 0;
-      while (this.acc >= 0.05 && n++ < 24) { this.b.update(0.05); this.acc -= 0.05; }
+      const st = this.b.units.length > 150 ? 0.1 : 0.05;              // a great pitched battle steps in tenths of a second (as the balance tests do), halving the work
+      while (this.acc >= st && n++ < 24) { this.b.update(st); this.acc -= st; }
     }
     this.pan(real);
     for (const f of this.frameHooks) f(real);

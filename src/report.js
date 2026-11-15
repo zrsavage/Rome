@@ -31,7 +31,7 @@ function chart(rep) {
     const x = X(e.t); g += `<line x1="${x}" x2="${x}" y1="${T}" y2="${H - B}" stroke="${e.side === 'rome' ? '#e8c36a' : '#8c7bb0'}" stroke-dasharray="3 4" opacity=".75"/>`;
   }
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Strength of both armies over the battle" style="width:100%;max-width:${W}px;height:auto;display:block">${g}</svg>
-    <div class="muted small" style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:4px"><span><b style="color:${ROME}">&mdash;</b> your men standing</span><span><b style="color:${GAUL}">&mdash;</b> the enemy's</span><span>&#9660; a cohort broke</span><span><b style="color:#e8c36a">&#124;</b> your rally &nbsp;<b style="color:#8c7bb0">&#124;</b> a Gallic surge, wing or champion charge</span></div>`;
+    <div class="muted small" style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:4px"><span><b style="color:${ROME}">&mdash;</b> your men standing</span><span><b style="color:${GAUL}">&mdash;</b> the enemy's</span><span>&#9660; a cohort broke</span><span><b style="color:#e8c36a">&#124;</b> your rally &nbsp;<b style="color:#8c7bb0">&#124;</b> a enemy surge, flank move or reserve charge</span></div>`;
 }
 
 // The report's pieces, grouped: how the fight turned, how your army fought, what the enemy tried, the conditions, and one lesson.
@@ -112,14 +112,14 @@ export function reportParts(res) {
 
   // 6. what the Gauls tried
   const first = (k) => ev.find(e => e.kind === k);
-  if (first('feint')) P.enemy.push(`At ${mmss(first('feint').t)} a Gallic unit ran at your flank and then broke off and fled. That is a <b>feint</b>: it is meant to draw cohorts out of line so the host can fall on them. Hold your post (H) and do not chase.`);
-  if (first('extend')) P.enemy.push(`At ${mmss(first('extend').t)} the Gallic host <b>stretched its line</b>, because it outnumbered you. A longer line overlaps yours and curls round your ends: anchor a flank on a river or wood, or extend your own line (L) to match.`);
+  if (first('feint')) P.enemy.push(`At ${mmss(first('feint').t)} an enemy unit ran at your flank and then broke off and fled. That is a <b>feint</b>: it is meant to draw cohorts out of line so the host can fall on them. Hold your post (H) and do not chase.`);
+  if (first('extend')) P.enemy.push(`At ${mmss(first('extend').t)} the enemy host <b>stretched its line</b>, because it outnumbered you. A longer line overlaps yours and curls round your ends: anchor a flank on a river or wood, or extend your own line (L) to match.`);
   if (first('champ')) P.enemy.push(`At ${mmss(first('champ').t)} the champions struck: <b>${esc(first('champ').text.replace('The champions charge ', ''))}</b> was judged the weakest point of your line (shaken, flanked, isolated or lightly armed). Keep wounded or unsupported cohorts out of the front, or have a reserve ready behind them.`);
   if (first('scout')) P.enemy.push(`The Gauls scouted your flanks first (${esc(first('scout').text.toLowerCase())}). A weak or open end of your line is found and used.`);
-  const wd = ev.filter(e => e.kind === 'withdraw').length; if (wd) P.enemy.push(`${wd} Gallic unit${wd > 1 ? 's' : ''} fell back in good order instead of breaking. Pursue them while they are tired, or they will return rested.`);
+  const wd = ev.filter(e => e.kind === 'withdraw').length; if (wd) P.enemy.push(`${wd} enemy unit${wd > 1 ? 's' : ''} fell back in good order instead of breaking. Pursue them while they are tired, or they will return rested.`);
   for (const e of ev) {
-    if (e.kind === 'wing') P.enemy.push(`At ${mmss(e.t)} a Gallic warband swung wide to take you in the flank. Watch for a wing that moves away from the main line: it is going round you.`);
-    else if (e.kind === 'commit') { P.enemy.push(`At ${mmss(e.t)} the Gallic champions were thrown in. They are held back until the fight is already turning, so a line that holds until then usually wins.`); break; }
+    if (e.kind === 'wing') P.enemy.push(`At ${mmss(e.t)} enemy troops swung wide to take you in the flank. Watch for a wing that moves away from the main line: it is going round you.`);
+    else if (e.kind === 'commit') { P.enemy.push(`At ${mmss(e.t)} the enemy reserves were thrown in. They are held back until the fight is already turning, so a line that holds until then usually wins.`); break; }
   }
   if (!P.turn.length) P.turn.push('A short, one-sided fight with no turning point worth noting.');
 

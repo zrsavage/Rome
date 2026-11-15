@@ -223,6 +223,9 @@ export class Renderer {
   bgThumb(w = 720) { if (!this.bg) return null; const c = document.createElement('canvas'); c.width = w; c.height = Math.round(w * this.bg.height / this.bg.width); c.getContext('2d').drawImage(this.bg, 0, 0, c.width, c.height); try { return c.toDataURL('image/jpeg', 0.72); } catch { return null; } }
 
   draw(b) {
+    // automatic quality: when frames run slow (a great battle on a modest machine), more units are painted as blocks; it eases back when there is room
+    { const now = performance.now(), ft = now - (this._lastDraw || now); this._lastDraw = now; this._ftAvg = (this._ftAvg || 16) * 0.95 + Math.min(ft, 200) * 0.05;
+      this.lodPx = this.lodPx || 4.5; if ((this._lodT = (this._lodT || 0) + ft) > 1000) { this._lodT = 0; if (this._ftAvg > 30 && this.lodPx < 10) this.lodPx += 1; else if (this._ftAvg < 18 && this.lodPx > 4.5) this.lodPx = Math.max(4.5, this.lodPx - 0.5); } }
     const ctx = this.ctx, z = this.cam.zoom;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.fillStyle = '#232b1d'; ctx.fillRect(0, 0, this.vw, this.vh);
@@ -257,7 +260,8 @@ export class Renderer {
     for (const f of b.fx) if (f.kind === 'dust') this.drawDust(ctx, f);
     for (const id of new Set([...this.selection, this.hover])) { const u = b.byId(id); if (u && u.present && u.state !== 'routing') this.drawArcs(ctx, u); }
     for (const u of order) if (this.showRange || this.selection.has(u.id)) this.drawRange(ctx, u, b);
-    for (const u of order) this.drawUnit(ctx, u, b);
+    { const hw = this.vw / z / 2 + 120, hh = this.vh / z / 2 + 120;      // only units on (or just off) the screen are drawn
+      for (const u of order) if (Math.abs(u.x - this.cam.x) < hw + u.w && Math.abs(u.y - this.cam.y) < hh + u.w) this.drawUnit(ctx, u, b); }
     for (const f of b.fx) if (f.kind !== 'dust') this.drawFx(ctx, f);
     this.drawLegates(ctx, b);
     this.drawGeneral(ctx, b);
@@ -341,7 +345,10 @@ export class Renderer {
     // head-on fight) and the men behind step up into the gap, so a cohort in a long fight visibly grinds down from the front.
     const slots = [], rowLen = [];
     { let kk = 0; for (let row = 0; row < rows && kk < n; row++) { const inRow = Math.min(cols, n - kk); rowLen.push(inRow); for (let c = 0; c < inRow; c++, kk++) slots.push({ x: u.d / 2 - sx * (row + 0.5), y: (c - (inRow - 1) / 2) * sy, row }); } }
-    const figs = lod ? [] : this.figsFor(u, slots, rowLen);
+    // Zoomed out far enough that each man would be a few pixels, the unit is painted as one patterned block of tiny figures (one draw instead of dozens)
+    const blockLod = !lod && !roof && !routing && Math.max(sx, sy) * this.cam.zoom < (this.lodPx || 4.5) && !t.big && !t.wagon;
+    if (blockLod) { const pat = this.blockPattern(ctx, u.typeKey); pat.setTransform(new DOMMatrix([sx / 8, 0, 0, sy / 8, u.d / 2, -u.w / 2])); ctx.fillStyle = pat; ctx.fillRect(-u.d / 2, -u.w / 2, u.d, u.w); u._figT = undefined; }
+    const figs = lod || blockLod ? [] : this.figsFor(u, slots, rowLen);
     for (let k = 0; k < figs.length; k++) {
       const fg = figs[k], row = fg.row;
       let xx = fg.x, y = fg.y;
@@ -540,6 +547,13 @@ export class Renderer {
   }
   // The figures of one unit, kept between frames: removed from the side the last blows came from, added at the rear, and each frame
   // given the formation's places front rank first (within a rank, left to right, so nobody crosses), then eased towards them.
+  // A repeating tile of four by four figures of one unit type (each 8 px), used to paint distant units in one go. Cached per type.
+  blockPattern(ctx, key) {
+    this._pats = this._pats || {}; if (this._pats[key]) return this._pats[key];
+    const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d');
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) g.drawImage(soldierSprite(key, (i + j) % 3), i * 8 - 1, j * 8 - 1, 10, 10);
+    return (this._pats[key] = ctx.createPattern(c, 'repeat'));
+  }
   figsFor(u, slots, rowLen) {
     const n = slots.length, ms = performance.now(), dt = Math.min(0.1, Math.max(0, (ms - (u._figT || ms)) / 1000)); u._figT = ms;
     let f = u._figs;

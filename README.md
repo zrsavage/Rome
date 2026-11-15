@@ -391,3 +391,15 @@ won 19 and lost 2; legions with archers and horse 16-3; legions with slingers 14
 - **Veteran specialisation:** a cohort of foot reaching Veteran picks how it fights for good: **Line** (+3% armour, +4 morale, long
   head-on fights wear it 40% more slowly), **Shock** (charges 20% harder, +4% attack, pursues 20% faster) or **Garrison** (enemy
   charges bite 15% less; on Hold or behind fieldworks +6% armour and 15% less morale loss).
+
+## Great pitched battles: performance and the economy (v0.12)
+- **`node tools/stress.mjs [scenario] [seconds]`** fights Munda with a full late army (80 command slots: 60 cohorts and 40 support units,
+  101 units, 37,000 men) against a host sized to it (130 units, 50,000 men). The simulation is about 30% faster than before (cheaper
+  distance checks, cached facings, the nearest-enemy search skips anything that cannot beat the best so far; results are unchanged).
+- **Rendering big battles:** units off screen are no longer drawn; units so far away that a man would be a few pixels are painted as one
+  patterned block of tiny figures; and the quality adjusts itself: when frames run slow, more distant units become blocks, and it eases
+  back when there is room. Battles with more than 150 units step the simulation in tenths of a second (as all the balance tests do).
+  In a headless browser with no graphics card the Munda test went from 15-26 frames a second to 40-55.
+- **Battle messages name the right enemy:** the line, host and flank messages and the after-battle report used to call every enemy
+  Gallic; they now say German, British, Pompeian or Pontic by theatre.
+- **`node tools/economy.mjs`** plays the campaign as a run of victories with a greedy player who spends everything on cohorts.
