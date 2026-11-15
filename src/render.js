@@ -337,22 +337,20 @@ export class Renderer {
     const sx = u.d / rows, sy = u.w / cols, r = Math.max(1.1, Math.min(t.cat === 'cav' ? 3 : 2.3, Math.min(sx, sy) * 0.42));
     const now = b.t, roof = u.formation === 'close', helm = rome ? '#cfcfc4' : (u.typeKey === 'gaul_elite' ? '#e4c56a' : '#cfa96e');
     const shade = (k) => (u.typeKey === 'legionary' ? (k & 1 ? '#a52a22' : '#b9362c') : t.color);
-    let k = 0;
-    for (let row = 0; row < rows && k < n; row++) {
-      const x = u.d / 2 - sx * (row + 0.5);
-      const inRow = Math.min(cols, n - k);
-      for (let c = 0; c < inRow; c++, k++) {
-        let y = (c - (inRow - 1) / 2) * sy, xx = x;
-        if (routing) { xx += Math.sin(now * 9 + k * 1.7) * 2.4; y += Math.cos(now * 8 + k * 2.3) * 2.4; }
-        else if (u.fighting && row < 2) { xx += Math.sin(now * 6.5 + k * 1.9) * (row === 0 ? 1.3 : 0.7); y += Math.cos(now * 5.2 + k * 2.7) * 0.7; }     // the front ranks heave against the enemy
-        if (roof) {   // a roof of locked shields, each one the real scutum
-          ctx.drawImage(shieldTile(u.typeKey), xx - sx * 0.56, y - sy * 0.56, sx * 1.12, sy * 1.12);
-          continue;
-        }
-        // each man is a real top-down figure (see sprites.js): helmet or hair, shoulders, shield and weapon, facing the way the unit faces
-        const cav = t.cat === 'cav', sz = t.big ? 40 : t.engine ? 26 : t.wagon ? 36 : cav ? Math.min(Math.max(Math.min(sx * 1.08, sy * 2.7), 11), 32) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
-        ctx.drawImage(soldierSprite(u.typeKey, (k * 7 + u.id) % 3, !captive && (!['legionary', 'pompeian', 'pontic', 'pomp_levy'].includes(u.typeKey) || u.pilumLeft > 0)), xx - sz / 2, y - sz / 2, sz, sz);   // a legionary who has thrown his pila draws the gladius
-      }
+    // Each man is his own figure that glides to his place in the ranks. Men fall from the side taking the blows (the front rank in a
+    // head-on fight) and the men behind step up into the gap, so a cohort in a long fight visibly grinds down from the front.
+    const slots = [], rowLen = [];
+    { let kk = 0; for (let row = 0; row < rows && kk < n; row++) { const inRow = Math.min(cols, n - kk); rowLen.push(inRow); for (let c = 0; c < inRow; c++, kk++) slots.push({ x: u.d / 2 - sx * (row + 0.5), y: (c - (inRow - 1) / 2) * sy, row }); } }
+    const figs = lod ? [] : this.figsFor(u, slots, rowLen);
+    for (let k = 0; k < figs.length; k++) {
+      const fg = figs[k], row = fg.row;
+      let xx = fg.x, y = fg.y;
+      if (routing) { xx += Math.sin(now * 9 + k * 1.7) * 2.4; y += Math.cos(now * 8 + k * 2.3) * 2.4; }
+      else if (u.fighting && row < 2) { xx += Math.sin(now * 6.5 + k * 1.9) * (row === 0 ? 1.3 : 0.7); y += Math.cos(now * 5.2 + k * 2.7) * 0.7; }     // the front ranks heave against the enemy
+      if (roof) { ctx.drawImage(shieldTile(u.typeKey), xx - sx * 0.56, y - sy * 0.56, sx * 1.12, sy * 1.12); continue; }   // a roof of locked shields, each one the real scutum
+      // each man is a real top-down figure (see sprites.js): helmet or hair, shoulders, shield and weapon, facing the way the unit faces
+      const cav = t.cat === 'cav', sz = t.big ? 40 : t.engine ? 26 : t.wagon ? 36 : cav ? Math.min(Math.max(Math.min(sx * 1.08, sy * 2.7), 11), 32) : Math.min(Math.max(Math.max(sx, sy) * 1.18, 5.5), 18);
+      ctx.drawImage(soldierSprite(u.typeKey, fg.v, !captive && (!['legionary', 'pompeian', 'pontic', 'pomp_levy'].includes(u.typeKey) || u.pilumLeft > 0)), xx - sz / 2, y - sz / 2, sz, sz);   // a legionary who has thrown his pila draws his sword
     }
     if (!lod && rome && u.typeKey === 'legionary' && !roof) {     // the signifer stands in the front rank, the centurion at its right end
       const so = Math.min(Math.max(Math.max(sx, sy) * 1.3, 6.5), 20);
@@ -538,6 +536,27 @@ export class Renderer {
     const R = Math.max(u.w, u.d) / 2 + 26, a1 = Math.acos(0.6), a2 = Math.acos(-0.35);
     const sector = (from, to, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(u.x, u.y); ctx.arc(u.x, u.y, R, u.f + from, u.f + to); ctx.closePath(); ctx.fill(); };
     sector(-a1, a1, 'rgba(90,210,90,0.17)'); sector(a1, a2, 'rgba(235,205,70,0.2)'); sector(-a2, -a1, 'rgba(235,205,70,0.2)'); sector(a2, Math.PI * 2 - a2, 'rgba(225,70,60,0.22)');
+  }
+  // The figures of one unit, kept between frames: removed from the side the last blows came from, added at the rear, and each frame
+  // given the formation's places front rank first (within a rank, left to right, so nobody crosses), then eased towards them.
+  figsFor(u, slots, rowLen) {
+    const n = slots.length, ms = performance.now(), dt = Math.min(0.1, Math.max(0, (ms - (u._figT || ms)) / 1000)); u._figT = ms;
+    let f = u._figs;
+    if (!f) { f = u._figs = slots.map(sl => ({ x: sl.x, y: sl.y, v: Math.floor(Math.random() * 3), row: sl.row })); return f; }
+    if (f.length > n) {
+      const c = u.lastHit, key = c === 'rear' ? (a) => -a.x : c === 'flank' ? (a) => Math.abs(a.y) : c === 'frontal' || c === 'charge' ? (a) => a.x + (Math.random() - 0.5) * 3 : () => Math.random();
+      f.sort((a, b) => key(b) - key(a)); f.splice(0, f.length - n);
+    }
+    while (f.length < n) f.push({ x: -u.d / 2 - 6, y: (Math.random() - 0.5) * u.w, v: Math.floor(Math.random() * 3), row: 9 });
+    f.sort((a, b) => b.x - a.x);
+    const ease = 1 - Math.exp(-dt * 3.5);
+    let i = 0;
+    for (const len of rowLen) {
+      const grp = f.slice(i, i + len).sort((a, b) => a.y - b.y);
+      for (let j = 0; j < len; j++) { const fg = grp[j], sl = slots[i + j]; fg.x += (sl.x - fg.x) * ease; fg.y += (sl.y - fg.y) * ease; fg.row = sl.row; }
+      i += len;
+    }
+    return f;
   }
   drawRange(ctx, u, b = null) {
     const t = u.type, ext = Math.max(u.w, u.d) / 2; let r = null, col = 'rgba(255,255,255,0.35)';

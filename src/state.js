@@ -157,7 +157,7 @@ function cohortSpecs(c, scn) {
 }
 
 export function applyResult(c, result, scn) {
-  const notes = [];
+  const notes = []; c.nextMorale = 0;
   for (const r of result.rows) {
     const h = c.cohorts.find(x => x.id === r.cohortId);
     if (!h) continue;

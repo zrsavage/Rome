@@ -28,6 +28,15 @@ export function keepScroll(root) {
     for (const [sel, top] of Object.entries(parts)) { const el = root.querySelector(sel); if (el) el.scrollTop = top; }
   };
 }
+// A decision with several buttons, each with its effect written under it. Resolves with the index of the choice.
+export function choose(title, text, options) {
+  return new Promise((resolve) => {
+    const el = document.getElementById('confirm');
+    el.classList.remove('hidden');
+    el.innerHTML = `<div class="box" style="text-align:left;max-width:520px"><h3 style="color:var(--gold);margin:0 0 8px">${esc(title)}</h3><p style="margin:0 0 12px">${esc(text)}</p><div class="evchoices">${options.map((o, i) => `<button class="evchoice" data-i="${i}" ${o.disabled ? 'disabled' : ''}><b>${esc(o.label)}</b><span class="small muted">${esc(o.fx)}</span></button>`).join('')}</div></div>`;
+    el.querySelectorAll('.evchoice').forEach(b => b.onclick = () => { el.classList.add('hidden'); el.innerHTML = ''; resolve(+b.dataset.i); });
+  });
+}
 export function inform(title, bullets, okLabel = 'Got it') {
   return new Promise((resolve) => {
     const el = document.getElementById('confirm');

@@ -9,6 +9,17 @@ import { DECORATIONS } from './heroes.js';
 const TITLE = { victory: 'Victory', draw: 'Draw', defeat: 'Defeat' };
 const tile = (big, small, cls = '') => `<div class="rtile ${cls}"><b>${big}</b><span>${small}</span></div>`;
 
+// One line per unit on what it did: where its kills came from, and the men the medici brought back.
+function howFought(r, res) {
+  const k = r.kBy || {}, out = [], sideRear = (k.flank || 0) + (k.rear || 0), shot = (k.missile || 0), pila = (k.pilum || 0), chg = k.charge || 0;
+  if (r.medic) { const n = res.rows.filter(x => x.medic).length || 1, saved = Math.round((res.healed || 0) / n); out.push(saved ? `saved ${saved} wounded` : 'no wounded to save'); }
+  if (sideRear) out.push(`${sideRear} from flank and rear`);
+  if (chg) out.push(`${chg} in the charge`);
+  if (shot) out.push(`${shot} by missiles`);
+  if (pila) out.push(`${pila} by pila`);
+  if (r.healed) out.push(`${r.healed} brought back by medici`);
+  return out.length ? out.join(', ') : '<span class="muted">-</span>';
+}
 export function resultHtml({ res, o, flavour, banner, spoils, mid, practice, picks = [], pris = [], notes = [], contLabel, extraButtons = '', history = null }) {
   const lost = res.rows.reduce((a, r) => a + r.casualties, 0), start = res.rows.reduce((a, r) => a + r.startMen, 0) || 1;
   const kills = res.rows.reduce((a, r) => a + r.kills, 0), mm = `${Math.floor(res.time / 60)}:${String(Math.floor(res.time % 60)).padStart(2, '0')}`;
@@ -30,7 +41,7 @@ export function resultHtml({ res, o, flavour, banner, spoils, mid, practice, pic
   const what = rp ? `<div class="rgrid"><div>${rp.chart}</div><div>${sect('How the fight turned', rp.P.turn)}${rp.P.lesson.length ? `<div class="rlesson"><b>Lesson.</b> ${rp.P.lesson[0]}</div>` : ''}</div></div>
       <div class="rgrid2">${sect('How your army fought', rp.P.yours)}${sect('What the enemy did', rp.P.enemy)}${sect('Conditions', rp.P.cond)}</div>
       ${rp.moments.length ? `<details class="rmoments"><summary>Key moments (${rp.moments.length})</summary><div class="rmlist">${rp.moments.map(m => `<div><span class="muted">${m.t}</span> ${m.html}</div>`).join('')}</div></details>` : ''}` : '<p class="muted">No report.</p>';
-  const units = `<table class="rtable"><tr><th>Unit</th><th>Before</th><th>After</th><th>Lost</th><th>Kills</th>${practice ? '' : '<th>Experience</th>'}</tr>${res.rows.map(r => `<tr${r.routed ? ' class="routed"' : ''}><td>${esc(r.name)}${r.routed ? ' <span class="muted small">(broke)</span>' : ''}</td><td>${r.startMen}</td><td>${r.endMen}</td><td>${r.casualties}</td><td>${r.kills}</td>${practice ? '' : `<td>+${r.xpGain}</td>`}</tr>`).join('')}</table>
+  const units = `<table class="rtable"><tr><th>Unit</th><th>Before</th><th>After</th><th>Lost</th><th>Kills</th><th>How they fought</th>${practice ? '' : '<th>Experience</th>'}</tr>${res.rows.map(r => `<tr${r.routed ? ' class="routed"' : ''}><td>${esc(r.name)}${r.routed ? ' <span class="muted small">(broke)</span>' : ''}</td><td>${r.startMen}</td><td>${r.endMen}</td><td>${r.casualties}</td><td>${r.kills}</td><td class="small">${howFought(r, res)}</td>${practice ? '' : `<td>+${r.xpGain}</td>`}</tr>`).join('')}</table>
     <p class="muted small">Wounded men who can still march are counted in the "after" column.</p>`;
   const hon = `${honours.length ? `<div class="rhon">${honours.map(h => `<div class="rmedal"><div class="medal m-${h.key}"></div><div><b>${esc(h.hero)}</b> of ${esc(h.unit)}<div class="small"><b>${esc(h.name)}</b>: ${esc(h.why)}</div><div class="small muted">${esc(DECORATIONS[h.key].text)}</div></div></div>`).join('')}</div>` : '<p class="muted">No decorations were awarded for this fight.</p>'}
     ${proms.length ? `<h4 class="sect">Promoted from the ranks</h4>${proms.map(p => `<div>${esc(p.name)} of ${esc(p.unit)} takes the place of ${esc(p.fallen)} as ${esc(p.rank)}.</div>`).join('')}` : ''}
