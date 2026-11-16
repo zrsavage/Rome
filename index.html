@@ -11,17 +11,23 @@
 <div id="app">
 
   <section id="screen-menu" class="screen active">
-    <div class="menu-box">
-      <h1>LEGIO</h1>
-      <p class="tag">From the Gallic frontier to the gates of Rome</p>
-      <label class="field">Difficulty
-        <select id="diff"></select>
-      </label>
-      <p id="diff-desc" class="muted"></p>
-      <div id="slots"></div>
-      <div class="row" style="justify-content:center;margin-top:14px"><button id="btn-practice">Practice Battle</button><button id="btn-import" title="Load a campaign file you exported">Import save</button><input type="file" id="file-import" accept=".json,application/json" hidden></div>
-      <p class="muted small">Six acts and a side act in Britain: 34 battles, from the Rhone to Munda.</p>
+    <div class="menu-bg" id="menu-bg"></div>
+    <div class="menu-wrap">
+      <div class="menu-left">
+        <div class="menu-eagle" aria-hidden="true">SPQR</div>
+        <h1>LEGIO</h1>
+        <p class="tag">From the Gallic frontier to the gates of Rome</p>
+        <p class="menu-pitch">Command a legion of Caesar from the fords of the Rhone in 58&nbsp;BC to the last battle of the civil war at Munda: six acts and a side act in Britain, thirty-four battles.</p>
+        <label class="field">Difficulty for a new campaign <select id="diff"></select></label>
+        <p id="diff-desc" class="muted small"></p>
+        <div class="row menu-actions"><button id="btn-practice">Practice Battle</button><button id="btn-import" title="Load a campaign file you exported">Import save</button><input type="file" id="file-import" accept=".json,application/json" hidden></div>
+      </div>
+      <div class="menu-right">
+        <h2 class="menu-h">Your campaigns</h2>
+        <div id="slots"></div>
+      </div>
     </div>
+    <p class="menu-foot muted small">Music, sources and settings: the speaker button, bottom left.</p>
   </section>
 
   <section id="screen-map" class="screen"></section>
