@@ -34,6 +34,11 @@ export const COMMAND_PER_WIN = 4, COMMAND_PER_ORG = 4;
 // work in support, take half a slot each. (Army tests showed that at one slot each, an army of nothing but legions won most often.)
 export const slotOf = (type) => (UNIT_TYPES[type] && UNIT_TYPES[type].cat !== 'inf' ? 0.5 : 1);
 export const slotsUsed = (c) => c.cohorts.reduce((a, h) => a + slotOf(h.type), 0);
+// The economy: an army costs money to keep and more to grow. Every new unit is dearer than the last (recruiters must go further for
+// men, horses and kit), and every soldier draws pay after each battle; an army that cannot be paid loses heart and men.
+export const raiseMult = (c) => 1 + 0.03 * Math.max(0, slotsUsed(c) - 10);
+export const PAY_PER_MAN = 0.12;
+export const payDue = (c) => Math.round(c.cohorts.reduce((a, h) => a + h.men, 0) * PAY_PER_MAN * (1 - 0.06 * careerLv(c, 'economy')));
 export const commandLimit = (c) => Math.min(80, 8 + (c.history || []).filter(h => h.id !== 'prologue' && realWin(h)).length * COMMAND_PER_WIN + COMMAND_PER_ORG * careerLv(c, 'organisation'));
 // ---- Fair enemy hosts ----
 // The enemy is sized from your army, by what kind of fight it is: an attacker needs more men than a defender, and men behind a rampart
@@ -188,6 +193,17 @@ export function applyResult(c, result, scn) {
     return notes;
   }
   if (scn.phases && result.outcome !== 'defeat') c.phase = 0;
+  c.glut = Math.round((c.glut || 0) * 0.6);                        // the slave markets recover between battles
+  if (scn.id !== 'prologue') {                                     // the men are paid after every battle
+    const due = payDue(c);
+    if (c.gold >= due) { c.gold -= due; notes.push(`The army is paid: ${due} denarii.`); }
+    else {
+      const short = 1 - c.gold / Math.max(1, due); c.gold = 0; let left = 0;
+      for (const h of c.cohorts) { const n = Math.round(h.men * 0.08 * short); h.men = Math.max(Math.ceil(h.maxMen * 0.35), h.men - n); left += n; }
+      c.nextMorale = (c.nextMorale || 0) - Math.round(6 * short);
+      notes.push(`There is not enough money to pay the army (${due} denarii due). ${left} men desert, and the rest will fight sullenly in the next battle.`);
+    }
+  }
   // Volunteers and provincial levies go into a pool of available soldiers; once the barracks is built you assign them to units with
   // sliders. Until then (the very first camp) they are assigned automatically so a new player is not left with an unexplained pool.
   const wonCampaign = (c.history || []).filter(h => h.id !== 'prologue' && realWin(h)).length + (scn.id !== 'prologue' && result.outcome !== 'defeat' ? 1 : 0);

@@ -403,3 +403,17 @@ won 19 and lost 2; legions with archers and horse 16-3; legions with slingers 14
 - **Battle messages name the right enemy:** the line, host and flank messages and the after-battle report used to call every enemy
   Gallic; they now say German, British, Pompeian or Pontic by theatre.
 - **`node tools/economy.mjs`** plays the campaign as a run of victories with a greedy player who spends everything on cohorts.
+
+## A tighter economy (v0.13)
+Measured with `node tools/economy.mjs`, the old economy gave a greedy player 2.5 million spare denarii by Munda and filled the 80-slot
+command limit by Act III: money stopped being a choice. Three changes:
+- **Pay:** after every battle each soldier draws 0.12 denarii (less with the Economy career). The bill shows next to your denarii on the
+  map and in camp. If you cannot pay, up to 8% of the men desert and the army fights with less heart in the next battle.
+- **Prisoners lose value:** ransoms shrink as numbers grow (their kin can only raise so much), and selling captives gluts the slave
+  markets, so every sale fetches less until the markets recover over the next battles.
+- **Each unit costs more than the last:** beyond ten command slots, raising a unit costs 3% more per slot you already fill.
+- Grain taken in battle grows more slowly than the enemy host, so a large army must still be fed.
+
+With a player who spends a third of the income on drills, kit and the hospital and the rest on cohorts, the army now grows steadily
+(12 units at Bibracte, 23 at the Rhine, 40 at the landing in Africa, about 70 at Munda), gold in hand stays at two or three cohorts'
+worth, and supplies at about three marches' worth.

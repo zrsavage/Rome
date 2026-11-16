@@ -1660,7 +1660,7 @@ export class Battle {
       outcome, time: this.t, rows, enemyDead, enemyStart, prisoners, captured: cap, wagonsTaken, baggageLost: !!this.stats.baggageLost, healed: this.stats.healed || 0, report: { wx: this.wxKey, series: this.rep.series, frames: this.rep.frames, meta: this.rep.meta, world: { w: WORLD.w, h: WORLD.h }, events: this.rep.events, stats: this.stats, startRome: this.startRome, startGaul: this.startGaul },
       spoils: {
         gold: Math.round(rw.gold * mult * rewardMult),
-        supplies: Math.round(rw.supplies * mult * rewardMult) + wagonsTaken * 35,
+        supplies: Math.round(rw.supplies * mult * rewardMult * Math.pow(this.powerScale, -0.35)) + wagonsTaken * 35,   // grain taken grows more slowly than the host: a big army must still be fed
         recruits: Math.round(rw.recruits * mult * rewardMult)
       },
       officerXp: Math.round(rw.officerXp * (outcome === 'victory' ? 1 : outcome === 'draw' ? 0.7 : 0.4))
