@@ -92,6 +92,18 @@ export class BattleUI {
   // Select the general; with centre=true the camera also glides to him.
   selectGeneral(centre = false) { if (!this.b.general) return; if (centre) this.centreOn(this.b.general.x, this.b.general.y); this.r.selection.clear(); this.genSel = true; this.r.genSel = true; this.refreshBottom(); this.refreshHud(); this.emit('general-select'); }
   centreOn(x, y) { this.r.cam.x = x; this.r.cam.y = y; this.r.clampCam(); }
+  // Unit cards: click selects one; Ctrl+click adds or removes one; Ctrl+Shift+click selects every card from the last one clicked to this one;
+  // Shift+click adds one (as before).
+  cardClick(id, e) {
+    const ctrl = e.ctrlKey || e.metaKey;
+    if (ctrl && e.shiftKey && this.cardAnchor != null) {
+      const order = [...document.querySelectorAll('#hud-bottom .ucard[data-id]')].map(d => +d.dataset.id), a = order.indexOf(this.cardAnchor), b = order.indexOf(id);
+      if (a >= 0 && b >= 0) { const [lo, hi] = a < b ? [a, b] : [b, a]; this.select(order.slice(lo, hi + 1).filter(x => { const u = this.b.byId(x); return u && u.active; }), true); return; }
+    }
+    if (ctrl) this.toggleSel(id); else this.select([id], e.shiftKey);
+    this.cardAnchor = id;
+  }
+  toggleSel(id) { this.genSel = false; this.r.genSel = false; if (this.r.selection.has(id)) this.r.selection.delete(id); else this.r.selection.add(id); this.refreshBottom(); this.refreshHud(); this.emit('select', { ids: [...this.r.selection] }); }
   select(ids, add = false) { this.genSel = false; this.r.genSel = false; if (!add) this.r.selection.clear(); ids.forEach(i => this.r.selection.add(i)); this.refreshBottom(); this.refreshHud(); this.emit('select', { ids }); }
 
   issueMove(wx, wy, drag, ignore = false, sprint = false, fill = false) {
@@ -130,7 +142,7 @@ export class BattleUI {
     c.addEventListener('contextmenu', e => e.preventDefault());
     c.addEventListener('mousedown', (e) => {
       if (!this.b) return; const p = pos(e);
-      if (e.button === 0) left = { ...p, shift: e.shiftKey };
+      if (e.button === 0) left = { ...p, shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey };
       else if (e.button === 2) right = { ...p };
       else if (e.button === 1) { this.pd = { ...p, cx: this.r.cam.x, cy: this.r.cam.y }; e.preventDefault(); }
     });
@@ -154,7 +166,7 @@ export class BattleUI {
           const u = this.r.unitAt(this.b, w.x, w.y), gn = this.b.general, gh = this.r.genHitTest(p.x, p.y);
           if (gh) this.selectGeneral(gh === 'off');                                     // the gold standard above him, or the arrow at the screen edge
           else if (gn && !u && Math.hypot(w.x - gn.x, w.y - gn.y) < Math.max(28, 26 / this.r.cam.zoom)) this.selectGeneral();
-          else if (u && u.side === 'rome') this.select([u.id], left.shift);
+          else if (u && u.side === 'rome') { if (left.ctrl && !left.shift) this.toggleSel(u.id); else this.select([u.id], left.shift); }   /* Ctrl+click adds or removes one unit */
           else if (u) { this.inspect = u.id; this.refreshHud(); }
           else { this.inspect = null; this.select([], false); }
         }
@@ -310,7 +322,7 @@ export class BattleUI {
       const d = document.createElement('div'); d.className = 'ucard'; d.dataset.id = u.id;
       d.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 52, 52)}"><b></b><div class="bar x"><i></i></div><div class="bar m" style="margin-top:3px"><i></i></div>`;
       d.querySelector('b').textContent = u.name;
-      d.onclick = (e) => this.select([u.id], e.shiftKey);
+      d.onclick = (e) => this.cardClick(u.id, e);
       el.appendChild(d);
     });
   }
