@@ -488,3 +488,10 @@ body.cb .rtitle.victory { color: #7fb8ff; } body.cb .rtitle.defeat { color: #ffb
 .menu-right .slot .row button { padding: 5px 12px; }
 .menu-foot { position: relative; text-align: center; margin: 0 0 14px; }
 @media (max-width: 900px) { .menu-wrap { grid-template-columns: 1fr; gap: 20px; padding: 4vh 18px 18px; } .menu-left { text-align: center; } .menu-pitch, .menu-left .field { margin-left: auto; margin-right: auto; } .menu-actions { justify-content: center; } }
+
+.card.warnc { border-color: #b0472f; background: rgba(90,24,14,0.35); }
+.card.warnc h3 { color: #f0a080; }
+
+.renamebox { font: inherit; font-weight: bold; background: #120e08; color: var(--gold); border: 1px solid var(--gold); border-radius: 4px; padding: 2px 6px; width: 16em; max-width: 100%; }
+button.link { background: none; border: none; color: var(--muted, #b8a888); padding: 0 4px; cursor: pointer; text-decoration: underline dotted; }
+button.link:hover { color: var(--gold); }

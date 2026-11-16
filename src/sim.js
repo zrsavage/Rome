@@ -54,7 +54,7 @@ export class Unit {
     this.type = applyMods({ ...UNIT_TYPES[spec.type] }, [...(spec.ups || []), ...((spec.officer && spec.officer.perks) || [])]);   // each unit carries its own numbers: rank upgrades and its officer's perks change them
     this.name = spec.name || this.type.name;
     this.rotate = spec.side === 'rome' && this.type.cat === 'inf';   // rotation of the line is on by default once learned (K turns it off)
-    this.cohortId = spec.cohortId ?? null; this.legion = spec.legion || 1; this.legionName = spec.legionName || ''; this.parentId = spec.parentId ?? null;
+    this.cohortId = spec.cohortId ?? null; this.legion = spec.legion || 1; this.legionName = spec.legionName || ''; this.title = spec.title || null; this.titleText = spec.titleText || ''; this.parentId = spec.parentId ?? null;
     this.men = spec.men; this.maxMen = spec.maxMen || spec.men; this.startMen = spec.men;
     this.xp = spec.xp || 0; this.lvl = levelFor(this.xp);
     this.drill = spec.drill || 0;
@@ -138,6 +138,8 @@ export class Battle {
     this.powerScale = opts.forceScale || 1; this.rewardScale = Math.pow(this.powerScale, 0.75);   // bigger hosts carry bigger spoils
     // a campaign battle's host is already sized to your army by its posture (state.js forceScale); older callers get the authored host, a little lighter
     this.enemyScale = this.diff.enemyMult * favMult * (scn.id === 'prologue' || scn.practice || opts.forceScale ? 1 : 0.9);
+    // a battle fought again: they know your ways (attempts.js). More men, steadier, better led, less to take.
+    { const k = Math.min(4, opts.replay || 0); this.replay = k; if (k) { this.enemyScale *= 1 + 0.2 * k; this.rewardScale *= Math.pow(0.7, k); this.aiLevel = Math.min(3, this.aiLevel + 1); } }
     this.recoveryMult = opts.recovery ?? 1;
     this.healRing = opts.healL5 ? 200 / 150 : 1; this.healRate = opts.healL5 ? 0.5 : 0.35;   // a level 5 hospital (Valetudinarium) makes the medici better
     const rb = this.diff.romeMorale + Math.min(12, this.fortLevel * 4) + (opts.suppliesLow ? -8 : 0) + (opts.moraleBonus || 0);
@@ -164,7 +166,7 @@ export class Battle {
       let x = e.x + ((i % 8) - (per - 1) / 2) * 115 * (n > 1 ? 1 : 0), y = e.y - row * 110 * (n > 1 ? 1 : 0);
       if (y < 40) y = e.y + row * 110; x = Math.max(40, Math.min(WORLD.w - 40, x)); y = Math.min(WORLD.h - 40, y);
       const ai = { ...e.ai }; if (ai.delay != null) ai.delay += (i % 4) * 1.5;
-      const u = new Unit({ side: 'gaul', type: e.type, men, x, y, ai, stance: e.ai && e.ai.kind === 'idle' ? 'hold' : 'aggressive', moraleBonus: this.diff.enemyMorale + (this.style === 'stubborn' ? 5 : 0), xp: 40 + (this.diff.enemyMult > 1 ? 60 : 0) });
+      const u = new Unit({ side: 'gaul', type: e.type, men, x, y, ai, stance: e.ai && e.ai.kind === 'idle' ? 'hold' : 'aggressive', moraleBonus: this.diff.enemyMorale + (this.style === 'stubborn' ? 5 : 0) + 5 * (this.replay || 0), xp: 40 + (this.diff.enemyMult > 1 ? 60 : 0) });
       if (u.type.cat === 'cav') u.cycle = this.aiLevel >= 2;
       if (this.fogOn) { u.spotted = false; u.seenUntil = this.t === 0 && this.scouted ? 40 : 0; if (u.seenUntil) u.spotted = true; }   // scouts have told you where they are, for a while
       this.units.push(u); spawned += men;
@@ -321,34 +323,39 @@ export class Battle {
   }
   updateAutoDrills() {
     if (this.t < (this._autoT || 0) || this.deploying) return; this._autoT = this.t + 0.5;
-    const O = this.orders, said = (k, msg) => { if (this.t > ((this._autoSaid || (this._autoSaid = {}))[k] || 0)) { this._autoSaid[k] = this.t + 40; this.say(msg, 'info'); } };
+    const said = (k, msg, kind = 'info') => { if (this.t > ((this._autoSaid || (this._autoSaid = {}))[k] || 0)) { this._autoSaid[k] = this.t + 40; this.say(msg, kind); } };
+    const ALL = { has: () => true };
     for (const u of this.units) {
-      if (u.side !== 'rome' || !u.active || u.type.cat !== 'inf' || u.autoOff) continue;
+      // Pompey's legions are drilled exactly like yours, and use the same drills; Gauls, Germans and the kings' levies do not
+      const isFoe = u.side !== 'rome'; if (isFoe && !u.type.drilled) continue;
+      if (!isFoe && (u.type.cat !== 'inf' || u.autoOff)) continue;
+      if (!u.active) continue;
+      const O = isFoe ? ALL : this.orders, tell = isFoe ? (k) => said('e' + k, { orb: 'A cut-off Pompeian cohort forms the orbis.', close: 'Pompeian cohorts lock shields against your missiles.', lanes: 'The Pompeians open their ranks.', back: 'A shaken Pompeian cohort steps back in order instead of breaking.' }[k], 'warn') : said;
       const melee = u.contacts.some(e => e.active), terr = this.terr(u).kind, noForm = terr === 'forest' || terr === 'ford';
       const foe = this.nearestEnemy(u, (e) => e.active && e.type.cat !== 'ranged'), close = foe ? foe.gap : 1e9;
       // the orbis: surrounded, with no friendly foot near enough to cut it out
       if (O.has('orbis') && !noForm) {
-        if (u.surrounded && u.formation !== 'orb' && (u.formation === 'normal' || u.autoForm) && !this.units.some(f => f !== u && f.side === 'rome' && f.active && f.type.cat === 'inf' && Math.hypot(f.x - u.x, f.y - u.y) < 130)) {
-          u.formation = 'orb'; u.wide = 1; u.updateDims(); u.autoForm = 'orb'; u.orbT = this.t; said('orb', `${u.name} is cut off and forms the orbis.`); continue;
+        if (u.surrounded && u.formation !== 'orb' && (u.formation === 'normal' || u.autoForm) && !this.units.some(f => f !== u && f.side === u.side && f.active && f.type.cat === 'inf' && Math.hypot(f.x - u.x, f.y - u.y) < 130)) {
+          u.formation = 'orb'; u.wide = 1; u.updateDims(); u.autoForm = 'orb'; u.orbT = this.t; tell('orb', `${u.name} is cut off and forms the orbis.`); continue;
         }
         if (u.autoForm === 'orb' && u.formation === 'orb' && !u.surrounded && this.t - (u.orbT || 0) > 6) { if (u.flanked) u.orbT = this.t; else this.undoAuto(u); }
       }
       // the testudo: shot at, standing still, and no swordsman close enough to strike before the shields come down
       if (O.has('testudo') && !noForm && u.autoForm !== 'orb') {
         const shot = this.t - (u.firedT ?? -99) < 2.5, still = u.order.kind === 'none' || u.state !== 'moving';
-        if (shot && still && !melee && close > 70 && u.formation === 'normal' && (u.wide || 1) <= 1.01) { u.formation = 'close'; u.updateDims(); u.autoForm = 'close'; said('close', `${u.name} locks shields against the missiles.`); }
+        if (shot && still && !melee && close > 70 && u.formation === 'normal' && (u.wide || 1) <= 1.01) { u.formation = 'close'; u.updateDims(); u.autoForm = 'close'; tell('close', `${u.name} locks shields against the missiles.`); }
         else if (u.autoForm === 'close' && u.formation === 'close' && (melee || close < 55 || !still || this.t - (u.firedT ?? -99) > 6)) this.undoAuto(u);
       }
       // open ranks: elephants coming on
       if (O.has('lanes')) {
         const beast = this.nearestEnemy(u, (e) => e.active && e.type.big && e.type.terror), bg = beast ? beast.gap : 1e9;
-        if (bg < 200 && !u.lanes) { u.lanes = true; u.autoLanes = true; said('lanes', `${u.name} opens its ranks for the elephants.`); }
+        if (bg < 200 && !u.lanes) { u.lanes = true; u.autoLanes = true; tell('lanes', `${u.name} opens its ranks for the elephants.`); }
         else if (u.autoLanes && u.lanes && bg > 300) { u.lanes = false; u.autoLanes = false; }
       }
       // an orderly step back: a cohort about to break pulls out of the fight before it runs, while friends are near to take its place
       if (O.has('fallback') && O.has('relieve') && melee && !u.surrounded && !u.order.back && u.morale < u.maxMorale * 0.22 && this.t > (u.autoBackCd || 0)
-        && this.units.some(f => f !== u && f.side === 'rome' && f.active && f.type.cat === 'inf' && Math.hypot(f.x - u.x, f.y - u.y) < 220)) {
-        if (u.autoForm) this.undoAuto(u); this.fallBack(u); u.autoBackCd = this.t + 30; this.stats.autoBack = (this.stats.autoBack || 0) + 1; said('back', `${u.name} is shaken: it steps back in order before it breaks.`);
+        && this.units.some(f => f !== u && f.side === u.side && f.active && f.type.cat === 'inf' && Math.hypot(f.x - u.x, f.y - u.y) < 220)) {
+        if (u.autoForm) this.undoAuto(u); this.fallBack(u); u.autoBackCd = this.t + 30; this.stats.autoBack = (this.stats.autoBack || 0) + 1; tell('back', `${u.name} is shaken: it steps back in order before it breaks.`);
       }
     }
   }
@@ -1443,7 +1450,8 @@ export class Battle {
     cause = cause || (ranged ? 'missile' : 'frontal');
     const kk = this.stats.k[att.side]; kk[cause] = (kk[cause] || 0) + n; const kb = att.kBy || (att.kBy = {}); kb[cause] = (kb[cause] || 0) + n;   // how each unit did its killing, for the battle report
     if (ranged && att.side === 'rome') this.stats.rangedKills += n;
-    if (ranged) def.firedT = this.t;                                    // for the auto testudo: this unit is being shot at
+    if (ranged) def.firedT = this.t;
+    if (def.type.big) att.bigKills = (att.bigKills || 0) + n;          // for the battle name 'of the Elephant'                                    // for the auto testudo: this unit is being shot at
     def.men -= n; def.casualties += n; def.lastHit = cause; if (def.side === 'rome' && this.medicCover(def)) def.tended = (def.tended || 0) + n; att.kills += n; def.shock = (def.shock || 0) + n / Math.max(1, def.maxMen) * 100; def.flash = 0.22; def.floatAcc = (def.floatAcc || 0) + n;
     let loss = n / def.maxMen * 130 * def.type.fragile * (ranged ? (def.type.panicky ? 1.4 : att.type.setup ? 0.85 : 0.65) : 1) * (def.type.big && cause === 'pilum' ? 0.4 : 1);   // missiles sting an elephant into panic
     if (def.officer) loss *= 1 - 0.04 * (def.officer.tactics || 0);
@@ -1704,7 +1712,7 @@ export class Battle {
         const chance = tm * (0.03 + r * 0.4 + (u.state === 'routing' ? 0.12 : 0) + (u.state === 'dead' ? 0.4 : 0) + (outcome === 'defeat' ? 0.08 : 0)) * dm.officerRisk;
         fate = this.rand() < chance ? 'killed' : 'survived';
       }
-      rows.push({ kBy: u.kBy || {}, healed, medic: !!u.type.medic, cohortId: u.cohortId, name: u.name, startMen: u.startMen, endMen, casualties, kills: u.kills, xpGain, officerId: u.officer ? u.officer.id : null, officerFate: fate, routed: !!u.everRouted, surrounded: !!u.wasSurrounded, flanked: !!u.wasFlanked, relieved: this.rep.events.filter(e => e.kind === 'relieve' && e.text.startsWith(u.name + ' ')).length, firstIn: this.firstIn === u.id });
+      rows.push({ kBy: u.kBy || {}, healed, medic: !!u.type.medic, cohortId: u.cohortId, name: u.name, startMen: u.startMen, endMen, casualties, kills: u.kills, xpGain, officerId: u.officer ? u.officer.id : null, officerFate: fate, routed: !!u.everRouted, surrounded: !!u.wasSurrounded, flanked: !!u.wasFlanked, relieved: this.rep.events.filter(e => e.kind === 'relieve' && e.text.startsWith(u.name + ' ')).length, firstIn: this.firstIn === u.id, bigKills: u.bigKills || 0 });
     }
     const mult = outcome === 'victory' ? 1 : outcome === 'draw' ? 0.45 : 0;
     const rewardMult = (this.scn.rewardMult || 1) * dm.reward * this.rewardScale;

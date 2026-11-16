@@ -348,7 +348,7 @@ export class BattleUI {
       d.dataset.stance = u.stance; d.classList.toggle('sel', this.r.selection.has(u.id)); d.classList.toggle('gone', !u.present || u.state === 'surrendered');
       d.querySelector('.x i').style.width = Math.max(0, u.men / u.maxMen * 100) + '%';
       d.querySelector('.m i').style.width = Math.max(0, Math.min(100, u.morale / u.maxMorale * 100)) + '%';
-      d.title = `${u.men} men` + (u.state === 'routing' ? ' (routing)' : u.state === 'surrendered' ? ' (surrendered: reach them while no enemy is close to free them)' : u.state === 'gone' ? ' (withdrawn)' : '');
+      d.title = (u.titleText ? u.titleText + '. ' : '') + `${u.men} men` + (u.state === 'routing' ? ' (routing)' : u.state === 'surrendered' ? ' (surrendered: reach them while no enemy is close to free them)' : u.state === 'gone' ? ' (withdrawn)' : '');
     });
     // units that join mid-battle (a relief force, a cohort that comes over) get their cards
     { const n = b.units.filter(u => u.side === 'rome').length; if (n !== this.cardCount) { this.cardCount = n; this.refreshBottom(); } }
@@ -374,7 +374,7 @@ export class BattleUI {
     if (!u) return;
     const t = u.type, lvl = LEVEL_NAMES[u.lvl];
     const kv = (a, v) => `<div class="kv"><span>${a}</span><span>${v}</span></div>`;
-    L.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 88, 88)}"><h3>${u.name}</h3><div class="muted">${t.blurb}</div>` +
+    L.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 88, 88)}"><h3>${u.name}</h3>${u.titleText ? `<div class="small" style="color:var(--gold)">${u.titleText}</div>` : ""}<div class="muted">${t.blurb}</div>` +
       kv('Men', `${u.men} / ${u.maxMen}`) + kv('Morale', `${Math.round(u.morale)} / ${Math.round(u.maxMorale)}`) + kv('Fatigue', Math.round(u.fatigue) + '%') +
       kv('Experience', lvl) + kv('Drill', Math.round(u.drill)) +
       (u.lead ? kv('Leadership', `${u.lead.name}: attack ${u.lead.atk >= 1 ? '+' : ''}${Math.round((u.lead.atk - 1) * 100)}%, morale ${u.lead.mor >= 0 ? '+' : ''}${u.lead.mor}`) : '') +

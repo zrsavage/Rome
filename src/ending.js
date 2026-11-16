@@ -1,3 +1,5 @@
+import { UNIT_TYPES } from './data.js';
+import { titleText } from './titles.js';
 // The end of the campaign: the triumph in Rome (October 45 BC) and an account of the commander's whole war.
 import { SCENARIOS, actLabel } from './data.js';
 import { esc } from './ui.js';
@@ -17,6 +19,19 @@ function titleFor(c, won, lost) {
   return ['A Survivor of the Wars', 'You came through, and so did your eagle. Not every legate can say as much.'];
 }
 
+// Each unit's story in a line: where it came from, where it fought, and how it ended. Destroyed units are remembered too.
+function serviceHtml(c) {
+  const units = c.cohorts.filter(h => (h.fields || []).length || h.men > 0).filter(h => !UNIT_TYPES[h.type] || UNIT_TYPES[h.type].cat !== 'train');
+  if (!units.length) return '';
+  const line = (h) => {
+    const f = h.fields || [], born = h.born ? h.born : 'with the army from the start';
+    const where = f.length ? (f.length === 1 ? `one battle, ${esc(f[0])}` : `${f.length} battles, ${esc(f[0])} to ${esc(f[f.length - 1])}`) : '';
+    const end = h.men <= 0 ? `<span class="b">destroyed${h.lostAt ? ' at ' + esc(h.lostAt) : ''}</span>` : `<span class="g">marches in the triumph, ${h.men} strong</span>`;
+    return `<div class="erow"><span><b${h.title ? ` title="${esc(titleText(h))}"` : ''}>${esc(h.name)}</b><br><span class="muted small">${esc(born[0].toUpperCase() + born.slice(1))}${where ? '; ' + where : ''}${(h.kills || 0) > 0 ? `; ${h.kills.toLocaleString()} enemies felled` : ''}</span></span><span class="small">${end}</span></div>`;
+  };
+  const sorted = units.slice().sort((a, b) => (b.men > 0) - (a.men > 0) || (b.fields || []).length - (a.fields || []).length);
+  return `<div class="card"><h4>Your units, and what became of them</h4><div class="elist">${sorted.map(line).join('')}</div></div>`;
+}
 export function showEnding(c) {
   const h = (c.history || []).filter(x => x.id !== 'prologue' && x.outcome !== 'skipped');
   const n = (o) => h.filter(x => x.outcome === o).length, won = n('victory'), lost = n('defeat'), T = c.totals || {};
@@ -57,6 +72,7 @@ export function showEnding(c) {
         <li>Commentarii: ${cx.have} of ${cx.total} entries written.</li>
       </ul></div>
     </div>
+    ${serviceHtml(c)}
     <div class="card"><h4>The war, battle by battle</h4><div class="elist">${rows.join('')}</div></div>
     <div class="card rhist"><h4>What came after</h4><p>Caesar is dictator for life now, and the Republic is his. Five months later, on the Ides of March 44 BC, he is stabbed to death in the Senate at the foot of Pompey's statue, and the civil wars begin again. But that is another campaign.</p><p class="muted small">Suetonius, Julius 80-82; Plutarch, Caesar 66.</p></div>
     <p class="muted small" style="text-align:center">Thank you for playing <b>LEGIO</b>. Your campaign stays saved; start a new one from the main menu to try another road.</p>

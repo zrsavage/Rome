@@ -29,6 +29,7 @@ const P = {
   swords: '<path d="M5 5l14 14M19 5L5 19"/><path d="M4 8l4-4M16 20l4-4M20 8l-4-4M8 20l-4-4"/>',
   tent: '<path d="M2 20L12 4l10 16z"/><path d="M12 20l-3-7h6z"/>',
   array: '<rect x="3" y="4" width="5" height="4"/><rect x="10" y="4" width="5" height="4"/><rect x="17" y="4" width="4" height="4"/><rect x="6" y="11" width="5" height="4"/><rect x="13" y="11" width="5" height="4"/><rect x="9" y="18" width="6" height="3"/>',
+  quill: '<path d="M20 4c-6 0-12 6-14 14l-2 2"/><path d="M20 4c0 6-5 11-11 12"/>',
   auto: '<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
   rotate: '<path d="M20 12a8 8 0 0 1-14 5"/><path d="M4 12a8 8 0 0 1 14-5"/><path d="M18 3v4h-4M6 21v-4h4"/>',
   cycle: '<path d="M4 14c0-5 4-8 9-8h5l-3-3M20 10c0 5-4 8-9 8H6l3 3"/>',
