@@ -79,7 +79,7 @@ export function showCodex(c, tab = 'people') {
   if (tab === 'places') { const ss = SCENARIOS.filter(s => k.places.includes(s.id)); body = ss.map(s => { const h = HISTORY[s.id]; return entry(s.name, [s.geo && s.geo.note, h && h.text].filter(Boolean).join('. ') + '.', h ? h.source : '', `${s.geo ? s.geo.place : ''}, ${s.year}`); }).join('') + locked(SCENARIOS.length - ss.length); }
   if (tab === 'troops') { const ts = Object.keys(TROOP_NOTES).filter(t => k.troops.includes(t)); body = ts.map(t => entry(UNIT_TYPES[t].name, `${UNIT_TYPES[t].blurb || ''} ${TROOP_NOTES[t]}`, '')).join('') + locked(Object.keys(TROOP_NOTES).length - ts.length); }
   const n = codexCount(c);
-  el.innerHTML = `<div class="cxbox"><div class="cxhead"><div><h2>Commentarii</h2><div class="muted small">${n.have} of ${n.total} entries. New ones are written as you meet people, fight at new places and see new troops.</div></div><button id="cx-close">Close</button></div>
+  el.innerHTML = `<div class="cxbox"><div class="cxhead"><div><h2>Commentarii</h2><div class="muted small">${n.have} of ${n.total} entries. More appear as you play.</div></div><button id="cx-close">Close</button></div>
     <div class="chips" style="margin:8px 0">${[['people', 'People'], ['places', 'Places'], ['troops', 'Troops']].map(([id, nm]) => `<button class="chip ${tab === id ? 'sel' : ''}" data-cx="${id}">${nm}</button>`).join('')}</div><div class="cxbody">${body || '<p class="muted">Nothing yet.</p>'}</div></div>`;
   el.classList.remove('hidden');
   el.querySelector('#cx-close').onclick = () => el.classList.add('hidden');

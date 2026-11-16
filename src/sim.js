@@ -454,7 +454,7 @@ export class Battle {
     const W = WORLD.w, H = WORLD.h, px = 0.2 * W, up = 0.28 * H, dn = 0.04 * H;
     this.deployZone = { x0: Math.max(24, Math.min(...rs.map(u => u.x)) - px), x1: Math.min(W - 24, Math.max(...rs.map(u => u.x)) + px), y0: Math.max(24, Math.min(...rs.map(u => u.y)) - up), y1: Math.min(H - 24, Math.max(...rs.map(u => u.y)) + dn) };
     this.deploying = true;
-    this.say('Deployment: right-click or right-drag to place your cohorts anywhere inside the gold zone, then press SPACE to begin.', 'info');
+    this.say('Deployment: place your units in the gold zone, then press SPACE.', 'info');
   }
   endDeploy() { if (!this.deploying) return; this.deploying = false; for (const u of this.units) if (u.side === 'rome') { u.post = { x: u.x, y: u.y }; u.order = { kind: 'none' }; } if (this.general) this.general.goal = null; }
   deployAt(u, x, y, f) {
@@ -604,7 +604,7 @@ export class Battle {
     if (d < 1) { dx = 0; dy = 1; } else { dx /= d; dy /= d; }
     this.retreating = true; this.retreatT = this.t; this.retreatOrder = { kind: 'retreat', dx, dy };
     for (const u of rs) u.order = { ...this.retreatOrder };
-    this.say(`The signal to withdraw is sounded! The army falls back in order; the withdrawal is complete in ${WITHDRAW_SECS} seconds.`, 'warn');
+    this.say(`Retreat sounded! The army falls back in order (${WITHDRAW_SECS} s).`, 'warn');
   }
   withdrawLeft() { return this.retreating ? Math.max(0, WITHDRAW_SECS - (this.t - this.retreatT)) : null; }
 
@@ -773,7 +773,7 @@ export class Battle {
     if (tired && this.aiLevel >= 1) {
       const tg = tired.contacts.find(e => e.active); tired.reliefPending = true; u.legionRank = 0; tired.legionRank = 1;
       if (tg) this.setAttack(u, tg); this.fallBack(tired);
-      if (!S.reliefSaid) { S.reliefSaid = true; this.say('The enemy relieves its tired cohorts with fresh ones from the second line. They fight as you do.', 'warn'); this.mark('relieve', 'The enemy second line relieves the first', 'gaul'); }
+      if (!S.reliefSaid) { S.reliefSaid = true; this.say('The enemy relieves its tired cohorts from its second line.', 'warn'); this.mark('relieve', 'The enemy second line relieves the first', 'gaul'); }
       return;
     }
     if (gap) { const n2 = this.nearestEnemy(u); if (n2) { this.setAttack(u, n2.e); u.legionRank = 0; return; } }
@@ -1524,7 +1524,7 @@ export class Battle {
     if (u.state === 'dead' || u.state === 'gone') return;
     if (this.desertChance && (this.nDesert || 0) < 3 && u.side === 'rome' && !u.defected && u.typeKey === 'legionary' && !u.desertRolled && u.state !== 'routing' && u.morale < u.maxMorale * 0.35) {
       u.desertRolled = true;
-      if (this.rand() < this.desertChance) { this.nDesert = (this.nDesert || 0) + 1; const lost = Math.round(u.men * 0.3); u.men -= lost; u.casualties += lost; u.state = 'routing'; u.order = { kind: 'none' }; u.deserted = true; this.mark('rout', u.name, 'rome', { x: u.x, y: u.y, men: u.men, cause: 'desertion', share: 1 }); this.say(`${u.name} will not fight fellow Romans for a commander it does not trust: it throws down its standards and marches off.`, 'bad'); return; }
+      if (this.rand() < this.desertChance) { this.nDesert = (this.nDesert || 0) + 1; const lost = Math.round(u.men * 0.3); u.men -= lost; u.casualties += lost; u.state = 'routing'; u.order = { kind: 'none' }; u.deserted = true; this.mark('rout', u.name, 'rome', { x: u.x, y: u.y, men: u.men, cause: 'desertion', share: 1 }); this.say(`${u.name} will not fight fellow Romans for you: it marches off.`, 'bad'); return; }
     }
     if (this.defectChance && (this.nDefect || 0) < 3 && u.side === 'gaul' && u.type.defects && !u.defectRolled && u.state !== 'routing' && u.morale < u.maxMorale * 0.35) { u.defectRolled = true; if (this.rand() < this.defectChance) { this.nDefect = (this.nDefect || 0) + 1; this.defect(u); return; } }   // at most three either way in one battle
     if (u.state !== 'routing') {
