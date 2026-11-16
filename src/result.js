@@ -32,9 +32,8 @@ export function resultHtml({ res, o, flavour, banner, spoils, mid, practice, pic
   ].join('');
   // What the battle brought, at a glance: the spoils first, then every dispatch, gains in green and costs in red.
   const kind = (n) => /^(Pay|No money|Standing in Rome -)|desert|fell in battle|was taken|reduced to a remnant|lost/i.test(n) ? 'b' : /^(Captured|Senate|Standing in Rome \+|\+|New unit)|joins|form|raised|can now raise|promoted|reached level|is won|sends/i.test(n) ? 'g' : '';
-  const order = { g: 0, '': 1, b: 2 }, sorted = notes.slice().sort((a, b2) => order[kind(a)] - order[kind(b2)]);
   const spoilLine = !practice && !mid && o !== 'defeat' && (spoils.gold || spoils.supplies || spoils.recruits) ? `<li class="g big"><b>+${spoils.gold}</b> denarii &middot; <b>+${spoils.supplies}</b> supplies &middot; <b>+${spoils.recruits}</b> recruits</li>` : '';
-  const news = spoilLine || notes.length ? `<div class="card rnews"><h4>${o === 'defeat' ? 'After the battle' : 'Spoils and news'}</h4><ul>${spoilLine}${sorted.map(n => `<li class="${kind(n)}">${esc(kind(n) === 'g' ? n.replace(/^\+/, '') : n)}</li>`).join('')}</ul></div>` : '';
+  const news = spoilLine || notes.length ? `<div class="card rnews"><h4>${o === 'defeat' ? 'After the battle' : 'Spoils and news'}</h4><ul>${spoilLine}${notes.map(n => `<li class="${kind(n)}">${esc(kind(n) === 'g' ? n.replace(/^\+/, '') : n)}</li>`).join('')}</ul></div>` : '';
   const decisions = [
     pris.length ? `<div class="rdec" id="pris"><h4>${res.prisoners} prisoners: what is to be done with them?</h4><div class="rchoices">${pris.map((p, i) => `<button class="ocard" data-p="${i}"><b>${esc(p.name)}</b><span class="t">${esc(p.text)}</span></button>`).join('')}</div></div>` : '',
     picks.length ? `<div class="rdec" id="bonus"><h4>Choose a bonus</h4><div class="rchoices">${picks.map((p, i) => `<button class="ocard" data-i="${i}"><b>${esc(p.name)}</b><span class="t">${esc(p.text)}</span></button>`).join('')}</div></div>` : ''

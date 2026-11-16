@@ -411,7 +411,7 @@ export class Camp {
       const tr = (o) => legateTraits(o).map(t => LEGATE_TRAITS[t].name).join(', ');
       rows.push(`<div class="row small" style="margin-top:4px"><b>Legio ${ROMAN[k] || k}</b><span class="muted">${n} units</span><span class="muted">legate</span><select data-legate="${k}"><option value="">- you, from the general's ring -</option>${free.map(o => `<option value="${o.id}" ${cur && cur.id === o.id ? 'selected' : ''}>${esc(o.name)} (${esc(tr(o))}; tactics ${o.tactics})</option>`).join('')}</select></div>`
         + (cur ? `<div class="small" style="margin:2px 0 6px 12px">${legateTraits(cur).map(t => `<span class="pill" title="${esc(LEGATE_TRAITS[t].text)}">${esc(LEGATE_TRAITS[t].name)}</span> <span class="muted">${esc(LEGATE_TRAITS[t].text)}</span>`).join('<br>')}<br><span class="muted">Command ring ${Math.round(85 + 6 * (cur.tactics || 0))}% of yours (tactics ${cur.tactics}).</span></div>` : '')); }
-    return `<h4 class="sect">Legions</h4><div class="small muted">A legate rides behind his legion; its units inside his ring count as in command and fight with his trait (from his temperament, and Drillmaster for a drill of 3 or more). An officer made legate leaves his cohort. In battle, Alt+1, Alt+2... select a legion.</div>${rows.join('')}`;
+    return `<h4 class="sect">Legions</h4><div class="small muted">Each legate gives his trait to his legion's units inside his ring. Alt+1, Alt+2... select a legion in battle.</div>${rows.join('')}`;
   }
   // A cohort that has gained a rank chooses one of two improvements. Only the first waiting cohort is shown: one decision at a time.
   promoHtml() {
