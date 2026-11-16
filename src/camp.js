@@ -8,8 +8,9 @@ import { TEMPERS, temperOf, rivalOf, tierOf, rankFor, TIER_TEXT } from './office
 import { CAREER, CAREER_MAX, careerLv, careerPoints, careerOffer, chooseCareer, costMult, legionsOf, legateOf, setLegate, ROMAN, currentScn, legateTraits, LEGATE_TRAITS } from './campaign.js';
 import { heroesOf, DECORATIONS, decoMorale } from './heroes.js';
 import { officerPending, chooseOfficer, officerTrack, officerKind, OFFICER_KINDS, unitPending, chooseUnit, unitChosen, unitRecord, standsOut, unitTrack } from './promote.js';
-import { officerById, modsOf, hasPerk, commandLimit, slotOf, slotsUsed, raiseMult, PAY_PER_MAN, payDue, unlockedTypes, COMMAND_PER_WIN, COMMAND_PER_ORG, HOSP_MAX, HOSP_COST, HOSP_SUP, HOSP_NAMES, hospRecovery } from './state.js';
+import { officerById, modsOf, hasPerk, commandLimit, slotOf, slotsUsed, raiseMult, PAY_PER_MAN, payDue, standingOf, addStanding, unlockedTypes, COMMAND_PER_WIN, COMMAND_PER_ORG, HOSP_MAX, HOSP_COST, HOSP_SUP, HOSP_NAMES, hospRecovery } from './state.js';
 import { artSrc } from './art.js';
+import { OFFICER_POOL, addOfficer } from './rewards.js';
 import { inform, keepScroll } from './ui.js';
 import { DOCTRINES, winsOf } from './doctrine.js';
 import { icon } from './icons.js';
@@ -307,6 +308,28 @@ export class Camp {
     c.gold -= t.gold; c.supplies -= t.sup; c.vets = (c.vets || 0) + t.men; this.bump('treat');
     this.note(`The surgeons save ${t.men} of the badly wounded. They join the veterans waiting at the Barracks.`, 'good'); this.done();
   }
+  // Letters to Rome: standing in Rome is spent on requests to the Senate and your friends there. Each request once per camp.
+  romeRequests() {
+    const c = this.c, men = c.cohorts.reduce((a, h) => a + h.men, 0), have = new Set(c.officers.map(o => o.name)), cand = OFFICER_POOL.filter(o => !have.has(o.name));
+    const funds = Math.round(250 + men * 0.025), grain = Math.round(150 + men * 0.02);
+    return [
+      { id: 'funds', name: 'Ask the Senate for funds', cost: 10, effs: [[`+${funds} denarii`, 'g']], ok: true, apply: () => { c.gold += funds; return `The Senate sends ${funds} denarii.`; } },
+      { id: 'grain', name: 'Ask for grain ships', cost: 6, effs: [[`+${grain} supplies`, 'g']], ok: true, apply: () => { c.supplies += grain; return `Grain ships bring ${grain} supplies.`; } },
+      { id: 'vets', name: 'Ask for a draft of veterans', cost: 15, effs: [['+300 veterans for the Barracks', 'g']], ok: true, apply: () => { c.vets = (c.vets || 0) + 300; return '300 veterans march up from Italy.'; } },
+      { id: 'officer', name: 'Ask for a proven officer', cost: 20, effs: [[cand.length ? `${cand[0].rank} ${cand[0].name}: ${cand[0].bio}` : 'no officer is free', cand.length ? 'g' : '']], ok: cand.length > 0 && c.officers.filter(o => o.alive).length < 9, apply: () => { addOfficer(c, cand[0]); return `${cand[0].rank} ${cand[0].name} arrives from Rome.`; } },
+      { id: 'command', name: 'Ask for a larger command', cost: 25, effs: [[(c.bonusCommand || 0) >= 16 ? 'the Senate will grant no more' : '+4 command slots for good', 'g']], ok: (c.bonusCommand || 0) < 16, apply: () => { c.bonusCommand = (c.bonusCommand || 0) + 4; return 'The Senate extends your command: four more units.'; } }
+    ];
+  }
+  askRome(id) {
+    const c = this.c, r = this.romeRequests().find(x => x.id === id); if (!r || !r.ok || this.used('rome_' + id) || standingOf(c) < r.cost) return;
+    addStanding(c, -r.cost); this.bump('rome_' + id); this.note(`${r.apply()} (standing in Rome ${standingOf(c)})`, 'good'); this.done();
+  }
+  romeHtml(act) {
+    const c = this.c, st = standingOf(c);
+    return `<h4 class="sect">Letters to Rome <span class="pill">standing ${st}</span></h4><div class="small muted">Spend your standing in Rome on requests. Each once per camp. Remember what high standing brings by itself: funds after each battle at 50+, veterans each winter at 70+.</div>
+      <div class="regimens">${this.romeRequests().map(r => { const done = this.used('rome_' + r.id), can = act && r.ok && !done && st >= r.cost;
+        return `<button class="regimen act" data-a="rome" data-m="${r.id}" ${can ? '' : 'disabled'}><b>${done ? `${r.name} (sent)` : r.name}</b><div class="eff">${r.effs.map(([x, cl]) => `<span class="${cl}">${esc(x)}</span>`).join('')}<span class="b">-${r.cost} standing</span></div></button>`; }).join('')}</div>`;
+  }
   hospital() {
     const c = this.c, lvl = c.hospital || 0, gold = HOSP_COST[lvl], sup = HOSP_SUP[lvl];
     if (lvl >= HOSP_MAX || this.used('hospital') || c.gold < gold || c.supplies < sup) return;
@@ -520,7 +543,7 @@ export class Camp {
         const unitOpts = c.cohorts.map(x => `<option value="${x.id}" ${x.id === this.sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
         return `${decision}<h4 class="sect">Your officers</h4><table class="offtable">${rows}</table>
           <h4 class="sect">Attach an officer to a unit</h4><div class="row small"><select id="assign-unit">${unitOpts}</select><span class="muted">is led by</span><select id="assign">${assign}</select></div>
-          <div class="small muted" style="margin-top:6px">Centurions and prefects help their unit; staff officers help the army.</div>${this.legionHtml()}`; }
+          <div class="small muted" style="margin-top:6px">Centurions and prefects help their unit; staff officers help the army.</div>${this.legionHtml()}${this.romeHtml(act)}`; }
       case 'forge': { const cat = UNIT_TYPES[h.type].cat, names = UPGRADES[cat], lt = LEVEL_TRAITS[levelFor(h.xp)], u = { armour: 0, weapon: 0, ...(h.upg || {}) }, prof = enemyProfile(scn);
         const heavy = prof.parts.find(x => x[2] === 'warband') ? prof.parts.find(x => x[2] === 'warband')[1] : 0;
         const adv = `${enemyHint(c, prof)}${knowsEnemy(c) && heavy > 50 ? 'Warbands are lightly armoured and win by charging: armour blunts their charge, better weapons win the melee. ' : ''}Spend on the units that will take the brunt, usually the front line, not on every cohort.`;
@@ -556,7 +579,7 @@ export class Camp {
     const visited = c.visitedBuildings = c.visitedBuildings || [], adv = advice(c, visited, flags);
     const meta = this.open === 'praetorium' ? { name: 'Command Tent', sub: 'Your next battle and the march' } : BUILDINGS.find(b => b.id === this.open);
     const food = dailyFood(c), due = rationsDue(c, currentScn(c));
-    const res = `<span title="The army is paid after every battle: ${PAY_PER_MAN} denarii a man. If you cannot pay, men desert.">${icon('coin')} Denarii <b>${c.gold}</b> <span class="muted small">(pay: -${payDue(c)})</span></span>${(c.manpower || 0) > 0 ? `<span title="Assign them at the Barracks">${icon('helmet')} Soldiers available <b class="poolN">${c.manpower}</b></span>` : ''}<span title="${food} a day; the march to the next battle takes ${due} when you leave">${icon('grain')} Supplies <b>${c.supplies}</b>${due ? ` <span class="muted small">(march: -${due})</span>` : ''}</span>`;
+    const res = `<span title="The army is paid after every battle: ${PAY_PER_MAN} denarii a man. If you cannot pay, men desert.">${icon('coin')} Denarii <b>${c.gold}</b> <span class="muted small">(pay: -${payDue(c)})</span></span><span title="Standing in Rome: spend it in Letters to Rome at the Officers' tent.">${icon('laurel')} Standing <b>${standingOf(c)}</b></span>${(c.manpower || 0) > 0 ? `<span title="Assign them at the Barracks">${icon('helmet')} Soldiers available <b class="poolN">${c.manpower}</b></span>` : ''}<span title="${food} a day; the march to the next battle takes ${due} when you leave">${icon('grain')} Supplies <b>${c.supplies}</b>${due ? ` <span class="muted small">(march: -${due})</span>` : ''}</span>`;
     const restore = keepScroll(this.root), sameView = this.open === this.lastOpen; this.lastOpen = this.open;   // a click redraws the screen: keep it where it was
     this.root.innerHTML = `<div class="camp2"><header><h2>Camp - ${esc(scn.theater)}, ${esc(scn.year)}</h2><div class="res">${res}<span>${icon('fort')} Fort <b>${c.fort}/3</b></span><span>${icon('laurel')} Goodwill <b>${c.favour > 0 ? '+' : ''}${c.favour}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
       <div class="advice">${adv.text}</div>
@@ -583,7 +606,7 @@ export class Camp {
     if (q('#run-drill')) q('#run-drill').onclick = () => this.runDrill();
     R.querySelectorAll('.act').forEach(b => b.onclick = () => {
       const a = b.dataset.a, m = b.dataset.m;
-      if (a === 'learn') this.learn(m); else if (a === 'upgrade') this.upgrade(m); else if (a === 'raise') this.raise(m); else if (a === 'doctrine') this.learnDoctrine(m);
+      if (a === 'rome') this.askRome(m); else if (a === 'learn') this.learn(m); else if (a === 'upgrade') this.upgrade(m); else if (a === 'raise') this.raise(m); else if (a === 'doctrine') this.learnDoctrine(m);
       else if (a === 'tribute') this.tribute(m === '1'); else if (a === 'upgradecap') this.upgrade(m, true); else if (a === 'raisecap') this.raise(m, true); else this[a]();
     });
     q('#march').onclick = () => this.api.march(); q('#tomap').onclick = () => this.api.map();

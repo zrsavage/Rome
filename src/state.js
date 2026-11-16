@@ -43,7 +43,7 @@ export const payDue = (c) => Math.round(c.cohorts.reduce((a, h) => a + h.men, 0)
 // Standing in Rome (0-100): what the Senate and the people think of you. Victories raise it, defeats sink it; it brings funds and men.
 export const standingOf = (c) => (c.standing ?? 30);
 export const addStanding = (c, d) => { c.standing = Math.max(0, Math.min(100, standingOf(c) + d)); };
-export const commandLimit = (c) => Math.min(80, 8 + (c.history || []).filter(h => h.id !== 'prologue' && realWin(h)).length * COMMAND_PER_WIN + COMMAND_PER_ORG * careerLv(c, 'organisation'));
+export const commandLimit = (c) => Math.min(80 + (c.bonusCommand || 0), (c.bonusCommand || 0) + 8 + (c.history || []).filter(h => h.id !== 'prologue' && realWin(h)).length * COMMAND_PER_WIN + COMMAND_PER_ORG * careerLv(c, 'organisation'));
 // ---- Fair enemy hosts ----
 // The enemy is sized from your army, by what kind of fight it is: an attacker needs more men than a defender, and men behind a rampart
 // or on a hill need fewer. Strength is counted man for man by fighting value, measured with the balance bot (tools/simtest.mjs): a
