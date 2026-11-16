@@ -418,7 +418,7 @@ export class Camp {
     const c = this.c, waiting = c.cohorts.filter(x => unitPending(x)), h1 = waiting[0]; if (!h1) return '';
     const p = unitPending(h1);
     return `<div class="decision"><div class="dhead">${flagIcon()}<div><b>${esc(h1.name)}</b> has reached the rank of <b>${esc(p.rank)}</b> <span class="pill">${p.spec ? 'specialisation' : `choice ${p.row + 1} of ${unitTrack(h1).length}`}</span><div class="small muted">${p.spec ? 'Pick how this cohort will fight from now on.' : 'Pick one; the other is lost.'}${waiting.length > 1 ? ` ${waiting.length - 1} more unit${waiting.length > 2 ? 's are' : ' is'} waiting.` : ''}</div></div></div>
-      <div class="choice2">${p.options.map(k => `<button class="regimen" data-pick="unit:${h1.id}:${k.id}"><b>${esc(k.name)}</b><span class="t">${esc(k.text)}</span></button>`).join('<div class="or">or</div>')}</div></div>`;
+      <div class="${p.options.length > 2 ? 'choice3' : 'choice2'}">${p.options.map(k => `<button class="regimen" data-pick="unit:${h1.id}:${k.id}"><b>${esc(k.name)}</b><span class="t">${esc(k.text)}</span></button>`).join(p.options.length > 2 ? '' : '<div class="or">or</div>')}</div></div>`;
   }
   // The unit record: what this cohort's numbers are, what it is best at and where it stands out from the others like it.
   recordHtml(h) {
@@ -544,7 +544,12 @@ export class Camp {
         return `${decision}<h4 class="sect">Your officers</h4><table class="offtable">${rows}</table>
           <h4 class="sect">Attach an officer to a unit</h4><div class="row small"><select id="assign-unit">${unitOpts}</select><span class="muted">is led by</span><select id="assign">${assign}</select></div>
           <div class="small muted" style="margin-top:6px">Centurions and prefects help their unit; staff officers help the army.</div>${this.legionHtml()}${this.romeHtml(act)}`; }
-      case 'forge': { const cat = UNIT_TYPES[h.type].cat, names = UPGRADES[cat], lt = LEVEL_TRAITS[levelFor(h.xp)], u = { armour: 0, weapon: 0, ...(h.upg || {}) }, prof = enemyProfile(scn);
+      case 'forge': {
+        if (!UPGRADES[(UNIT_TYPES[h.type] || {}).cat]) {               // medici and the baggage carry no arms: show the first unit that can be equipped instead
+          const alt = c.cohorts.find(x => UPGRADES[(UNIT_TYPES[x.type] || {}).cat]); if (alt) { this.sel = alt.id; return this.panelBody(id); }
+          return '<p class="muted">None of your units can be equipped here.</p>';
+        }
+        const cat = UNIT_TYPES[h.type].cat, names = UPGRADES[cat], lt = LEVEL_TRAITS[levelFor(h.xp)], u = { armour: 0, weapon: 0, ...(h.upg || {}) }, prof = enemyProfile(scn);
         const heavy = prof.parts.find(x => x[2] === 'warband') ? prof.parts.find(x => x[2] === 'warband')[1] : 0;
         const adv = `${enemyHint(c, prof)}${knowsEnemy(c) && heavy > 50 ? 'Warbands are lightly armoured and win by charging: armour blunts their charge, better weapons win the melee. ' : ''}Spend on the units that will take the brunt, usually the front line, not on every cohort.`;
         const effect = { armour: `+6% armour per tier: every enemy blow does about 6% less damage`, weapon: `+10% attack per tier${cat === 'inf' ? '; tier 2 adds an extra pilum volley' : ''}` };
