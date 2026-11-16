@@ -92,15 +92,15 @@ export class BattleUI {
   // Select the general; with centre=true the camera also glides to him.
   selectGeneral(centre = false) { if (!this.b.general) return; if (centre) this.centreOn(this.b.general.x, this.b.general.y); this.r.selection.clear(); this.genSel = true; this.r.genSel = true; this.refreshBottom(); this.refreshHud(); this.emit('general-select'); }
   centreOn(x, y) { this.r.cam.x = x; this.r.cam.y = y; this.r.clampCam(); }
-  // Unit cards: click selects one; Ctrl+click adds or removes one; Ctrl+Shift+click selects every card from the last one clicked to this one;
-  // Shift+click adds one (as before).
+  // Unit cards: click selects one; Shift+click selects every card from the last one clicked to this one (Ctrl+Shift adds that range to
+  // the selection); Ctrl+click adds or removes one. The card last clicked without Shift is where a range starts.
   cardClick(id, e) {
     const ctrl = e.ctrlKey || e.metaKey;
-    if (ctrl && e.shiftKey && this.cardAnchor != null) {
+    if (e.shiftKey && this.cardAnchor != null) {
       const order = [...document.querySelectorAll('#hud-bottom .ucard[data-id]')].map(d => +d.dataset.id), a = order.indexOf(this.cardAnchor), b = order.indexOf(id);
-      if (a >= 0 && b >= 0) { const [lo, hi] = a < b ? [a, b] : [b, a]; this.select(order.slice(lo, hi + 1).filter(x => { const u = this.b.byId(x); return u && u.active; }), true); return; }
+      if (a >= 0 && b >= 0) { const [lo, hi] = a < b ? [a, b] : [b, a]; this.select(order.slice(lo, hi + 1).filter(x => { const u = this.b.byId(x); return u && u.active; }), ctrl); return; }
     }
-    if (ctrl) this.toggleSel(id); else this.select([id], e.shiftKey);
+    if (ctrl) this.toggleSel(id); else this.select([id], false);
     this.cardAnchor = id;
   }
   toggleSel(id) { this.genSel = false; this.r.genSel = false; if (this.r.selection.has(id)) this.r.selection.delete(id); else this.r.selection.add(id); this.refreshBottom(); this.refreshHud(); this.emit('select', { ids: [...this.r.selection] }); }
