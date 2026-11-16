@@ -466,3 +466,4 @@ Four photographic tiles (`assets/art/terrain_*.webp`, converted from the uploade
 under the hillshade; **river** (a rocky stream) paints rivers as a band laid along their winding course, mirrored copy by copy so
 it never shows a seam, with its phase tied to the map so neighbouring stretches join up; **ford** carries its track across the
 water and fades into the river on either side. Africa's dry tint applies to all of them; frozen rivers keep the drawn ice.
+The uploaded cohort picture is the legionary unit card (`unit_legionary.webp`) for now. It shows Imperial-era kit (lorica segmentata, rectangular shields), so it should be replaced with a 58 BC version (mail, Montefortino helmets, oval scuta) when one is made.
