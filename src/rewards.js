@@ -1,7 +1,7 @@
 // Post-battle spoils: choose one bonus (3 options after a victory, 2 after a draw).
 import { upgradeCost, MAX_TIER } from './perks.js';
 
-const OFFICER_POOL = [
+export const OFFICER_POOL = [
   { name: 'Gnaeus Pomponius', rank: 'Legate', temper: 'steady', tactics: 3, drill: 2, logistics: 2, diplomacy: 1, bio: 'A seasoned legate with a calm head in a crisis.' },
   { name: 'Publius Cornelius', rank: 'Tribune', temper: 'cautious', tactics: 1, drill: 3, logistics: 1, diplomacy: 2, bio: 'A strict trainer of recruits.' },
   { name: 'Sextus Varro', rank: 'Prefect', temper: 'cautious', tactics: 2, drill: 1, logistics: 3, diplomacy: 1, bio: 'Quartermaster who never runs short.' },
@@ -9,6 +9,8 @@ const OFFICER_POOL = [
   { name: 'Lucius Marcellus', rank: 'Centurion', temper: 'bold', tactics: 3, drill: 3, logistics: 0, diplomacy: 0, bio: 'A first-rank centurion who leads from the front.' }
 ];
 
+// Add one of the pool's officers to the army (battle rewards, or a request to the Senate).
+export function addOfficer(c, o) { c.officers.push({ id: Math.max(0, ...c.officers.map(x => x.id)) + 1, name: o.name, rank: o.rank, tactics: o.tactics, drill: o.drill, logistics: o.logistics, diplomacy: o.diplomacy, xp: 0, level: 1, points: 1, perks: [], alive: true, temper: o.temper, bio: o.bio }); }
 export function rewardOptions(c, scn, outcome, rnd = Math.random) {
   if (outcome === 'defeat') return [];
   const rw = scn.rewards, k = outcome === 'victory' ? 1 : 0.6, pool = [];
