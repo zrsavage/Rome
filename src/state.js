@@ -186,7 +186,7 @@ export function applyResult(c, result, scn) {
   c.gold += result.spoils.gold; c.supplies += result.spoils.supplies;
   if (result.captured && (result.captured.mail || result.captured.arms || result.captured.horses)) {     // the stripped field goes into the stores
     const st = c.captured = c.captured || { mail: 0, arms: 0, horses: 0 }; for (const k of ['mail', 'arms', 'horses']) st[k] += result.captured[k] || 0;
-    notes.push(`Taken from the field: ${result.captured.mail} mail shirts, ${result.captured.arms} weapons, ${result.captured.horses} horses.`);
+    notes.push(`Captured: ${[[result.captured.mail, 'mail shirts'], [result.captured.arms, 'weapons'], [result.captured.horses, 'horses']].filter(x => x[0]).map(x => `${x[0]} ${x[1]}`).join(', ')}`);
   }
   if (result.baggageLost) { const lost = Math.round(c.supplies * 0.25); c.supplies -= lost; notes.push(`Your baggage train was taken: ${lost} supplies are lost with it.`); }
   if (result.wagonsTaken) notes.push(`${result.wagonsTaken} enemy wagon camp${result.wagonsTaken > 1 ? 's were' : ' was'} taken: grain and plunder for the army.`);
@@ -201,12 +201,12 @@ export function applyResult(c, result, scn) {
   if (scn.id !== 'prologue') { rememberFoes(c, scn, result); unlockCodex(c, scn, result); }         // the enemy commander remembers this fight
   if (scn.id !== 'prologue') {                                     // news of the battle reaches Rome
     const named = scn.kind === 'named', d = result.outcome === 'victory' ? (named ? 6 : 3) : result.outcome === 'draw' ? 0 : (named ? -10 : -5);
-    if (d) { addStanding(c, d); notes.push(`Your standing in Rome ${d > 0 ? 'rises' : 'falls'} to ${standingOf(c)} (${d > 0 ? '+' : ''}${d}).`); }
-    if (standingOf(c) >= 50) { const f = Math.round((standingOf(c) - 40) * 6); c.gold += f; notes.push(`Your friends in the Senate vote you ${f} denarii.`); }
+    if (d) { addStanding(c, d); notes.push(`Standing in Rome ${d > 0 ? '+' : ''}${d} (now ${standingOf(c)})`); }
+    if (standingOf(c) >= 50) { const f = Math.round((standingOf(c) - 40) * 6); c.gold += f; notes.push(`Senate funds: +${f} denarii`); }
   }
   if (scn.id !== 'prologue') {                                     // the men are paid after every battle
     const due = payDue(c);
-    if (c.gold >= due) { c.gold -= due; notes.push(`The army is paid: ${due} denarii.`); }
+    if (c.gold >= due) { c.gold -= due; notes.push(`Pay: -${due} denarii`); }
     else {
       const short = 1 - c.gold / Math.max(1, due); c.gold = 0; let left = 0;
       for (const h of c.cohorts) { const n = Math.round(h.men * 0.08 * short); h.men = Math.max(Math.ceil(h.maxMen * 0.35), h.men - n); left += n; }
@@ -228,7 +228,7 @@ export function applyResult(c, result, scn) {
     if (h.men < floor) { notes.push(`${h.name} is reduced to a remnant; the governor sends replacements.`); h.men = floor; }
     if (h.men > before && before > 0 && !(UNIT_TYPES[h.type] || {}).noDilute) h.xp = Math.round(h.xp * (0.6 + 0.4 * before / h.men));
   }
-  if (manual && pooled > 0) notes.push(`${pooled} soldiers are available to reinforce your units. Assign them at the Barracks with the sliders.`);
+  if (manual && pooled > 0) notes.push(`+${pooled} soldiers waiting at the Barracks`);
   c.history = c.history || [];
   c.history.push({ id: scn.id, outcome: result.outcome, day: c.day });
   if (scn.id === 'prologue') { if (result.outcome !== 'defeat') c.prologueDone = true; return notes; }
@@ -243,11 +243,11 @@ export function applyResult(c, result, scn) {
     if (['parley', 'ariovistus'].includes(scn.id) && !c.cohorts.some(h => h.tenth)) {
       const id = Math.max(0, ...c.cohorts.map(h => h.id)) + 1;
       c.cohorts.push({ id, name: 'First Cohort of the Tenth', type: 'legionary', men: 480, maxMen: 480, xp: 900, drill: 55, condition: 100, officerId: null, tenth: true });
-      notes.push("Caesar sends you the First Cohort of his Tenth Legion. Cohorts beside them hold their nerve better; if they break, the whole army sees it.");
+      notes.push("New unit: the First Cohort of Caesar's own Tenth Legion. Cohorts beside it hold their nerve better.");
     }
     c.scenario++;
     c.scouted = false; c.favour = Math.round(c.favour * 0.5);
-    c.career = c.career || { points: 0, levels: {} }; c.career.points++; notes.push('You have earned a career point. A flag over the Command Tent marks the choice.');
+    c.career = c.career || { points: 0, levels: {} }; c.career.points++; notes.push('+1 career point (choose it at the Command Tent)');
   }
   const next = SCENARIOS[c.scenario];
   c.campUse = {};                                             // a new camp: the countryside near it has not been stripped yet

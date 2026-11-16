@@ -423,3 +423,15 @@ input.mslide{width:100%;accent-color:#e8c36a;height:6px;cursor:pointer}
 #codex .cxe { border-top: 1px solid rgba(232, 195, 106, 0.18); padding: 10px 0; }
 #codex .cxe h4 { margin: 0 0 4px; }
 #codex .cxe p { margin: 0 0 4px; line-height: 1.45; }
+.rnews { margin-top: 12px; border-left: 3px solid var(--gold, #e8c36a); }
+.rnews h4 { margin: 0 0 6px; color: var(--gold, #e8c36a); }
+.rnews ul { margin: 0; padding-left: 0; list-style: none; columns: 2 280px; column-gap: 24px; }
+.rnews li { padding: 3px 0 3px 18px; position: relative; break-inside: avoid; }
+.rnews li::before { content: '•'; position: absolute; left: 4px; color: var(--muted, #a89a7e); }
+.rnews li.g { color: #9fdc8a; }
+.rnews li.g::before { content: '+'; color: #9fdc8a; }
+.rnews li.b { color: #ee9a8e; }
+.rnews li.b::before { content: '−'; color: #ee9a8e; }
+.rnews li.big { font-size: 1.15em; column-span: all; padding-bottom: 6px; }
+.rnews li.big::before { content: none; }
+.rnews li.big { padding-left: 4px; letter-spacing: normal; text-transform: none; font-family: inherit; }
