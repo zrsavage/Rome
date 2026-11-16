@@ -6,6 +6,7 @@ import { levelFor } from './sim.js';
 import { careerLv, realWin, legionsOf, rememberFoes } from './campaign.js';
 import { unlockCodex } from './codex.js';
 import { renameArmy, nameNewUnit } from './names.js';
+import { awardTitles, titleMorale, titleText } from './titles.js';
 import { awardHonours, promoteFromRanks, decoMorale } from './heroes.js';
 
 // The field hospital: five levels, each dearer than the last, one level per camp. Levels 1-3 add 30% wounded recovery each, 4 and 5
@@ -95,7 +96,7 @@ export function unlockedTypes(c) {
 export function newCampaign(difficulty = 'normal') { return renameArmy(newCampaign0(difficulty)); }
 function newCampaign0(difficulty) {
   return {
-    version: 8, standing: 30, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, campUse: {},
+    version: 9, standing: 30, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, campUse: {},
     gold: 300, supplies: 160, fort: 0, favour: 0, scouted: false, log: [], over: false,
     cohorts: [
       { id: 1, name: 'I Cohort',   type: 'legionary', men: 400, maxMen: 480, xp: 60, drill: 30, condition: 90, officerId: 1 },
@@ -141,7 +142,7 @@ function cohortSpecs(c, scn) {
   const cav = live.filter(h => cat(h) === 'cav');
   const medics = live.filter(h => UNIT_TYPES[h.type] && UNIT_TYPES[h.type].medic);
   const specs = [];
-  const mk = (h, x, y) => specs.push({ type: h.type, name: h.name, cohortId: h.id, men: h.men, maxMen: h.maxMen, xp: h.xp, drill: h.drill, condition: h.condition, officer: officerById(c, h.officerId), upg: h.upg, ups: h.ups, moraleBonus: decoMorale(h), tenth: !!h.tenth, x, y, f: d.f, stance: 'aggressive' });
+  const mk = (h, x, y) => specs.push({ type: h.type, name: h.name, cohortId: h.id, men: h.men, maxMen: h.maxMen, xp: h.xp, drill: h.drill, condition: h.condition, officer: officerById(c, h.officerId), upg: h.upg, ups: h.ups, moraleBonus: decoMorale(h) + titleMorale(h), title: h.title || null, titleText: titleText(h), tenth: !!h.tenth, x, y, f: d.f, stance: 'aggressive' });
   if (d.mode === 'grid') {
     [...inf, ...ranged, ...cav, ...medics].forEach((h, i) => { const col = i % d.cols, row = Math.floor(i / d.cols); mk(h, d.cx + (col - (d.cols - 1) / 2) * d.dx, d.cy + row * d.dy); });
     return specs;
@@ -175,6 +176,7 @@ export function applyResult(c, result, scn) {
     const h = c.cohorts.find(x => x.id === r.cohortId);
     if (!h) continue;
     h.men = r.endMen; h.xp += Math.round(r.xpGain * modsOf(c).xp); h.condition = Math.max(35, h.condition - 20);
+    if (scn.id !== 'prologue') { const where = scn.name; h.fields = h.fields || []; if (!h.fields.includes(where)) h.fields.push(where); if (h.men <= 0 && !h.lostAt) h.lostAt = scn.phaseName || scn.name; }   // the cohort's record, for the end of the war
     if (r.officerId != null) {
       const o = c.officers.find(x => x.id === r.officerId);
       if (o) {
@@ -184,6 +186,7 @@ export function applyResult(c, result, scn) {
     }
   }
   result.honours = awardHonours(c, result, scn.phaseName || scn.name);
+  for (const n of awardTitles(c, result, scn)) notes.push(n);
   c.lastLoss = result.rows.reduce((x, r) => x + r.casualties, 0); c.lastBack = result.rows.reduce((x, r) => x + Math.max(0, r.endMen - (r.startMen - r.casualties)), 0);
   c.gold += result.spoils.gold; c.supplies += result.spoils.supplies;
   if (result.captured && (result.captured.mail || result.captured.arms || result.captured.horses)) {     // the stripped field goes into the stores
@@ -259,14 +262,14 @@ export function applyResult(c, result, scn) {
     for (const u of scn.unlock || []) {
       const id = Math.max(0, ...c.cohorts.map(h => h.id)) + 1;
       const h = { id, name: u.name, type: u.type, men: u.men, maxMen: u.maxMen, xp: u.xp, drill: u.drill, condition: 100, officerId: null };
-      c.cohorts.push(h); const nm = nameNewUnit(c, h, u.name);
+      c.cohorts.push(h); const nm = nameNewUnit(c, h, u.name, `joined after ${scn.name}`);
       notes.push(nm === u.name ? u.msg : u.msg.replace(/(?:the )?[IVXL]+ Cohort\b/, h.type === 'legionary' ? 'the ' + nm : nm).replace(u.name, nm));
     }
     // Caesar's Tenth: after the parley on the mound (or the battle against Ariovistus, if the parley was passed by), a cohort of the Tenth Legion joins you
     if (['parley', 'ariovistus'].includes(scn.id) && !c.cohorts.some(h => h.tenth)) {
       const id = Math.max(0, ...c.cohorts.map(h => h.id)) + 1;
-      c.cohorts.push({ id, name: 'First Cohort of the Tenth', type: 'legionary', men: 480, maxMen: 480, xp: 900, drill: 55, condition: 100, officerId: null, tenth: true });
-      notes.push("New unit: the First Cohort of Caesar's own Tenth Legion. Cohorts beside it hold their nerve better.");
+      c.cohorts.push({ id, name: 'First Cohort of the Tenth Equestris', type: 'legionary', men: 480, maxMen: 480, xp: 900, drill: 55, condition: 100, officerId: null, tenth: true, title: 'equestris', titleLatin: 'Equestris', born: `joined after ${scn.name}` });
+      notes.push("New unit: the First Cohort of Caesar's own Tenth Legion, called Equestris since it rode with him to the parley. Cohorts beside it hold their nerve better.");
     }
     c.scenario++;
     c.scouted = false; c.favour = Math.round(c.favour * 0.5);

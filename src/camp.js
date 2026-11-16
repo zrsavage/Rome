@@ -14,7 +14,8 @@ import { OFFICER_POOL, addOfficer } from './rewards.js';
 import { inform, keepScroll } from './ui.js';
 import { DOCTRINES, winsOf } from './doctrine.js';
 import { icon } from './icons.js';
-import { nameNewUnit } from './names.js';
+import { nameNewUnit, renameUnit } from './names.js';
+import { titleText } from './titles.js';
 import { BUILDINGS, sceneSvg, advice, unlockedBuildings } from './campscene.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -298,7 +299,7 @@ export class Camp {
     for (let q = 0; q < k; q++) {
     const id = Math.max(0, ...c.cohorts.map(x => x.id)) + 1, n = c.cohorts.filter(x => x.type === type).length + 1;
     const h = { id, name: '', type, men: r.men, maxMen: r.max, xp: r.xp || 0, drill: r.drill || 10, condition: 100, officerId: null };
-    c.cohorts.push(h); const name = nameNewUnit(c, h);          // its own name: a place in a legion, or the people it was raised from
+    c.cohorts.push(h); const name = nameNewUnit(c, h, null, `raised in camp before ${(SCENARIOS[c.scenario] || {}).name || 'the last battle'}`);          // its own name: a place in a legion, or the people it was raised from
     this.sel = id; if (q === k - 1) this.note(k > 1 ? `${k} new units are raised: ${name} and its sisters.` : `${name} is raised (${r.men} men).`, 'good');
     }
     this.done();
@@ -434,11 +435,21 @@ export class Camp {
     const c = this.c, off = (x) => officerById(c, x.officerId), r = unitRecord(h, off(h)), so = standsOut(h, c.cohorts, off), ups = unitChosen(h), lv = levelFor(h.xp), nextLv = lv < 5 ? LEVEL_NAMES[lv + 1] : null;
     const bars = r.stats.map(st => { const w = Math.max(3, Math.min(100, st.value / st.max * 100)), b0 = Math.max(0, Math.min(100, st.base / st.max * 100)), up = st.value > st.base * 1.005;
       return `<div class="statrow"><span>${st.name}</span><div class="statbar"><i style="width:${w}%" class="${up ? 'up' : ''}"></i><em style="left:${b0}%" title="A raw unit of this type"></em></div><b>${st.show}</b></div>`; }).join('');
-    return `<div class="card unitrec"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><b>${esc(h.name)}</b> <span class="muted small">- ${esc(UNIT_TYPES[h.type].name)}, ${esc(LEVEL_NAMES[lv])}</span><div class="small">${esc(r.best)}</div></div></div>
+    const fields = h.fields || [], story = `${h.born ? esc(h.born[0].toUpperCase() + h.born.slice(1)) : 'With the army from the start'}${fields.length ? ` &middot; fought ${fields.length === 1 ? 'once, at ' + esc(fields[0]) : `${fields.length} battles, from ${esc(fields[0])} to ${esc(fields[fields.length - 1])}`}` : ' &middot; not yet in battle'}`;
+    return `<div class="card unitrec"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><b class="uname" data-id="${h.id}">${esc(h.name)}</b> <button class="link small" data-rename="${h.id}" title="Rename this unit">${icon('quill', 12)} rename</button> <span class="muted small">- ${esc(UNIT_TYPES[h.type].name)}, ${esc(LEVEL_NAMES[lv])}</span><div class="small">${esc(r.best)}</div>${h.title ? `<div class="small" style="color:var(--gold)">${esc(titleText(h))}</div>` : ''}<div class="small muted">${story}</div></div></div>
       <div class="stats">${bars}</div>
       <div class="small" style="margin-top:6px">${so.better.length ? `<span style="color:var(--green)">Better than your other ${r.cat === 'inf' ? 'foot' : r.cat === 'cav' ? 'horse' : 'missile troops'} at: ${so.better.join(', ')}.</span> ` : ''}${so.worse.length ? `<span style="color:#ee9a8e">Behind them in: ${so.worse.join(', ')}.</span>` : ''}${!so.better.length && !so.worse.length ? '<span class="muted">About level with your other units of its kind.</span>' : ''}</div>
       <div class="small" style="margin-top:6px">${ups.length ? 'Rank improvements: ' + ups.map(k => `<span class="pill" title="${esc(k.text)}">${esc(k.name)}</span>`).join(' ') : '<span class="muted">No rank improvements yet.</span>'}${unitPending(h) ? ' <span class="pill" style="border-color:var(--gold);color:var(--gold)">a choice is waiting</span>' : nextLv ? ` <span class="muted">Next choice at ${esc(nextLv)}.</span>` : ''}</div>
       ${this.heroLine(h)}</div>`;
+  }
+  // Rename a unit in place: the name becomes a text box; Enter keeps it, Escape (or clicking away) leaves it as it was.
+  startRename(id) {
+    const c = this.c, h = c.cohorts.find(x => x.id === id), el = document.querySelector(`.uname[data-id="${id}"]`); if (!h || !el) return;
+    const inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 32; inp.value = h.title ? h.name.replace(new RegExp(' ' + h.titleLatin + '$'), '') : h.name; inp.className = 'renamebox'; inp.setAttribute('aria-label', 'New name');
+    el.replaceWith(inp); inp.focus(); inp.select(); let done = false;
+    const finish = (keep) => { if (done) return; done = true; if (keep) { const err = renameUnit(c, h, inp.value); if (err) this.note(err, 'bad'); else this.note(`Renamed: ${h.name}.`, 'good'); } this.done(); };
+    inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') finish(true); if (e.key === 'Escape') finish(false); };
+    inp.onblur = () => finish(true);
   }
   // Notable men in one line: names and decorations only; their deeds show on hover.
   heroLine(h) {
@@ -621,6 +632,7 @@ export class Camp {
     if (q('#m-fill')) q('#m-fill').onclick = () => this.fillEvenly(); if (q('#m-undo')) q('#m-undo').onclick = () => this.undoMuster();
     R.querySelectorAll('[data-legate]').forEach(sel => sel.onchange = () => { setLegate(c, +sel.dataset.legate, sel.value ? +sel.value : null); this.api.save(); this.render(); });
     R.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => this.pick(b.dataset.pick));
+    R.querySelectorAll('[data-rename]').forEach(b => b.onclick = () => this.startRename(+b.dataset.rename));
     R.querySelectorAll('[data-regimen]').forEach(b => b.onclick = () => { this.regimen = b.dataset.regimen; this.render(); });
     if (q('#run-drill')) q('#run-drill').onclick = () => this.runDrill();
     R.querySelectorAll('.act').forEach(b => b.onclick = () => {

@@ -10,6 +10,7 @@ import { pendingEvent, resolveEvent } from './events.js';
 import { winterDue, winterWhere, winterWhat, winterVerdict } from './winter.js';
 import { codexFromHistory } from './codex.js';
 import { renameArmy } from './names.js';
+import { triesOf, recordTry, replayEffect, replayHtml } from './attempts.js';
 import { pendingTip, markTip } from './tips.js';
 import { resultHtml, mountResult } from './result.js';
 let stopResult = null;
@@ -116,7 +117,10 @@ function migrate(c) {
     c.version = 6;
   }
   if (v0 < 7) { if (c.scenario > 15) c.scenario += 4; c.version = 7; }   // the four battles of Vercingetorix's revolt were inserted before Africa
-  if (v0 < 8) { renameArmy(c); c.version = 8; }                            // every unit gets its own name; cohorts are numbered into legions
+  if (v0 < 8) { renameArmy(c); c.version = 8; }
+  if (v0 < 9) { const t = c.cohorts.find(h => h.tenth && !h.title); if (t) { t.title = 'equestris'; t.titleLatin = 'Equestris'; t.name += ' Equestris'; }
+    for (const h of c.cohorts) if (!h.fields && h.heroes) { const f = []; for (const man of h.heroes) for (const d of man.deeds || []) { const w = d.split(':')[0]; if (w && !f.includes(w)) f.push(w); } if (f.length) h.fields = f; }   // battles fought, from the men's own memories
+    c.version = 9; }   // the Tenth's name from the parley                            // every unit gets its own name; cohorts are numbered into legions
   return c;
 }
 function openCampaign(c, n) { migrate(c); codexFromHistory(c); campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; if (c.prologueDone === false) showBrief(PROLOGUE); else showMap(); }
@@ -213,7 +217,7 @@ function showBrief(scnArg) {
   const ex = battleExtras(c, scn), known = c.scouted || careerLv(c, 'recon') >= 2, links = linksFor(c, scn);
   const opening = scn.id === 'prologue';
   const diff = DIFFICULTY[c.difficulty];
-  const favMult = c.favour >= 2 ? 0.9 : c.favour <= -2 ? 1.1 : 1, fs = forceScale(c, scn), scale = diff.enemyMult * favMult * fs;
+  const tries = triesOf(c, scn), favMult = c.favour >= 2 ? 0.9 : c.favour <= -2 ? 1.1 : 1, fs = forceScale(c, scn), scale = diff.enemyMult * favMult * fs * replayEffect(tries).men;
   const groups = {};
   [...scn.enemy, ...scn.reinforcements.filter(r => r.side !== 'rome').map(r => r.unit)].forEach(e => { groups[e.type] = (groups[e.type] || 0) + e.men * scale * (scn.boost || 1) * (ex.typeScale[e.type] ?? 1); });
   const total = Object.values(groups).reduce((a, b) => a + b, 0);
@@ -229,7 +233,7 @@ function showBrief(scnArg) {
   const rome = totalMen(c), wxk = opening ? 'clear' : pickWeather(scn, c), wxo = WEATHER[wxk];
   $('screen-brief').innerHTML = `<div class="panel-page"><div class="muted">${opening ? 'Opening battle' : `${actLabel(scn.act)} - ${esc(scn.theater)}, ${esc(scn.year)} - Battle ${c.scenario + 1} of ${SCENARIOS.length}${scn.kind === 'named' ? ' - NAMED BATTLE' : ''}`}</div>
     <h2>${esc(scn.name)}${scn.phaseCount ? ` <span class="pill">stage ${scn.phaseIdx + 1} of ${scn.phaseCount}: ${esc(scn.phaseName)}</span>` : ''}</h2><img class="banner" alt="" src="${artSrc('scenario', scn.id, 800, 240, { scn })}"><p>${esc(scn.briefing)}</p>
-    <div class="card"><h3>Weather: ${esc(wxo.name)}</h3><div class="small">${esc(wxo.text)}</div></div>
+    ${replayHtml(tries)}<div class="card"><h3>Weather: ${esc(wxo.name)}</h3><div class="small">${esc(wxo.text)}</div></div>
     ${scn.chief ? `<div class="card" style="margin-top:12px"><h3>Enemy commander: ${esc(scn.chief.name)}</h3><div class="small">${known ? esc(STYLES[scn.chief.style] || STYLES.balanced) : 'Unknown. Scouts at the Chieftains\' Hall would tell you.'}</div>${(ex.foeNotes || []).map(n => `<div class="small" style="margin-top:6px;color:var(--gold)">${esc(n)}</div>`).join('')}</div>` : ''}
     ${oddsCard}${links.length ? `<div class="card" style="margin-top:12px"><h3>What earlier fights changed</h3>${links.map(l => `<div class="small">${l.won ? '<b style="color:var(--green)">Won:</b>' : '<span class="muted">Not won:</span>'} ${esc(l.name)} - ${l.won ? esc(l.text) : '<span class="muted">a victory there would have helped here.</span>'}</div>`).join('')}</div>` : ''}
     <div class="card" style="margin-top:12px"><h3>Objective</h3>${esc(scn.objective)}<br><span class="muted small">Time limit ${Math.round(scn.timeLimit / 60)} min. Withdrawing with ${Math.round((0.45 - 0.05 * c.fort) * 100)}% of your men counts as a draw.${scn.rewardMult > 1.4 ? ' Historically a dark day for Rome: survival or victory pays handsomely.' : ''}</span></div>
@@ -247,9 +251,10 @@ function startBattle(scn) {
   const c = campaign;
   const hungry = breakCamp(c, scn); if (hungry) inform('On the march', [hungry], 'Onward');   // the march rations are paid now, once per battle
   store.set(preKey(c.slot), c);
+  const replay = recordTry(c, scn); save();   // counted before the fight: leaving in the middle still counts
   show('screen-battle');
   const low = c.supplies < totalMen(c) / 60 * 2, m = modsOf(c), opening = scn.id === 'prologue', extras = battleExtras(c, scn);
-  battle.start(scn, romeSpecs(c, scn), { difficulty: opening ? 'easy' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale + extras.moraleAdd, typeScale: extras.typeScale, legates: extras.legates, sight: extras.sight, orders: c.doctrines || [], scouted: !!c.scouted, style: extras.style || undefined, forceScale: forceScale(c, scn), healL5: (c.hospital || 0) >= 5, weather: opening ? 'clear' : pickWeather(scn, c), messengers: !opening && gameOpts.messengers }, (res) => showResult(res, scn));
+  battle.start(scn, romeSpecs(c, scn), { difficulty: opening ? 'easy' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale + extras.moraleAdd, typeScale: extras.typeScale, legates: extras.legates, sight: extras.sight, orders: c.doctrines || [], scouted: !!c.scouted, style: extras.style || undefined, forceScale: forceScale(c, scn), healL5: (c.hospital || 0) >= 5, weather: opening ? 'clear' : pickWeather(scn, c), messengers: !opening && gameOpts.messengers, replay }, (res) => showResult(res, scn));
   if (opening) startCoach(); else stopCoach();
 }
 

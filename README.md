@@ -487,7 +487,21 @@ The uploaded cohort picture is the legionary unit card (`unit_legionary.webp`) f
   and it won all 3. On the field the strength label shows it: a dark red label and "!" for no leader, a hollow diamond for green,
   and one to three gold diamonds (with a gold border) for seasoned, veteran and elite. The unit panel and the Officers' tent name the grade.
 
+## Fighting a battle again
+Every time you start a battle you have started before (after a defeat, a restored backup, or leaving in the middle), the enemy knows your
+ways: 20% more men per earlier attempt, +5 morale, a cleverer commander, and 30% less spoils, up to four attempts' worth. The count is
+kept outside the save as well, so restoring an older backup does not reset it. The battle briefing warns you.
+
+## Battle names
+A unit that does something remarkable earns a name for good, as Caesar's legions did, and fights with +4 morale from then on:
+Firma (held when surrounded), Fortis (stood through terrible losses), Fidelis (relieved its sister cohorts again and again), Victrix
+(broke the enemy almost alone), Elephantis (brought down elephants), Celer (horse that rode down the beaten enemy), Certa (missile troops).
+The Tenth arrives as Equestris, after it rode with Caesar to the parley with Ariovistus. One name at most per battle.
+Pompey's legions are drilled like yours and use the same drills: the testudo, the orbis and an orderly step back.
+
 ## Unit names
+Any unit can be renamed in camp (the "rename" link on its record); a battle name it has earned stays on the end. The record also shows
+where it came from and the battles it fought, and the ending lists every unit's story, including the ones that were destroyed.
 Every unit has its own name. Legionary cohorts are numbered I to X inside a legion, and the legions carry the numbers of Caesar's legions in
 Gaul (VII, VIII, IX, then XI to XV; the Tenth serves beside you as its own cohort). Auxiliaries are named for the peoples Caesar recruited
 them from: Balearic and Achaean slingers, Cretan and Ituraean archers, Aeduan, Remi and Treveran horse, Lusitanian caetrati, Bogud's Moors.

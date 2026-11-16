@@ -6,6 +6,15 @@ import { dragLayout, compass } from './orders.js';
 import { mulberry32 } from './sim.js';
 
 // Hillshading and contour lines from the real height map, lit from the north-west.
+// A black silhouette of an image, made once and kept: shadows drawn from it with globalAlpha cost a plain drawImage, where ctx.filter
+// ('brightness(0)') builds a filter layer on every draw and took most of half a minute to paint a field on a machine without a graphics card.
+const SIL = new WeakMap();
+function silhouette(im) {
+  let c = SIL.get(im); if (c) return c;
+  c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d');
+  g.drawImage(im, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height);
+  SIL.set(im, c); return c;
+}
 function paintRelief(g, scn) {
   if (!scn.terrain.some(f => f.kind === 'hill')) return;
   const cell = Math.max(2, Math.round(1.2 * Math.sqrt(WORLD.w * WORLD.h / 1.6e6))), gw = Math.ceil(WORLD.w / cell), gh = Math.ceil(WORLD.h / cell), H = new Float32Array(gw * gh);
@@ -116,7 +125,7 @@ function paintForestTexture(g, f, img, dry, rnd) {
   for (let yy = 0; yy < m.height; yy += step) for (let xx = 0; xx < m.width; xx += step) if (forestIn(f, x0 + xx / k, y0 + yy / k)) { mg.beginPath(); mg.arc(xx, yy, rad, 0, 7); mg.fill(); }
   cg.save(); cg.globalCompositeOperation = 'destination-in'; cg.filter = 'blur(5px)'; cg.drawImage(m, 0, 0); cg.restore();
   if (dry) { cg.save(); cg.globalCompositeOperation = 'source-atop'; cg.fillStyle = 'rgba(150,140,90,0.35)'; cg.fillRect(0, 0, c.width, c.height); cg.restore(); }   // olive and scrub, not a green wood
-  g.save(); g.globalAlpha = 0.45; g.filter = 'brightness(0)'; g.drawImage(c, x0 + 10, y0 + 14, w, h); g.restore();   // shadow on the ground
+  g.save(); g.globalAlpha = 0.45; g.drawImage(silhouette(c), x0 + 10, y0 + 14, w, h); g.restore();   // shadow on the ground
   g.drawImage(c, x0, y0, w, h);
 }
 // Single trees for open country, cut from the canopy photo with a soft round edge.
@@ -202,7 +211,7 @@ export function paintTerrain(g, scn) {
     for (let i = 0; i < Math.round((dry ? 30 : 70) * A); i++) {
       const x = rnd() * WORLD.w, y = rnd() * WORLD.h, cl = rnd() < 0.4 ? 3 : 1; if (terrainAt(scn, x, y).kind !== 'grass') continue;
       for (let j = 0; j < cl; j++) { const t = lone[Math.floor(rnd() * lone.length)], r = (16 + rnd() * 14) * (dry ? 0.8 : 1), tx = x + (rnd() - 0.5) * 50 * (cl > 1), ty = y + (rnd() - 0.5) * 36 * (cl > 1);
-        g.save(); g.globalAlpha = 0.4; g.filter = 'brightness(0)'; g.drawImage(t, tx - r + 6, ty - r + 8, r * 2, r * 2); g.restore(); g.drawImage(t, tx - r, ty - r, r * 2, r * 2); }
+        g.save(); g.globalAlpha = 0.4; g.drawImage(silhouette(t), tx - r + 6, ty - r + 8, r * 2, r * 2); g.restore(); g.drawImage(t, tx - r, ty - r, r * 2, r * 2); }
     }
   }
   for (let i = 0; i < Math.round((dry ? 30 : 70) * (forestTex ? 0 : 1) * A); i++) {               // lone trees and thickets out in the open (fewer in Africa)

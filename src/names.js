@@ -50,9 +50,19 @@ export function placeCohort(c, h, pref = null) {
   return h;
 }
 // A new unit joins: legionaries get a place in a legion, everyone else a free name. Returns the name.
-export function nameNewUnit(c, h, want = null) {
+export function nameNewUnit(c, h, want = null, born = null) {
+  if (born) h.born = born;                                    // where it came from, for its record
   if (h.type === 'legionary' && !h.tenth) return placeCohort(c, h).name;
   h.name = nameFor(c, h.type, want, h) || h.name; return h.name;
+}
+// The player renames a unit. Returns an error message, or null. A battle name it has earned stays on the end of the new name.
+export function renameUnit(c, h, text) {
+  let n = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 32);
+  if (!n) return 'A unit needs a name.';
+  const t = h.title ? ' ' + h.titleLatin : '';
+  if (t && !n.endsWith(t)) n = n.slice(0, 32 - t.length).trim() + t;
+  if (live(c).some(x => x !== h && x.name === n)) return 'Another unit already has that name.';
+  h.name = n; h.renamed = true; return null;
 }
 // Old saves: number the legionary cohorts into legions (keeping "IV Cohort" as the IV of the first legion, "XIV Cohort" as the IV of the
 // second), and rename any unit whose name is a generic one or is used twice.

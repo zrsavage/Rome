@@ -148,6 +148,7 @@ export const UNIT_TYPES = {
   },
   // Pompeian legionaries wore the same kit as yours; the blue-grey shields are only so you can tell the two sides apart on the field.
   pompeian: {
+    drilled: true,   // Roman legionaries: they use the same drills as yours (testudo, orbis, an orderly step back)
     name: 'Pompeian Legionaries', side: 'gaul', cat: 'inf', perDot: 8, atk: 0.056, def: 0.42, defects: true,
     speed: 22, turn: 1.7, morale: 70, charge: 0.55, pilum: 2, space: 1, fragile: 0.85, antiCharge: 0.25,
     color: '#5a6a8a', trim: '#e8c36a', blurb: 'Romans like your own: mail, scutum, pilum and gladius, the same drill and the same stubbornness.'
