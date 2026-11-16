@@ -92,6 +92,15 @@ function graticule(vb, k) {
   return out;
 }
 
+// A side card that folds: the title and a one-line summary show; the rest opens on a click. Open or shut is remembered.
+const FOLD_KEY = 'legio_folds_v1';
+const folds = () => { try { return JSON.parse(localStorage.getItem(FOLD_KEY)) || {}; } catch { return {}; } };
+function fold(id, title, summary, body) {
+  return `<details class="card fold" data-fold="${id}" ${folds()[id] ? 'open' : ''}><summary><h3>${title}</h3><span class="muted small">${summary}</span></summary><div class="foldbody">${body}</div></details>`;
+}
+export function watchFolds(root) {
+  root.querySelectorAll('details[data-fold]').forEach(d => d.addEventListener('toggle', () => { const f = folds(); f[d.dataset.fold] = d.open; try { localStorage.setItem(FOLD_KEY, JSON.stringify(f)); } catch { /* ignore */ } }));
+}
 export function renderMap(root, c, api) {
   const diff = DIFFICULTY[c.difficulty];
   const idx = c.scenario, scn = currentScn(c) || SCENARIOS[idx];
@@ -252,10 +261,11 @@ export function renderMap(root, c, api) {
             : `<div class="row"><button class="primary" id="m-camp">Make camp</button><button id="m-march">${c.phase > 0 ? 'Back into the battle' : 'March at once'}</button>${canSkip(c) ? '<button id="m-skip" title="An optional fight: you may pass it by">March past</button>' : ''}</div>${scn.optional ? '<div class="small muted" style="margin-top:6px">This is a side fight. Winning it helps in the named battle to come; you may also march past it.</div>' : ''}`}
           <div class="small muted" style="margin-top:6px">No time limit in camp. The march costs ${scn.daysToPrepare || 3} days of rations.</div>`}
         <div class="row" style="margin-top:8px"><button id="m-codex">Commentarii (${codexCount(c).have}/${codexCount(c).total})</button><button id="m-menu">Main menu</button></div></div>
-      <div class="card"><h3>${esc((c.player && c.player.name) || 'Your command')}</h3><div class="small muted">${esc(picksNames(c).join(' - ') || 'Veteran commander')}</div>${describe(c).lines.map(([a, b]) => `<div class="kvl"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}</div>
-      <div class="card"><h3>Your army</h3><ul class="armylist">${army}</ul></div>
-      <div class="card"><h3>Dispatches</h3><div class="log">${hrows || '<div>No battles fought yet.</div>'}</div></div>
+      ${fold('cmd', `${esc((c.player && c.player.name) || 'Your command')}`, esc(picksNames(c).join(' - ') || 'Veteran commander'), describe(c).lines.map(([a, b]) => `<div class="kvl"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join(''))}
+      ${fold('army', 'Your army', `${c.cohorts.filter(h => h.men > 0).length} units, ${c.cohorts.reduce((a, h) => a + Math.max(0, h.men), 0).toLocaleString()} men`, `<ul class="armylist">${army}</ul>`)}
+      ${fold('disp', 'Dispatches', `${(c.history || []).filter(h => h.id !== 'prologue').length} battles`, `<div class="log">${hrows || '<div>No battles fought yet.</div>'}</div>`)}
     </div></div>`;
+  watchFolds(root);
   restoreScroll();
   const q = (s) => root.querySelector(s);
   if (q('#m-camp')) q('#m-camp').onclick = () => api.camp();

@@ -442,6 +442,24 @@ export class Camp {
       <div class="small" style="margin-top:6px">${ups.length ? 'Rank improvements: ' + ups.map(k => `<span class="pill" title="${esc(k.text)}">${esc(k.name)}</span>`).join(' ') : '<span class="muted">No rank improvements yet.</span>'}${unitPending(h) ? ' <span class="pill" style="border-color:var(--gold);color:var(--gold)">a choice is waiting</span>' : nextLv ? ` <span class="muted">Next choice at ${esc(nextLv)}.</span>` : ''}</div>
       ${this.heroLine(h)}</div>`;
   }
+  // A long building panel is split into tabs, one per section; what sits above the first section (a waiting decision, the advice) stays
+  // on top of every tab. The tab you were on is kept while you work in the building.
+  layerPanel() {
+    const body = this.root.querySelector('.pbody'); if (!body) return;
+    const kids = [...body.children], secs = []; let cur = null;
+    for (const e of kids) { if (e.matches('h4.sect')) { cur = { h: e, els: [] }; secs.push(cur); } else if (cur) cur.els.push(e); }
+    if (secs.length < 3) return;
+    this.ptab = this.ptab || {}; const key = this.open, act = Math.min(this.ptab[key] || 0, secs.length - 1);
+    const label = (h) => { const t = [...h.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim(); return /^\d+\.\s*What should/.test(t) ? 'Drills' : t; };
+    const bar = document.createElement('div'); bar.className = 'ptabs'; bar.setAttribute('role', 'tablist'); secs[0].h.before(bar);
+    secs.forEach((s, i) => {
+      const wrap = document.createElement('div'); wrap.className = 'psec' + (i === act ? ' on' : ''); s.h.before(wrap); wrap.append(s.h, ...s.els);
+      const b = document.createElement('button'); b.className = 'ptab' + (i === act ? ' on' : ''); b.setAttribute('role', 'tab'); b.textContent = label(s.h);
+      for (const pill of s.h.querySelectorAll('.pill')) b.append(' ', pill.cloneNode(true));
+      b.onclick = () => { this.ptab[key] = i; bar.querySelectorAll('.ptab').forEach((x, j) => x.classList.toggle('on', j === i)); body.querySelectorAll(':scope > .psec').forEach((x, j) => x.classList.toggle('on', j === i)); };
+      bar.append(b);
+    });
+  }
   // Rename a unit in place: the name becomes a text box; Enter keeps it, Escape (or clicking away) leaves it as it was.
   startRename(id) {
     const c = this.c, h = c.cohorts.find(x => x.id === id), el = document.querySelector(`.uname[data-id="${id}"]`); if (!h || !el) return;
@@ -615,6 +633,7 @@ export class Camp {
       <div class="scenewrap">${sceneSvg(c, { visited, focus: adv.focus, flags })}</div>
       <div class="campbar"><div class="muted small">${unlockedBuildings(c).length} of ${BUILDINGS.length} buildings built. Win or draw battles to build more.</div><div class="row"><button class="primary" id="march">March to battle</button><button id="tomap">Back to map</button></div></div>
       ${this.open && meta ? `<div class="overlay" id="ov"><div class="panel" role="dialog" aria-label="${esc(meta.name)}"><div class="phead"><div><h2>${esc(meta.name)}</h2><div class="muted small">${esc(meta.sub)}</div></div><div class="pres">${res}</div><button id="p-close">Back to camp</button></div><div class="pbody">${this.panelBody(this.open)}</div>${this.msgs.length ? `<div class="plog">${this.msgs.slice(0, 3).map(m => `<div class="${m.kind}">${esc(m.msg)}</div>`).join('')}</div>` : ''}</div></div>` : ''}</div>`;
+    this.layerPanel();
     restore(sameView);
     const R = this.root, q = (s) => R.querySelector(s);
     R.querySelectorAll('.bld').forEach(g => { const open = () => { this.open = g.dataset.b; if (!visited.includes(this.open) && this.open !== 'praetorium') { visited.push(this.open); this.api.save(); } this.render(); }; g.onclick = open; g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } }; });

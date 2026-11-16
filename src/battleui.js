@@ -11,6 +11,11 @@ const NOISY = /crashes into|hurls its pila|refills|fresh pila|loses its formatio
 
 const $ = (id) => document.getElementById(id);
 
+// A unit's name short enough for a crowded card: "IV Cohort of the VIII Firma" -> "IV/VIII Firma", "Balearic Slingers" stays.
+export function shortName(n) {
+  const m = /^([IVX]+) Cohort of the ([IVX]+)(.*)$/.exec(n); if (m) return `${m[1]}/${m[2]}${m[3]}`;
+  return n.replace(/^First Cohort of the Tenth/, 'I/X').replace(/^Equites of the /, 'Equites ').replace(/^Evocati of the /, 'Evocati ');
+}
 export class BattleUI {
   constructor() {
     this.canvas = $('canvas'); this.r = new Renderer(this.canvas);
@@ -306,25 +311,28 @@ export class BattleUI {
     if (sig === this.cmdSig) return; this.cmdSig = sig;
     el.innerHTML = ''; if (!sel.length && !this.genSel) return;
     el.classList.toggle('compact', list.length > 9);          // a long list shows icons and keys only; the name is in the tooltip
+    const fill = () => {
     for (const c of list) {
       const btn = document.createElement('button'); btn.className = 'cmd'; btn.innerHTML = `${icon(c.id === 'defend' ? 'defend' : c.id, 15)}<span class="lbl">${c.label}</span><kbd>${c.key}</kbd>`; btn.title = `${c.label} (${c.key})`;
       const on = (c.id === 'auto' && sel.some(u => u.type.cat === 'inf' && !u.autoOff)) || (c.id === 'rotate' && sel.some(u => u.rotate)) || (c.id === 'lanes' && sel.some(u => u.lanes)) || (c.id === 'hold' && sel.length && sel.every(u => u.stance === 'hold')) || (c.id === 'defend' && sel.length && sel.every(u => u.stance !== 'hold')) || (c.id === 'testudo' && sel.some(u => u.formation === 'close')) || (c.id === 'extend' && sel.some(u => (u.wide || 1) > 1.05)) || (c.id === 'wedge' && sel.some(u => u.formation === 'wedge')) || (c.id === 'orbis' && sel.some(u => u.formation === 'orb')) || (c.id === 'holdfire' && sel.some(u => u.holdFire));
       if (on) btn.classList.add('on');
       btn.onclick = () => this.cmd(c.id); el.appendChild(btn);
     }
+    };
+    fill(); if (!el.classList.contains('compact') && el.offsetHeight > 48) el.classList.add('compact');   // never two rows of orders over the field
   }
 
   // ----- HUD -----
   refreshBottom() {
     const el = $('hud-bottom'); el.innerHTML = '';
     const nRome = this.b.units.filter(u => u.side === 'rome').length;
-    el.classList.toggle('many', nRome > 9); $('screen-battle').classList.toggle('huge', nRome > 24);   // past two dozen units the cards give way to the selection buttons
+    this.manyCards = nRome > 9; el.classList.toggle('many', nRome > 9); $('screen-battle').classList.toggle('huge', nRome > 24);   // past two dozen units the cards give way to the selection buttons
     this.buildSelectors();
     if (this.b.general) { const d = document.createElement('div'); d.className = 'ucard'; d.dataset.gen = '1'; d.innerHTML = `${icon('general', 14)} <b>General (E)</b><div class="muted" style="font-size:12px">click to find him</div>`; d.onclick = () => this.selectGeneral(true); d.title = 'Select the general and centre the view on him (E; press E again to centre)'; el.appendChild(d); }
     this.b.units.filter(u => u.side === 'rome').forEach(u => {
       const d = document.createElement('div'); d.className = 'ucard'; d.dataset.id = u.id;
       d.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 52, 52)}"><b></b><div class="bar x"><i></i></div><div class="bar m" style="margin-top:3px"><i></i></div>`;
-      d.querySelector('b').textContent = u.name;
+      d.querySelector('b').textContent = this.manyCards ? shortName(u.name) : u.name;
       d.onclick = (e) => this.cardClick(u.id, e);
       el.appendChild(d);
     });
