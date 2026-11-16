@@ -442,3 +442,8 @@ ask the Senate for funds (-10: 250 denarii plus 2.5 per man), grain ships (-6: 1
 300 veterans (-15), a proven officer from Rome (-20), or a larger command (-25: four more command slots for good, up to 16).
 Spending it lowers what high standing gives by itself (funds after each battle at 50+, veterans each winter at 70+), and at
 15 or less your pay costs a quarter more. Standing shows in the camp header next to your denarii.
+
+## The result screen (v0.16)
+What the battle brought now comes first: a **Spoils and news** card straight under the outcome lists the spoils and every
+dispatch in one line each, gains in green first and costs (pay, losses, desertion) in red last. The analysis is cut to the chart,
+the three moments the fight turned on and one lesson; the full breakdown is behind "Full report". Dispatches are no longer a tab.

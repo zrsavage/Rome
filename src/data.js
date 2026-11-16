@@ -652,7 +652,7 @@ export const SCENARIOS = [
     ],
     rewards: { gold: 1100, supplies: 600, recruits: 300, xpBase: 110, officerXp: 120 }, rewardMult: 1,
     unlock: [
-      { type: 'legionary', name: 'X Cohort', men: 440, maxMen: 480, xp: 80, drill: 30, msg: 'The Tenth sends a cohort to the army that beat Ariovistus.' }
+      { type: 'legionary', name: 'X Cohort', men: 440, maxMen: 480, xp: 80, drill: 30, msg: 'Volunteers after Ariovistus form the X Cohort.' }
     ]
   },
   {

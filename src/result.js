@@ -28,28 +28,32 @@ export function resultHtml({ res, o, flavour, banner, spoils, mid, practice, pic
     tile(`${lost}`, `your men lost (${Math.round(100 * lost / start)}%)`, lost / start > 0.3 ? 'bad' : ''),
     tile(`${res.enemyDead}`, `of ${res.enemyStart} enemy fell`, 'good'),
     res.prisoners ? tile(`${res.prisoners}`, 'prisoners taken') : '',
-    res.healed ? tile(`${res.healed}`, 'wounded saved by the medici') : '',
-    res.captured && (res.captured.mail || res.captured.arms || res.captured.horses) ? tile(`${res.captured.arms}`, `weapons taken, ${res.captured.mail} mail, ${res.captured.horses} horses`) : '',
-    !practice && !mid && o !== 'defeat' ? tile(`+${spoils.gold}`, `denarii, +${spoils.supplies} supplies, +${spoils.recruits} recruits`) : ''
+    res.healed ? tile(`${res.healed}`, 'wounded saved by the medici') : ''
   ].join('');
+  // What the battle brought, at a glance: the spoils first, then every dispatch, gains in green and costs in red.
+  const kind = (n) => /^(Pay|No money|Standing in Rome -)|desert|fell in battle|was taken|reduced to a remnant|lost/i.test(n) ? 'b' : /^(Captured|Senate|Standing in Rome \+|\+|New unit)|joins|form|raised|can now raise|promoted|reached level|is won|sends/i.test(n) ? 'g' : '';
+  const order = { g: 0, '': 1, b: 2 }, sorted = notes.slice().sort((a, b2) => order[kind(a)] - order[kind(b2)]);
+  const spoilLine = !practice && !mid && o !== 'defeat' && (spoils.gold || spoils.supplies || spoils.recruits) ? `<li class="g big"><b>+${spoils.gold}</b> denarii &middot; <b>+${spoils.supplies}</b> supplies &middot; <b>+${spoils.recruits}</b> recruits</li>` : '';
+  const news = spoilLine || notes.length ? `<div class="card rnews"><h4>${o === 'defeat' ? 'After the battle' : 'Spoils and news'}</h4><ul>${spoilLine}${sorted.map(n => `<li class="${kind(n)}">${esc(kind(n) === 'g' ? n.replace(/^\+/, '') : n)}</li>`).join('')}</ul></div>` : '';
   const decisions = [
     pris.length ? `<div class="rdec" id="pris"><h4>${res.prisoners} prisoners: what is to be done with them?</h4><div class="rchoices">${pris.map((p, i) => `<button class="ocard" data-p="${i}"><b>${esc(p.name)}</b><span class="t">${esc(p.text)}</span></button>`).join('')}</div></div>` : '',
     picks.length ? `<div class="rdec" id="bonus"><h4>Choose a bonus</h4><div class="rchoices">${picks.map((p, i) => `<button class="ocard" data-i="${i}"><b>${esc(p.name)}</b><span class="t">${esc(p.text)}</span></button>`).join('')}</div></div>` : ''
   ].join('');
   const rp = reportParts(res), honours = res.honours || [], proms = res.promotions || [];
   const sect = (title, items) => items.length ? `<section class="rsect"><h4>${title}</h4><ul>${items.map(x => `<li>${x}</li>`).join('')}</ul></section>` : '';
-  const what = rp ? `<div class="rgrid"><div>${rp.chart}</div><div>${sect('How the fight turned', rp.P.turn)}${rp.P.lesson.length ? `<div class="rlesson"><b>Lesson.</b> ${rp.P.lesson[0]}</div>` : ''}</div></div>
-      <div class="rgrid2">${sect('How your army fought', rp.P.yours)}${sect('What the enemy did', rp.P.enemy)}${sect('Conditions', rp.P.cond)}</div>
-      ${rp.moments.length ? `<details class="rmoments"><summary>Key moments (${rp.moments.length})</summary><div class="rmlist">${rp.moments.map(m => `<div><span class="muted">${m.t}</span> ${m.html}</div>`).join('')}</div></details>` : ''}` : '<p class="muted">No report.</p>';
+  const what = rp ? `<div class="rgrid"><div>${rp.chart}</div><div>${sect('How the fight turned', rp.P.turn.slice(0, 3))}${rp.P.lesson.length ? `<div class="rlesson"><b>Lesson.</b> ${rp.P.lesson[0]}</div>` : ''}</div></div>
+      <details class="rmoments"><summary>Full report</summary><div class="rgrid2">${sect('How your army fought', rp.P.yours)}${sect('What the enemy did', rp.P.enemy)}${sect('Conditions', rp.P.cond)}</div>
+      ${rp.moments.length ? `<h4 class="sect">Key moments</h4><div class="rmlist">${rp.moments.map(m => `<div><span class="muted">${m.t}</span> ${m.html}</div>`).join('')}</div>` : ''}</details>` : '<p class="muted">No report.</p>';
   const units = `<table class="rtable"><tr><th>Unit</th><th>Before</th><th>After</th><th>Lost</th><th>Kills</th><th>How they fought</th>${practice ? '' : '<th>Experience</th>'}</tr>${res.rows.map(r => `<tr${r.routed ? ' class="routed"' : ''}><td>${esc(r.name)}${r.routed ? ' <span class="muted small">(broke)</span>' : ''}</td><td>${r.startMen}</td><td>${r.endMen}</td><td>${r.casualties}</td><td>${r.kills}</td><td class="small">${howFought(r, res)}</td>${practice ? '' : `<td>+${r.xpGain}</td>`}</tr>`).join('')}</table>
     <p class="muted small">Wounded men who can still march are counted in the "after" column.</p>`;
   const hon = `${honours.length ? `<div class="rhon">${honours.map(h => `<div class="rmedal"><div class="medal m-${h.key}"></div><div><b>${esc(h.hero)}</b> of ${esc(h.unit)}<div class="small"><b>${esc(h.name)}</b>: ${esc(h.why)}</div><div class="small muted">${esc(DECORATIONS[h.key].text)}</div></div></div>`).join('')}</div>` : '<p class="muted">No decorations were awarded for this fight.</p>'}
     ${proms.length ? `<h4 class="sect">Promoted from the ranks</h4>${proms.map(p => `<div>${esc(p.name)} of ${esc(p.unit)} takes the place of ${esc(p.fallen)} as ${esc(p.rank)}.</div>`).join('')}` : ''}
     <p class="small muted" style="margin-top:8px">Each decoration adds 1 to its cohort's morale (up to 5). See a cohort's men in its record at camp.</p>`;
-  const tabs = [['what', 'What happened', what], ['units', 'Your units', units], practice ? null : ['honours', `Honours${honours.length ? ` (${honours.length})` : ''}`, hon], ['replay', 'Replay', replayHtml(res)], notes.length ? ['notes', `Dispatches (${notes.length})`, notes.map(n => `<div class="rnote">${esc(n)}</div>`).join('')] : null].filter(Boolean);
+  const tabs = [['what', 'What happened', what], ['units', 'Your units', units], practice ? null : ['honours', `Honours${honours.length ? ` (${honours.length})` : ''}`, hon], ['replay', 'Replay', replayHtml(res)]].filter(Boolean);
   return `<div class="panel-page result">
     <div class="rhead"><img class="banner" alt="" src="${banner}"><div class="rtitle ${o}">${TITLE[o]}</div><p>${esc(flavour)}</p></div>
     <div class="rtiles">${tiles}</div>
+    ${news}
     ${history ? `<div class="card rhist"><h4>What really happened</h4><p class="small">${esc(history.text)}</p>${history.romeLoss ? `<p class="small"><b>You lost ${lost} men; Caesar's army lost about ${history.romeLoss}.</b></p>` : ''}<p class="muted small">${esc(history.source)}. Ancient figures are often exaggerated.</p></div>` : ''}
     ${decisions ? `<div class="card rdecs">${decisions}</div>` : ''}
     <div class="rtabs" role="tablist">${tabs.map((t, i) => `<button role="tab" class="rtab ${i ? '' : 'on'}" data-tab="${t[0]}">${t[1]}</button>`).join('')}</div>
