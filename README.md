@@ -445,5 +445,5 @@ Spending it lowers what high standing gives by itself (funds after each battle a
 
 ## The result screen (v0.16)
 What the battle brought now comes first: a **Spoils and news** card straight under the outcome lists the spoils and every
-dispatch in one line each, gains in green first and costs (pay, losses, desertion) in red last. The analysis is cut to the chart,
-the three moments the fight turned on and one lesson; the full breakdown is behind "Full report". Dispatches are no longer a tab.
+dispatch in one line each, gains in green first and costs (pay, losses, desertion) in red last. The battle report (chart, analysis, advice and key moments) is its own tab, not the default; "Your units" opens first.
+Dispatches are no longer a tab.
