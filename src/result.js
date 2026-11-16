@@ -41,15 +41,15 @@ export function resultHtml({ res, o, flavour, banner, spoils, mid, practice, pic
   ].join('');
   const rp = reportParts(res), honours = res.honours || [], proms = res.promotions || [];
   const sect = (title, items) => items.length ? `<section class="rsect"><h4>${title}</h4><ul>${items.map(x => `<li>${x}</li>`).join('')}</ul></section>` : '';
-  const what = rp ? `<div class="rgrid"><div>${rp.chart}</div><div>${sect('How the fight turned', rp.P.turn.slice(0, 3))}${rp.P.lesson.length ? `<div class="rlesson"><b>Lesson.</b> ${rp.P.lesson[0]}</div>` : ''}</div></div>
-      <details class="rmoments"><summary>Full report</summary><div class="rgrid2">${sect('How your army fought', rp.P.yours)}${sect('What the enemy did', rp.P.enemy)}${sect('Conditions', rp.P.cond)}</div>
-      ${rp.moments.length ? `<h4 class="sect">Key moments</h4><div class="rmlist">${rp.moments.map(m => `<div><span class="muted">${m.t}</span> ${m.html}</div>`).join('')}</div>` : ''}</details>` : '<p class="muted">No report.</p>';
+  const what = rp ? `<div class="rgrid"><div>${rp.chart}</div><div>${sect('How the fight turned', rp.P.turn)}${rp.P.lesson.length ? `<div class="rlesson"><b>Lesson.</b> ${rp.P.lesson[0]}</div>` : ''}</div></div>
+      <div class="rgrid2">${sect('How your army fought', rp.P.yours)}${sect('What the enemy did', rp.P.enemy)}${sect('Conditions', rp.P.cond)}</div>
+      ${rp.moments.length ? `<h4 class="sect">Key moments</h4><div class="rmlist">${rp.moments.map(m => `<div><span class="muted">${m.t}</span> ${m.html}</div>`).join('')}</div>` : ''}` : '<p class="muted">No report.</p>';
   const units = `<table class="rtable"><tr><th>Unit</th><th>Before</th><th>After</th><th>Lost</th><th>Kills</th><th>How they fought</th>${practice ? '' : '<th>Experience</th>'}</tr>${res.rows.map(r => `<tr${r.routed ? ' class="routed"' : ''}><td>${esc(r.name)}${r.routed ? ' <span class="muted small">(broke)</span>' : ''}</td><td>${r.startMen}</td><td>${r.endMen}</td><td>${r.casualties}</td><td>${r.kills}</td><td class="small">${howFought(r, res)}</td>${practice ? '' : `<td>+${r.xpGain}</td>`}</tr>`).join('')}</table>
     <p class="muted small">Wounded men who can still march are counted in the "after" column.</p>`;
   const hon = `${honours.length ? `<div class="rhon">${honours.map(h => `<div class="rmedal"><div class="medal m-${h.key}"></div><div><b>${esc(h.hero)}</b> of ${esc(h.unit)}<div class="small"><b>${esc(h.name)}</b>: ${esc(h.why)}</div><div class="small muted">${esc(DECORATIONS[h.key].text)}</div></div></div>`).join('')}</div>` : '<p class="muted">No decorations were awarded for this fight.</p>'}
     ${proms.length ? `<h4 class="sect">Promoted from the ranks</h4>${proms.map(p => `<div>${esc(p.name)} of ${esc(p.unit)} takes the place of ${esc(p.fallen)} as ${esc(p.rank)}.</div>`).join('')}` : ''}
     <p class="small muted" style="margin-top:8px">Each decoration adds 1 to its cohort's morale (up to 5). See a cohort's men in its record at camp.</p>`;
-  const tabs = [['what', 'What happened', what], ['units', 'Your units', units], practice ? null : ['honours', `Honours${honours.length ? ` (${honours.length})` : ''}`, hon], ['replay', 'Replay', replayHtml(res)]].filter(Boolean);
+  const tabs = [['units', 'Your units', units], ['what', 'Battle report', what], practice ? null : ['honours', `Honours${honours.length ? ` (${honours.length})` : ''}`, hon], ['replay', 'Replay', replayHtml(res)]].filter(Boolean);
   return `<div class="panel-page result">
     <div class="rhead"><img class="banner" alt="" src="${banner}"><div class="rtitle ${o}">${TITLE[o]}</div><p>${esc(flavour)}</p></div>
     <div class="rtiles">${tiles}</div>
