@@ -187,6 +187,9 @@ export function applyResult(c, result, scn) {
   }
   result.honours = awardHonours(c, result, scn.phaseName || scn.name);
   for (const n of awardTitles(c, result, scn)) notes.push(n);
+  if (result.goal && result.goal.met && result.goal.reward) { c.gold += result.goal.reward.gold; c.standing = (c.standing ?? 30) + result.goal.reward.standing; notes.push(`Bonus goal met (${result.goal.name}): +${result.goal.reward.gold} denarii, +${result.goal.reward.standing} standing in Rome`); }
+  else if (result.goal && scn.id !== 'prologue') notes.push(`Bonus goal missed: ${result.goal.name}`);
+  if (result.plan) notes.push(`The enemy's plan was: ${result.plan.name}`);
   c.lastLoss = result.rows.reduce((x, r) => x + r.casualties, 0); c.lastBack = result.rows.reduce((x, r) => x + Math.max(0, r.endMen - (r.startMen - r.casualties)), 0);
   c.gold += result.spoils.gold; c.supplies += result.spoils.supplies;
   if (result.captured && (result.captured.mail || result.captured.arms || result.captured.horses)) {     // the stripped field goes into the stores

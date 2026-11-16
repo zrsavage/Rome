@@ -529,3 +529,9 @@ details.fold > summary:hover h3 { color: #f3d68a; }
 #hud-bottom.many .ucard b { font-size: 11px; }
 .phead .pres { white-space: nowrap; }
 .phead .pres .muted { display: none; }   /* pay and march costs: on hover here, in full in the camp header */
+
+/* bonus goal */
+.card.bgoal { border-color: #8a7a3a; background: rgba(90,74,24,0.25); }
+.hudgoal { margin-left: 14px; font-size: 13px; color: #f0d27a; background: rgba(20,16,10,0.75); border: 1px solid rgba(232,195,106,0.45); border-radius: 10px; padding: 1px 9px; white-space: nowrap; }
+.hudgoal.fail { color: #ee9a8e; border-color: rgba(238,154,142,0.5); text-decoration: line-through; }
+.hudgoal.ok { color: #9ee09e; border-color: rgba(158,224,158,0.5); }

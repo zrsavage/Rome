@@ -487,6 +487,15 @@ The uploaded cohort picture is the legionary unit card (`unit_legionary.webp`) f
   and it won all 3. On the field the strength label shows it: a dark red label and "!" for no leader, a hollow diamond for green,
   and one to three gold diamonds (with a gold border) for seasoned, veteran and elite. The unit panel and the Officers' tent name the grade.
 
+## Enemy plans, bonus goals and surprises
+Before each battle the enemy commander picks a plan that suits his habits: a head-on assault, a double envelopment, a feigned flight
+into his reserve, a hammer blow at your weakest point, wearing you down with missiles, or a strike at your baggage. The same battle
+plays differently each time. Scout him (Chieftains' Hall) and the briefing tells you which plan he chose.
+Every battle also sets a bonus goal (light losses, a swift victory, break the chief's guard, take prisoners, or no unit of yours
+breaking); meet it in a victory for about 150 denarii and +3 standing in Rome. It is tracked live at the top of the battle screen.
+About one battle in three, something unplanned happens partway through: fog or a downpour, your general's horse killed, warriors
+bursting from cover on a flank, allied horse arriving, a champion calling for single combat, or a rumour running through their ranks.
+
 ## Fighting a battle again
 Every time you start a battle you have started before (after a defeat, a restored backup, or leaving in the middle), the enemy knows your
 ways: 20% more men per earlier attempt, +5 morale, a cleverer commander, and 30% less spoils, up to four attempts' worth. The count is
