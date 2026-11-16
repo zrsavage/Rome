@@ -6,6 +6,7 @@ import { MAP } from './mapdata.js';
 import { icon, iconPaths } from './icons.js';
 import { routePending, ROUTES, canSkip, currentScn, careerLv, CAREER, britainPending } from './campaign.js';
 import { inform, keepScroll } from './ui.js';
+import { payDue } from './state.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const rad = (d) => d * Math.PI / 180;
@@ -219,7 +220,7 @@ export function renderMap(root, c, api) {
 
   const restoreScroll = keepScroll(root);   // switching the view or choosing a route must not jump the page
   root.innerHTML = `<div class="camp mapscreen">
-    <header><h2>The Road to Rome</h2><div class="res"><span>${icon('coin')} Denarii <b>${c.gold}</b></span><span>${icon('grain')} Supplies <b>${c.supplies}</b></span><span>${icon('helmet')} Army <b>${totalMen(c)}</b></span><span>${icon('day')} Day <b>${c.day}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
+    <header><h2>The Road to Rome</h2><div class="res"><span title="The army is paid after every battle. If you cannot pay, men desert.">${icon('coin')} Denarii <b>${c.gold}</b> <span class="muted small">(pay: -${payDue(c)})</span></span><span>${icon('grain')} Supplies <b>${c.supplies}</b></span><span>${icon('helmet')} Army <b>${totalMen(c)}</b></span><span>${icon('day')} Day <b>${c.day}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
     <div class="card mapcard">
       <div class="row maptools"><button id="v-act" class="${view === 'act' ? 'on' : ''}">${actView().tab}</button><button id="v-all" class="${view === 'all' ? 'on' : ''}">Whole Roman world</button><span class="muted small">Place names as of 58 BC. Map data: Natural Earth.</span></div>
       <svg viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" id="mapsvg" role="img" aria-label="Campaign map of the Roman world">

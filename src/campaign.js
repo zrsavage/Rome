@@ -104,11 +104,15 @@ export const STYLES = {
 };
 
 // ---------------- prisoners ----------------
+// Prisoners lose value the more there are: their kin can only raise so much, and the dealers pay less when the markets are full of
+// captives (each sale gluts them further; they recover between battles).
+export const ransomValue = (c, n) => Math.round(n * 2 / (1 + n / 1500));
+export const saleValue = (c, n) => Math.round(n * 3.5 / (1 + ((c.glut || 0) + n / 2) / 1200));
 export function prisonerOptions(c, n) {
   if (!n || n < 10) return [];
   return [
-    { id: 'ransom', name: 'Ransom them to their kin', text: `+${n * 2} denarii`, apply: (c2) => { c2.gold += n * 2; } },
-    { id: 'sell', name: 'Sell them to the slave dealers', text: `+${Math.round(n * 3.5)} denarii, goodwill -1`, apply: (c2) => { c2.gold += Math.round(n * 3.5); c2.favour -= 1; } },
+    { id: 'ransom', name: 'Ransom them to their kin', text: `+${ransomValue(c, n)} denarii`, apply: (c2) => { c2.gold += ransomValue(c2, n); } },
+    { id: 'sell', name: 'Sell them to the slave dealers', text: `+${saleValue(c, n)} denarii, goodwill -1${(c.glut || 0) > 500 ? ' (the markets are glutted)' : ''}`, apply: (c2) => { c2.gold += saleValue(c2, n); c2.glut = (c2.glut || 0) + n; c2.favour -= 1; } },
     { id: 'enrol', name: 'Enrol the willing as recruits', text: `+${Math.round(n * 0.25)} recruits for the pool`, apply: (c2) => { c2.manpower = (c2.manpower || 0) + Math.round(n * 0.25); } },
     { id: 'release', name: 'Release them', text: 'Goodwill +1 (the next host is smaller)', apply: (c2) => { c2.favour += 1; } }
   ];
