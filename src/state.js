@@ -198,7 +198,12 @@ export function applyResult(c, result, scn) {
   }
   if (scn.phases && result.outcome !== 'defeat') c.phase = 0;
   c.glut = Math.round((c.glut || 0) * 0.6);                        // the slave markets recover between battles
-  if (scn.id !== 'prologue') { rememberFoes(c, scn, result); unlockCodex(c, scn, result); }         // the enemy commander remembers this fight
+  if (scn.id !== 'prologue') { rememberFoes(c, scn, result); unlockCodex(c, scn, result); }
+  if (scn.id !== 'prologue') {                                     // the campaign's running totals, for the account at the end
+    const T = c.totals = c.totals || { lost: 0, killed: 0, prisoners: 0, healed: 0 };
+    T.lost += result.rows.reduce((a, r) => a + r.casualties, 0); T.killed += result.enemyDead || 0; T.prisoners += result.prisoners || 0; T.healed += result.healed || 0;
+    for (const r of result.rows) { const h = c.cohorts.find(x => x.id === r.cohortId); if (h) h.kills = (h.kills || 0) + (r.kills || 0); }
+  }         // the enemy commander remembers this fight
   if (scn.id !== 'prologue') {                                     // news of the battle reaches Rome
     const named = scn.kind === 'named', d = result.outcome === 'victory' ? (named ? 6 : 3) : result.outcome === 'draw' ? 0 : (named ? -10 : -5);
     if (d) { addStanding(c, d); notes.push(`Standing in Rome ${d > 0 ? '+' : ''}${d} (now ${standingOf(c)})`); }

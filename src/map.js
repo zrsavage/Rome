@@ -8,6 +8,7 @@ import { routePending, ROUTES, canSkip, currentScn, careerLv, CAREER, britainPen
 import { inform, keepScroll } from './ui.js';
 import { payDue, standingOf } from './state.js';
 import { showCodex, codexCount } from './codex.js';
+import { showEnding } from './ending.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const rad = (d) => d * Math.PI / 180;
@@ -263,19 +264,5 @@ export function renderMap(root, c, api) {
   q('#v-all').onclick = () => { view = 'all'; renderMap(root, c, api); };
 }
 
-// The end of the campaign: the triumph over Spain (October 45 BC) and an account of the commander's whole war.
-export function showTriumph(c) {
-  const h = (c.history || []).filter(x => x.id !== 'prologue' && x.outcome !== 'skipped');
-  const n = (o) => h.filter(x => x.outcome === o).length, fallen = (c.officers || []).filter(o => !o.alive);
-  const units = c.cohorts.length, men = totalMen(c), career = CAREER.filter(k => careerLv(c, k.id) > 0).map(k => `${k.name} ${careerLv(c, k.id)}`).join(', ');
-  const named = h.filter(x => { const s = SCENARIOS.find(y => y.id === x.id); return s && s.kind === 'named' && x.outcome !== 'defeat'; }).map(x => SCENARIOS.find(y => y.id === x.id).name);
-  inform('The triumph in Rome, October 45 BC', [
-    `From the Rhone fords to Munda: <b>${h.length}</b> battles fought, <b>${n('victory')}</b> won, <b>${n('draw')}</b> drawn, <b>${n('defeat')}</b> lost.`,
-    named.length ? `The named battles you came through: ${named.join(', ')}.` : 'You came through the war.',
-    `You march into Rome at the head of <b>${units}</b> units and <b>${men}</b> men${(c.officers || []).length ? `; ${fallen.length ? `${fallen.length} of your officers did not live to see it` : 'every one of your officers lived to see it'}` : ''}.`,
-    career ? `Your own career: ${career}.` : 'Your career was the army itself.',
-    'Caesar is dictator now, and the Republic is his. Five months later, on the Ides of March, he will be dead at the foot of Pompey\'s statue, and the wars will begin again. But that is another campaign.',
-    'Thank you for playing <b>LEGIO</b>. Your campaign stays saved in its slot; start a new one from the main menu to try another road.'
-  ], 'Ave');
-}
+export function showTriumph(c) { showEnding(c); }   // the full account lives in ending.js
 

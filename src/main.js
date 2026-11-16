@@ -9,6 +9,7 @@ import { ask, inform, keepScroll, choose } from './ui.js';
 import { pendingEvent, resolveEvent } from './events.js';
 import { winterDue, winterWhere, winterWhat, winterVerdict } from './winter.js';
 import { codexFromHistory } from './codex.js';
+import { pendingTip, markTip } from './tips.js';
 import { resultHtml, mountResult } from './result.js';
 let stopResult = null;
 import { currentScn, battleExtras, linksFor, STYLES, prisonerOptions, careerLv, chooseRoute, skipBattle, skipBritain } from './campaign.js';
@@ -188,7 +189,8 @@ async function runMarchEvent() {
     const m2 = what[i2].apply(), v = winterVerdict(c); camp.note(`${m2} ${v}`, 'info'); await inform('Spring', [m2, v], 'March');
     save(); showMap(); return;
   }
-  const ev = pendingEvent(c); if (!ev) { save(); return; }
+  const ev = pendingEvent(c);
+  if (!ev) { const tip = pendingTip(c); if (tip) { markTip(c, tip); save(); await inform(`Tip: ${tip.title}`, [tip.text], 'Got it'); } save(); return; }
   const room = commandLimit(c) - slotsUsed(c);
   const i = await choose(ev.title, ev.text, ev.choices.map(ch => ({ label: ch.label, fx: ch.fx, disabled: ch.ok ? !ch.ok(c, room) : false })));
   const msg = resolveEvent(c, ev, i, room); if (msg) { camp.note(msg, 'info'); await inform(ev.title, [msg], 'Onward'); }
