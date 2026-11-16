@@ -477,3 +477,9 @@ The uploaded cohort picture is the legionary unit card (`unit_legionary.webp`) f
   battles without a leader gets one anyway. Up to three such promotions after a victory, two after a draw, one after a defeat.
 - **The world map shows only acts you have reached:** no markers for later acts, and each act's badge carries its real number. Acts in the
   same country (Gaul) no longer sit on top of each other: the later badge steps aside towards its own battles, with its label clear.
+- **Leadership matters:** each of your units is graded by its own officer, and the grade changes how it fights and how easily it
+  breaks: no leader (attack -15%, morale -12, losses shake it 25% more), green (level 1-2: -10%, -9, +18%), seasoned (level 3-4:
+  +2%, +3, -5%), veteran (level 5, or 4 with tactics 3+: +12%, +10, -15%) and elite (level 6, or 5 with tactics 3+: +18%, +15, -22%).
+  In a test against Pompeian legions, an army under green leaders had 19 cohorts break and won 1 of 3; under elite leaders 6 broke
+  and it won all 3. On the field the strength label shows it: a dark red label and "!" for no leader, a hollow diamond for green,
+  and one to three gold diamonds (with a gold border) for seasoned, veteran and elite. The unit panel and the Officers' tent name the grade.

@@ -27,6 +27,16 @@ const PASS_SPEED = 0.75;   // marching through a friendly unit that is not fight
 const GHOST_SPEED = 0.6;   // a unit that was stuck files through friendly units at this pace
 // Melee geometry. Fighting a unit head-on is a slow grind; hitting its side or rear, or surrounding it, is decisive.
 const FRONT_GRIND = 0.8, FLANK_DMG = 1.5, REAR_DMG = 2.2;
+// Leadership: how good a unit's own officer is changes how it fights and how easily it breaks. Only your units with a cohort of their own
+// are graded (scripted reinforcements, detachments and the enemy keep their plain numbers). Pips under a unit's strength show the grade.
+export const LEAD = [
+  { name: 'No leader', atk: 0.85, mor: -12, loss: 1.25, pips: -1 },
+  { name: 'Green', atk: 0.9, mor: -9, loss: 1.18, pips: 0 },
+  { name: 'Seasoned', atk: 1.02, mor: 3, loss: 0.95, pips: 1 },
+  { name: 'Veteran', atk: 1.12, mor: 10, loss: 0.85, pips: 2 },
+  { name: 'Elite', atk: 1.18, mor: 15, loss: 0.78, pips: 3 }
+];
+export const leadGrade = (o) => { if (!o) return 0; const lv = o.level || 1, ta = o.tactics || 0; return lv >= 6 || (lv >= 5 && ta >= 3) ? 4 : lv >= 5 || (lv >= 4 && ta >= 3) ? 3 : lv >= 3 ? 2 : 1; };
 const FLANK_MORALE = 1.0, REAR_MORALE = 2.0, SURROUND_MORALE = 1.2, CAV_HAMMER = 1.4, WEAR_MAX = 0.8, WEAR_T = 150, BROKEN_DRAIN = 0.35;
 // Command: the general's banner sets a radius inside which Roman cohorts recover and rally well. Charges need fresh, steady men.
 const CMD_R = 240, GEN_SPEED = 75, ALL_ORDERS = ['hold', 'fallback', 'holdfire', 'extend', 'testudo', 'sprint', 'guard', 'rally', 'relieve', 'pursue', 'wedge', 'orbis', 'queue', 'array', 'cycle', 'rotate', 'priority', 'detach', 'lanes', 'works'];
@@ -56,6 +66,8 @@ export class Unit {
     const P = (id) => this.perks.includes(id);
     this.maxMorale = this.type.morale + this.lvl * 3 + this.drill * 0.12 + (spec.moraleBonus || 0) + (P('inspire') ? 4 : 0) + (P('discipline') ? 8 : 0) + (this.lvl >= 5 ? 5 : 0) + (this.temper === 'steady' ? 5 : this.temper === 'cautious' ? 4 : 0) + (this.tier >= 2 ? 6 : 0);
     if (this.tenth) this.maxMorale += 12;
+    this.lead = spec.side === 'rome' && spec.cohortId != null && !(UNIT_TYPES[spec.type] || {}).medic && (UNIT_TYPES[spec.type] || {}).cat !== 'train' ? LEAD[leadGrade(spec.officer)] : null;
+    if (this.lead) this.maxMorale = Math.max(20, this.maxMorale + this.lead.mor);
     const cond = spec.condition ?? 100;
     this.morale = this.maxMorale * (0.88 + 0.12 * cond / 100);
     this.fatigue = (100 - cond) * 0.4;
@@ -1368,7 +1380,7 @@ export class Battle {
   atkMult(u) {
     const tr = this.terr(u), t = u.type;
     const moraleF = clamp(0.6 + 0.4 * (u.morale / u.maxMorale), 0.5, 1);
-    const off = (u.officer ? 1 + 0.03 * (u.officer.tactics || 0) : 1) * (u.temper === 'bold' || u.temper === 'rash' ? 1.05 : 1) * (u.rivalNear ? 1.06 : 1);
+    const off = (u.lead ? u.lead.atk : 1) * (u.officer ? 1 + 0.03 * (u.officer.tactics || 0) : 1) * (u.temper === 'bold' || u.temper === 'rash' ? 1.05 : 1) * (u.rivalNear ? 1.06 : 1);
     const terr = tr.atk * (t.cat === 'cav' ? tr.cav : 1);
     const pk = (id) => u.perks.includes(id);
     const gear = (1 + 0.10 * Math.min(MAX_TIER, u.upg.weapon)) * (u.lvl >= 4 ? 1.08 : 1) * (pk('shock') ? 1.05 : 1) * (pk('cadre') ? 1.1 : 1);
@@ -1393,6 +1405,7 @@ export class Battle {
     if (def.officer) loss *= 1 - 0.04 * (def.officer.tactics || 0);
     if (def.temper === 'rash') loss *= 1.15; else if (def.temper === 'steady') loss *= 0.9;
     if (def.perks.includes('steadfast')) loss *= 0.8;
+    if (def.lead) loss *= def.lead.loss;                              // a good officer steadies his men; a new one, or none, cannot
     if (def.side === 'rome' && !def.tenth && this.tenthNear(def)) loss *= 0.9;                // fighting beside the Tenth
     if (def.type.holdMorale && (def.stance === 'hold' || this.behindWorks(def))) loss *= def.type.holdMorale;
     loss *= 1 - 0.15 * clamp(hgt(this, def), 0, 1.3);          // men on high ground hold their nerve

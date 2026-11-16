@@ -3,7 +3,7 @@
 import { LEVEL_NAMES, SCENARIOS, DIFFICULTY, UNIT_TYPES, RAISE, XP_LEVELS, REGION_NAMES, regionOf } from './data.js';
 import { PERKS, perkById, LEVEL_TRAITS, UPGRADES, MAX_TIER, upgradeCost } from './perks.js';
 const upCost = (c, x, k) => { const u = upgradeCost(x, k); return { ...u, gold: Math.round(u.gold * costMult(c)) }; };   // Economy makes equipment cheaper
-import { levelFor } from './sim.js';
+import { levelFor, LEAD, leadGrade } from './sim.js';
 import { TEMPERS, temperOf, rivalOf, tierOf, rankFor, TIER_TEXT } from './officers.js';
 import { CAREER, CAREER_MAX, careerLv, careerPoints, careerOffer, chooseCareer, costMult, legionsOf, legateOf, setLegate, ROMAN, currentScn, legateTraits, LEGATE_TRAITS } from './campaign.js';
 import { heroesOf, DECORATIONS, decoMorale } from './heroes.js';
@@ -549,7 +549,7 @@ export class Camp {
           <div class="choice2">${pend.options.map(k => `<button class="regimen" data-pick="officer:${o1.id}:${k.id}"><b>${esc(k.name)}</b><span class="t">${esc(k.text)}</span></button>`).join('<div class="or">or</div>')}</div></div>`
           : `<div class="advicebox">No advancement is waiting. An officer earns one step on his ladder each time he gains a level.</div>`;
         const rows = c.officers.map(o => { const kind = officerKind(o), track = officerTrack(o), got = track.map(r => r.find(k => (o.perks || []).includes(k.id))).filter(Boolean), nx = o.alive ? track.findIndex(r => !r.some(k => (o.perks || []).includes(k.id))) : -1;
-          return `<tr class="${o.alive ? '' : 'dead'}"><td><div class="cellflex"><img class="portrait" alt="" src="${artSrc('officer', o.id, 80, 100, { title: o.name, rank: o.rank })}"><div>${esc(rankFor(o))} ${esc(o.name)} <span class="muted small">- ${esc(OFFICER_KINDS[kind])}, level ${o.level}</span>${officerTags(c, o)}
+          return `<tr class="${o.alive ? '' : 'dead'}"><td><div class="cellflex"><img class="portrait" alt="" src="${artSrc('officer', o.id, 80, 100, { title: o.name, rank: o.rank })}"><div>${esc(rankFor(o))} ${esc(o.name)} <span class="muted small">- ${esc(OFFICER_KINDS[kind])}, level ${o.level}</span>${o.alive ? ` <span class="pill" title="How well his unit fights and holds">${LEAD[leadGrade(o)].name} leader</span>` : ''}${officerTags(c, o)}
             <div class="small" style="margin-top:3px">${got.length ? got.map(k => `<span class="pill" title="${esc(k.text)}">${esc(k.name)}</span>`).join(' ') : '<span class="muted">No advancements yet.</span>'}${o.alive && nx >= 0 && !officerPending(o) ? ` <span class="muted">Next choice at level ${nx + 1}: ${track[nx].map(k => esc(k.name)).join(' or ')}.</span>` : ''}</div></div></div></td>
             <td class="ocmd">${!o.alive ? '<span class="muted small">fallen</span>' : legionOfLegate(c, o.id) ? `<span class="small">Legate of Legio ${ROMAN[legionOfLegate(c, o.id)] || legionOfLegate(c, o.id)}</span>` : `<label class="small muted">Commands<br><select data-oassign="${o.id}">${cmdOpts(o)}</select></label>`}</td></tr>`; }).join('');
         const led = c.cohorts.filter(x => x.officerId != null && offs.some(o => o.id === x.officerId)).length, idle = offs.filter(o => !legionOfLegate(c, o.id) && !c.cohorts.some(x => x.officerId === o.id));

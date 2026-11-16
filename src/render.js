@@ -440,9 +440,16 @@ export class Renderer {
     placed.push(box(y));
     if (Math.abs(yy - y) > 8) { ctx.strokeStyle = 'rgba(240,230,200,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x, yy + 6); ctx.stroke(); }
     ctx.globalAlpha = u.state === 'routing' ? 0.7 : 1;
-    ctx.fillStyle = 'rgba(15,12,8,0.78)'; ctx.fillRect(x - w / 2, y - 13, w, 15);
+    ctx.fillStyle = u.lead && u.lead.pips < 0 && u.active ? 'rgba(92,26,18,0.92)' : 'rgba(15,12,8,0.78)'; ctx.fillRect(x - w / 2, y - 13, w, 15);   /* a unit with no officer: dark red label */
     ctx.fillStyle = rome ? '#f0d9a8' : '#bcd6f2'; ctx.font = `bold ${fs}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(text, x, y - 5.5);
+    if (u.lead && u.active) {                                       // leadership at a glance: the label's border and pips beside it (none: dull red, green: grey, good officers: gold)
+      const g = u.lead.pips, col = g < 0 ? '#a0584c' : g === 0 ? '#9a937f' : '#e8c36a';
+      ctx.strokeStyle = col; ctx.lineWidth = g >= 2 || g < 0 ? 2 : 1.4; ctx.strokeRect(x - w / 2 - 0.5, y - 13.5, w + 1, 16);
+      const px = x - w / 2 - 6, py = y - 5.5;
+      if (g < 0) { ctx.fillStyle = col; ctx.font = `bold ${fs}px system-ui, sans-serif`; ctx.textAlign = 'right'; ctx.fillText('!', px, py); ctx.textAlign = 'center'; }
+      else for (let k = 0; k < Math.max(1, g); k++) { const cx = px - 4 - k * 9; ctx.fillStyle = g === 0 ? 'rgba(15,12,8,0.8)' : col; ctx.strokeStyle = g === 0 ? col : '#2a1f0e'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(cx, py - 5.5); ctx.lineTo(cx + 4, py); ctx.lineTo(cx, py + 5.5); ctx.lineTo(cx - 4, py); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    }
     const m = Math.max(0, Math.min(1, u.morale / u.maxMorale));
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - w / 2, y + 2, w, 3);
     ctx.fillStyle = m > 0.6 ? '#6fcf6f' : m > 0.35 ? '#e0c050' : '#d65a4a'; ctx.fillRect(x - w / 2, y + 2, w * m, 3);
