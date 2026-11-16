@@ -1,5 +1,5 @@
 // Campaign map: real geography (Natural Earth coastlines, rivers, lakes; Mercator) with Roman-era places at true lat/lon.
-import { SCENARIOS, DIFFICULTY, PROLOGUE, actLabel } from './data.js';
+import { SCENARIOS, DIFFICULTY, PROLOGUE, actLabel, ACT_NUM } from './data.js';
 import { describe, picksNames } from './origins.js';
 import { totalMen } from './camp.js';
 import { MAP } from './mapdata.js';
@@ -139,7 +139,7 @@ export function renderMap(root, c, api) {
   const rN = (s, i) => (s.kind === 'named' ? 18 : 14) * k * (big ? 0.7 : 1);
   const mine = (i) => !big && SCENARIOS[i].act === curAct;   // on the whole-world view each act is one badge (see actBadges), not a cluster of battles          // only this act's battles are drawn; the others are a single marker each
   pts.forEach(([x, y], i) => { if (mine(i) && inView(x, y, 40 * k)) { dot(x, y, rN(SCENARIOS[i], i) + 9 * k); if (i === idx) dot(x + rN(SCENARIOS[i], i) + 8 * k, y - 4 * k, 22 * k); } });
-  const futs = FUTURE.filter(f => ACT_ORDER.indexOf(f.act) > ACT_ORDER.indexOf(curAct) && !(big && SCENARIOS.some(s => s.act === f.act))).map(f => { const [x, y] = project(f.lat, f.lon); return { f, x, y, r: (f.rome ? 12 : 8) * k * (big ? 0.8 : 1) }; }).filter(o => inView(o.x, o.y, 30 * k));
+  const futs = FUTURE.filter(() => false)   /* later acts stay hidden until the army gets there */.map(f => { const [x, y] = project(f.lat, f.lon); return { f, x, y, r: (f.rome ? 12 : 8) * k * (big ? 0.8 : 1) }; }).filter(o => inView(o.x, o.y, 30 * k));
   futs.forEach(o => dot(o.x, o.y, o.r + 3 * k));
   const placeList = [...PLACES, ...(curAct === 'III' && !big ? PLACES3 : []), ...(curAct === 'IV' && !big ? PLACES4 : []), ...(curAct === 'V' && !big ? PLACES5 : [])].map(([n, lat, lon, sz]) => { const [x, y] = project(lat, lon); return { n, x, y, sz }; }).filter(p => inView(p.x, p.y) && !(big && p.sz < 2) && !(curAct === 'I' && ['Bibracte', 'Vesontio', 'Genava'].includes(p.n)));
   placeList.forEach(p => dot(p.x, p.y, (p.sz === 2 ? 10 : 7) * k));
@@ -194,12 +194,19 @@ export function renderMap(root, c, api) {
   const ships = [[43.0, 7.8, 0.3], [38.2, 14.5, -0.5], [44.4, -5.6, 0.9], [36.0, 26.0, 0.2], [35.6, 4.0, 2.7]].map(([lat, lon, an]) => { const [x, y] = project(lat, lon); if (!inView(x, y)) return '';
     return `<g transform="translate(${x},${y}) rotate(${an * 57.3}) scale(${k * (big ? 1.2 : 1.7)})" opacity=".92"><path d="M-12 2 q12 7 24 0 l-3 -4 h-18z" fill="#6a4a2a" stroke="#14100a" stroke-width=".9"/><line x1="0" y1="-2" x2="0" y2="-14" stroke="#14100a" stroke-width="1"/><path d="M0 -14 q8 4 0 10z" fill="#e8dcc0" stroke="#14100a" stroke-width=".7"/>${[-8, -3, 2, 7].map(o => `<line x1="${o}" y1="1" x2="${o - 2}" y2="6" stroke="#cfc9a8" stroke-width=".7"/>`).join('')}<path d="M-14 6 q14 6 28 0" stroke="rgba(255,255,255,.35)" fill="none" stroke-width=".8"/></g>`; }).join('');
   const [gx, gy] = project(46.6, 5.0);
-  const actBadges = !big ? '' : [['I', 'Act I: Gaul'], ['II', 'Act II: Germania'], ['B', 'Britannia'], ['G', 'Act III: Vercingetorix'], ['III', 'Act IV: Africa'], ['IV', 'Act V: Pontus'], ['V', 'Act VI: Africa and Spain']].map(([a, name]) => {        // one badge per act on the world view
+  const placedBadges = [], actBadges = !big ? '' : [['I', 'Act I: Gaul'], ['II', 'Act II: Germania'], ['B', 'Britannia'], ['G', 'Act III: Vercingetorix'], ['III', 'Act IV: Africa'], ['IV', 'Act V: Pontus'], ['V', 'Act VI: Africa and Spain']].map(([a, name]) => {        // one badge per act on the world view
     const ss = SCENARIOS.filter(s => s.act === a); if (!ss.length) return '';
-    const ax = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[0], 0) / ss.length, ay = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[1], 0) / ss.length;
+    if (!c.over && SCENARIOS.indexOf(ss[0]) > idx) return '';           /* an act the army has not reached yet is not shown */
+    if (a === 'B' && c.britain === 'skipped') return '';
+    let ax = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[0], 0) / ss.length, ay = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[1], 0) / ss.length;
+    { const gap = 15 * k * 3.2, near = () => placedBadges.find(([px, py]) => Math.hypot(px - ax, py - ay) < gap);   /* two acts in one country (Gaul): step the later badge away */
+      let hit = near(); if (hit) { const a0 = Math.atan2(ay - hit[1], ax - hit[0]) || 0, ox = ax, oy = ay; let done = false;
+        for (const d of [1.05, 1.5, 2]) { for (const da of [0, 0.5, -0.5, 1, -1, 1.6, -1.6]) { ax = hit[0] + Math.cos(a0 + da) * gap * d; ay = hit[1] + Math.sin(a0 + da) * gap * d; if (!near()) { done = true; break; } } if (done) break; }
+        if (!done) { ax = ox; ay = oy; } } }
+    placedBadges.push([ax, ay]);
     const allDone = ss.every(s => best[s.id] && best[s.id] !== 'defeat'), cur = a === curAct && idx < SCENARIOS.length, col = cur ? '#e8c36a' : allDone ? '#6fcf6f' : '#8a7a58', r = 15 * k;
-    const lx = a === 'II' ? ax + r + 6 * k : ax - r - 6 * k, anchor = a === 'II' ? 'start' : 'end';
-    return `<g><circle cx="${ax}" cy="${ay}" r="${r}" fill="#1a140a" stroke="${col}" stroke-width="${2.6 * k}"/>${cur ? `<circle cx="${ax}" cy="${ay}" r="${r + 7 * k}" fill="none" stroke="${col}" stroke-opacity=".5" stroke-width="${1.4 * k}"/>` : ''}<text x="${ax}" y="${ay + 5 * k}" text-anchor="middle" class="nl" style="font-size:${13 * k}px;fill:${col}">${a}</text><text x="${lx}" y="${ay + 5 * k}" text-anchor="${anchor}" class="nl" style="font-size:${14 * k}px">${name}${cur ? ' (now)' : allDone ? ' (won)' : ''}</text></g>`;
+    const side = { II: 'east', IV: 'east', I: 'below', G: 'above' }[a] || 'west', lx = side === 'east' ? ax + r + 6 * k : side === 'west' ? ax - r - 6 * k : ax, ly = side === 'below' ? ay + r + 17 * k : side === 'above' ? ay - r - 8 * k : ay + 5 * k, anchor = side === 'east' ? 'start' : side === 'west' ? 'end' : 'middle';
+    return `<g><circle cx="${ax}" cy="${ay}" r="${r}" fill="#1a140a" stroke="${col}" stroke-width="${2.6 * k}"/>${cur ? `<circle cx="${ax}" cy="${ay}" r="${r + 7 * k}" fill="none" stroke="${col}" stroke-opacity=".5" stroke-width="${1.4 * k}"/>` : ''}<text x="${ax}" y="${ay + 5 * k}" text-anchor="middle" class="nl" style="font-size:${13 * k}px;fill:${col}">${a === 'B' ? 'B' : ACT_NUM[a]}</text><text x="${lx}" y="${ly}" text-anchor="${anchor}" class="nl" style="font-size:${14 * k}px">${name}${cur ? ' (now)' : allDone ? ' (won)' : ''}</text></g>`;
   }).join('');
   const future = futs.map(o => `<g class="fut" transform="translate(${o.x},${o.y})"><title>${esc(o.f.hint)}</title><circle r="${o.r}" fill="${o.f.rome ? '#7a2a22' : '#3b3120'}" stroke="#14100a" stroke-width="${2 * k}"/></g>`).join('');
 

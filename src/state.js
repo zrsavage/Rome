@@ -199,6 +199,21 @@ export function applyResult(c, result, scn) {
   if (scn.phases && result.outcome !== 'defeat') c.phase = 0;
   c.glut = Math.round((c.glut || 0) * 0.6);                        // the slave markets recover between battles
   if (scn.id !== 'prologue') { rememberFoes(c, scn, result); unlockCodex(c, scn, result); }
+  if (scn.id !== 'prologue') {                                     // leaderless units that fought well raise a man from their own ranks
+    const alive = (id) => c.officers.some(o => o.id === id && o.alive), cap = result.outcome === 'victory' ? 3 : result.outcome === 'draw' ? 2 : 1;
+    const cands = [];
+    for (const r of result.rows) {
+      const h = c.cohorts.find(x => x.id === r.cohortId); if (!h || h.men <= 0 || (UNIT_TYPES[h.type] || {}).cat === 'train') continue;
+      if (h.officerId != null && alive(h.officerId)) { h.noLeader = 0; continue; }
+      h.officerId = null; h.noLeader = (h.noLeader || 0) + 1;
+      const well = !r.routed && r.kills >= Math.max(20, r.startMen * 0.1);
+      if (well || h.noLeader >= 3) cands.push({ h, score: (well ? 1000 : 0) + r.kills + h.noLeader * 50 });
+    }
+    for (const { h } of cands.sort((a, b) => b.score - a.score).slice(0, cap)) {
+      const o = promoteFromRanks(c, h); if (!o) continue; h.noLeader = 0;
+      notes.push(`${o.name} of ${h.name} is raised from the ranks to ${o.rank} and takes command.`);
+    }
+  }
   if (scn.id !== 'prologue') {                                     // the campaign's running totals, for the account at the end
     const T = c.totals = c.totals || { lost: 0, killed: 0, prisoners: 0, healed: 0 };
     T.lost += result.rows.reduce((a, r) => a + r.casualties, 0); T.killed += result.enemyDead || 0; T.prisoners += result.prisoners || 0; T.healed += result.healed || 0;
