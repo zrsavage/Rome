@@ -7,6 +7,8 @@ import { renderMap } from './map.js';
 import { artSrc, initArt } from './art.js';
 import { ask, inform, keepScroll, choose } from './ui.js';
 import { pendingEvent, resolveEvent } from './events.js';
+import { winterDue, winterWhere, winterWhat, winterVerdict } from './winter.js';
+import { codexFromHistory } from './codex.js';
 import { resultHtml, mountResult } from './result.js';
 let stopResult = null;
 import { currentScn, battleExtras, linksFor, STYLES, prisonerOptions, careerLv, chooseRoute, skipBattle, skipBritain } from './campaign.js';
@@ -91,6 +93,7 @@ $('btn-import').onclick = () => $('file-import').click();
 $('file-import').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importSave(f); };
 // Saves from before the side act in Britain was added (version 3) point at battles by position; four battles now sit before Act III.
 function migrate(c) {
+  const v0 = c.version || 0;
   if ((c.version || 0) < 4) { if (c.scenario >= 11) { c.scenario += 4; c.britain = 'skipped'; } c.version = 4; }
   if (c.version < 5) {     // horse and missile units became wings and auxiliary cohorts (about twice the men): old saves grow to match
     const NEW = { slinger: 260, archer: 240, equites: 140, aux_cav: 150, moor_cav: 150 };
@@ -103,9 +106,10 @@ function migrate(c) {
     if (c.unlockedTypes) { if (won('utica') && !c.unlockedTypes.includes('evocati')) c.unlockedTypes.push('evocati'); if (won('oppidum') && !c.unlockedTypes.includes('ballista')) c.unlockedTypes.push('ballista'); }
     c.version = 6;
   }
+  if (v0 < 7) { if (c.scenario > 15) c.scenario += 4; c.version = 7; }   // the four battles of Vercingetorix's revolt were inserted before Africa
   return c;
 }
-function openCampaign(c, n) { migrate(c); campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; if (c.prologueDone === false) showBrief(PROLOGUE); else showMap(); }
+function openCampaign(c, n) { migrate(c); codexFromHistory(c); campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; if (c.prologueDone === false) showBrief(PROLOGUE); else showMap(); }
 function toMenu() { show('screen-menu'); refreshMenu(); }
 refreshMenu();
 initArt().then(() => { /* real art, if any, is picked up on the next render */ });
@@ -138,9 +142,17 @@ function showMap() {
         'Expect <b>cut supply lines</b> and raids from every side.'
       ], 'To Germania');
   }
+  if (cs && cs.act === 'G' && !(campaign.actsSeen || []).includes('G')) {
+    campaign.actsSeen = [...(campaign.actsSeen || []), 'G']; save();
+    inform('Act III: Vercingetorix, 52 BC', [
+      'Winter, 53-52 BC. While Caesar is south of the Alps, all Gaul rises under a young Arvernian noble, <b>Vercingetorix</b>.',
+      'He burns his own towns and farms to starve you, and spares only <b>Avaricum</b>. Then he waits for you on the heights of <b>Gergovia</b>.',
+      'It ends at <b>Alesia</b>: you will wall him in, and the whole of Gaul will come to break the siege. Fieldworks and siege engines matter here.'
+    ], 'Into Gaul');
+  }
   if (cs && cs.act === 'III' && !(campaign.actsSeen || []).includes('III')) {
     campaign.actsSeen = [...(campaign.actsSeen || []), 'III']; save();
-    inform('Act III: Africa, the old lands of Carthage', [
+    inform('Act IV: Africa, the old lands of Carthage', [
         'January 49 BC: Caesar crosses the Rubicon. <b>Civil war.</b> You go with <b>Curio</b> to take Africa from the Pompeians.',
         '<b>King Juba of Numidia</b> fights for them. Numidian horse throw javelins and ride off: <b>don\'t chase them</b>. A steady line and missiles beat them.',
         'The heat tires everyone but Numidians. Juba has <b>elephants</b>: learn <b>Open Ranks</b> at the Training Ground. And some of your enemies are <b>Romans</b>.'
@@ -148,7 +160,7 @@ function showMap() {
   }
   if (cs && cs.act === 'IV' && !(campaign.actsSeen || []).includes('IV')) {
     campaign.actsSeen = [...(campaign.actsSeen || []), 'IV']; save();
-    inform('Act IV: Pharsalus, and the steppe horse', [
+    inform('Act V: Pharsalus, and the steppe horse', [
         '48 BC: Pompey offers battle at <b>Pharsalus</b>, with seven horsemen to each of yours.',
         'Then east with <b>Calvinus</b> against <b>Pharnaces II</b>, with his Roman-drilled foot and <b>Sarmatian horse</b>.',
         '<b>Horse archers</b> fall back shooting and run out of arrows. <b>Lancers</b> are deadly head-on, slow to turn. At <b>Zela</b>, <b>scythed chariots</b>: missiles and <b>Open Ranks</b> beat them.'
@@ -156,7 +168,7 @@ function showMap() {
   }
   if (cs && cs.act === 'V' && !(campaign.actsSeen || []).includes('V')) {
     campaign.actsSeen = [...(campaign.actsSeen || []), 'V']; save();
-    inform('Act V: Roman against Roman', [
+    inform('Act VI: Roman against Roman', [
         '46 BC: <b>Scipio</b>, <b>Labienus</b> and <b>King Juba</b> hold Africa. Then <b>Pompey\'s sons</b> raise Spain, and the war ends at <b>Munda</b>.',
         'Wavering Pompeian cohorts may <b>come over to you</b>. Release prisoners to keep your name for clemency high, and more will.',
         'Elephants again at Thapsus. Watch your own veterans: they are impatient.'
@@ -169,6 +181,13 @@ function showMap() {
 async function runMarchEvent() {
   const conf = $('confirm'); if (!conf.classList.contains('hidden')) { setTimeout(runMarchEvent, 400); return; }
   const c = campaign; if (!c || !$('screen-map') || !$('screen-map').classList.contains('active')) return;
+  if (winterDue(c)) {                                            // winter quarters come first, then any event on the march
+    const where = winterWhere(c), i1 = await choose('Winter quarters', 'The campaigning season is over. Where will the army winter?', where.map(o => ({ label: o.label, fx: o.fx, disabled: o.ok ? !o.ok() : false })));
+    const m1 = where[i1].apply();
+    const what = winterWhat(c), i2 = await choose('The winter', `${m1} How will you spend the winter?`, what.map(o => ({ label: o.label, fx: o.fx, disabled: o.ok ? !o.ok() : false })));
+    const m2 = what[i2].apply(), v = winterVerdict(c); camp.note(`${m2} ${v}`, 'info'); await inform('Spring', [m2, v], 'March');
+    save(); showMap(); return;
+  }
   const ev = pendingEvent(c); if (!ev) { save(); return; }
   const room = commandLimit(c) - slotsUsed(c);
   const i = await choose(ev.title, ev.text, ev.choices.map(ch => ({ label: ch.label, fx: ch.fx, disabled: ch.ok ? !ch.ok(c, room) : false })));
@@ -200,7 +219,7 @@ function showBrief(scnArg) {
   $('screen-brief').innerHTML = `<div class="panel-page"><div class="muted">${opening ? 'Opening battle' : `${actLabel(scn.act)} - ${esc(scn.theater)}, ${esc(scn.year)} - Battle ${c.scenario + 1} of ${SCENARIOS.length}${scn.kind === 'named' ? ' - NAMED BATTLE' : ''}`}</div>
     <h2>${esc(scn.name)}${scn.phaseCount ? ` <span class="pill">stage ${scn.phaseIdx + 1} of ${scn.phaseCount}: ${esc(scn.phaseName)}</span>` : ''}</h2><img class="banner" alt="" src="${artSrc('scenario', scn.id, 800, 240, { scn })}"><p>${esc(scn.briefing)}</p>
     <div class="card"><h3>Weather: ${esc(wxo.name)}</h3><div class="small">${esc(wxo.text)}</div></div>
-    ${scn.chief ? `<div class="card" style="margin-top:12px"><h3>Enemy commander: ${esc(scn.chief.name)}</h3><div class="small">${known ? esc(STYLES[scn.chief.style] || STYLES.balanced) : 'Unknown. Scouts at the Chieftains\' Hall would tell you.'}</div></div>` : ''}
+    ${scn.chief ? `<div class="card" style="margin-top:12px"><h3>Enemy commander: ${esc(scn.chief.name)}</h3><div class="small">${known ? esc(STYLES[scn.chief.style] || STYLES.balanced) : 'Unknown. Scouts at the Chieftains\' Hall would tell you.'}</div>${(ex.foeNotes || []).map(n => `<div class="small" style="margin-top:6px;color:var(--gold)">${esc(n)}</div>`).join('')}</div>` : ''}
     ${oddsCard}${links.length ? `<div class="card" style="margin-top:12px"><h3>What earlier fights changed</h3>${links.map(l => `<div class="small">${l.won ? '<b style="color:var(--green)">Won:</b>' : '<span class="muted">Not won:</span>'} ${esc(l.name)} - ${l.won ? esc(l.text) : '<span class="muted">a victory there would have helped here.</span>'}</div>`).join('')}</div>` : ''}
     <div class="card" style="margin-top:12px"><h3>Objective</h3>${esc(scn.objective)}<br><span class="muted small">Time limit ${Math.round(scn.timeLimit / 60)} min. Withdrawing with ${Math.round((0.45 - 0.05 * c.fort) * 100)}% of your men counts as a draw.${scn.rewardMult > 1.4 ? ' Historically a dark day for Rome: survival or victory pays handsomely.' : ''}</span></div>
     <div class="row" style="align-items:flex-start;margin-top:12px"><div class="card" style="flex:1"><h3>Your force (${rome} men)</h3><ul>${c.cohorts.length > 10 ? Object.entries(c.cohorts.reduce((g, h) => { (g[h.type] = g[h.type] || { n: 0, men: 0 }).n++; g[h.type].men += h.men; return g; }, {})).map(([t, g]) => `<li>${g.n} x ${esc(UNIT_TYPES[t].name)} - ${g.men} men</li>`).join('') : c.cohorts.map(h => `<li>${esc(h.name)} - ${h.men}</li>`).join('')}</ul></div>
@@ -219,7 +238,7 @@ function startBattle(scn) {
   store.set(preKey(c.slot), c);
   show('screen-battle');
   const low = c.supplies < totalMen(c) / 60 * 2, m = modsOf(c), opening = scn.id === 'prologue', extras = battleExtras(c, scn);
-  battle.start(scn, romeSpecs(c, scn), { difficulty: opening ? 'easy' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale + extras.moraleAdd, typeScale: extras.typeScale, legates: extras.legates, sight: extras.sight, orders: c.doctrines || [], scouted: !!c.scouted, forceScale: forceScale(c, scn), healL5: (c.hospital || 0) >= 5, weather: opening ? 'clear' : pickWeather(scn, c), messengers: !opening && gameOpts.messengers }, (res) => showResult(res, scn));
+  battle.start(scn, romeSpecs(c, scn), { difficulty: opening ? 'easy' : c.difficulty, fort: c.fort, favour: c.favour, suppliesLow: low, recovery: m.recovery, moraleBonus: m.morale + extras.moraleAdd, typeScale: extras.typeScale, legates: extras.legates, sight: extras.sight, orders: c.doctrines || [], scouted: !!c.scouted, style: extras.style || undefined, forceScale: forceScale(c, scn), healL5: (c.hospital || 0) >= 5, weather: opening ? 'clear' : pickWeather(scn, c), messengers: !opening && gameOpts.messengers }, (res) => showResult(res, scn));
   if (opening) startCoach(); else stopCoach();
 }
 

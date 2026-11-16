@@ -98,10 +98,10 @@ export class Battle {
     this.diff = DIFFICULTY[opts.difficulty || 'normal'];
     this.aiLevel = scn.id === 'prologue' ? 0 : Math.max(0, ({ easy: 0, normal: 1, hard: 2, legendary: 3 }[opts.difficulty || 'normal'] ?? 1) - (['ford', 'arar', 'convoy'].includes(scn.id) ? 1 : 0));   // the first three fights stay gentle   // how much of its bag of tricks the Gallic host uses
     this.messengers = !!opts.messengers; this.pending = [];
-    this.style = (scn.chief && scn.chief.style) || 'balanced';
+    this.style = opts.style || (scn.chief && scn.chief.style) || 'balanced';   // a commander who has met you before may change his habits
     this.foe = ({ Gaul: 'Gallic', Germania: 'German', Britannia: 'British', Africa: 'Pompeian', Greece: 'Pompeian', Hispania: 'Pompeian', Pontus: 'Pontic', 'Armenia Minor': 'Pontic' })[scn.theater] || 'enemy';   // whose host it is, for the battle messages                          // the enemy commander's temper shapes how the host fights
     this.typeScale = opts.typeScale || {}; this.sightMul = opts.sight || 1;
-    this.legateSpecs = opts.legates || []; this.legates = []; this.works = [];
+    this.legateSpecs = opts.legates || []; this.legates = []; this.works = (scn.works || []).map((w, i) => ({ id: -1 - i, fixed: true, depth: 40, ...w }));   // siege lines built into the field (Alesia)
     this.rand = mulberry32(opts.seed ?? (Date.now() & 0xffffff));
     this.t = 0; this.units = []; this.bodies = []; this.fx = []; this.log = [];
     this.result = null; this.endTimer = null; this.pendingOutcome = null;
@@ -384,12 +384,13 @@ export class Battle {
   digIn(u) {
     if (!this.canDig() || u.side !== 'rome' || u.type.cat !== 'inf') return 'no';
     const i = this.works.findIndex(w => w.id === u.id); if (i >= 0) { this.works.splice(i, 1); return 'removed'; }
-    if (this.works.length >= this.worksLimit()) return 'limit';
+    if (this.dugCount() >= this.worksLimit()) return 'limit';
     const c = Math.cos(u.f), s = Math.sin(u.f), off = u.d / 2 + 22;
     this.works.push({ id: u.id, x: u.x + c * off, y: u.y + s * off, ang: u.f, len: u.w + 36, depth: 20, ux: u.x, uy: u.y });
     return 'dug';
   }
   // Ground inside a ditch: slow, no footing for a charge, hard to fight from.
+  dugCount() { return this.works.filter(w => !w.fixed).length; }
   inWorks(x, y) {
     for (const w of this.works) {
       const dx = x - w.x, dy = y - w.y, c = Math.cos(w.ang), s = Math.sin(w.ang), along = dx * c + dy * s, lat = -dx * s + dy * c;
@@ -398,7 +399,15 @@ export class Battle {
     return null;
   }
   // A cohort still standing behind the works it dug takes less from missiles.
-  behindWorks(u) { const w = this.works.find(q => q.id === u.id); return !!w && Math.hypot(u.x - w.ux, u.y - w.uy) < 40; }
+  behindWorks(u) {
+    const w = this.works.find(q => q.id === u.id); if (w && Math.hypot(u.x - w.ux, u.y - w.uy) < 40) return true;
+    if (u.side !== 'rome') return false;
+    for (const q of this.works) if (q.fixed) {                     // Roman men standing just behind a stretch of the siege lines
+      const dx = u.x - q.x, dy = u.y - q.y, c = Math.cos(q.ang), s = Math.sin(q.ang), along = dx * c + dy * s, lat = -dx * s + dy * c;
+      if (along < -q.depth / 2 && along > -q.depth / 2 - 70 && Math.abs(lat) < q.len / 2) return true;
+    }
+    return false;
+  }
 
   // ---------- geometry ----------
   ext(u, dx, dy, d) { // half extent of u's rectangle along direction (dx,dy)/d

@@ -7,7 +7,7 @@ const fav = (c, d) => { c.favour = clampFav((c.favour || 0) + d); };
 const legions = (c) => c.cohorts.filter(h => h.type === 'legionary');
 const loseShare = (c, k) => { let lost = 0; for (const h of c.cohorts) { const n = Math.round(h.men * k); h.men = Math.max(Math.ceil(h.maxMen * 0.35), h.men - n); lost += n; } return lost; };
 const tire = (c, d) => { for (const h of c.cohorts) h.condition = Math.max(35, Math.min(100, h.condition - d)); };
-const gaul = (s) => ['I', 'II', 'B'].includes(s.act), civil = (s) => ['III', 'IV', 'V'].includes(s.act);
+const gaul = (s) => ['I', 'II', 'B', 'G'].includes(s.act), civil = (s) => ['III', 'IV', 'V'].includes(s.act);
 
 export const EVENTS = [
   { id: 'deserter', when: () => true, title: 'A deserter', text: 'A man from the enemy camp is brought in at night. He says he will tell you what they have, for a price.',
@@ -41,7 +41,7 @@ export const EVENTS = [
       { label: 'Decline', fx: 'nothing', apply: () => 'The chief rides off with his men.' }] },
   { id: 'clemency', when: (s) => civil(s), title: 'Pompeian officers taken', text: 'A few Pompeian officers have been caught on the road. Caesar\'s way is clemency, but they would fetch a price.',
     choices: [
-      { label: 'Pardon them', fx: 'goodwill +1 (your name for clemency)', apply: (c) => { fav(c, 1); return 'They are released. The story goes round both camps.'; } },
+      { label: 'Pardon them', fx: 'goodwill +1 · standing in Rome +2', apply: (c) => { fav(c, 1); c.standing = Math.min(100, (c.standing ?? 30) + 2); return 'They are released. The story goes round both camps.'; } },
       { label: 'Hold them for ransom', fx: '+120 denarii · goodwill -1', apply: (c) => { c.gold += 120; fav(c, -1); return 'Their families pay. Pompeian soldiers hear of it.'; } }] },
   { id: 'mutiny', when: (s) => ['IV', 'V'].includes(s.act), title: 'The veterans want their pay', text: 'Veterans of many campaigns crowd your tent and demand their bonuses and their discharge.',
     choices: [

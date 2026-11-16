@@ -84,6 +84,34 @@ export function linksFor(c, scn) {
   const best = (id) => (c.history || []).filter(h => h.id === id).reduce((b, h) => (h.outcome === 'victory' ? 'victory' : b || h.outcome), null);
   return (scn.links || []).map(l => ({ ...l, won: best(l.from) === 'victory', name: (SCENARIOS.find(s => s.id === l.from) || {}).name || l.from }));
 }
+// ---------------- commanders who remember you ----------------
+// Vercingetorix, Labienus, Juba, Scipio and Pharnaces meet you more than once. Each remembers how the last fight went and answers what
+// beat him (or grows bolder if he won): more horse against your horse, more skirmishers and a quicker advance against your missile troops,
+// a patient, deeper line against your flank attacks.
+export const FOES = { vercingetorix: 'Vercingetorix', labienus: 'Titus Labienus', juba: 'King Juba', scipio: 'Metellus Scipio', pharnaces: 'Pharnaces' };
+const HORSE = ['gaul_cav', 'pomp_cav', 'numid_cav', 'german_cav', 'lancer', 'horse_archer'], SHOT = ['gaul_skirm', 'pomp_missile', 'numid_inf'], FOOT = ['warband', 'gaul_elite', 'pompeian', 'pomp_levy', 'pontic', 'suebi'];
+export function rememberFoes(c, scn, result) {
+  const persons = (scn.chief && scn.chief.persons) || []; if (!persons.length) return [];
+  const units = c.cohorts.length || 1, cat = (k) => c.cohorts.filter(h => (UNIT_TYPES[h.type] || {}).cat === k).length / units;
+  const kb = result.rows.reduce((a, r) => { for (const [k, v] of Object.entries(r.kBy || {})) a[k] = (a[k] || 0) + v; return a; }, {}), kills = Object.values(kb).reduce((a, b) => a + b, 0) || 1;
+  const flank = ((kb.flank || 0) + (kb.rear || 0)) / kills;
+  const lesson = result.outcome === 'defeat' ? 'bold' : cat('cav') > 0.15 ? 'horse' : cat('ranged') > 0.18 ? 'missiles' : flank > 0.3 ? 'flanks' : 'wary';
+  c.foes = c.foes || {}; const out = [];
+  for (const p of persons) { const r = c.foes[p] || { met: 0 }; r.met++; r.last = { name: scn.phaseName ? `${scn.name}` : scn.name, outcome: result.outcome }; r.lesson = lesson; c.foes[p] = r; out.push(p); }
+  return out;
+}
+const LESSON = {
+  horse: { text: 'your horse beat him, so he has brought more of his own', scale: (s) => HORSE.forEach(t => { s[t] = 1.35; }), style: 'balanced' },
+  missiles: { text: 'your missile troops bled him, so he brings more skirmishers and closes fast', scale: (s) => SHOT.forEach(t => { s[t] = 1.3; }), style: 'aggressive' },
+  flanks: { text: 'you broke him on his flanks, so his line is deeper and his horse waits for its moment', scale: (s) => FOOT.forEach(t => { s[t] = 1.1; }), style: 'cautious' },
+  bold: { text: 'he beat you last time, and comes on boldly', scale: (s) => FOOT.forEach(t => { s[t] = 1.05; }), style: 'aggressive' },
+  wary: { text: 'he lost to you last time, and is careful', scale: () => {}, style: 'cautious' }
+};
+export function foeMemory(c, scn) {
+  const persons = (scn && scn.chief && scn.chief.persons) || [], scale = {}, notes = []; let style = null;
+  for (const p of persons) { const r = (c.foes || {})[p]; if (!r || !r.met) continue; const L = LESSON[r.lesson] || LESSON.wary; L.scale(scale); style = style || L.style; notes.push(`You have met ${FOES[p] || p} before (${r.last.name}: ${r.last.outcome === 'victory' ? 'you won' : r.last.outcome === 'draw' ? 'a draw' : 'he won'}). He remembers: ${L.text}.`); }
+  return { scale, style, notes };
+}
 // Everything the campaign hands to a battle beyond the army itself.
 export function battleExtras(c, scn) {
   const typeScale = {}; let morale = 0;
@@ -91,7 +119,8 @@ export function battleExtras(c, scn) {
   const lg = legionsOf(c), legates = [];
   if (lg.count > 1) for (let k = 1; k <= lg.count; k++) { const o = legateOf(c, k); if (o) legates.push({ legion: k, name: o.name, tactics: o.tactics || 0, traits: legateTraits(o) }); }
   morale += c.nextMorale || 0;                                   // omens and other events on the march
-  return { typeScale, moraleAdd: morale, legates, sight: 1 + 0.07 * careerLv(c, 'recon') };
+  const foe = foeMemory(c, scn); for (const [t, v] of Object.entries(foe.scale)) typeScale[t] = (typeScale[t] ?? 1) * v;
+  return { style: foe.style, foeNotes: foe.notes, typeScale, moraleAdd: morale, legates, sight: 1 + 0.07 * careerLv(c, 'recon') };
 }
 
 // ---------------- the commander you face ----------------
@@ -114,7 +143,7 @@ export function prisonerOptions(c, n) {
     { id: 'ransom', name: 'Ransom them to their kin', text: `+${ransomValue(c, n)} denarii`, apply: (c2) => { c2.gold += ransomValue(c2, n); } },
     { id: 'sell', name: 'Sell them to the slave dealers', text: `+${saleValue(c, n)} denarii, goodwill -1${(c.glut || 0) > 500 ? ' (the markets are glutted)' : ''}`, apply: (c2) => { c2.gold += saleValue(c2, n); c2.glut = (c2.glut || 0) + n; c2.favour -= 1; } },
     { id: 'enrol', name: 'Enrol the willing as recruits', text: `+${Math.round(n * 0.25)} recruits for the pool`, apply: (c2) => { c2.manpower = (c2.manpower || 0) + Math.round(n * 0.25); } },
-    { id: 'release', name: 'Release them', text: 'Goodwill +1 (the next host is smaller)', apply: (c2) => { c2.favour += 1; } }
+    { id: 'release', name: 'Release them', text: `Goodwill +1 (the next host is smaller)${['III', 'IV', 'V'].includes((SCENARIOS[c.scenario] || {}).act) ? '; standing in Rome +2 (clemency)' : ''}`, apply: (c2) => { c2.favour += 1; if (['III', 'IV', 'V'].includes((SCENARIOS[c2.scenario] || {}).act)) c2.standing = Math.min(100, (c2.standing ?? 30) + 2); } }
   ];
 }
 

@@ -243,6 +243,8 @@ export const RAISE = {
 // What really happened at the named battles, shown on the result screen beside your own result. Ancient figures are given as the sources
 // state them, and they are often exaggerated; romeLoss is the Roman loss in men where a source gives one.
 export const HISTORY = {
+  gergovia: { text: "Caesar's legions took the camps, then ran on past the recall to the town wall and were thrown back down the hill. He lost about 700 men and 46 centurions: his only real defeat in Gaul.", source: 'Caesar, Gallic War VII.44-51', romeLoss: 700 },
+  alesia: { text: "Caesar held both lines against the sally and the relieving army. The last attack, on the camp below Mont Rea, broke when his horse rode into its rear. Next day Vercingetorix surrendered.", source: 'Caesar, Gallic War VII.68-89; Plutarch, Caesar 27' },
   bibracte: { text: "Caesar fought the Helvetii from midday into the night, hardest at their wagons. He gives no losses of his own, but spent three days burying the dead. Of 368,000 who set out, he says 110,000 went home.", source: 'Caesar, Gallic War I.24-29' },
   ariovistus: { text: "Crassus saved the Roman left with the third line, and the Germans fled fifty miles to the Rhine. Ariovistus escaped by boat. Roman losses are not recorded.", source: 'Caesar, Gallic War I.51-53; Plutarch, Caesar 19' },
   cassivellaunus: { text: "Caesar forced the Thames and stormed the stronghold. Cassivellaunus gave hostages and tribute, and Caesar left before the autumn storms.", source: 'Caesar, Gallic War V.18-23' },
@@ -255,7 +257,9 @@ export const HISTORY = {
   munda: { text: "The lines fought evenly for hours, until a Pompeian move was mistaken for a retreat. Labienus and 30,000 Pompeians died. Caesar lost about 1,000.", source: 'Bellum Hispaniense 30-31', romeLoss: 1000 }
 };
 // How an act is named on screen: the side act is not numbered.
-export const actLabel = (a) => a === 'B' ? 'Side act: Britannia' : `Act ${a}`;
+// Acts are stored by code; the revolt of Vercingetorix (G) was added between Britain and the civil war, so the civil-war acts show one number higher.
+export const ACT_NUM = { I: 'I', II: 'II', G: 'III', III: 'IV', IV: 'V', V: 'VI' };
+export const actLabel = (a) => a === 'B' ? 'Side act: Britannia' : `Act ${ACT_NUM[a] || a}`;
 export const START_TYPES = ['legionary', 'slinger', 'equites'];
 // Where the army is decides who can be raised. Legionaries, slingers, archers, equites and Gallic horse go everywhere; local troops only locally.
 export const REGION_NAMES = { gaul: 'Gaul', africa: 'Africa', greece: 'Greece', east: 'Pontus and Armenia', spain: 'Spain' };
@@ -767,6 +771,146 @@ export const SCENARIOS = [
     unlock: [{ type: 'legionary', name: 'Cohors Britannica', men: 420, maxMen: 480, xp: 140, drill: 35, msg: 'Veterans of both crossings of the Ocean form a new cohort.' }]
   },
   // ======================= ACT III: Africa, the old lands of Carthage (49 BC) =======================
+  // ----- Act III (internal code G): the great revolt of Vercingetorix, 52 BC (Caesar, Gallic War VII) -----
+  // Avaricum: Caesar built a siege terrace against the walls and stormed the town in a rainstorm, when the guards had taken shelter (VII.27).
+  {
+    id: 'avaricum', posture: 'assault', chief: { name: 'the defenders of Avaricum', style: 'balanced' }, act: 'G', theater: 'Gaul', year: '52 BC', name: 'The Storm of Avaricum', kind: 'skirmish',
+    geo: { lat: 47.08, lon: 2.40, place: 'Avaricum (Bourges)', note: 'Chief town of the Bituriges, ringed by river and marsh but for one narrow approach' },
+    briefing: 'All Gaul has risen under Vercingetorix. Your siege terrace reaches the wall of Avaricum, and in the pouring rain the guards have taken shelter. Storm it.',
+    objective: 'Hold the wall (gold marker) 110 s, or break the defenders. Ballistae and slingers clear the wall; the marsh is slow going.',
+    timeLimit: 660, daysToPrepare: 4,
+    deploy: { mode: 'line', cx: 800, cy: 860 },
+    objectives: [{ id: 'wall', name: 'The Wall', x: 800, y: 380, r: 100, owner: 'gaul' }],
+    rule: { holdSecs: 110, attacker: 'rome' },
+    terrain: [
+      { kind: 'hill', cx: 800, cy: 250, rx: 420, ry: 180, h: 40 },
+      { kind: 'water', x: 0, y: 330, w: 470, h: 70 }, { kind: 'water', x: 1130, y: 330, w: 470, h: 70 },
+      { kind: 'forest', cx: 180, cy: 640, rx: 160, ry: 110 }, { kind: 'forest', cx: 1420, cy: 660, rx: 160, ry: 110 }
+    ],
+    enemy: [
+      { type: 'warband', men: 330, x: 660, y: 330, ai: { kind: 'ambush', trigger: 110, maxDelay: 90, quiet: true } },
+      { type: 'warband', men: 330, x: 940, y: 330, ai: { kind: 'ambush', trigger: 110, maxDelay: 90, quiet: true } },
+      { type: 'gaul_elite', men: 260, x: 800, y: 290, ai: { kind: 'ambush', trigger: 90, maxDelay: 120, quiet: true } },
+      { type: 'gaul_skirm', men: 160, x: 720, y: 400, ai: { kind: 'skirm' } }, { type: 'gaul_skirm', men: 160, x: 880, y: 400, ai: { kind: 'skirm' } },
+      { type: 'warband', men: 300, x: 800, y: 160, ai: { kind: 'rush', delay: 90, reserve: true } }
+    ],
+    reinforcements: [{ at: 200, msg: 'Men of the town pour out of the side streets to retake the wall!', unit: { type: 'warband', men: 360, x: 800, y: 90, ai: { kind: 'rush', delay: 0 } } }],
+    rewards: { gold: 520, supplies: 420, recruits: 160, xpBase: 70, officerXp: 80 }, rewardMult: 1
+  },
+  // Gergovia: Caesar's one real defeat in Gaul. His men went on past the recall signal up to the town wall and were thrown down the hill with
+  // the loss of about 700 men and 46 centurions (VII.44-51).
+  {
+    id: 'gergovia', odds: 1.15, posture: 'assault', chief: { name: 'Vercingetorix', style: 'cunning', persons: ['vercingetorix'] }, act: 'G', theater: 'Gaul', year: '52 BC', name: 'Gergovia', kind: 'named',
+    geo: { lat: 45.71, lon: 3.12, place: 'Gergovia, near Clermont-Ferrand', note: 'Oppidum of the Arverni, on a high plateau' },
+    briefing: 'Take the Gallic camps on the slope below Gergovia, then stop. Chase on to the wall and Vercingetorix\'s whole army will come back on you.',
+    objective: 'Hold the upper camp (gold marker) 170 s, or break the defenders. Historically a defeat: a draw here pays well.',
+    timeLimit: 720, daysToPrepare: 5,
+    deploy: { mode: 'line', cx: 800, cy: 880 },
+    objectives: [{ id: 'camp', name: 'The Upper Camp', x: 800, y: 470, r: 105, owner: 'gaul' }],
+    rule: { holdSecs: 170, attacker: 'rome' },
+    terrain: [{ kind: 'hill', cx: 800, cy: 260, rx: 620, ry: 260, h: 80 }, { kind: 'hill', cx: 800, cy: 520, rx: 360, ry: 140, h: 35 }, { kind: 'forest', cx: 150, cy: 700, rx: 170, ry: 130 }],
+    enemy: [
+      { type: 'warband', men: 330, x: 650, y: 470, ai: { kind: 'ambush', trigger: 140, maxDelay: 40, quiet: true } }, { type: 'warband', men: 330, x: 950, y: 470, ai: { kind: 'ambush', trigger: 140, maxDelay: 40, quiet: true } },
+      { type: 'gaul_skirm', men: 150, x: 800, y: 540, ai: { kind: 'skirm' } },
+      { type: 'gaul_elite', men: 300, x: 800, y: 150, ai: { kind: 'ambush', trigger: 180, maxDelay: 140, quiet: true } }
+    ],
+    reinforcements: [
+      { at: 85, msg: 'Vercingetorix\'s army comes streaming back over the plateau!', unit: { type: 'warband', men: 480, x: 400, y: 60, ai: { kind: 'rush', delay: 0 } } },
+      { at: 90, msg: '', unit: { type: 'warband', men: 480, x: 1200, y: 60, ai: { kind: 'rush', delay: 0 } } },
+      { at: 100, msg: '', unit: { type: 'gaul_cav', men: 160, x: 1450, y: 300, ai: { kind: 'flank', delay: 0 } } },
+      { at: 110, msg: '', unit: { type: 'gaul_elite', men: 300, x: 800, y: 40, ai: { kind: 'rush', delay: 0 } } }
+    ],
+    rewards: { gold: 640, supplies: 360, recruits: 200, xpBase: 90, officerXp: 100 }, rewardMult: 1.5
+  },
+  // The cavalry battle before Alesia: Vercingetorix's horse attacked Caesar's column on the march in three bodies; Caesar's German horsemen
+  // broke them (VII.66-67). The site, somewhere near the Vingeanne, is disputed.
+  {
+    id: 'vingeanne', posture: 'defend', chief: { name: "Vercingetorix's horse", style: 'aggressive', persons: ['vercingetorix'] }, optional: true, act: 'G', theater: 'Gaul', year: '52 BC', name: 'The Cavalry Battle', kind: 'skirmish',
+    geo: { lat: 47.45, lon: 5.35, place: 'Near the Vingeanne (the site is disputed)', note: 'The Gallic horse attacked the Roman column on the march' },
+    briefing: 'Vercingetorix\'s horse falls on your column in three bodies. Hold until Caesar\'s German horsemen can strike them.',
+    objective: 'Break the Gallic horse, or keep 45% of your army until time runs out. A side fight: winning it weakens their horse at Alesia.',
+    timeLimit: 540, daysToPrepare: 2,
+    deploy: { mode: 'line', cx: 800, cy: 560 },
+    terrain: [{ kind: 'water', x: 0, y: 860, w: 1600, h: 60 }, { kind: 'hill', cx: 1350, cy: 320, rx: 220, ry: 120, h: 25 }],
+    enemy: [
+      { type: 'gaul_cav', men: 200, x: 300, y: 220, ai: { kind: 'flank', delay: 4 } }, { type: 'gaul_cav', men: 200, x: 800, y: 160, ai: { kind: 'flank', delay: 2 } },
+      { type: 'gaul_cav', men: 200, x: 1300, y: 220, ai: { kind: 'flank', delay: 6 } }, { type: 'gaul_skirm', men: 140, x: 800, y: 260, ai: { kind: 'skirm' } }
+    ],
+    reinforcements: [{ at: 110, side: 'rome', msg: "Caesar's German horsemen charge the Gauls from the hill!", unit: { type: 'aux_cav', name: 'German Horse', men: 280, x: 1350, y: 300, f: 3.1416, xp: 300, drill: 40 } }],
+    rewards: { gold: 420, supplies: 260, recruits: 120, xpBase: 60, officerXp: 70 }, rewardMult: 1
+  },
+  // Alesia: Caesar walled Vercingetorix in, then built a second line facing out against the relieving army of all Gaul. He fought facing
+  // both ways; the last attack, on the camp below Mont Rea, was beaten when Caesar's horse rode round into its rear (VII.68-89).
+  {
+    id: 'alesia', posture: 'fortdef', chief: { name: 'Vercingetorix and Vercassivellaunus', style: 'aggressive', persons: ['vercingetorix'] }, act: 'G', theater: 'Gaul', year: '52 BC', name: 'Alesia', kind: 'named',
+    geo: { lat: 47.54, lon: 4.50, place: 'Alesia (Mont Auxois, Alise-Sainte-Reine)', note: 'Oppidum of the Mandubii, where Vercingetorix surrendered' },
+    briefing: 'You hold the siege lines round Alesia: one wall facing Vercingetorix, one facing the relieving army of all Gaul.',
+    objective: 'Hold the lines. Break the attacks, or keep the camp (gold marker) until nightfall.',
+    links: [
+      { from: 'vingeanne', scale: { gaul_cav: 0.6 }, text: 'Their horse was broken on the march: fewer riders come to Alesia.' },
+      { from: 'avaricum', morale: 3, text: 'The men remember Avaricum (+3 morale).' },
+      { from: 'gergovia', morale: 3, text: 'The men want to wipe out Gergovia (+3 morale).' }
+    ],
+    timeLimit: 900, daysToPrepare: 3,
+    deploy: { mode: 'line', cx: 800, cy: 560 },
+    objectives: [{ id: 'camp', name: 'The Lines', x: 800, y: 600, r: 100, owner: 'rome' }],
+    rule: { holdSecs: 110, attacker: 'gaul' },
+    works: [{ x: 420, y: 440, ang: -1.5708, len: 380 }, { x: 800, y: 430, ang: -1.5708, len: 380 }, { x: 1180, y: 440, ang: -1.5708, len: 380 },
+      { x: 560, y: 760, ang: 1.5708, len: 380 }, { x: 1040, y: 760, ang: 1.5708, len: 380 }],
+    terrain: [{ kind: 'hill', cx: 800, cy: 960, rx: 520, ry: 140, h: 45 }, { kind: 'forest', cx: 120, cy: 600, rx: 120, ry: 200 }, { kind: 'forest', cx: 1480, cy: 600, rx: 120, ry: 200 }],
+    enemy: [
+      { type: 'warband', men: 480, x: 400, y: 150, ai: { kind: 'rush', delay: 8 } }, { type: 'warband', men: 480, x: 650, y: 140, ai: { kind: 'rush', delay: 6 } },
+      { type: 'warband', men: 480, x: 950, y: 140, ai: { kind: 'rush', delay: 6 } }, { type: 'warband', men: 480, x: 1200, y: 150, ai: { kind: 'rush', delay: 8 } },
+      { type: 'gaul_skirm', men: 180, x: 600, y: 230, ai: { kind: 'skirm' } }, { type: 'gaul_skirm', men: 180, x: 1000, y: 230, ai: { kind: 'skirm' } },
+      { type: 'gaul_cav', men: 160, x: 200, y: 260, ai: { kind: 'flank', delay: 30 } }, { type: 'gaul_cav', men: 160, x: 1400, y: 260, ai: { kind: 'flank', delay: 30 } },
+      { type: 'gaul_elite', men: 320, x: 800, y: 60, ai: { kind: 'rush', delay: 70, reserve: true } }
+    ],
+    reinforcements: [
+      { at: 140, msg: 'Vercingetorix sallies from Alesia against the inner line behind you!', unit: { type: 'warband', men: 480, x: 560, y: 990, ai: { kind: 'rush', delay: 0 } } },
+      { at: 145, msg: '', unit: { type: 'warband', men: 480, x: 1040, y: 990, ai: { kind: 'rush', delay: 0 } } },
+      { at: 150, msg: '', unit: { type: 'gaul_elite', men: 300, x: 800, y: 995, ai: { kind: 'rush', delay: 0 } } }
+    ],
+    phases: [
+      {
+        phaseName: 'Both Lines at Once', posture: 'fortdef', odds: 0.8,
+        terrain: [{ kind: 'hill', cx: 800, cy: 960, rx: 520, ry: 140, h: 45 }, { kind: 'forest', cx: 120, cy: 600, rx: 120, ry: 200 }, { kind: 'forest', cx: 1480, cy: 600, rx: 120, ry: 200 }],
+        briefing: 'The relieving army attacks the outer wall, and Vercingetorix sallies against the inner wall behind you. Hold both.',
+        objective: 'Hold the lines: break the attacks, or keep the camp (gold marker) until nightfall.',
+        timeLimit: 720, deploy: { mode: 'line', cx: 800, cy: 560 },
+        objectives: [{ id: 'camp', name: 'The Lines', x: 800, y: 600, r: 100, owner: 'rome' }], rule: { holdSecs: 110, attacker: 'gaul' },
+        enemy: [
+          { type: 'warband', men: 480, x: 400, y: 150, ai: { kind: 'rush', delay: 8 } }, { type: 'warband', men: 480, x: 650, y: 140, ai: { kind: 'rush', delay: 6 } },
+          { type: 'warband', men: 480, x: 950, y: 140, ai: { kind: 'rush', delay: 6 } }, { type: 'warband', men: 480, x: 1200, y: 150, ai: { kind: 'rush', delay: 8 } },
+          { type: 'gaul_skirm', men: 180, x: 600, y: 230, ai: { kind: 'skirm' } }, { type: 'gaul_skirm', men: 180, x: 1000, y: 230, ai: { kind: 'skirm' } },
+          { type: 'gaul_cav', men: 160, x: 200, y: 260, ai: { kind: 'flank', delay: 30 } }, { type: 'gaul_cav', men: 160, x: 1400, y: 260, ai: { kind: 'flank', delay: 30 } }
+        ],
+        reinforcements: [
+          { at: 180, msg: 'Vercingetorix sallies from Alesia against the inner line behind you!', unit: { type: 'warband', men: 400, x: 560, y: 990, ai: { kind: 'rush', delay: 0 } } },
+          { at: 185, msg: '', unit: { type: 'warband', men: 400, x: 1040, y: 990, ai: { kind: 'rush', delay: 0 } } }
+        ]
+      },
+      {
+        phaseName: 'The Camp below Mont Rea', posture: 'fortdef',
+        briefing: 'Sixty thousand picked men fall on the weak camp below Mont Rea. Hold it until Caesar\'s horse rides round into their rear.',
+        objective: 'Keep the camp (gold marker), or break the attack. Caesar\'s horse arrives behind them after about three minutes.',
+        timeLimit: 660, deploy: { mode: 'line', cx: 800, cy: 640 },
+        objectives: [{ id: 'camp', name: 'The North Camp', x: 800, y: 680, r: 105, owner: 'rome' }], rule: { holdSecs: 100, attacker: 'gaul' },
+        works: [{ x: 600, y: 520, ang: -1.5708, len: 380 }, { x: 1000, y: 520, ang: -1.5708, len: 380 }],
+        terrain: [{ kind: 'hill', cx: 800, cy: 120, rx: 600, ry: 200, h: 60 }, { kind: 'forest', cx: 140, cy: 560, rx: 140, ry: 180 }],
+        enemy: [
+          { type: 'gaul_elite', men: 330, x: 500, y: 180, ai: { kind: 'rush', delay: 4 } }, { type: 'gaul_elite', men: 330, x: 800, y: 160, ai: { kind: 'rush', delay: 2 } },
+          { type: 'gaul_elite', men: 330, x: 1100, y: 180, ai: { kind: 'rush', delay: 4 } }, { type: 'warband', men: 480, x: 650, y: 90, ai: { kind: 'rush', delay: 20 } },
+          { type: 'warband', men: 480, x: 950, y: 90, ai: { kind: 'rush', delay: 20 } }, { type: 'gaul_skirm', men: 180, x: 800, y: 260, ai: { kind: 'skirm' } }
+        ],
+        reinforcements: [
+          { at: 180, side: 'rome', msg: "Caesar's horse rides round the hill into the Gallic rear!", unit: { type: 'aux_cav', name: "Caesar's Horse", men: 300, x: 300, y: 40, f: 1.5708, xp: 400, drill: 50 } },
+          { at: 182, side: 'rome', msg: '', unit: { type: 'aux_cav', name: 'German Horse', men: 260, x: 1300, y: 40, f: 1.5708, xp: 400, drill: 50 } }
+        ]
+      }
+    ],
+    rewards: { gold: 1000, supplies: 600, recruits: 300, xpBase: 120, officerXp: 130 }, rewardMult: 1.2,
+    unlock: [{ type: 'legionary', name: 'Cohort of Alesia', men: 440, maxMen: 480, xp: 200, drill: 40, msg: 'Vercingetorix lays his arms at Caesar\'s feet. A cohort of the veterans of Alesia joins you.' }]
+  },
   // Caesar's legate Gaius Scribonius Curio crosses from Sicily to take Africa from the Pompeian Attius Varus and his ally, King Juba I of
   // Numidia (Caesar, Civil War II.23-44). Open, hot country; nearly every enemy is on a horse.
   {
@@ -833,7 +977,7 @@ export const SCENARIOS = [
     unlock: [{ type: 'legionary', name: 'XI Cohort', men: 400, maxMen: 480, xp: 70, drill: 30, msg: "Men of Varus' legions who served at Corfinium come over to you: they form the XI Cohort." }]
   },
   {
-    id: 'water', posture: 'defend', chief: { name: "Juba's raiders", style: 'cunning' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'Water and Forage', kind: 'skirmish',
+    id: 'water', posture: 'defend', chief: { persons: ['juba'], name: "Juba's raiders", style: 'cunning' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'Water and Forage', kind: 'skirmish',
     geo: { lat: 36.97, lon: 9.93, place: 'The plain of the Bagradas below Utica', note: 'Illustrative: the army had to fetch water and forage under Numidian raids' },
     briefing: 'Numidians ride at every water party outside Utica. Hold the carts at the wells, and break the raiders when they close.',
     objective: 'Keep the water carts (gold marker). If the enemy holds them 100 s, the army goes thirsty. Break the raiders to win.',
@@ -855,7 +999,7 @@ export const SCENARIOS = [
     unlock: []
   },
   {
-    id: 'bagradas', odds: 0.9, posture: 'ambush', chief: { name: 'Saburra, general of King Juba', style: 'cunning' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'The Bagradas', kind: 'named',
+    id: 'bagradas', odds: 0.9, posture: 'ambush', chief: { persons: ['juba'], name: 'Saburra, general of King Juba', style: 'cunning' }, fog: true, act: 'III', theater: 'Africa', year: '49 BC', name: 'The Bagradas', kind: 'named',
     geo: { lat: 36.84, lon: 9.78, place: 'The plain of the Bagradas (Medjerda)', note: 'Curio was destroyed here (Civil War II.38-42); the exact field is not known' },
     briefing: 'You march at night to catch a small force on the Bagradas. It is a trap: Juba\'s whole army waits behind the hills. Curio died here. Keep the army together until dark.',
     objective: 'Survive: break the host, or keep 45% of your army until nightfall. A draw here pays well.',
@@ -887,7 +1031,7 @@ export const SCENARIOS = [
   // Calvinus against Pharnaces II, son of Mithridates and king of the Bosporus, who has invaded Pontus with his own army and Sarmatian horse
   // from beyond the Maeotis (Bellum Alexandrinum 34-41, 65-77; Strabo 11.5.8).
   {
-    id: 'pharsalus', posture: 'attack', chief: { name: 'Gnaeus Pompeius Magnus', style: 'cautious' }, optional: true, act: 'IV', theater: 'Greece', year: '48 BC', name: 'Pharsalus', dry: true, kind: 'skirmish',
+    id: 'pharsalus', posture: 'attack', chief: { persons: ['labienus'], name: 'Gnaeus Pompeius Magnus', style: 'cautious' }, optional: true, act: 'IV', theater: 'Greece', year: '48 BC', name: 'Pharsalus', dry: true, kind: 'skirmish',
     geo: { lat: 39.29, lon: 22.38, place: 'The plain of Pharsalus, Thessaly', note: 'Caesar against Pompey, 9 August 48 BC; the exact field is disputed' },
     briefing: 'Pompey has twice your foot and seven times your horse, massed on his left. Caesar has hidden a fourth line behind his right. Hold Pompey\'s legions and trust the fourth line.',
     objective: 'Break Pompey\'s army (below 25%). His horse will come round your right; the fourth line meets it.',
@@ -951,7 +1095,7 @@ export const SCENARIOS = [
     unlock: []
   },
   {
-    id: 'nicopolis', posture: 'assault', odds: 1.35, chief: { name: 'Pharnaces II', style: 'cunning' }, fog: true, act: 'IV', theater: 'Armenia Minor', year: '48 BC', name: 'Nicopolis', kind: 'named',
+    id: 'nicopolis', posture: 'assault', odds: 1.35, chief: { persons: ['pharnaces'], name: 'Pharnaces II', style: 'cunning' }, fog: true, act: 'IV', theater: 'Armenia Minor', year: '48 BC', name: 'Nicopolis', kind: 'named',
     geo: { lat: 40.15, lon: 37.85, place: 'Nicopolis in Armenia Minor', note: 'Calvinus was defeated here in December 48 BC (Bellum Alexandrinum 38-40); site approximate' },
     briefing: 'Pharnaces stands behind two trenches before Nicopolis. On your left stands a green legion raised in Pontus. If it breaks, the army is in danger.',
     objective: 'Break Pharnaces, or keep 45% of your army until nightfall. A draw here pays well.',
@@ -979,7 +1123,7 @@ export const SCENARIOS = [
     unlock: []
   },
   {
-    id: 'zela', posture: 'fortdef', odds: 0.7, chief: { name: 'Pharnaces II', style: 'aggressive' }, act: 'IV', theater: 'Pontus', year: '47 BC', name: 'Zela', dry: true, kind: 'named',
+    id: 'zela', posture: 'fortdef', odds: 0.7, chief: { persons: ['pharnaces'], name: 'Pharnaces II', style: 'aggressive' }, act: 'IV', theater: 'Pontus', year: '47 BC', name: 'Zela', dry: true, kind: 'named',
     geo: { lat: 40.30, lon: 35.89, place: 'Zela (Zile), Pontus', note: 'Caesar beat Pharnaces here on 2 August 47 BC: veni, vidi, vici (Bellum Alexandrinum 72-77)' },
     briefing: 'Pharnaces charges up the hill while your men are still digging the camp. Scythed chariots come first.',
     objective: 'Don\'t let him hold the camp (gold marker) 100 s. Break his army to win. Open ranks (.) and missiles beat chariots.',
@@ -1007,7 +1151,7 @@ export const SCENARIOS = [
   // The last Pompeians: Metellus Scipio, Labienus and King Juba in Africa (Bellum Africum), then Pompey's sons and Labienus in Spain
   // (Bellum Hispaniense). The enemy fights like you; a wavering Pompeian cohort may come over to you (goodwill = your name for clemency).
   {
-    id: 'ruspina', posture: 'ambush', odds: 0.8, defect: true, chief: { name: 'Titus Labienus', style: 'cunning' }, act: 'V', theater: 'Africa', year: '46 BC', name: 'Ruspina', kind: 'named', dry: true,
+    id: 'ruspina', posture: 'ambush', odds: 0.8, defect: true, chief: { persons: ['labienus'], name: 'Titus Labienus', style: 'cunning' }, act: 'V', theater: 'Africa', year: '46 BC', name: 'Ruspina', kind: 'named', dry: true,
     geo: { lat: 35.77, lon: 10.83, place: 'The plain near Ruspina (Monastir)', note: 'Labienus surrounded Caesar here on 4 January 46 BC (Bellum Africum 11-18)' },
     briefing: 'Caught foraging on the plain, you are surrounded by Labienus\' horse. Caesar orders every other cohort to turn about and fight both ways.',
     objective: 'Survive: break the host, or keep 45% of your army until nightfall. Face both ways, or form orbis.',
@@ -1029,7 +1173,7 @@ export const SCENARIOS = [
     unlock: []
   },
   {
-    id: 'uzitta', posture: 'assault', defect: true, chief: { name: 'Metellus Scipio', style: 'cautious' }, optional: true, fog: true, act: 'V', theater: 'Africa', year: '46 BC', name: 'The Lines at Uzitta', kind: 'skirmish', dry: true,
+    id: 'uzitta', posture: 'assault', defect: true, chief: { persons: ['scipio'], name: 'Metellus Scipio', style: 'cautious' }, optional: true, fog: true, act: 'V', theater: 'Africa', year: '46 BC', name: 'The Lines at Uzitta', kind: 'skirmish', dry: true,
     geo: { lat: 35.60, lon: 10.72, place: 'The ridges before Uzitta', note: 'Months of siege lines and skirmishes for the high ground (Bellum Africum 37-66); site approximate' },
     briefing: 'Scipio holds the next crest before Uzitta. Take it, and your lines command the town\'s water.',
     objective: 'Hold the crest (gold marker) 100 s, or break the defenders. Optional: a win weakens Scipio at Thapsus.',
@@ -1050,7 +1194,7 @@ export const SCENARIOS = [
     unlock: []
   },
   {
-    id: 'thapsus', posture: 'attack', odds: 0.85, defect: true, chief: { name: 'Metellus Scipio and King Juba', style: 'stubborn' }, fog: true, act: 'V', theater: 'Africa', year: '46 BC', name: 'Thapsus', kind: 'named', dry: true,
+    id: 'thapsus', posture: 'attack', odds: 0.85, defect: true, chief: { persons: ['scipio', 'juba'], name: 'Metellus Scipio and King Juba', style: 'stubborn' }, fog: true, act: 'V', theater: 'Africa', year: '46 BC', name: 'Thapsus', kind: 'named', dry: true,
     geo: { lat: 35.62, lon: 11.05, place: 'Before Thapsus', note: 'Caesar destroyed Scipio and Juba here on 6 April 46 BC (Bellum Africum 79-86)' },
     briefing: 'Scipio is trapped outside Thapsus between sea and lagoon, elephants on his wings. Your veterans are eager, perhaps too eager.',
     objective: 'Break Scipio\'s army (below 25%). Missiles madden elephants; open ranks (.) let them through. Wavering Pompeians may defect.',
@@ -1100,7 +1244,7 @@ export const SCENARIOS = [
     unlock: []
   },
   {
-    id: 'munda', posture: 'assault', odds: 1.55, defect: true, chief: { name: 'Gnaeus Pompeius and Titus Labienus', style: 'stubborn' }, act: 'V', theater: 'Hispania', year: '45 BC', name: 'Munda', kind: 'named',
+    id: 'munda', posture: 'assault', odds: 1.55, defect: true, chief: { persons: ['labienus'], name: 'Gnaeus Pompeius and Titus Labienus', style: 'stubborn' }, act: 'V', theater: 'Hispania', year: '45 BC', name: 'Munda', kind: 'named',
     geo: { lat: 37.40, lon: -4.80, place: 'The plain and ridge of Munda', note: 'The last battle of the civil war, 17 March 45 BC (Bellum Hispaniense 27-31); the site is disputed' },
     briefing: 'The last Pompeian army holds the ridge above Munda: thirteen legions against Caesar\'s eight. Cross the marshy stream and climb. Caesar said that here he fought for his life.',
     objective: 'Break the Pompeian army (below 25%). Climb steadily, rotate tired cohorts. Wavering cohorts may defect.',
@@ -1182,6 +1326,7 @@ export function scaleScenario(scn, k) {
   p(scn.deploy, 'cx', 'cy'); if (scn.deploy.dx) { scn.deploy.dx = Math.round(scn.deploy.dx * 1.4); scn.deploy.dy = Math.round(scn.deploy.dy * 1.4); }
   for (const e of scn.enemy) { p(e, 'x', 'y'); if (e.ai && e.ai.trigger) e.ai.trigger = Math.round(e.ai.trigger * 1.6); }
   for (const r of scn.reinforcements || []) { if (r.unit) p(r.unit, 'x', 'y'); }
+  for (const w of scn.works || []) p(w, 'x', 'y', 'len');      // siege lines built into the battlefield (Alesia)
   scn.timeLimit = Math.round(scn.timeLimit * 1.2);
   scn.world = { w: S(1600), h: S(1000) };
   scn.scale = k;
