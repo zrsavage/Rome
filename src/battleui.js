@@ -242,7 +242,7 @@ export class BattleUI {
         if (!b.deploying) { this.showBanner('Works can only be dug while deploying, before the battle starts.', 1600); break; }
         if (!b.canDig()) { this.showBanner(b.orders.has('works') ? 'You dig in only when you are defending.' : 'You have not learned Fieldworks yet. Train it at camp.', 1600); break; }
         let dug = 0, rem = 0, full = false; inf.forEach(u => { const r = b.digIn(u); if (r === 'dug') dug++; else if (r === 'removed') rem++; else if (r === 'limit') full = true; });
-        this.showBanner(dug ? `${dug} cohort${dug > 1 ? 's dig' : ' digs'} in (${b.works.length}/${b.worksLimit()} works)` : rem ? `Works filled in (${b.works.length}/${b.worksLimit()})` : full ? `No more works: at most ${b.worksLimit()}, half your infantry` : 'Select infantry to dig in', 1400); this.cmdSig = null; break;
+        this.showBanner(dug ? `${dug} cohort${dug > 1 ? 's dig' : ' digs'} in (${b.dugCount()}/${b.worksLimit()} works)` : rem ? `Works filled in (${b.dugCount()}/${b.worksLimit()})` : full ? `No more works: at most ${b.worksLimit()}, half your infantry` : 'Select infantry to dig in', 1400); this.cmdSig = null; break;
       }
       case 'lanes': if (need('lanes') && inf.length) { inf.forEach(u => b.toggleLanes(u)); this.showBanner(inf.every(u => u.lanes) ? 'Open ranks: elephants will run down the lanes' : 'Ranks closed', 1000); } break;
       case 'orbis': if (need('orbis') && inf.length) { inf.forEach(u => b.toggleOrbis(u)); this.emit('formation', { count: inf.length }); } break;

@@ -9,7 +9,7 @@ export const WEATHER = {
   frost: { name: 'Hard frost', text: 'Rivers are frozen: cross on the ice, slowly. Marches are a little slower.', speed: 0.95, cav: 0.9, missile: 1, charge: 0.95, sight: 1, ice: true }
 };
 // Weather odds for each campaign battle (the prologue is always clear).
-const ODDS = {
+const ODDS = { avaricum: { rain: 4, storm: 1 }, gergovia: { clear: 3, rain: 1 }, alesia: { clear: 3, fog: 1 },
   ford:     { clear: 5, rain: 3, storm: 2 },
   arar:     { clear: 5, fog: 3, rain: 2 },
   convoy:   { clear: 5, rain: 4, storm: 1 },

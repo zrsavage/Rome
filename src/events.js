@@ -7,7 +7,7 @@ const fav = (c, d) => { c.favour = clampFav((c.favour || 0) + d); };
 const legions = (c) => c.cohorts.filter(h => h.type === 'legionary');
 const loseShare = (c, k) => { let lost = 0; for (const h of c.cohorts) { const n = Math.round(h.men * k); h.men = Math.max(Math.ceil(h.maxMen * 0.35), h.men - n); lost += n; } return lost; };
 const tire = (c, d) => { for (const h of c.cohorts) h.condition = Math.max(35, Math.min(100, h.condition - d)); };
-const gaul = (s) => ['I', 'II', 'B'].includes(s.act), civil = (s) => ['III', 'IV', 'V'].includes(s.act);
+const gaul = (s) => ['I', 'II', 'B', 'G'].includes(s.act), civil = (s) => ['III', 'IV', 'V'].includes(s.act);
 
 export const EVENTS = [
   { id: 'deserter', when: () => true, title: 'A deserter', text: 'A man from the enemy camp is brought in at night. He says he will tell you what they have, for a price.',

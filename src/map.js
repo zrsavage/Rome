@@ -35,11 +35,12 @@ const RIVERS = [['Rhodanus', 44.55, 4.95], ['Arar', 46.05, 5.15], ['Sequana', 48
 
 const FUTURE = [
   { act: 'II', name: 'Ariovistus', lat: 47.90, lon: 7.33, hint: 'Germania: the Suebi under Ariovistus, 58 BC' },
-  { act: 'III', name: 'Bagradas', lat: 36.98, lon: 9.95, hint: 'Act III: Africa, the old lands of Carthage. Juba of Numidia and the Pompeians, 49 BC' },
-  { act: 'IV', name: 'Zela', lat: 40.30, lon: 35.89, hint: 'Act IV: Pharnaces of the Bosporus and the Sarmatian steppe horse, 48-47 BC' },
-  { act: 'IV', name: 'Panticapaeum', lat: 45.35, lon: 36.47, hint: 'Act IV: the Bosporan kingdom, at the edge of the steppe' },
-  { act: 'V', name: 'Thapsus', lat: 35.62, lon: 11.05, hint: 'Act V: Roman against Roman. Scipio, Juba and the elephants, 46 BC' },
-  { act: 'V', name: 'Munda', lat: 37.40, lon: -4.80, hint: 'Act V finale: Munda, 45 BC (the exact site is disputed)' },
+  { act: 'G', name: 'Alesia', lat: 47.54, lon: 4.50, hint: 'Act III: the great revolt of Vercingetorix, 52 BC' },
+  { act: 'III', name: 'Bagradas', lat: 36.98, lon: 9.95, hint: 'Act IV: Africa, the old lands of Carthage. Juba of Numidia and the Pompeians, 49 BC' },
+  { act: 'IV', name: 'Zela', lat: 40.30, lon: 35.89, hint: 'Act V: Pharnaces of the Bosporus and the Sarmatian steppe horse, 48-47 BC' },
+  { act: 'IV', name: 'Panticapaeum', lat: 45.35, lon: 36.47, hint: 'Act V: the Bosporan kingdom, at the edge of the steppe' },
+  { act: 'V', name: 'Thapsus', lat: 35.62, lon: 11.05, hint: 'Act VI: Roman against Roman. Scipio, Juba and the elephants, 46 BC' },
+  { act: 'V', name: 'Munda', lat: 37.40, lon: -4.80, hint: 'Act VI finale: Munda, 45 BC (the exact site is disputed)' },
   { act: 'VI', name: 'Rome', lat: 41.90, lon: 12.50, hint: 'Epilogue: the triumphs in Rome', rome: true }
 ];
 // Mountain ranges drawn as small peaks (Alps, Pyrenees, Massif Central, Vosges, Jura, Apennines). Peaks that would sit on a label are dropped.
@@ -47,8 +48,9 @@ const MOUNTAINS = [[46.3, 7.2], [46.1, 8.2, 1.2], [46.4, 9.3], [45.9, 6.6], [46.
   [47.75, 6.95, 0.7], [48.05, 7.05, 0.7], [48.45, 7.2, 0.7], [47.95, 8.15, 0.7], [47.7, 8.0, 0.7], [48.3, 8.25, 0.7]];   // Vosegus (Vosges) and the Black Forest, for Act II
 const SHORT = ['Rhone Fords', 'Arar Crossing', "Foragers' Road", 'Vesontio', 'Morvan Ambush', 'Bibracte', 'The Mound', 'Supply Line', 'Lesser Camp', 'Ariovistus', 'To the Rhine',
   'The Landing', 'The Harvest', 'Bigbury', 'Cassivellaunus',
+  'Avaricum', 'Gergovia', 'Cavalry Battle', 'Alesia',
   'Anquillaria', 'Castra Cornelia', 'Utica', 'The Wells', 'Bagradas', 'Pharsalus', 'Comana', 'Steppe Riders', 'Nicopolis', 'Zela', 'Ruspina', 'Uzitta', 'Thapsus', 'Ategua', 'Munda'];
-const LABEL_SIDE = ['below', 'below', 'right', 'above', 'left', 'below', 'above', 'left', 'left', 'right', 'right', 'right', 'left', 'above', 'left', 'below', 'above', 'right', 'left', 'left', 'below', 'right', 'above', 'below', 'left', 'above', 'left', 'right', 'above', 'below'];
+const LABEL_SIDE = ['below', 'below', 'right', 'above', 'left', 'below', 'above', 'left', 'left', 'right', 'right', 'right', 'left', 'above', 'left', 'below', 'left', 'right', 'above', 'below', 'above', 'right', 'left', 'left', 'below', 'right', 'above', 'below', 'left', 'above', 'left', 'right', 'above', 'below'];
 // Act III: the coast round Utica in 49 BC. Carthage lies in ruins (Caesar refounded it only in 44 BC); Clupea and Hadrumetum are Punic towns.
 const LOCAL3 = [['SINUS UTICENSIS', 37.25, 10.35], ['PROMUNTORIUM MERCURII', 37.05, 11.05], ['NUMIDIA', 36.45, 9.2]];
 const PLACES3 = [['Carthago (ruins)', 36.85, 10.32, 1], ['Clupea', 36.85, 11.10, 1], ['Tunes', 36.80, 10.17, 1]];
@@ -58,15 +60,16 @@ const PLACES4 = [['Panticapaeum', 45.35, 36.47, 1], ['Amisus', 41.29, 36.33, 1],
 // Act V: Africa again (46 BC), then Further Spain (45 BC).
 const LOCAL5 = [['HISPANIA ULTERIOR', 38.3, -5.6], ['MAURETANIA', 34.6, -4.0], ['NUMIDIA', 35.3, 8.0], ['MARE INTERNUM', 37.6, 4.0], ['BAETIS', 37.75, -5.4]];
 const PLACES5 = [['Hadrumetum', 35.83, 10.64, 1], ['Hispalis', 37.39, -5.98, 1], ['Gades', 36.53, -6.29, 1], ['Carthago Nova', 37.60, -0.99, 1], ['Iol', 36.60, 2.19, 1]];
-const ACT_ORDER = ['I', 'II', 'B', 'III', 'IV', 'V', 'VI'];
+const ACT_ORDER = ['I', 'II', 'B', 'G', 'III', 'IV', 'V', 'VI'];
 // The side act in Britain, 55-54 BC: Caesar names the Cantium coast, the Thames (Tamesis) and the Trinovantes. No towns of later Roman Britain.
 const LOCALB = [['CANTIUM', 51.15, 0.85], ['TRINOVANTES', 51.88, 0.75], ['OCEANUS', 51.0, 1.75], ['TAMESIS', 51.48, 0.35]];
 const ACT_VIEW = { I: { lat: 46.5, lon: 5.0, w: 15, km: 100, title: 'GALLIA TRANSALPINA', sub: 'The Gallic campaigns, 58 BC', tab: 'Act I: Gaul' },
   II: { lat: 47.78, lon: 7.12, w: 2.9, km: 20, title: 'GALLIA ET GERMANIA', sub: 'The Gallic campaigns, 58 BC', tab: 'Act II: Germania' },
   B: { lat: 51.45, lon: 0.75, w: 3.6, km: 50, title: 'BRITANNIA', sub: 'Across the Ocean, 55-54 BC', tab: 'Side act: Britannia' },
-  III: { lat: 36.98, lon: 10.45, w: 2.2, km: 20, title: 'AFRICA', sub: 'Curio against Varus and King Juba, 49 BC', tab: 'Act III: Africa' },
-  IV: { lat: 41.2, lon: 30.6, w: 19, km: 200, title: 'GRAECIA ET PONTUS', sub: 'Pharsalus, and Pharnaces of the Bosporus, 48-47 BC', tab: 'Act IV: Pontus' },
-  V: { lat: 37.0, lon: 3.6, w: 19, km: 200, title: 'AFRICA ET HISPANIA', sub: 'The last Pompeians, 46-45 BC', tab: 'Act V: Africa and Spain' } };
+  G: { lat: 46.6, lon: 3.8, w: 7, km: 100, title: 'GALLIA COMATA', sub: 'The great revolt of Vercingetorix, 52 BC', tab: 'Act III: Vercingetorix' },
+  III: { lat: 36.98, lon: 10.45, w: 2.2, km: 20, title: 'AFRICA', sub: 'Curio against Varus and King Juba, 49 BC', tab: 'Act IV: Africa' },
+  IV: { lat: 41.2, lon: 30.6, w: 19, km: 200, title: 'GRAECIA ET PONTUS', sub: 'Pharsalus, and Pharnaces of the Bosporus, 48-47 BC', tab: 'Act V: Pontus' },
+  V: { lat: 37.0, lon: 3.6, w: 19, km: 200, title: 'AFRICA ET HISPANIA', sub: 'The last Pompeians, 46-45 BC', tab: 'Act VI: Africa and Spain' } };
 const actView = () => ACT_VIEW[curAct] || ACT_VIEW.I;
 let curAct = 'I';
 const OUT = { victory: '#6fcf6f', draw: '#e8c36a', defeat: '#d65a4a' };
@@ -138,7 +141,7 @@ export function renderMap(root, c, api) {
   futs.forEach(o => dot(o.x, o.y, o.r + 3 * k));
   const placeList = [...PLACES, ...(curAct === 'III' && !big ? PLACES3 : []), ...(curAct === 'IV' && !big ? PLACES4 : []), ...(curAct === 'V' && !big ? PLACES5 : [])].map(([n, lat, lon, sz]) => { const [x, y] = project(lat, lon); return { n, x, y, sz }; }).filter(p => inView(p.x, p.y) && !(big && p.sz < 2) && !(curAct === 'I' && ['Bibracte', 'Vesontio', 'Genava'].includes(p.n)));
   placeList.forEach(p => dot(p.x, p.y, (p.sz === 2 ? 10 : 7) * k));
-  if (big) for (const a of ['I', 'II', 'B', 'III', 'IV', 'V']) { const ss = SCENARIOS.filter(s => s.act === a); if (!ss.length) continue; const ax = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[0], 0) / ss.length, ay = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[1], 0) / ss.length; dot(ax, ay, 24 * k); occ.push(a === 'II' ? R(ax, ay - 12 * k, ax + 190 * k, ay + 12 * k) : R(ax - 160 * k, ay - 12 * k, ax, ay + 12 * k)); }
+  if (big) for (const a of ['I', 'II', 'B', 'G', 'III', 'IV', 'V']) { const ss = SCENARIOS.filter(s => s.act === a); if (!ss.length) continue; const ax = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[0], 0) / ss.length, ay = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[1], 0) / ss.length; dot(ax, ay, 24 * k); occ.push(a === 'II' ? R(ax, ay - 12 * k, ax + 190 * k, ay + 12 * k) : R(ax - 160 * k, ay - 12 * k, ax, ay + 12 * k)); }
 
   // 1. the battles (always shown), 2. the future acts, 3. cities, 4. towns, 5. tribes, 6. rivers, 7. regions
   if (!big) SCENARIOS.forEach((s, i) => { const [x, y] = pts[i]; if (mine(i) && inView(x, y, 40 * k)) { const first = LABEL_SIDE[i], order = [first, ...OTHERS.concat(['above']).filter(z => z !== first)]; label(SHORT[i], 14, 'node', 'nl', x, y, rN(s, i) + 7 * k, order, true); } });
@@ -189,7 +192,7 @@ export function renderMap(root, c, api) {
   const ships = [[43.0, 7.8, 0.3], [38.2, 14.5, -0.5], [44.4, -5.6, 0.9], [36.0, 26.0, 0.2], [35.6, 4.0, 2.7]].map(([lat, lon, an]) => { const [x, y] = project(lat, lon); if (!inView(x, y)) return '';
     return `<g transform="translate(${x},${y}) rotate(${an * 57.3}) scale(${k * (big ? 1.2 : 1.7)})" opacity=".92"><path d="M-12 2 q12 7 24 0 l-3 -4 h-18z" fill="#6a4a2a" stroke="#14100a" stroke-width=".9"/><line x1="0" y1="-2" x2="0" y2="-14" stroke="#14100a" stroke-width="1"/><path d="M0 -14 q8 4 0 10z" fill="#e8dcc0" stroke="#14100a" stroke-width=".7"/>${[-8, -3, 2, 7].map(o => `<line x1="${o}" y1="1" x2="${o - 2}" y2="6" stroke="#cfc9a8" stroke-width=".7"/>`).join('')}<path d="M-14 6 q14 6 28 0" stroke="rgba(255,255,255,.35)" fill="none" stroke-width=".8"/></g>`; }).join('');
   const [gx, gy] = project(46.6, 5.0);
-  const actBadges = !big ? '' : [['I', 'Act I: Gaul'], ['II', 'Act II: Germania'], ['B', 'Britannia'], ['III', 'Act III: Africa'], ['IV', 'Act IV: Pontus'], ['V', 'Act V: Africa and Spain']].map(([a, name]) => {        // one badge per act on the world view
+  const actBadges = !big ? '' : [['I', 'Act I: Gaul'], ['II', 'Act II: Germania'], ['B', 'Britannia'], ['G', 'Act III: Vercingetorix'], ['III', 'Act IV: Africa'], ['IV', 'Act V: Pontus'], ['V', 'Act VI: Africa and Spain']].map(([a, name]) => {        // one badge per act on the world view
     const ss = SCENARIOS.filter(s => s.act === a); if (!ss.length) return '';
     const ax = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[0], 0) / ss.length, ay = ss.reduce((q, s) => q + project(s.geo.lat, s.geo.lon)[1], 0) / ss.length;
     const allDone = ss.every(s => best[s.id] && best[s.id] !== 'defeat'), cur = a === curAct && idx < SCENARIOS.length, col = cur ? '#e8c36a' : allDone ? '#6fcf6f' : '#8a7a58', r = 15 * k;

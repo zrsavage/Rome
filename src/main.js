@@ -91,6 +91,7 @@ $('btn-import').onclick = () => $('file-import').click();
 $('file-import').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importSave(f); };
 // Saves from before the side act in Britain was added (version 3) point at battles by position; four battles now sit before Act III.
 function migrate(c) {
+  const v0 = c.version || 0;
   if ((c.version || 0) < 4) { if (c.scenario >= 11) { c.scenario += 4; c.britain = 'skipped'; } c.version = 4; }
   if (c.version < 5) {     // horse and missile units became wings and auxiliary cohorts (about twice the men): old saves grow to match
     const NEW = { slinger: 260, archer: 240, equites: 140, aux_cav: 150, moor_cav: 150 };
@@ -103,6 +104,7 @@ function migrate(c) {
     if (c.unlockedTypes) { if (won('utica') && !c.unlockedTypes.includes('evocati')) c.unlockedTypes.push('evocati'); if (won('oppidum') && !c.unlockedTypes.includes('ballista')) c.unlockedTypes.push('ballista'); }
     c.version = 6;
   }
+  if (v0 < 7) { if (c.scenario > 15) c.scenario += 4; c.version = 7; }   // the four battles of Vercingetorix's revolt were inserted before Africa
   return c;
 }
 function openCampaign(c, n) { migrate(c); campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; if (c.prologueDone === false) showBrief(PROLOGUE); else showMap(); }
@@ -138,9 +140,17 @@ function showMap() {
         'Expect <b>cut supply lines</b> and raids from every side.'
       ], 'To Germania');
   }
+  if (cs && cs.act === 'G' && !(campaign.actsSeen || []).includes('G')) {
+    campaign.actsSeen = [...(campaign.actsSeen || []), 'G']; save();
+    inform('Act III: Vercingetorix, 52 BC', [
+      'Winter, 53-52 BC. While Caesar is south of the Alps, all Gaul rises under a young Arvernian noble, <b>Vercingetorix</b>.',
+      'He burns his own towns and farms to starve you, and spares only <b>Avaricum</b>. Then he waits for you on the heights of <b>Gergovia</b>.',
+      'It ends at <b>Alesia</b>: you will wall him in, and the whole of Gaul will come to break the siege. Fieldworks and siege engines matter here.'
+    ], 'Into Gaul');
+  }
   if (cs && cs.act === 'III' && !(campaign.actsSeen || []).includes('III')) {
     campaign.actsSeen = [...(campaign.actsSeen || []), 'III']; save();
-    inform('Act III: Africa, the old lands of Carthage', [
+    inform('Act IV: Africa, the old lands of Carthage', [
         'January 49 BC: Caesar crosses the Rubicon. <b>Civil war.</b> You go with <b>Curio</b> to take Africa from the Pompeians.',
         '<b>King Juba of Numidia</b> fights for them. Numidian horse throw javelins and ride off: <b>don\'t chase them</b>. A steady line and missiles beat them.',
         'The heat tires everyone but Numidians. Juba has <b>elephants</b>: learn <b>Open Ranks</b> at the Training Ground. And some of your enemies are <b>Romans</b>.'
@@ -148,7 +158,7 @@ function showMap() {
   }
   if (cs && cs.act === 'IV' && !(campaign.actsSeen || []).includes('IV')) {
     campaign.actsSeen = [...(campaign.actsSeen || []), 'IV']; save();
-    inform('Act IV: Pharsalus, and the steppe horse', [
+    inform('Act V: Pharsalus, and the steppe horse', [
         '48 BC: Pompey offers battle at <b>Pharsalus</b>, with seven horsemen to each of yours.',
         'Then east with <b>Calvinus</b> against <b>Pharnaces II</b>, with his Roman-drilled foot and <b>Sarmatian horse</b>.',
         '<b>Horse archers</b> fall back shooting and run out of arrows. <b>Lancers</b> are deadly head-on, slow to turn. At <b>Zela</b>, <b>scythed chariots</b>: missiles and <b>Open Ranks</b> beat them.'
@@ -156,7 +166,7 @@ function showMap() {
   }
   if (cs && cs.act === 'V' && !(campaign.actsSeen || []).includes('V')) {
     campaign.actsSeen = [...(campaign.actsSeen || []), 'V']; save();
-    inform('Act V: Roman against Roman', [
+    inform('Act VI: Roman against Roman', [
         '46 BC: <b>Scipio</b>, <b>Labienus</b> and <b>King Juba</b> hold Africa. Then <b>Pompey\'s sons</b> raise Spain, and the war ends at <b>Munda</b>.',
         'Wavering Pompeian cohorts may <b>come over to you</b>. Release prisoners to keep your name for clemency high, and more will.',
         'Elephants again at Thapsus. Watch your own veterans: they are impatient.'
