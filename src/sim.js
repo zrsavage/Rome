@@ -350,7 +350,7 @@ export class Battle {
       if (!isFoe && (u.type.cat !== 'inf' || u.autoOff)) continue;
       if (!u.active) continue;
       const O = isFoe ? ALL : this.orders, tell = isFoe ? (k) => said('e' + k, { orb: 'A cut-off Pompeian cohort forms the orbis.', close: 'Pompeian cohorts lock shields against your missiles.', lanes: 'The Pompeians open their ranks.', back: 'A shaken Pompeian cohort steps back in order instead of breaking.' }[k], 'warn') : said;
-      const melee = u.contacts.some(e => e.active), terr = this.terr(u).kind, noForm = terr === 'forest' || terr === 'ford';
+      const melee = u.contacts.some(e => e.active), terr = this.terr(u).kind, noForm = terr === 'forest' || terr === 'ford' || terr === 'marsh';
       const foe = this.nearestEnemy(u, (e) => e.active && e.type.cat !== 'ranged'), close = foe ? foe.gap : 1e9;
       // the orbis: surrounded, with no friendly foot near enough to cut it out
       if (O.has('orbis') && !noForm) {
@@ -400,7 +400,7 @@ export class Battle {
   betterGround(u) {
     const n = this.nearestEnemy(u); if (!n) return null;
     const ax = u.x - n.e.x, ay = u.y - n.e.y, ad = Math.hypot(ax, ay) || 1, base = Math.atan2(ay, ax);
-    const score = (x, y) => { if (x < 40 || y < 40 || x > WORLD.w - 40 || y > WORLD.h - 40) return -9; const tr = terrainAt(this.scn, x, y); return elevAt(this.scn, x, y) / 40 + (tr.kind === 'forest' ? 0.8 : 0) + (tr.kind === 'water' ? -9 : 0) + (tr.kind === 'ford' ? -1 : 0); };
+    const score = (x, y) => { if (x < 40 || y < 40 || x > WORLD.w - 40 || y > WORLD.h - 40) return -9; const tr = terrainAt(this.scn, x, y); return elevAt(this.scn, x, y) / 40 + (tr.kind === 'forest' ? 0.8 : 0) + (tr.kind === 'water' ? -9 : 0) + (tr.kind === 'ford' ? -1 : 0) + (tr.kind === 'marsh' ? -2 : 0); };
     const cur = score(u.x, u.y); let best = null, bs = cur + 0.25;
     for (let k = -4; k <= 4; k++) for (const r of [150, 270, 390]) { const a = base + k * 0.35, x = u.x + Math.cos(a) * r, y = u.y + Math.sin(a) * r, s = score(x, y) - r * 0.0006; if (s > bs) { bs = s; best = { x, y }; } }
     return best;
@@ -575,7 +575,7 @@ export class Battle {
   setAttack(u, tgt, sprint = false) { if (!u.active) return; u.order = { kind: 'attack', targetId: tgt.id, sprint: sprint && (u.side === 'gaul' || this.orders.has('sprint')) }; }
   setHold(u) { if (!u.active) return; u.order = { kind: 'none' }; u.stance = 'hold'; u.post = { x: u.x, y: u.y }; }
   setEngage(u) { if (!u.active) return; u.stance = 'aggressive'; if (u.order.kind === 'none') u.post = { x: u.x, y: u.y }; }
-  noFormation(u) { const k = this.terr(u).kind; if (k === 'forest' || k === 'ford') { this.say(`${u.name} cannot hold a formation in the ${k === 'forest' ? 'trees' : 'water'}.`, 'info'); return true; } return false; }
+  noFormation(u) { const k = this.terr(u).kind; if (k === 'forest' || k === 'ford' || k === 'marsh') { this.say(`${u.name} cannot hold a formation in the ${k === 'forest' ? 'trees' : k === 'marsh' ? 'marsh' : 'water'}.`, 'info'); return true; } return false; }
   toggleFormation(u) {
     if (!u.active || u.type.cat !== 'inf' || !this.orders.has('testudo') || this.noFormation(u)) return;
     u.formation = u.formation === 'close' ? 'normal' : 'close'; u.wide = 1;
@@ -1609,7 +1609,7 @@ export class Battle {
         imp *= 1 - Math.max(0, (e.type.antiCharge || 0) * (1 - 0.35 * ((e.wide || 1) - 1))) * (e.state === 'idle' || e.stance === 'hold' ? 1 : 0.4);
         imp *= 1 + 0.3 * ((e.wide || 1) - 1);                    // a charge into a thin line goes deeper
         if (t.big && e.lanes) { imp *= 0.3; u.moralePending += 6; this.mloss(u, 'lanes', 6); }   // open ranks: the beasts run down the lanes and are speared from both sides
-        imp *= this.wx.charge * (this.terr(u).kind === 'forest' ? 0.6 : this.terr(u).kind === 'ford' ? 0.8 : this.terr(u).kind === 'works' ? 0.35 : 1);       // no run-up among trees, in water or across a ditch
+        imp *= this.wx.charge * (this.terr(u).kind === 'forest' ? 0.6 : this.terr(u).kind === 'marsh' ? 0.5 : this.terr(u).kind === 'ford' ? 0.8 : this.terr(u).kind === 'works' ? 0.35 : 1);       // no run-up among trees, in water or across a ditch
         imp *= u.temper === 'rash' ? 1.15 : u.temper === 'bold' ? 1.1 : u.temper === 'cautious' ? 0.85 : 1;
         if (this.hasLegateTrait(u, 'aggressive')) imp *= 1.12;      // an aggressive legate drives his legion in
         imp *= this.terr(e).def;

@@ -1,5 +1,5 @@
 // Canvas renderer for the battle: terrain, soldier dots, effects, order lines.
-import { WORLD, elevAt, terrainAt, forestIn, riverShift, vnoise } from './data.js';
+import { WORLD, elevAt, terrainAt, forestIn, marshIn, riverShift, vnoise } from './data.js';
 import { soldierSprite, specialSprite, shieldTile } from './sprites.js';
 import { terrainTexture } from './textures.js';
 import { dragLayout, compass } from './orders.js';
@@ -114,6 +114,29 @@ function paintWaterTexture(g, f, img, strip, ford, riverImg = null) {
 const CANOPY_SCALE = 0.42;                                        // battlefield units per pixel of the forest photo (a crown about 30-45 units across)
 // A wood: the canopy photo stamped over the wood's shape (random flips, overlapping), cut to the same ragged outline the rules use, with a soft
 // edge and a shadow on the ground beneath it.
+// Marsh: dark wet ground with standing pools and clumps of reeds, its ragged outline taken from marshIn.
+function paintMarsh(g, f, rnd, frozen) {
+  const k = 0.5, x0 = f.cx - f.rx * 1.3, y0 = f.cy - f.ry * 1.3, w = f.rx * 2.6, h = f.ry * 2.6, [c, cg] = mkCanvas(w * k, h * k);
+  cg.scale(k, k); cg.translate(-x0, -y0);
+  const base = cg.createRadialGradient(f.cx, f.cy, 0, f.cx, f.cy, Math.max(f.rx, f.ry) * 1.2);
+  base.addColorStop(0, frozen ? '#b9c6c4' : '#4a5232'); base.addColorStop(1, frozen ? '#cfd8d4' : '#5d6238'); cg.fillStyle = base; cg.fillRect(x0, y0, w, h);
+  for (let i = 0; i < f.rx * f.ry / 9000; i++) {                       // standing water
+    const px = f.cx + (rnd() * 2 - 1) * f.rx, py = f.cy + (rnd() * 2 - 1) * f.ry; if (!marshIn(f, px, py)) continue;
+    const rx = 18 + rnd() * 60, ry = rx * (0.4 + rnd() * 0.4); cg.fillStyle = frozen ? 'rgba(220,235,240,0.8)' : 'rgba(62,84,88,0.75)'; cg.beginPath(); cg.ellipse(px, py, rx, ry, rnd() * 3, 0, 7); cg.fill();
+    cg.strokeStyle = frozen ? 'rgba(255,255,255,0.5)' : 'rgba(160,190,190,0.25)'; cg.lineWidth = 2; cg.beginPath(); cg.ellipse(px - rx * 0.2, py - ry * 0.2, rx * 0.6, ry * 0.5, 0, 3.6, 5.4); cg.stroke();
+  }
+  cg.lineCap = 'round';
+  for (let i = 0; i < f.rx * f.ry / 1200; i++) {                       // reeds
+    const px = f.cx + (rnd() * 2 - 1) * f.rx * 1.1, py = f.cy + (rnd() * 2 - 1) * f.ry * 1.1; if (!marshIn(f, px, py)) continue;
+    const n = 3 + Math.floor(rnd() * 5); cg.strokeStyle = frozen ? 'rgba(150,140,110,0.8)' : `rgba(${110 + rnd() * 40 | 0},${118 + rnd() * 30 | 0},${58 + rnd() * 20 | 0},0.9)`; cg.lineWidth = 2.2;
+    for (let j = 0; j < n; j++) { const a = -Math.PI / 2 + (rnd() - 0.5) * 0.9, l = 10 + rnd() * 14, bx = px + (rnd() - 0.5) * 10; cg.beginPath(); cg.moveTo(bx, py); cg.lineTo(bx + Math.cos(a) * l, py + Math.sin(a) * l); cg.stroke(); }
+  }
+  const [m, mg] = mkCanvas(c.width, c.height), step = 10;               // the ragged outline, softened
+  mg.fillStyle = '#fff';
+  for (let yy = 0; yy < m.height; yy += step / 2) for (let xx = 0; xx < m.width; xx += step / 2) if (marshIn(f, x0 + xx / k, y0 + yy / k)) { mg.beginPath(); mg.arc(xx, yy, step * 0.6, 0, 7); mg.fill(); }
+  cg.setTransform(1, 0, 0, 1, 0, 0); cg.globalCompositeOperation = 'destination-in'; cg.filter = 'blur(4px)'; cg.drawImage(m, 0, 0); cg.filter = 'none'; cg.globalCompositeOperation = 'source-over';
+  g.drawImage(c, x0, y0, w, h);
+}
 function paintForestTexture(g, f, img, dry, rnd) {
   const pad = 1.35, x0 = f.cx - f.rx * pad, y0 = f.cy - f.ry * pad, w = f.rx * 2 * pad, h = f.ry * 2 * pad, k = Math.min(1, 1600 / Math.max(w, h));
   const [c, cg] = mkCanvas(w * k, h * k), sw = img.width * CANOPY_SCALE * k, sh = img.height * CANOPY_SCALE * k;
@@ -193,6 +216,8 @@ export function paintTerrain(g, scn) {
       g.fillStyle = 'rgba(112,92,52,0.5)'; strip(f, 7); g.fill();
       g.fillStyle = scn._wx === 'frost' ? '#c4dbe5' : '#86adbd'; strip(f, 0); g.fill();
       for (let i = 0; i < 70; i++) { const x = f.x + rnd() * f.w, y = f.y + riverShift(f, x) + rnd() * f.h, rx = 3.5 + rnd() * 5, ry = 2.5 + rnd() * 3; g.fillStyle = 'rgba(40,60,70,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, rx, ry, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(196,184,150,0.8)'; g.beginPath(); g.ellipse(x, y, rx * 0.8, ry * 0.8, rnd() * 3, 0, 7); g.fill(); }
+    } else if (f.kind === 'marsh') {
+      paintMarsh(g, f, rnd, scn._wx === 'frost');
     } else if (f.kind === 'forest' && forestTex) {
       paintForestTexture(g, f, forestTex, dry, rnd);
     } else if (f.kind === 'forest') {
