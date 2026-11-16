@@ -776,7 +776,7 @@ export const SCENARIOS = [
   {
     id: 'avaricum', posture: 'assault', chief: { name: 'the defenders of Avaricum', style: 'balanced' }, act: 'G', theater: 'Gaul', year: '52 BC', name: 'The Storm of Avaricum', kind: 'skirmish',
     geo: { lat: 47.08, lon: 2.40, place: 'Avaricum (Bourges)', note: 'Chief town of the Bituriges, ringed by river and marsh but for one narrow approach' },
-    briefing: 'All Gaul has risen under Vercingetorix. Avaricum is ringed by river and marsh but for one approach, where your terrace now reaches the wall. It is raining hard and the guards have taken shelter. Storm it.',
+    briefing: 'All Gaul has risen under Vercingetorix. Your siege terrace reaches the wall of Avaricum, and in the pouring rain the guards have taken shelter. Storm it.',
     objective: 'Hold the wall (gold marker) 110 s, or break the defenders. Ballistae and slingers clear the wall; the marsh is slow going.',
     timeLimit: 660, daysToPrepare: 4,
     deploy: { mode: 'line', cx: 800, cy: 860 },
@@ -802,7 +802,7 @@ export const SCENARIOS = [
   {
     id: 'gergovia', odds: 1.15, posture: 'assault', chief: { name: 'Vercingetorix', style: 'cunning', persons: ['vercingetorix'] }, act: 'G', theater: 'Gaul', year: '52 BC', name: 'Gergovia', kind: 'named',
     geo: { lat: 45.71, lon: 3.12, place: 'Gergovia, near Clermont-Ferrand', note: 'Oppidum of the Arverni, on a high plateau' },
-    briefing: 'Gergovia sits on a high plateau. Caesar sends you to seize the Gallic camps on the slope while the defenders are drawn away. Take them, then stop: if you chase on to the wall, Vercingetorix\'s whole army will come back on you.',
+    briefing: 'Take the Gallic camps on the slope below Gergovia, then stop. Chase on to the wall and Vercingetorix\'s whole army will come back on you.',
     objective: 'Hold the upper camp (gold marker) 170 s, or break the defenders. Historically a defeat: a draw here pays well.',
     timeLimit: 720, daysToPrepare: 5,
     deploy: { mode: 'line', cx: 800, cy: 880 },
@@ -827,7 +827,7 @@ export const SCENARIOS = [
   {
     id: 'vingeanne', posture: 'defend', chief: { name: "Vercingetorix's horse", style: 'aggressive', persons: ['vercingetorix'] }, optional: true, act: 'G', theater: 'Gaul', year: '52 BC', name: 'The Cavalry Battle', kind: 'skirmish',
     geo: { lat: 47.45, lon: 5.35, place: 'Near the Vingeanne (the site is disputed)', note: 'The Gallic horse attacked the Roman column on the march' },
-    briefing: 'Vercingetorix\'s horsemen fall on your column on the march in three bodies, swearing not to go home until they have ridden through it twice. Hold the baggage until Caesar\'s German horse can strike them.',
+    briefing: 'Vercingetorix\'s horse falls on your column in three bodies. Hold until Caesar\'s German horsemen can strike them.',
     objective: 'Break the Gallic horse, or keep 45% of your army until time runs out. A side fight: winning it weakens their horse at Alesia.',
     timeLimit: 540, daysToPrepare: 2,
     deploy: { mode: 'line', cx: 800, cy: 560 },
@@ -844,7 +844,7 @@ export const SCENARIOS = [
   {
     id: 'alesia', posture: 'fortdef', chief: { name: 'Vercingetorix and Vercassivellaunus', style: 'aggressive', persons: ['vercingetorix'] }, act: 'G', theater: 'Gaul', year: '52 BC', name: 'Alesia', kind: 'named',
     geo: { lat: 47.54, lon: 4.50, place: 'Alesia (Mont Auxois, Alise-Sainte-Reine)', note: 'Oppidum of the Mandubii, where Vercingetorix surrendered' },
-    briefing: 'You hold the siege lines round Alesia: one wall facing in at Vercingetorix, one facing out at the relieving army of all Gaul. They will attack from both sides at once.',
+    briefing: 'You hold the siege lines round Alesia: one wall facing Vercingetorix, one facing the relieving army of all Gaul.',
     objective: 'Hold the lines. Break the attacks, or keep the camp (gold marker) until nightfall.',
     links: [
       { from: 'vingeanne', scale: { gaul_cav: 0.6 }, text: 'Their horse was broken on the march: fewer riders come to Alesia.' },
@@ -874,7 +874,7 @@ export const SCENARIOS = [
       {
         phaseName: 'Both Lines at Once', posture: 'fortdef', odds: 0.8,
         terrain: [{ kind: 'hill', cx: 800, cy: 960, rx: 520, ry: 140, h: 45 }, { kind: 'forest', cx: 120, cy: 600, rx: 120, ry: 200 }, { kind: 'forest', cx: 1480, cy: 600, rx: 120, ry: 200 }],
-        briefing: 'The relieving army comes at the outer wall in daylight, and Vercingetorix sallies against the inner wall behind you. Hold both.',
+        briefing: 'The relieving army attacks the outer wall, and Vercingetorix sallies against the inner wall behind you. Hold both.',
         objective: 'Hold the lines: break the attacks, or keep the camp (gold marker) until nightfall.',
         timeLimit: 720, deploy: { mode: 'line', cx: 800, cy: 560 },
         objectives: [{ id: 'camp', name: 'The Lines', x: 800, y: 600, r: 100, owner: 'rome' }], rule: { holdSecs: 110, attacker: 'gaul' },
@@ -891,7 +891,7 @@ export const SCENARIOS = [
       },
       {
         phaseName: 'The Camp below Mont Rea', posture: 'fortdef',
-        briefing: 'Vercassivellaunus leads sixty thousand picked men round the hill to the weak camp below Mont Rea. Labienus holds it with every cohort he can find. Hold until Caesar\'s horse rides round into their rear.',
+        briefing: 'Sixty thousand picked men fall on the weak camp below Mont Rea. Hold it until Caesar\'s horse rides round into their rear.',
         objective: 'Keep the camp (gold marker), or break the attack. Caesar\'s horse arrives behind them after about three minutes.',
         timeLimit: 660, deploy: { mode: 'line', cx: 800, cy: 640 },
         objectives: [{ id: 'camp', name: 'The North Camp', x: 800, y: 680, r: 105, owner: 'rome' }], rule: { holdSecs: 100, attacker: 'gaul' },

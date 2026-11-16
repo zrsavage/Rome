@@ -417,3 +417,21 @@ command limit by Act III: money stopped being a choice. Three changes:
 With a player who spends a third of the income on drills, kit and the hospital and the rest on cohorts, the army now grows steadily
 (12 units at Bibracte, 23 at the Rhine, 40 at the landing in Africa, about 70 at Munda), gold in hand stays at two or three cohorts'
 worth, and supplies at about three marches' worth.
+
+## Act III: Vercingetorix, winter quarters, standing in Rome, the Commentarii, commanders who remember (v0.14)
+- **Act III: the great revolt of Vercingetorix, 52 BC** (between Britain and the civil war; the civil-war acts are now IV-VI):
+  the Storm of Avaricum (in a rainstorm, as Caesar took it), Gergovia (Caesar's real defeat: take the camps and stop), the cavalry battle
+  on the march (optional; Caesar's German horse), and Alesia in two stages: holding both siege lines at once against the relieving army
+  and Vercingetorix's sally, then the camp below Mont Rea until Caesar's horse rides into the Gauls' rear. Alesia's siege lines are built
+  into the battlefield: attackers crossing them are slowed and blunted, and Romans just behind them take less from missiles. Saves made
+  before this change keep their place.
+- **Winter quarters:** at the first battle of a new campaigning year you choose where to winter (among allies, in a fortified camp in
+  hostile country, or in the Province) and how to spend it (drill, recruit, send gold to Rome, or save the money). Then Rome's verdict.
+- **Standing in Rome (0-100, starts at 30):** wins raise it (+3, named battles +6), defeats sink it (-5, named -10); clemency in the
+  civil war raises it. At 50+ the Senate votes you funds after each battle; at 70+ a draft of 300 veterans comes each winter; at 15 or
+  less pay costs 25% more and your enemies move to recall you. Shown on the campaign map.
+- **Commanders who remember:** Vercingetorix, Labienus, Juba, Scipio and Pharnaces meet you more than once. Each remembers the last fight
+  and answers what beat him: more horse against your horse, more skirmishers and a quicker advance against your missile troops, a deeper,
+  patient line against flank attacks; bolder if he won. The briefing says what he has learned.
+- **The Commentarii:** a book (button on the campaign map) that fills in as you play, with entries on the people you meet, the places you
+  fight and the troops you see, each with its ancient source.

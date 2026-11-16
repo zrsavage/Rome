@@ -6,7 +6,8 @@ import { MAP } from './mapdata.js';
 import { icon, iconPaths } from './icons.js';
 import { routePending, ROUTES, canSkip, currentScn, careerLv, CAREER, britainPending } from './campaign.js';
 import { inform, keepScroll } from './ui.js';
-import { payDue } from './state.js';
+import { payDue, standingOf } from './state.js';
+import { showCodex, codexCount } from './codex.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const rad = (d) => d * Math.PI / 180;
@@ -223,7 +224,7 @@ export function renderMap(root, c, api) {
 
   const restoreScroll = keepScroll(root);   // switching the view or choosing a route must not jump the page
   root.innerHTML = `<div class="camp mapscreen">
-    <header><h2>The Road to Rome</h2><div class="res"><span title="The army is paid after every battle. If you cannot pay, men desert.">${icon('coin')} Denarii <b>${c.gold}</b> <span class="muted small">(pay: -${payDue(c)})</span></span><span>${icon('grain')} Supplies <b>${c.supplies}</b></span><span>${icon('helmet')} Army <b>${totalMen(c)}</b></span><span>${icon('day')} Day <b>${c.day}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
+    <header><h2>The Road to Rome</h2><div class="res"><span title="The army is paid after every battle. If you cannot pay, men desert.">${icon('coin')} Denarii <b>${c.gold}</b> <span class="muted small">(pay: -${payDue(c)})</span></span><span>${icon('grain')} Supplies <b>${c.supplies}</b></span><span title="Standing in Rome (0-100). Victories raise it, defeats sink it. 50+: the Senate votes you funds after each battle. 70+: a draft of veterans each winter. 15 or less: money costs more (pay +25%).">${icon('laurel')} Standing <b>${standingOf(c)}</b></span><span>${icon('helmet')} Army <b>${totalMen(c)}</b></span><span>${icon('day')} Day <b>${c.day}</b></span><span class="pill">${esc(diff.name)}</span></div></header>
     <div class="card mapcard">
       <div class="row maptools"><button id="v-act" class="${view === 'act' ? 'on' : ''}">${actView().tab}</button><button id="v-all" class="${view === 'all' ? 'on' : ''}">Whole Roman world</button><span class="muted small">Place names as of 58 BC. Map data: Natural Earth.</span></div>
       <svg viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" id="mapsvg" role="img" aria-label="Campaign map of the Roman world">
@@ -242,7 +243,7 @@ export function renderMap(root, c, api) {
           : routePending(c) ? `<div class="decision"><div class="dhead"><div><b>Choose your line of march</b><div class="small muted">How you come to this fight decides how well fed and how rested you arrive. One choice; it cannot be changed.</div></div></div>${ROUTES.map(r => `<button class="regimen" data-route="${r.id}" style="width:100%;text-align:left;margin-top:6px"><b>${r.name}</b><span class="t">${r.text}</span><div class="eff">${r.effects.map(e => `<span>${e}</span>`).join('')}</div></button>`).join('')}</div>`
             : `<div class="row"><button class="primary" id="m-camp">Make camp</button><button id="m-march">${c.phase > 0 ? 'Back into the battle' : 'March at once'}</button>${canSkip(c) ? '<button id="m-skip" title="An optional fight: you may pass it by">March past</button>' : ''}</div>${scn.optional ? '<div class="small muted" style="margin-top:6px">This is a side fight. Winning it helps in the named battle to come; you may also march past it.</div>' : ''}`}
           <div class="small muted" style="margin-top:6px">No time limit in camp. The march costs ${scn.daysToPrepare || 3} days of rations.</div>`}
-        <div class="row" style="margin-top:8px"><button id="m-menu">Main menu</button></div></div>
+        <div class="row" style="margin-top:8px"><button id="m-codex">Commentarii (${codexCount(c).have}/${codexCount(c).total})</button><button id="m-menu">Main menu</button></div></div>
       <div class="card"><h3>${esc((c.player && c.player.name) || 'Your command')}</h3><div class="small muted">${esc(picksNames(c).join(' - ') || 'Veteran commander')}</div>${describe(c).lines.map(([a, b]) => `<div class="kvl"><span>${esc(a)}</span><span>${esc(b)}</span></div>`).join('')}</div>
       <div class="card"><h3>Your army</h3><ul class="armylist">${army}</ul></div>
       <div class="card"><h3>Dispatches</h3><div class="log">${hrows || '<div>No battles fought yet.</div>'}</div></div>
@@ -250,6 +251,7 @@ export function renderMap(root, c, api) {
   restoreScroll();
   const q = (s) => root.querySelector(s);
   if (q('#m-camp')) q('#m-camp').onclick = () => api.camp();
+  if (q('#m-codex')) q('#m-codex').onclick = () => showCodex(c);
   if (q('#m-march')) q('#m-march').onclick = () => api.march();
   q('#m-menu').onclick = () => api.menu();
   if (q('#m-triumph')) q('#m-triumph').onclick = () => showTriumph(c);

@@ -41,7 +41,7 @@ export const EVENTS = [
       { label: 'Decline', fx: 'nothing', apply: () => 'The chief rides off with his men.' }] },
   { id: 'clemency', when: (s) => civil(s), title: 'Pompeian officers taken', text: 'A few Pompeian officers have been caught on the road. Caesar\'s way is clemency, but they would fetch a price.',
     choices: [
-      { label: 'Pardon them', fx: 'goodwill +1 (your name for clemency)', apply: (c) => { fav(c, 1); return 'They are released. The story goes round both camps.'; } },
+      { label: 'Pardon them', fx: 'goodwill +1 · standing in Rome +2', apply: (c) => { fav(c, 1); c.standing = Math.min(100, (c.standing ?? 30) + 2); return 'They are released. The story goes round both camps.'; } },
       { label: 'Hold them for ransom', fx: '+120 denarii · goodwill -1', apply: (c) => { c.gold += 120; fav(c, -1); return 'Their families pay. Pompeian soldiers hear of it.'; } }] },
   { id: 'mutiny', when: (s) => ['IV', 'V'].includes(s.act), title: 'The veterans want their pay', text: 'Veterans of many campaigns crowd your tent and demand their bonuses and their discharge.',
     choices: [

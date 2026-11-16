@@ -98,10 +98,10 @@ export class Battle {
     this.diff = DIFFICULTY[opts.difficulty || 'normal'];
     this.aiLevel = scn.id === 'prologue' ? 0 : Math.max(0, ({ easy: 0, normal: 1, hard: 2, legendary: 3 }[opts.difficulty || 'normal'] ?? 1) - (['ford', 'arar', 'convoy'].includes(scn.id) ? 1 : 0));   // the first three fights stay gentle   // how much of its bag of tricks the Gallic host uses
     this.messengers = !!opts.messengers; this.pending = [];
-    this.style = (scn.chief && scn.chief.style) || 'balanced';
+    this.style = opts.style || (scn.chief && scn.chief.style) || 'balanced';   // a commander who has met you before may change his habits
     this.foe = ({ Gaul: 'Gallic', Germania: 'German', Britannia: 'British', Africa: 'Pompeian', Greece: 'Pompeian', Hispania: 'Pompeian', Pontus: 'Pontic', 'Armenia Minor': 'Pontic' })[scn.theater] || 'enemy';   // whose host it is, for the battle messages                          // the enemy commander's temper shapes how the host fights
     this.typeScale = opts.typeScale || {}; this.sightMul = opts.sight || 1;
-    this.legateSpecs = opts.legates || []; this.legates = []; this.works = (scn.works || []).map((w, i) => ({ id: -1 - i, fixed: true, depth: 24, ...w }));   // siege lines built into the field (Alesia)
+    this.legateSpecs = opts.legates || []; this.legates = []; this.works = (scn.works || []).map((w, i) => ({ id: -1 - i, fixed: true, depth: 40, ...w }));   // siege lines built into the field (Alesia)
     this.rand = mulberry32(opts.seed ?? (Date.now() & 0xffffff));
     this.t = 0; this.units = []; this.bodies = []; this.fx = []; this.log = [];
     this.result = null; this.endTimer = null; this.pendingOutcome = null;

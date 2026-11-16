@@ -3,7 +3,8 @@ import { XP_LEVELS, SCENARIOS, WORLD, START_TYPES, TYPE_UNLOCKS, UNIT_TYPES, act
 import { PERKS } from './perks.js';
 import { promote } from './officers.js';
 import { levelFor } from './sim.js';
-import { careerLv, realWin, legionsOf } from './campaign.js';
+import { careerLv, realWin, legionsOf, rememberFoes } from './campaign.js';
+import { unlockCodex } from './codex.js';
 import { awardHonours, promoteFromRanks, decoMorale } from './heroes.js';
 
 // The field hospital: five levels, each dearer than the last, one level per camp. Levels 1-3 add 30% wounded recovery each, 4 and 5
@@ -38,7 +39,10 @@ export const slotsUsed = (c) => c.cohorts.reduce((a, h) => a + slotOf(h.type), 0
 // men, horses and kit), and every soldier draws pay after each battle; an army that cannot be paid loses heart and men.
 export const raiseMult = (c) => 1 + 0.03 * Math.max(0, slotsUsed(c) - 10);
 export const PAY_PER_MAN = 0.12;
-export const payDue = (c) => Math.round(c.cohorts.reduce((a, h) => a + h.men, 0) * PAY_PER_MAN * (1 - 0.06 * careerLv(c, 'economy')));
+export const payDue = (c) => Math.round(c.cohorts.reduce((a, h) => a + h.men, 0) * PAY_PER_MAN * (1 - 0.06 * careerLv(c, 'economy')) * (standingOf(c) <= 15 ? 1.25 : 1));   // with no friends in Rome, money costs more
+// Standing in Rome (0-100): what the Senate and the people think of you. Victories raise it, defeats sink it; it brings funds and men.
+export const standingOf = (c) => (c.standing ?? 30);
+export const addStanding = (c, d) => { c.standing = Math.max(0, Math.min(100, standingOf(c) + d)); };
 export const commandLimit = (c) => Math.min(80, 8 + (c.history || []).filter(h => h.id !== 'prologue' && realWin(h)).length * COMMAND_PER_WIN + COMMAND_PER_ORG * careerLv(c, 'organisation'));
 // ---- Fair enemy hosts ----
 // The enemy is sized from your army, by what kind of fight it is: an attacker needs more men than a defender, and men behind a rampart
@@ -89,7 +93,7 @@ export function unlockedTypes(c) {
 
 export function newCampaign(difficulty = 'normal') {
   return {
-    version: 7, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, campUse: {},
+    version: 7, standing: 30, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, campUse: {},
     gold: 300, supplies: 160, fort: 0, favour: 0, scouted: false, log: [], over: false,
     cohorts: [
       { id: 1, name: 'I Cohort',   type: 'legionary', men: 400, maxMen: 480, xp: 60, drill: 30, condition: 90, officerId: 1 },
@@ -194,6 +198,12 @@ export function applyResult(c, result, scn) {
   }
   if (scn.phases && result.outcome !== 'defeat') c.phase = 0;
   c.glut = Math.round((c.glut || 0) * 0.6);                        // the slave markets recover between battles
+  if (scn.id !== 'prologue') { rememberFoes(c, scn, result); unlockCodex(c, scn, result); }         // the enemy commander remembers this fight
+  if (scn.id !== 'prologue') {                                     // news of the battle reaches Rome
+    const named = scn.kind === 'named', d = result.outcome === 'victory' ? (named ? 6 : 3) : result.outcome === 'draw' ? 0 : (named ? -10 : -5);
+    if (d) { addStanding(c, d); notes.push(`Your standing in Rome ${d > 0 ? 'rises' : 'falls'} to ${standingOf(c)} (${d > 0 ? '+' : ''}${d}).`); }
+    if (standingOf(c) >= 50) { const f = Math.round((standingOf(c) - 40) * 6); c.gold += f; notes.push(`Your friends in the Senate vote you ${f} denarii.`); }
+  }
   if (scn.id !== 'prologue') {                                     // the men are paid after every battle
     const due = payDue(c);
     if (c.gold >= due) { c.gold -= due; notes.push(`The army is paid: ${due} denarii.`); }
