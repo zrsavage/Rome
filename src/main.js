@@ -288,7 +288,7 @@ function showOrigins(slot) {
     if (step === 0) {
       main = `<div class="card"><p class="q">Who are you?</p><p class="muted">A Roman officer taking command of a legion. Three questions about your past shape your army.</p>
         <div class="namerow" style="margin-top:12px"><label for="o-name">Your name</label><input id="o-name" maxlength="28" value="${esc(name)}"></div>
-        <div class="namerow" style="margin-top:10px"><label for="o-diff">Difficulty</label><select id="o-diff">${Object.entries(DIFFICULTY).map(([k, v]) => `<option value="${k}" ${k === diff ? 'selected' : ''}>${v.name}</option>`).join('')}</select></div><div class="muted small" style="margin-top:6px">${esc(DIFFICULTY[diff].desc)} Miles is the intended experience.</div></div>
+        <div class="namerow" style="margin-top:10px"><label for="o-diff">Difficulty</label><select id="o-diff">${Object.entries(DIFFICULTY).map(([k, v]) => `<option value="${k}" ${k === diff ? 'selected' : ''}>${v.name}</option>`).join('')}</select></div><div class="muted small" style="margin-top:6px">${esc(DIFFICULTY[diff].desc)}</div></div>
         <div class="card"><p class="muted small">Your first battle is a small fight that teaches the basics.</p></div>`;
     } else if (step <= keys.length) {
       const k = keys[step - 1], g = ORIGINS[k];
