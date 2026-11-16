@@ -5,6 +5,7 @@ import { promote } from './officers.js';
 import { levelFor } from './sim.js';
 import { careerLv, realWin, legionsOf, rememberFoes } from './campaign.js';
 import { unlockCodex } from './codex.js';
+import { renameArmy, nameNewUnit } from './names.js';
 import { awardHonours, promoteFromRanks, decoMorale } from './heroes.js';
 
 // The field hospital: five levels, each dearer than the last, one level per camp. Levels 1-3 add 30% wounded recovery each, 4 and 5
@@ -91,9 +92,10 @@ export function unlockedTypes(c) {
   return [...base.filter(t => EVERYWHERE.includes(t) || local.includes(t)), ...local.filter(t => !base.includes(t))];
 }
 
-export function newCampaign(difficulty = 'normal') {
+export function newCampaign(difficulty = 'normal') { return renameArmy(newCampaign0(difficulty)); }
+function newCampaign0(difficulty) {
   return {
-    version: 7, standing: 30, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, campUse: {},
+    version: 8, standing: 30, difficulty, hospital: 0, manpower: 0, doctrines: [], unlockedTypes: [...START_TYPES], prologueDone: false, introShown: false, mods: { ...DEFAULT_MODS }, player: { name: 'Gaius Aurelius', picks: {} }, scenario: 0, day: 1, campUse: {},
     gold: 300, supplies: 160, fort: 0, favour: 0, scouted: false, log: [], over: false,
     cohorts: [
       { id: 1, name: 'I Cohort',   type: 'legionary', men: 400, maxMen: 480, xp: 60, drill: 30, condition: 90, officerId: 1 },
@@ -120,7 +122,7 @@ export function officerById(c, id) { return c.officers.find(o => o.id === id && 
 // The army as the battle sees it: the cohorts in their places, each marked with its legion, and the baggage train behind them.
 export function romeSpecs(c, scn) {
   const specs = cohortSpecs(c, scn), lg = legionsOf(c);
-  for (const s of specs) s.legion = lg.of[s.cohortId] || 1;
+  for (const s of specs) { s.legion = lg.of[s.cohortId] || 1; s.legionName = lg.names[s.legion] || ''; }
   if (scn && scn.id !== 'prologue' && specs.length) {
     const H = (scn.world && scn.world.h) || 1000, W = (scn.world && scn.world.w) || 1600, cx = specs.reduce((a, s) => a + s.x, 0) / specs.length, by = Math.max(...specs.map(s => s.y));
     const below = by + 130 < H - 30;
@@ -256,8 +258,9 @@ export function applyResult(c, result, scn) {
     for (const t of TYPE_UNLOCKS[scn.id] || []) { c.unlockedTypes = c.unlockedTypes || [...START_TYPES]; if (!c.unlockedTypes.includes(t)) { c.unlockedTypes.push(t); notes.push(`You can now raise ${t.replace('_', ' ')} units at camp.`); } }
     for (const u of scn.unlock || []) {
       const id = Math.max(0, ...c.cohorts.map(h => h.id)) + 1;
-      c.cohorts.push({ id, name: u.name, type: u.type, men: u.men, maxMen: u.maxMen, xp: u.xp, drill: u.drill, condition: 100, officerId: null });
-      notes.push(u.msg);
+      const h = { id, name: u.name, type: u.type, men: u.men, maxMen: u.maxMen, xp: u.xp, drill: u.drill, condition: 100, officerId: null };
+      c.cohorts.push(h); const nm = nameNewUnit(c, h, u.name);
+      notes.push(nm === u.name ? u.msg : u.msg.replace(/(?:the )?[IVXL]+ Cohort\b/, h.type === 'legionary' ? 'the ' + nm : nm).replace(u.name, nm));
     }
     // Caesar's Tenth: after the parley on the mound (or the battle against Ariovistus, if the parley was passed by), a cohort of the Tenth Legion joins you
     if (['parley', 'ariovistus'].includes(scn.id) && !c.cohorts.some(h => h.tenth)) {

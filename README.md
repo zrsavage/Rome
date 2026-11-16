@@ -47,7 +47,7 @@ python3 -m http.server 8080   # then open http://localhost:8080
 - **Movement and fighting (v0.4)**: a drawn line now marches as a line (every cohort paced so all arrive together, which gives wheels), friends are steered
   round instead of walked through, and woods and fords break formations and kill a charge's run-up. Learned in camp: Marching Orders (N, waypoints),
   Triplex Acies (B; Ctrl+B saves your own formation, Alt+B recalls it), Target Priority (I), Charge and Rally (M, horse break off and re-charge, and meet
-  enemy horse), and Rotation of the Line (K, tired cohorts are relieved automatically). Skirmishers fall back *through* your line; ammunition shows
+  enemy horse), and Rotation of the Line (K, tired cohorts are relieved automatically; on by default). Learned drills also run on their own (auto drills, `/` toggles per unit): a cohort standing under missile fire forms the testudo, one cut off forms the orbis, ranks open before elephants, and (with Relief of the Line) a cohort about to break steps back before it runs. Skirmishers fall back *through* your line; ammunition shows
   under the label. The Gauls scale their tricks with difficulty (feints, extended lines, champion strikes, falling back to higher ground). An optional
   "messengers" rule (speaker panel) delays orders to cohorts outside the general's ring. `node tools/simtest.mjs 6 6 normal` with `STRATS=smart` runs a bot that plays
   with these tools (triplex, rotation, reserve, horse on rears) and is the balance yardstick.
@@ -174,6 +174,7 @@ regenerates `src/mapdata.js`. Battle sites: Genava (Rhone fords), the Arar (Saon
 |---|---|
 | Left click / drag | Select unit / box select (`Q` = all) |
 | `Ctrl` + click | Add or remove one unit (on the field or its card) |
+| `/` | Auto drills on or off for the selected cohorts |
 | `Shift` + click a unit card | Select every card from the last one clicked to this one (`Ctrl+Shift` adds them to the selection) |
 | Right click | Move (or attack if clicking an enemy) |
 | Right drag | Draw a battle line; units spread along it and face away from the drag |
@@ -485,3 +486,8 @@ The uploaded cohort picture is the legionary unit card (`unit_legionary.webp`) f
   In a test against Pompeian legions, an army under green leaders had 19 cohorts break and won 1 of 3; under elite leaders 6 broke
   and it won all 3. On the field the strength label shows it: a dark red label and "!" for no leader, a hollow diamond for green,
   and one to three gold diamonds (with a gold border) for seasoned, veteran and elite. The unit panel and the Officers' tent name the grade.
+
+## Unit names
+Every unit has its own name. Legionary cohorts are numbered I to X inside a legion, and the legions carry the numbers of Caesar's legions in
+Gaul (VII, VIII, IX, then XI to XV; the Tenth serves beside you as its own cohort). Auxiliaries are named for the peoples Caesar recruited
+them from: Balearic and Achaean slingers, Cretan and Ituraean archers, Aeduan, Remi and Treveran horse, Lusitanian caetrati, Bogud's Moors.

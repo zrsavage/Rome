@@ -9,6 +9,7 @@ import { ask, inform, keepScroll, choose } from './ui.js';
 import { pendingEvent, resolveEvent } from './events.js';
 import { winterDue, winterWhere, winterWhat, winterVerdict } from './winter.js';
 import { codexFromHistory } from './codex.js';
+import { renameArmy } from './names.js';
 import { pendingTip, markTip } from './tips.js';
 import { resultHtml, mountResult } from './result.js';
 let stopResult = null;
@@ -115,6 +116,7 @@ function migrate(c) {
     c.version = 6;
   }
   if (v0 < 7) { if (c.scenario > 15) c.scenario += 4; c.version = 7; }   // the four battles of Vercingetorix's revolt were inserted before Africa
+  if (v0 < 8) { renameArmy(c); c.version = 8; }                            // every unit gets its own name; cohorts are numbered into legions
   return c;
 }
 function openCampaign(c, n) { migrate(c); codexFromHistory(c); campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; if (c.prologueDone === false) showBrief(PROLOGUE); else showMap(); }

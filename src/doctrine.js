@@ -16,7 +16,7 @@ export const DOCTRINES = [
   { id: 'extend', name: 'The Extended Line', key: 'L, or Alt+right-drag', wins: 2, trait: 'drill', req: 2, gold: 90,
     text: 'A thinner, wider cohort (L, or Alt while drawing a line): more men fight, but losses and charges shake it more.' },
   { id: 'testudo', name: 'The Testudo', key: 'T', wins: 3, trait: 'drill', req: 1, gold: 80,
-    text: 'Locked shields, every way. Missiles glance off and charges bite less, but the cohort crawls and fights weakly. Press T.' },
+    text: 'Locked shields, every way. Missiles glance off and charges bite less, but the cohort crawls and fights weakly. Press T. Auto: a cohort standing under missile fire locks shields on its own.' },
   { id: 'guard', name: 'Guard and Escort', key: 'right-click a friend', wins: 3, trait: 'tactics', req: 1, gold: 80,
     text: 'Right-click a friendly unit to stay beside it and guard it.' },
   { id: 'array', name: 'Triplex Acies', key: 'B (Ctrl+B saves, Alt+B recalls)', wins: 3, trait: 'drill', req: 2, gold: 90,
@@ -32,17 +32,17 @@ export const DOCTRINES = [
   { id: 'pursue', name: 'Pursuit', key: 'P', wins: 4, trait: 'tactics', req: 2, gold: 100,
     text: 'Cavalry ride down broken enemies within reach. They never do this on their own. Select horse and press P, or right-click a fleeing unit.' },
   { id: 'relieve', name: 'Relief of the Line', key: 'Y', wins: 5, trait: 'drill', req: 3, gold: 150,
-    text: 'A fresh cohort steps up through the gaps while the tired one falls back to rest. Select the tired cohort and press Y.' },
+    text: 'A fresh cohort steps up through the gaps while the tired one falls back to rest. Select the tired cohort and press Y. Auto: a cohort about to break steps back on its own.' },
   { id: 'rotate', name: 'Rotation of the Line', key: 'K', wins: 6, trait: 'drill', req: 3, gold: 140,
-    text: 'A tired or wavering cohort is relieved from behind automatically. Press K.' },
+    text: 'A tired or wavering cohort is relieved from behind automatically. On for every cohort; K turns it off.' },
   { id: 'wedge', name: 'The Wedge (cuneus)', key: 'U', wins: 5, trait: 'drill', req: 3, gold: 150,
     text: 'A narrow, deep column that hits much harder on the charge but is weaker on its flanks and slower. Press U before the charge.' },
   { id: 'works', name: 'Fieldworks', key: 'Dig in (deployment)', wins: 2, trait: 'drill', req: 1, gold: 60,
     text: 'When defending, dig a ditch and rampart during deployment (;). It slows and blunts attackers and shields from missiles. Up to half your infantry.' },
   { id: 'lanes', name: 'Open Ranks', key: '. (period)', wins: 7, trait: 'drill', req: 2, gold: 120,
-    text: 'Lanes open between maniples: elephants run through them harmlessly, but other foes do 20% more damage. Press period.' },
+    text: 'Lanes open between maniples: elephants run through them harmlessly, but other foes do 20% more damage. Press period. Auto: they open when elephants come near.' },
   { id: 'orbis', name: 'The Orbis', key: 'O', wins: 6, trait: 'drill', req: 4, gold: 150,
-    text: 'A hollow square with no flanks and no rear, for a cohort that is about to be surrounded. Slow and weak on the attack. Press O.' }
+    text: 'A hollow square with no flanks and no rear, for a cohort that is about to be surrounded. Slow and weak on the attack. Press O. Auto: a cohort cut off forms it on its own.' }
 ];
 export const doctrineById = (id) => DOCTRINES.find(d => d.id === id);
 export const winsOf = (c) => (c.history || []).filter(h => h.outcome === 'victory' || h.outcome === 'draw').length;
