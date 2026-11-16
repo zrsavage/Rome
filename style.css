@@ -460,3 +460,6 @@ body.cb .rtitle.victory { color: #7fb8ff; } body.cb .rtitle.defeat { color: #ffb
   #hud-top button { padding: 4px 7px; font-size: 13px; }
   #hud-top #btn-retreat { font-size: 0; } #hud-top #btn-retreat svg { width: 16px; height: 16px; }
 }
+.offtable td.ocmd { width: 210px; vertical-align: middle; text-align: right; }
+.offtable td.ocmd select { width: 200px; margin-top: 3px; }
+@media (max-width: 820px) { .offtable td.ocmd { width: auto; } .offtable td.ocmd select { width: 150px; } }

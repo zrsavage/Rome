@@ -467,3 +467,13 @@ under the hillshade; **river** (a rocky stream) paints rivers as a band laid alo
 it never shows a seam, with its phase tied to the map so neighbouring stretches join up; **ford** carries its track across the
 water and fades into the river on either side. Africa's dry tint applies to all of them; frozen rivers keep the drawn ice.
 The uploaded cohort picture is the legionary unit card (`unit_legionary.webp`) for now. It shows Imperial-era kit (lorica segmentata, rectangular shields), so it should be replaced with a 58 BC version (mail, Montefortino helmets, oval scuta) when one is made.
+
+## Officers, promotions and the world map (v0.19)
+- **Commanding officers:** in the Officers' tent each officer has his own "Commands" dropdown listing every unit by kind (foot, missile
+  troops, horse), marking units another officer leads now. The heading counts units led, and officers without a command are named.
+  A legate shows his legion instead.
+- **Risen from the ranks:** after every battle, units without a living officer that fought well (did not break, and killed at least a
+  tenth of their own strength) raise their bravest man to centurion (prefect for horse), who takes command. A unit that has gone three
+  battles without a leader gets one anyway. Up to three such promotions after a victory, two after a draw, one after a defeat.
+- **The world map shows only acts you have reached:** no markers for later acts, and each act's badge carries its real number. Acts in the
+  same country (Gaul) no longer sit on top of each other: the later badge steps aside towards its own battles, with its label clear.

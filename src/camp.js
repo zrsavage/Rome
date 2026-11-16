@@ -83,6 +83,8 @@ function enemyProfile(scn) {
 }
 const enemyLine = (p) => `The enemy will be mostly ${p.parts.slice(0, 3).map(([n, pc]) => `${n} (${pc}%)`).join(', ')}.`;
 // Advisers only know what the enemy brings once you have scouted, or once your career in Reconnaissance gives you informers everywhere.
+// The legion an officer commands as legate (0 if none).
+const legionOfLegate = (c, oid) => { for (const [k, v] of Object.entries(c.legates || {})) if (v === oid && +k <= legionsOf(c).count) return +k; return 0; };
 const knowsEnemy = (c) => !!c.scouted || careerLv(c, 'recon') >= 1;
 const enemyHint = (c, p) => knowsEnemy(c) ? enemyLine(p) + ' ' : '';
 const enemyScaleFor = (favour) => favour >= 2 ? 0.9 : favour <= -2 ? 1.1 : 1;
@@ -344,6 +346,12 @@ export class Camp {
     this.note(`${teacher.rank} ${teacher.name} drills the army in ${d.name}. In battle, press ${d.key}.`, 'good'); this.done();
   }
   setInstructor(oid) { const h = this.selected(); h.instructorId = oid || null; this.api.save(); this.render(); }
+  // An officer takes command of a unit (leaving any unit he led before); the unit's previous officer is left without a command.
+  assignOfficer(oid, hid) {
+    const c = this.c; c.cohorts.forEach(x => { if (x.officerId === oid) x.officerId = null; });
+    const h = hid != null ? c.cohorts.find(x => x.id === hid) : null; if (h) { h.officerId = oid; this.sel = h.id; }
+    const o = c.officers.find(x => x.id === oid); this.note(h ? `${o.name} now commands ${h.name}.` : `${o.name} no longer commands a unit.`, 'info'); this.api.save(); this.render();
+  }
   assign(oid) {
     const c = this.c, h = this.selected();
     c.cohorts.forEach(x => { if (x.officerId === oid) x.officerId = null; });
@@ -531,6 +539,10 @@ export class Camp {
           ${card('data-a="hirevets"', `Hire ${hn} veterans`, 'Time-served men re-enlist. They cost far more, but they do not dilute a unit\'s experience.', [[`+${hn} veterans`, 'g'], [`${vcost} denarii (${(vcost / hn).toFixed(1)} each)`, 'b']], c.gold >= vcost)}</div>
           <h4 class="sect">Raise a unit <span class="pill">${slotsUsed(c)}/${commandLimit(c)} command</span></h4>${this.storesLine()}<div class="small muted">Recruiting in <b>${esc(REGION_NAMES[regionOf(scn)])}</b>: local troops only in their homeland.</div><div class="small muted">Support units take half a slot. +${COMMAND_PER_WIN} slots per win or draw.${room < 0.5 ? ' <b>You are at the limit.</b>' : ''}</div>${room >= 2 ? `<div class="row small" style="margin-top:6px"><span class="muted">Raise how many at once?</span><div class="chips">${[1, 5, 10].filter(k => k <= room || k === 1).map(k => `<button class="chip ${rk === k ? 'sel' : ''}" data-raisen="${k}">${k} unit${k > 1 ? 's' : ''}</button>`).join('')}</div></div>` : ''}<div class="regimens" style="margin-top:6px">${raise}</div>${note}`; }
       case 'officers': {
+        const cmdOpts = (o) => { const grp = { inf: 'Foot', ranged: 'Missile troops', cav: 'Horse', train: 'Others' }, by = {};
+          for (const x of c.cohorts) { const k = (UNIT_TYPES[x.type] || {}).cat || 'train'; (by[k] = by[k] || []).push(x); }
+          return `<option value="">- no unit -</option>` + Object.entries(by).map(([k, xs]) => `<optgroup label="${grp[k] || k}">${xs.map(x => { const cur = x.officerId != null && x.officerId !== o.id ? offs.find(q => q.id === x.officerId) : null;
+            return `<option value="${x.id}" ${x.officerId === o.id ? 'selected' : ''}>${esc(x.name)}${cur ? ` (now ${esc(cur.name)})` : ''}</option>`; }).join('')}</optgroup>`).join(''); };
         // one decision at a time: the first officer with a step waiting on his ladder
         const waiting = offs.filter(o => officerPending(o)), o1 = waiting[0], pend = o1 && officerPending(o1);
         const decision = o1 ? `<div class="decision"><div class="dhead">${flagIcon()}<div><b>${esc(rankFor(o1))} ${esc(o1.name)}</b> has earned an advancement <span class="pill">step ${pend.row + 1} of ${officerTrack(o1).length}</span><div class="small muted">${esc(OFFICER_KINDS[officerKind(o1)])}: pick one; the other is lost.${waiting.length > 1 ? ` ${waiting.length - 1} more decision${waiting.length > 2 ? 's' : ''} after this.` : ''}</div></div></div>
@@ -538,12 +550,12 @@ export class Camp {
           : `<div class="advicebox">No advancement is waiting. An officer earns one step on his ladder each time he gains a level.</div>`;
         const rows = c.officers.map(o => { const kind = officerKind(o), track = officerTrack(o), got = track.map(r => r.find(k => (o.perks || []).includes(k.id))).filter(Boolean), nx = o.alive ? track.findIndex(r => !r.some(k => (o.perks || []).includes(k.id))) : -1;
           return `<tr class="${o.alive ? '' : 'dead'}"><td><div class="cellflex"><img class="portrait" alt="" src="${artSrc('officer', o.id, 80, 100, { title: o.name, rank: o.rank })}"><div>${esc(rankFor(o))} ${esc(o.name)} <span class="muted small">- ${esc(OFFICER_KINDS[kind])}, level ${o.level}</span>${officerTags(c, o)}
-            <div class="small" style="margin-top:3px">${got.length ? got.map(k => `<span class="pill" title="${esc(k.text)}">${esc(k.name)}</span>`).join(' ') : '<span class="muted">No advancements yet.</span>'}${o.alive && nx >= 0 && !officerPending(o) ? ` <span class="muted">Next choice at level ${nx + 1}: ${track[nx].map(k => esc(k.name)).join(' or ')}.</span>` : ''}</div></div></div></td></tr>`; }).join('');
-        const assign = `<option value="">- none -</option>` + offs.map(o => `<option value="${o.id}" ${h.officerId === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
-        const unitOpts = c.cohorts.map(x => `<option value="${x.id}" ${x.id === this.sel ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
-        return `${decision}<h4 class="sect">Your officers</h4><table class="offtable">${rows}</table>
-          <h4 class="sect">Attach an officer to a unit</h4><div class="row small"><select id="assign-unit">${unitOpts}</select><span class="muted">is led by</span><select id="assign">${assign}</select></div>
-          <div class="small muted" style="margin-top:6px">Centurions and prefects help their unit; staff officers help the army.</div>${this.legionHtml()}${this.romeHtml(act)}`; }
+            <div class="small" style="margin-top:3px">${got.length ? got.map(k => `<span class="pill" title="${esc(k.text)}">${esc(k.name)}</span>`).join(' ') : '<span class="muted">No advancements yet.</span>'}${o.alive && nx >= 0 && !officerPending(o) ? ` <span class="muted">Next choice at level ${nx + 1}: ${track[nx].map(k => esc(k.name)).join(' or ')}.</span>` : ''}</div></div></div></td>
+            <td class="ocmd">${!o.alive ? '<span class="muted small">fallen</span>' : legionOfLegate(c, o.id) ? `<span class="small">Legate of Legio ${ROMAN[legionOfLegate(c, o.id)] || legionOfLegate(c, o.id)}</span>` : `<label class="small muted">Commands<br><select data-oassign="${o.id}">${cmdOpts(o)}</select></label>`}</td></tr>`; }).join('');
+        const led = c.cohorts.filter(x => x.officerId != null && offs.some(o => o.id === x.officerId)).length, idle = offs.filter(o => !legionOfLegate(c, o.id) && !c.cohorts.some(x => x.officerId === o.id));
+        return `${decision}<h4 class="sect">Your officers <span class="pill">${led} of ${c.cohorts.length} units led</span></h4>
+          <div class="small muted">Choose the unit each officer commands. Centurions suit foot, prefects horse; staff officers help the whole army even without a unit.${idle.length ? ` <b>Without a command:</b> ${idle.map(o => esc(o.name)).join(', ')}.` : ''}</div>
+          <table class="offtable">${rows}</table>${this.legionHtml()}${this.romeHtml(act)}`; }
       case 'forge': {
         if (!UPGRADES[(UNIT_TYPES[h.type] || {}).cat]) {               // medici and the baggage carry no arms: show the first unit that can be equipped instead
           const alt = c.cohorts.find(x => UPGRADES[(UNIT_TYPES[x.type] || {}).cat]); if (alt) { this.sel = alt.id; return this.panelBody(id); }
@@ -598,6 +610,7 @@ export class Camp {
     R.querySelectorAll('tr.clickable').forEach(tr => tr.onclick = () => { this.sel = +tr.dataset.id; this.render(); });
     if (q('#instr')) q('#instr').onchange = (e) => this.setInstructor(e.target.value ? +e.target.value : null);
     if (q('#assign')) q('#assign').onchange = (e) => this.assign(e.target.value ? +e.target.value : null);
+    R.querySelectorAll('[data-oassign]').forEach(sel => sel.onchange = (e) => this.assignOfficer(+sel.dataset.oassign, e.target.value ? +e.target.value : null));
     if (q('#assign-unit')) q('#assign-unit').onchange = (e) => { this.sel = +e.target.value; this.render(); };
     R.querySelectorAll('[data-forage]').forEach(b => b.onclick = () => this.forageDo(b.dataset.forage));
     R.querySelectorAll('[data-scope]').forEach(b => b.onclick = () => { this.scope = b.dataset.scope; this.render(); });
