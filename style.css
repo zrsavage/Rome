@@ -451,3 +451,6 @@ input.mslide{width:100%;accent-color:#e8c36a;height:6px;cursor:pointer}
 body.cb .g, body.cb li.g, body.cb .rnews li.g, body.cb .rnews li.g::before, body.cb #ending .g { color: #7fb8ff !important; }
 body.cb .b, body.cb li.b, body.cb .rnews li.b, body.cb .rnews li.b::before, body.cb #ending .b { color: #ffb05c !important; }
 body.cb .rtitle.victory { color: #7fb8ff; } body.cb .rtitle.defeat { color: #ffb05c; }
+.choice3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: stretch; }
+.choice3 .regimen { text-align: left; display: flex; flex-direction: column; gap: 4px; }
+.choice2 .regimen { display: flex; flex-direction: column; gap: 4px; }
