@@ -315,6 +315,7 @@ export class BattleUI {
     });
   }
   refreshHud() {
+    { const hb = $('hud-bottom'), hc = $('hud-cmds'); if (hb && hc) { const shown = getComputedStyle(hb).display !== 'none'; hc.style.bottom = shown ? `${hb.offsetHeight + 6}px` : ''; } }   // the command bar sits just above the unit cards, however many rows they take
     const b = this.b; if (!b) return;
     const mm = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
     const gs = Object.keys(this.groups).filter(n => (this.groups[n] || []).some(id => { const u = b.byId(id); return u && u.active; })).map(n => `[${n}]`).join(' ');
