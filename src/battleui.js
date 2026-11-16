@@ -7,6 +7,7 @@ import { ask } from './ui.js';
 import { icon } from './icons.js';
 import { dragLayout, compass, triplexLayout, saveFormation, recallFormation } from './orders.js';
 import { WEATHER } from './weather.js';
+import { GOALS } from './plans.js';
 const NOISY = /crashes into|hurls its pila|refills|fresh pila|loses its formation|cannot hold a formation|Enemy sighted|rallies!|fights harder|charge falters|breaks off and runs/;
 
 const $ = (id) => document.getElementById(id);
@@ -348,6 +349,7 @@ export class BattleUI {
       objTxt = `   |  ${o.name}: ${o.contested ? 'CONTESTED' : o.owner === 'rome' ? 'Roman' : 'enemy'}` + (att ? ` - ${att === 'rome' ? 'you hold' : 'enemy holds'} ${Math.floor(b.hold[att])}/${b.rule.holdSecs}s` : '');
     }
     const wl = b.withdrawLeft ? b.withdrawLeft() : null, waveTxt = wl != null ? `   |  Withdrawing: ${Math.ceil(wl)}s` : '';
+    { const g = b.goalState(); const el = $('hud-goal'); if (el) { el.classList.toggle('hidden', !g); if (g) { const t = `${g.fail ? '\u2717' : g.ok && g.key === 'chief' ? '\u2713' : '\u2605'} ${g.name}: ${g.live}`; if (el.textContent !== t) { el.textContent = t; el.className = 'hudgoal' + (g.fail ? ' fail' : g.ok && g.key === 'chief' ? ' ok' : ''); el.title = GOALS[g.key].text(this.scn); } } } }
     $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${b.fogOn && b.units.some(u => u.side === 'gaul' && u.active && !u.spotted) ? '?' : Math.round(b.activeMen('gaul'))}   ${gs}`;
     $('hud-sub').textContent = (objTxt + waveTxt).replace(/^\s*\|\s*/, '').replace(/\s+\|\s+/g, '   |   ').trim();
     document.querySelectorAll('.ucard').forEach(d => {

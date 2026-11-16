@@ -1,5 +1,7 @@
 // Pure battle simulation (no DOM). Real-time; the UI drives update(dt) and may pause.
 import { UNIT_TYPES, WORLD, XP_LEVELS, DIFFICULTY, terrainAt, elevAt, setWorld, riverShift } from './data.js';
+import { PLANS, choosePlan, chooseGoal, GOALS, GOAL_REWARD, chiefBand } from './plans.js';
+import { WEATHER as WX_ALL } from './weather.js';
 import { MAX_TIER } from './perks.js';
 import { temperOf, tierOf, rivalOf } from './officers.js';
 import { WEATHER } from './weather.js';
@@ -151,6 +153,23 @@ export class Battle {
     if (rs.length && opts.general !== false) this.general = { x: rs.reduce((a, u) => a + u.x, 0) / rs.length, y: Math.min(WORLD.h - 20, Math.max(...rs.map(u => u.y)) + 55), f: -Math.PI / 2, goal: null, wound: 0 };
     for (const e of scn.enemy) this.spawnEnemy(e);
     this.startRome = this.sumMen('rome'); this.startGaul = this.sumMen('gaul');
+    // the enemy commander's plan for today (plans.js): chosen in the campaign so the briefing can tell you, or by the battle's own dice
+    this.planKey = scn.id === 'prologue' ? null : (opts.plan !== undefined ? opts.plan : choosePlan(scn, this.style, this.rand()));
+    this.plan = (this.planKey && PLANS[this.planKey]) || {};
+    if (this.plan.raid && !this.units.some(u => u.side === 'rome' && u.type.cat === 'train' && !u.type.medic)) { this.planKey = 'frontal'; this.plan = PLANS.frontal; }
+    // a bonus goal, and the chief's own guard for the goal that needs it
+    this.goal = scn.id === 'prologue' ? null : (opts.goal !== undefined ? opts.goal : chooseGoal(scn, this.rand()));
+    if (this.goal === 'chief') {
+      const gs = this.units.filter(u => u.side === 'gaul' && u.type.cat !== 'train' && !u.type.wagon), elite = gs.filter(u => u.typeKey === 'gaul_elite' || (u.ai && u.ai.reserve));
+      const band = (elite.length ? elite : gs).sort((a, b) => b.men - a.men)[0];
+      if (band) { band.chiefBand = true; band.name = chiefBand(scn).replace(/^the c/, 'The c'); band.moraleBonus = (band.moraleBonus || 0) + 6; band.morale += 6; band.maxMorale += 6; } else this.goal = 'light';
+    }
+    // sometimes (about one battle in three) something unplanned happens in the middle of it
+    this.twist = null;
+    if (scn.id !== 'prologue' && !scn.practice && opts.twists !== false && this.rand() < 0.35) {
+      const L = ['fogbank', 'downpour', 'horseslain', 'flankers', 'allies', 'duel', 'rumour'].filter(k => !(k === 'fogbank' && this.wxKey === 'fog') && !(k === 'downpour' && ['rain', 'storm'].includes(this.wxKey)));
+      this.twist = { key: L[Math.floor(this.rand() * L.length)], at: 100 + this.rand() * 200, done: false };
+    }
     this.smartAI = scn.id !== 'prologue'; this.aiS = { surge: false, surgeT: 0, commit: false, t0: null };
     this.say('Your army deploys. Press SPACE to begin the battle; you may issue orders while paused.', 'info');
   }
@@ -712,12 +731,12 @@ export class Battle {
       if (u.type.cat !== 'inf') continue;
       if (u.ai.burst) { u.role = 'burst'; continue; }
       if (u.typeKey === 'gaul_elite' || u.ai.reserve) u.role = 'reserve';
-      else { u.role = (++n % (this.style === 'cunning' ? 3 : 4) === 0 && this.sumMen('gaul') > 600) ? 'wing' : 'line'; }
+      else { const every = this.plan.wingEvery ?? (this.style === 'cunning' ? 3 : 4); u.role = (every > 0 && ++n % every === 0 && this.sumMen('gaul') > 600) ? 'wing' : 'line'; if (u.role === 'wing') u.wingIdx = (this.aiS.wings = (this.aiS.wings || 0) + 1); }
     }
     // a large host sends one nimble unit forward to feint: it engages, then breaks off and runs, to draw impatient cohorts out of your line
     const S = this.aiS;
     const legionArmy = this.isLegion(this.units.filter(u => u.side === 'gaul' && u.active && u.role === 'line'));
-    const wantFeints = legionArmy ? 0 : ([0, 1, 1, 2][this.aiLevel] || 0) + (this.style === 'cunning' && this.aiLevel >= 1 ? 1 : 0);   // feigned flight is a Gallic trick
+    const wantFeints = legionArmy ? 0 : ([0, 1, 1, 2][this.aiLevel] || 0) + (this.style === 'cunning' && this.aiLevel >= 1 ? 1 : 0) + (this.plan.feints || 0);   // feigned flight is a Gallic trick
     if ((S.feints || 0) < wantFeints && this.t < 40 + 25 * (S.feints || 0) && this.t >= 20 * (S.feints || 0)) {
       const lines = this.units.filter(u => u.side === 'gaul' && u.active && u.role === 'line' && u.type.cat === 'inf');
       if (lines.length >= (this.aiLevel >= 2 ? 4 : 5)) { S.feints = (S.feints || 0) + 1; S.feintPicked = true; const f = lines.sort((p1, p2) => p1.men - p2.men)[0]; f.role = 'feint'; f.fp = 'go'; }
@@ -785,7 +804,9 @@ export class Battle {
       if (e.morale < e.maxMorale * 0.5) sc -= 40;
       if (e.side === 'rome' && e.post && Math.hypot(e.x - e.post.x, e.y - e.post.y) > 170 && e.order && (e.order.kind === 'attack' || e.order.kind === 'none')) sc -= 70;   // a cohort that has chased too far from its post is punished
       sc += 60 * Math.max(0, hgt(this, e) - hgt(this, u));
-      sc += 70 * Math.max(0, ((this._tcount && this._tcount[e.id]) || 0) - 1);        // do not all pile onto one target
+      sc += 70 * Math.max(0, ((this._tcount && this._tcount[e.id]) || 0) - 1) * (this.plan.focus ? 0.4 : 1);        // do not all pile onto one target (unless that is the plan)
+      if (this.plan.focus && this.aiS.focus && u.side === 'gaul') sc += 0.55 * Math.hypot(e.x - this.aiS.focus.x, e.y - this.aiS.focus.y);   // the hammer: everything at one place
+      if (this.plan.raid && u.side === 'gaul' && (u.role === 'wing' || u.type.cat === 'cav') && e.type.cat === 'train' && !e.type.medic) sc -= 900;
       if (sc < bs) { bs = sc; best = e; }
     }
     return best;
@@ -813,8 +834,8 @@ export class Battle {
       if (!u.wp) {
         const intel = this.flankIntel(), own = ((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x) >= 0 ? 1 : -1;
         if (this.aiLevel >= 1 && !(intel && (intel.side[1].seen || intel.side[-1].seen)) && this.t < 22) return;          // wait for riders and skirmishers to look at your flanks first
-        let side = own;
-        if (intel && this.aiLevel >= 1) { const A = intel.side[1], B = intel.side[-1], weak = (A.seen && B.seen) ? (A.str < B.str ? 1 : -1) : A.seen ? 1 : B.seen ? -1 : own; const lateral = Math.abs((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x); if (weak !== own && lateral < 520) side = weak; if (!S.scoutSaid && (A.seen || B.seen)) { S.scoutSaid = true; this.mark('scout', `${this.foe === 'enemy' ? 'Enemy' : this.foe} scouts have found your ${weak === 1 ? 'left' : 'right'} flank the weaker`, 'gaul'); } }
+        let side = own; if (this.plan.bothSides) side = (u.wingIdx || 0) % 2 ? 1 : -1;
+        if (intel && this.aiLevel >= 1) { const A = intel.side[1], B = intel.side[-1], weak = (A.seen && B.seen) ? (A.str < B.str ? 1 : -1) : A.seen ? 1 : B.seen ? -1 : own; const lateral = Math.abs((u.x - rc.x) * -a.y + (u.y - rc.y) * a.x); if (weak !== own && lateral < 520 && !this.plan.bothSides) side = weak; if (!S.scoutSaid && (A.seen || B.seen)) { S.scoutSaid = true; this.mark('scout', `${this.foe === 'enemy' ? 'Enemy' : this.foe} scouts have found your ${weak === 1 ? 'left' : 'right'} flank the weaker`, 'gaul'); } }
         u.wp = { x: rc.x - a.y * side * -1 * 0 + (-a.y) * side * 720 - a.x * 40, y: rc.y + a.x * side * 720 - a.y * 40 }; if (!this._wingSaid) { this._wingSaid = true; this.say(`${this.foe === 'Gallic' ? 'Gallic warbands are' : 'Enemy troops are'} swinging wide around your flank!`, 'warn'); this.mark('wing', 'Enemy troops swing wide round your flank', 'gaul'); } }
       if (Math.hypot(u.wp.x - u.x, u.wp.y - u.y) > 160 && !u.wpDone) this.setMove(u, u.wp.x, u.wp.y, null, true);
       else { u.wpDone = true; if (S.surge || this.t - (S.t0 ?? this.t) > 60) attack(); else if (u.order.kind === 'move') u.order = { kind: 'none' }; }
@@ -850,7 +871,7 @@ export class Battle {
     const dx = rc.x - gc.x, dy = rc.y - gc.y, dd = Math.hypot(dx, dy) || 1, a = { x: dx / dd, y: dy / dd }, perp = { x: -a.y, y: a.x };
     S.fa = Math.atan2(a.y, a.x);
     if (!S.F) S.F = { x: gc.x, y: gc.y };
-    const stage = { x: rc.x - a.x * 520, y: rc.y - a.y * 520 }, dF = Math.hypot(stage.x - S.F.x, stage.y - S.F.y);
+    const stage = { x: rc.x - a.x * (this.plan.stage || 520), y: rc.y - a.y * (this.plan.stage || 520) }, dF = Math.hypot(stage.x - S.F.x, stage.y - S.F.y);
     const lag = lines.reduce((q, u) => q + (u.slot ? Math.hypot(u.slot.x - u.x, u.slot.y - u.y) : 0), 0) / lines.length;
     if (dF > 10 && lag > 110) S.lineHalted = false;                // the front waits for its stragglers, so the line stays a line
     else if (dF > 10) { const v = Math.min(...lines.map(u => u.type.speed)) * 0.85 * 0.4; S.F.x += (stage.x - S.F.x) / dF * Math.min(dF, v); S.F.y += (stage.y - S.F.y) / dF * Math.min(dF, v); S.lineHalted = false; }
@@ -889,12 +910,67 @@ export class Battle {
     }
     if (!S.surge) {
       const staged = lines.filter(u => u.staged || u.contacts.some(e => e.active)).length;
-      if (!lines.length || (S.lineHalted && staged >= lines.length * 0.85) || (S.t0 !== null && this.t - S.t0 > (this.style === 'cautious' ? 55 : 25)) || (this.style === 'aggressive' && this.t > 4)) { S.surge = true; S.surgeT = this.t; if (lines.length > 2) this.say(`The ${this.foe} line ${['Gallic', 'German', 'British'].includes(this.foe) ? 'howls and ' : ''}surges forward!`, 'warn'); this.mark('surge', `The ${this.foe} line surges forward`, 'gaul'); }
+      if (!lines.length || (S.lineHalted && staged >= lines.length * 0.85 && (!(this.plan.surgeWait > 20) || (S.t0 !== null && this.t - S.t0 > this.plan.surgeWait))) || (S.t0 !== null && this.t - S.t0 > (this.plan.surgeWait ?? (this.style === 'cautious' ? 55 : 25))) || (this.style === 'aggressive' && this.t > 4 && (!this.planKey || this.planKey === 'frontal')) || (this.planKey === 'attrition' && this.activeMen('rome') < this.startRome * 0.8)) { S.surge = true; S.surgeT = this.t; this.revealPlan(); if (this.plan.focus) { const wp = this.weakPoint(this.romeCentre() || { x: 0, y: 0 }); if (wp) S.focus = { x: wp.x, y: wp.y, id: wp.id }; } if (lines.length > 2) this.say(`The ${this.foe} line ${['Gallic', 'German', 'British'].includes(this.foe) ? 'howls and ' : ''}surges forward!`, 'warn'); this.mark('surge', `The ${this.foe} line surges forward`, 'gaul'); }
     } else if (!S.commit) {
       const rs = this.units.filter(u => u.side === 'rome');
       const turned = this.stats.routs.gaul > 0 || this.stats.routs.rome > 0 || this.activeMen('rome') < this.startRome * 0.85;
-      if ((turned && this.t - S.surgeT > [20, 20, 12, 8][this.aiLevel]) || this.t - S.surgeT > [90, 90, 60, 45][this.aiLevel]) { S.commit = true; if (this.units.some(u => u.side === 'gaul' && u.active && u.role === 'reserve')) this.say(`The ${this.foe} reserves are committed to the fight!`, 'warn'); this.mark('commit', `The ${this.foe} reserves are committed`, 'gaul'); }
+      const chased = this.plan.trap && this.units.some(e => e.side === 'rome' && e.active && e.post && Math.hypot(e.x - e.post.x, e.y - e.post.y) > 200 && e.order && e.order.kind === 'attack');
+      if (chased && !S.trapSaid) { S.trapSaid = true; this.say(this.plan.reveal, 'warn'); this.mark('commit', this.plan.reveal, 'gaul'); }
+      if (chased || (turned && this.t - S.surgeT > [20, 20, 12, 8][this.aiLevel] * (this.plan.focus ? 0.5 : 1)) || this.t - S.surgeT > [90, 90, 60, 45][this.aiLevel] * (this.plan.focus ? 0.6 : 1)) { S.commit = true; if (this.units.some(u => u.side === 'gaul' && u.active && u.role === 'reserve')) this.say(`The ${this.foe} reserves are committed to the fight!`, 'warn'); this.mark('commit', `The ${this.foe} reserves are committed`, 'gaul'); }
     }
+  }
+  revealPlan() {
+    if (this.aiS.planSaid || !this.planKey || this.plan.trap || this.plan.raid) return; this.aiS.planSaid = true;
+    this.say(this.plan.reveal, 'warn'); this.mark('commit', `${this.plan.name}: ${this.plan.reveal}`, 'gaul');
+  }
+  // Something nobody planned: fog or rain rolls in, your general's horse is killed, warriors appear on a flank, help arrives, a champion
+  // calls out your best man, or a rumour runs through their ranks.
+  runTwist(k) {
+    const rc = this.romeCentre() || { x: WORLD.w / 2, y: WORLD.h / 2 }, foes = this.units.filter(u => u.side === 'gaul' && u.active && u.type.cat !== 'train');
+    const say = (m, kind) => { this.say(m, kind); this.mark(kind === 'good' ? 'commit' : 'wing', m, kind === 'good' ? 'rome' : 'gaul'); this.twistMsg = m; };
+    if (k === 'fogbank' || k === 'downpour') {
+      this.twistWx = { was: this.wxKey, until: this.t + (k === 'fogbank' ? 150 : 180) }; this.wxKey = k === 'fogbank' ? 'fog' : 'rain'; this.wx = WX_ALL[this.wxKey];
+      say(k === 'fogbank' ? 'A fog bank rolls over the field: you see only what is close.' : 'A sudden downpour: mud underfoot, and the missiles fly wide.', 'warn');
+    } else if (k === 'horseslain') {
+      if (this.general && !(this.general.wound > 0)) { this.general.wound = 45; say('Your general\'s horse is killed under him! Until he is remounted, his command reaches half as far.', 'bad'); } else this.runTwist('rumour');
+    } else if (k === 'flankers') {
+      const inf = foes.filter(u => u.type.cat === 'inf'), type = (inf[0] || foes[0] || { typeKey: 'warband' }).typeKey, side = this.rand() < 0.5 ? -1 : 1;
+      const men = Math.round(this.startGaul * 0.1 / Math.max(0.2, this.enemyScale * this.powerScale * (this.scn.boost || 1)));
+      this.reinf.push({ at: this.t, side: 'gaul', done: false, unit: { type, men, x: clamp(rc.x + side * 950, 60, WORLD.w - 60), y: clamp(rc.y + 120, 60, WORLD.h - 60), ai: { kind: 'rush', delay: this.t, burst: true } } });
+      say('Warriors burst from cover on your flank! They were not in any scout\'s report.', 'bad');
+    } else if (k === 'allies') {
+      this.reinf.push({ at: this.t, side: 'rome', done: false, unit: { type: 'aux_cav', men: 150, x: clamp(rc.x, 60, WORLD.w - 60), y: clamp(rc.y + 420, 60, WORLD.h - 60), f: -Math.PI / 2, name: 'Allied horse', xp: 120 } });
+      say('Allied horsemen ride up behind your line and offer their swords!', 'good');
+    } else if (k === 'duel') {
+      const ours = this.units.filter(u => u.side === 'rome' && u.active && u.officer).sort((a, b) => (b.officer.tactics || 0) - (a.officer.tactics || 0))[0];
+      if (!ours || !foes.length) return this.runTwist('rumour');
+      const win = this.rand() < 0.45 + 0.07 * ((ours.officer.tactics || 0) - 1);
+      if (win) { for (const u of foes) { u.morale -= 10; this.mloss(u, 'panic', 10); } for (const u of this.units) if (u.side === 'rome' && u.active) u.morale = Math.min(u.maxMorale, u.morale + 6); say(`A champion steps out and calls for single combat. ${ours.officer.name} of ${ours.name} takes him up, and kills him! The enemy is shaken.`, 'good'); }
+      else { for (const u of this.units) if (u.side === 'rome' && u.active) { u.morale -= 7; this.mloss(u, 'panic', 7); } for (const u of foes) u.morale = Math.min(u.maxMorale, u.morale + 6); say(`A champion steps out and calls for single combat. ${ours.officer.name} of ${ours.name} answers, and is beaten down. Your men are shaken.`, 'bad'); }
+    } else if (k === 'rumour') {
+      for (const u of foes) { u.morale -= 8; this.mloss(u, 'panic', 8); }
+      say('A rumour runs through their ranks that their chief has fallen. Their line wavers.', 'good');
+    }
+  }
+  updateTwist() {
+    const T = this.twist; if (T && !T.done && this.t >= T.at && !this.deploying) { T.done = true; this.runTwist(T.key); }
+    if (this.twistWx && this.t > this.twistWx.until) { this.wxKey = this.twistWx.was; this.wx = WX_ALL[this.wxKey]; this.twistWx = null; this.say('The weather clears.', 'info'); }
+  }
+  // The bonus goal: where it stands now (for the HUD) and whether it was met.
+  goalState(outcome = null) {
+    const k = this.goal; if (!k) return null;
+    const lostPct = 100 * (1 - this.activeMen('rome') / Math.max(1, this.startRome)), limit = this.scn.timeLimit * 0.5;
+    const broken = this.units.some(u => u.side === 'rome' && u.cohortId != null && u.everRouted);
+    const band = this.units.find(u => u.chiefBand), bandDown = band && !band.active;
+    const caps = this.stats.surrendered || 0;
+    let live, fail = false, ok = false;
+    if (k === 'light') { live = `${Math.round(lostPct)}% lost (under 12%)`; fail = lostPct >= 12; ok = !fail; }
+    else if (k === 'swift') { const left = limit - this.t; live = left > 0 ? `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')} left` : 'too late'; fail = left <= 0; ok = !fail; }
+    else if (k === 'chief') { live = bandDown ? 'broken' : 'still standing'; ok = !!bandDown; }
+    else if (k === 'captives') { live = `${Math.round(this.startGaul * 0.1).toLocaleString()} needed: men who break or surrender`; ok = true; }
+    else if (k === 'unbroken') { live = broken ? 'a unit broke' : 'none broken'; fail = broken; ok = !broken; }
+    if (outcome) { const met = outcome === 'victory' && ok && !fail; return { key: k, name: GOALS[k].name, text: GOALS[k].text(this.scn), met }; }
+    return { key: k, name: GOALS[k].name, live, fail, ok };
   }
   aiThink() {
     if (this.smartAI) this.updateSurge();
@@ -962,6 +1038,7 @@ export class Battle {
         if (o && !u.fighting) { if (Math.hypot(u.x - o.x, u.y - o.y) > 25) this.setMove(u, o.x, o.y); else u.order = { kind: 'none' }; }
       } else if (ai.kind === 'flank') {
         if (this.t < ai.delay) continue;
+        if (this.plan.raid && !u.raidDone) { const bag = this.units.find(e => e.side === 'rome' && e.active && e.type.cat === 'train' && !e.type.medic); if (bag) { if (u.order.kind !== 'attack' || u.order.targetId !== bag.id) this.setAttack(u, bag, true); if (!this.aiS.raidSaid) { this.aiS.raidSaid = true; this.say(this.plan.reveal, 'warn'); this.mark('wing', this.plan.reveal, 'gaul'); } continue; } u.raidDone = true; }
         let tgt = u.order.targetId ? this.byId(u.order.targetId) : null;
         if (!tgt || !tgt.active) {
           // A good cavalry commander waits until your foot is pinned by his own, then rides for its flank or rear (hammer and anvil). How long
@@ -995,7 +1072,7 @@ export class Battle {
   // ---------- main step ----------
   update(dt) {
     if (this.result) return;
-    this.t += dt; this.sampleReport(); this.recordFrame(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt); this.updateRotation(); this.updateAutoDrills(); this.runPending(); this.updateSupply(dt); this.updateMedici(dt); this.watchTenth(); this.stepLegates(dt);
+    this.t += dt; this.sampleReport(); this.recordFrame(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt); this.updateRotation(); this.updateAutoDrills(); this.updateTwist(); this.runPending(); this.updateSupply(dt); this.updateMedici(dt); this.watchTenth(); this.stepLegates(dt);
     for (const ev of this.events) if (!ev.done && this.t >= ev.at) { ev.done = true; this.runEvent(ev); }
     for (const r of this.reinf) if (!r.done && this.t >= r.at) {
       r.done = true;
@@ -1730,7 +1807,11 @@ export class Battle {
     for (const k of Object.keys(cap)) cap[k] = Math.round(cap[k] * capMult);
     const prisoners = (outcome === 'victory' ? Math.round(broken * 0.3) : outcome === 'draw' ? Math.round(broken * 0.08) : 0) + surrenderedFoes;   // and every enemy who surrendered
     const wagonsTaken = outcome === 'defeat' ? 0 : this.units.filter(u => u.side === 'gaul' && u.type.wagon && u.state === 'dead').length;
+    const goal = this.goalState(outcome);
+    if (goal && goal.key === 'captives') goal.met = outcome === 'victory' && prisoners >= enemyStart * 0.1;
+    if (goal && goal.met) goal.reward = { gold: Math.round(GOAL_REWARD.gold * this.rewardScale * (this.scn.rewardMult || 1)), standing: GOAL_REWARD.standing };
     this.result = {
+      goal, plan: this.planKey ? { key: this.planKey, name: this.plan.name } : null, twist: this.twistMsg || null,
       outcome, time: this.t, rows, enemyDead, enemyStart, prisoners, captured: cap, wagonsTaken, baggageLost: !!this.stats.baggageLost, healed: this.stats.healed || 0, report: { wx: this.wxKey, series: this.rep.series, frames: this.rep.frames, meta: this.rep.meta, world: { w: WORLD.w, h: WORLD.h }, events: this.rep.events, stats: this.stats, startRome: this.startRome, startGaul: this.startGaul },
       spoils: {
         gold: Math.round(rw.gold * mult * rewardMult),
