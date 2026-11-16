@@ -173,6 +173,8 @@ regenerates `src/mapdata.js`. Battle sites: Genava (Rhone fords), the Arar (Saon
 | Input | Action |
 |---|---|
 | Left click / drag | Select unit / box select (`Q` = all) |
+| `Ctrl` + click | Add or remove one unit (on the field or its card) |
+| `Ctrl+Shift` + click a unit card | Select every card from the last one clicked to this one |
 | Right click | Move (or attack if clicking an enemy) |
 | Right drag | Draw a battle line; units spread along it and face away from the drag |
 | `Space`, `Z X C`, `-` `=` | Pause, speed 1x/2x/4x, step speed down to 0.5x (orders allowed while paused) |
