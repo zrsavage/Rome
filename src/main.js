@@ -4,7 +4,7 @@ import { ORIGINS, DEFAULT_NAME, buildCampaign, describe } from './origins.js';
 import { Camp, totalMen, breakCamp, rationsDue } from './camp.js';
 import { BattleUI } from './battleui.js';
 import { renderMap } from './map.js';
-import { artSrc, initArt } from './art.js';
+import { artSrc, initArt, hasRealArt } from './art.js';
 import { ask, inform, keepScroll, choose } from './ui.js';
 import { pendingEvent, resolveEvent } from './events.js';
 import { winterDue, winterWhere, winterWhat, winterVerdict } from './winter.js';
@@ -50,19 +50,26 @@ const diffDesc = () => { $('diff-desc').textContent = DIFFICULTY[diffSel.value].
 diffSel.onchange = diffDesc; diffDesc();
 
 function refreshMenu() {
+  const bg = $('menu-bg'); if (bg) { const src = hasRealArt('camp', 'main') ? artSrc('camp', 'main') : null; bg.style.backgroundImage = src ? `url("${src}")` : ''; }
   const el = $('slots'); el.innerHTML = '';
   for (let n = 1; n <= SLOTS; n++) {
     const c = store.get(key(n)), d = document.createElement('div'); d.className = 'slot';
     if (c) {
       const scn = currentScn(c);
-      d.innerHTML = `<div><b>Slot ${n}</b> - ${esc(DIFFICULTY[c.difficulty].name)}<small>${scn ? `Battle ${c.scenario + 1}/${SCENARIOS.length}: ${esc(scn.name)}` : 'Campaign complete'} - ${totalMen(c)} men - day ${c.day}</small></div>
+      const done = Math.min(SCENARIOS.length, c.scenario), pct = Math.round(100 * done / SCENARIOS.length);
+      d.className = 'slot full';
+      d.innerHTML = `<div class="slot-main"><div class="slot-top"><b>${esc((c.player && c.player.name) || 'Slot ' + n)}</b><span class="pill">${esc(DIFFICULTY[c.difficulty].name)}</span><span class="muted small">Slot ${n}</span></div>
+        <div class="slot-act">${scn ? `${esc(actLabel(scn.act))}: <b>${esc(scn.name)}</b>` : '<b>Campaign complete</b>: the triumph in Rome'}</div>
+        <div class="slot-bar" title="${done} of ${SCENARIOS.length} battles"><i style="width:${pct}%"></i></div>
+        <div class="slot-stats muted small">Battle ${Math.min(c.scenario + 1, SCENARIOS.length)} of ${SCENARIOS.length} &middot; ${c.cohorts.length} units, ${totalMen(c).toLocaleString()} men &middot; standing in Rome ${c.standing ?? 30}</div></div>
         <div class="row"><button class="primary" data-a="load">Continue</button><button data-a="exp" title="Download this campaign as a file">Export</button><button data-a="bak" title="Rolling backups taken after each battle and at camp">Backups</button><button data-a="del">Delete</button></div>`;
       d.querySelector('[data-a=exp]').onclick = () => exportCampaign(c);
       d.querySelector('[data-a=bak]').onclick = () => showBackups(n);
       d.querySelector('[data-a=load]').onclick = () => openCampaign(c, n);
       d.querySelector('[data-a=del]').onclick = async () => { if (await ask(`Delete the campaign in slot ${n}? This cannot be undone.`, 'Delete', 'Keep')) { store.del(key(n)); store.del(preKey(n)); clearBackups(n); refreshMenu(); } };
     } else {
-      d.innerHTML = `<div><b>Slot ${n}</b><small>Empty</small></div><button class="primary" data-a="new">New Campaign</button>`;
+      d.className = 'slot empty';
+      d.innerHTML = `<div class="slot-main"><div class="slot-top"><b>Slot ${n}</b><span class="muted small">empty</span></div><div class="slot-act muted">A new legion waits for its legate.</div></div><button class="primary" data-a="new">New Campaign</button>`;
       d.querySelector('[data-a=new]').onclick = () => showOrigins(n);
     }
     el.appendChild(d);
@@ -113,7 +120,7 @@ function migrate(c) {
 function openCampaign(c, n) { migrate(c); codexFromHistory(c); campaign = c; campaign.slot = n; camp.msgs = []; camp.sel = c.cohorts[0].id; if (c.prologueDone === false) showBrief(PROLOGUE); else showMap(); }
 function toMenu() { show('screen-menu'); refreshMenu(); }
 refreshMenu();
-initArt().then(() => { /* real art, if any, is picked up on the next render */ });
+initArt().then(() => { refreshMenu(); });   /* the camp painting behind the title, once the art has loaded */
 
 // ----- map -----
 function showMap() {
