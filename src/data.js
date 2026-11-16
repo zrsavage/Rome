@@ -289,6 +289,12 @@ const vnoise = (x, y) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x 
   const a = hash2(ix, iy), b = hash2(ix + 1, iy), c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1); return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy; };
 export { vnoise };
 // Woods are ragged blobs with clearings, not ovals; rivers wander. Terrain tests and drawing share these so what you see is what the sim uses.
+// Marsh: an ellipse with a ragged edge (as a wood has), without the wood's clearings.
+export function marshIn(f, x, y) {
+  const nx = (x - f.cx) / f.rx, ny = (y - f.cy) / f.ry, r = Math.hypot(nx, ny); if (r > 1.25) return false;
+  const a = Math.atan2(ny, nx), sd = f.cx * 0.011 + f.cy * 0.009;
+  return r < 0.84 + 0.32 * vnoise(Math.cos(a) * 1.9 + sd, Math.sin(a) * 1.9 + sd * 1.2) + 0.18 * vnoise(Math.cos(a) * 4.6 - sd, Math.sin(a) * 4.6 + sd) - 0.06;
+}
 export function forestIn(f, x, y) {
   const nx = (x - f.cx) / f.rx, ny = (y - f.cy) / f.ry, r = Math.hypot(nx, ny);
   if (r > 1.25) return false;
@@ -322,6 +328,7 @@ export function terrainAt(scn, x, y) {
     let inside;
     if (f.kind === 'hill') continue;                                   // hills come from the height map below
     if (f.kind === 'forest') inside = forestIn(f, x, y);
+    else if (f.kind === 'marsh') inside = marshIn(f, x, y);
     else if (f.rx) inside = ((x - f.cx) / f.rx) ** 2 + ((y - f.cy) / f.ry) ** 2 <= 1;
     else { const sh = f.kind === 'water' || f.kind === 'ford' ? riverShift(f, x) : 0; inside = x >= f.x && x <= f.x + f.w && y - sh >= f.y && y - sh <= f.y + f.h; }
     if (!inside) continue;
@@ -329,6 +336,7 @@ export function terrainAt(scn, x, y) {
     if (f.kind === 'water')  r = scn._wx === 'frost' ? { speed: 0.7, def: 1.0, atk: 0.95, cav: 0.6, kind: 'ice' } : { speed: 0.35, def: 1.0, atk: 0.8, cav: 0.5, kind: 'water' };
     if (f.kind === 'ford')   r = scn._wx === 'frost' ? { speed: 0.8, def: 1.0, atk: 0.95, cav: 0.7, kind: 'ice' } : { speed: 0.8 - 0.4 * fl, def: 1.0, atk: 0.9 - 0.15 * fl, cav: 0.8 - 0.4 * fl, kind: 'ford' };
     if (f.kind === 'forest') r = { speed: 0.6,  def: 0.95, atk: 0.95, cav: 0.55, kind: 'forest' };
+    if (f.kind === 'marsh')  r = scn._wx === 'frost' ? { speed: 0.75, def: 1, atk: 0.95, cav: 0.7, kind: 'marsh' } : { speed: 0.45, def: 0.9, atk: 0.9, cav: 0.4, kind: 'marsh' };
   }
   if (r.kind === 'grass' && elevAt(scn, x, y) >= 6) r = { speed: 1, def: 0.9, atk: 1.06, cav: 0.95, kind: 'hill' };
   return r;
@@ -1315,25 +1323,85 @@ for (const scn of SCENARIOS) if (scn.act === 'III') scn.dry = true;   // Africa 
 // enemy, manoeuvre, and choose your ground. Heights grow more slowly than distances so slopes stay walkable.
 // ---------------------------------------------------------------------------
 export const MAP_SCALE = 2.5, PROLOGUE_SCALE = 1.8;
-export function scaleScenario(scn, k) {
-  const S = (v) => Math.round(v * k), p = (o, ...keys) => { for (const key of keys) if (key in o) o[key] = S(o[key]); };
+export function scaleScenario(scn, kx, ky = kx) {
+  const k = Math.sqrt(kx * ky), X = (v) => Math.round(v * kx), Y = (v) => Math.round(v * ky);
+  const p = (o, xs, ys) => { for (const key of xs) if (key in o) o[key] = X(o[key]); for (const key of ys) if (key in o) o[key] = Y(o[key]); };
   for (const f of scn.terrain) {
     f.sc = k;
-    if (f.kind === 'hill') { p(f, 'cx', 'cy', 'rx', 'ry'); f.h = Math.round((f.h || 40) * Math.sqrt(k)); }
-    else if (f.rx) p(f, 'cx', 'cy', 'rx', 'ry');
-    else p(f, 'x', 'y', 'w', 'h');
+    if (f.kind === 'hill') { p(f, ['cx', 'rx'], ['cy', 'ry']); f.h = Math.round((f.h || 40) * Math.sqrt(k)); }
+    else if (f.rx) p(f, ['cx', 'rx'], ['cy', 'ry']);
+    else p(f, ['x', 'w'], ['y', 'h']);
   }
-  for (const o of scn.objectives || []) { p(o, 'x', 'y'); o.r = Math.round(o.r * Math.sqrt(k) * 1.2); }
-  p(scn.deploy, 'cx', 'cy'); if (scn.deploy.dx) { scn.deploy.dx = Math.round(scn.deploy.dx * 1.4); scn.deploy.dy = Math.round(scn.deploy.dy * 1.4); }
-  for (const e of scn.enemy) { p(e, 'x', 'y'); if (e.ai && e.ai.trigger) e.ai.trigger = Math.round(e.ai.trigger * 1.6); }
-  for (const r of scn.reinforcements || []) { if (r.unit) p(r.unit, 'x', 'y'); }
-  for (const w of scn.works || []) p(w, 'x', 'y', 'len');      // siege lines built into the battlefield (Alesia)
-  scn.timeLimit = Math.round(scn.timeLimit * 1.2);
-  scn.world = { w: S(1600), h: S(1000) };
+  for (const o of scn.objectives || []) { p(o, ['x'], ['y']); o.r = Math.round(o.r * Math.sqrt(k) * 1.2); }
+  p(scn.deploy, ['cx'], ['cy']); if (scn.deploy.dx) { scn.deploy.dx = Math.round(scn.deploy.dx * 1.4); scn.deploy.dy = Math.round(scn.deploy.dy * 1.4); }
+  for (const e of scn.enemy) { p(e, ['x'], ['y']); if (e.ai && e.ai.trigger) e.ai.trigger = Math.round(e.ai.trigger * 1.6); }
+  for (const r of scn.reinforcements || []) { if (r.unit) p(r.unit, ['x'], ['y']); }
+  for (const w of scn.works || []) { p(w, ['x'], ['y']); if ('len' in w) w.len = Math.round(w.len * k); }      // siege lines built into the battlefield (Alesia)
+  scn.timeLimit = Math.round(scn.timeLimit * 1.2 * Math.max(1, Math.sqrt(kx * ky) / 2.5));
+  scn.world = { w: X(1600), h: Y(1000) };
   scn.scale = k;
 }
+// ---- the shape of each field ----
+// Fields differ in size and proportion (a wide plain for a cavalry battle, a deep slope for an assault, a cramped clearing for an ambush),
+// and many are not open rectangles: woods or marsh along their edges make a valley, a pass that narrows between the armies, a flank closed
+// off, or cut corners. That ground is slow and breaks formations, so wings and envelopments must reckon with it.
+export const FIELD_SIZES = { std: [2.5, 2.5], wide: [3.2, 2.0], deep: [2.1, 3.0], small: [2.05, 2.05], big: [3.0, 2.8] };
+const FIELDS = {
+  ford: ['small', 'bowl'], arar: ['deep', 'valley'], convoy: ['wide', 'none'], oppidum: ['deep', 'funnel'], silva: ['small', 'bowl'], bibracte: ['std', 'flankL'],
+  parley: ['std', 'none'], supply: ['wide', 'flankR'], lessercamp: ['std', 'valley'], ariovistus: ['wide', 'none'], rhine: ['deep', 'valley'],
+  landing: ['wide', 'none'], seventh: ['small', 'bowl'], bigbury: ['deep', 'bowl'], cassivellaunus: ['std', 'flankL'],
+  avaricum: ['deep', 'valley'], gergovia: ['deep', 'funnel'], vingeanne: ['wide', 'flankR'], alesia: ['big', 'none'],
+  anquillaria: ['std', 'flankL'], castra: ['std', 'none'], utica: ['wide', 'flankR'], water: ['small', 'bowl'], bagradas: ['wide', 'valley'],
+  pharsalus: ['wide', 'none'], comana: ['std', 'funnel'], steppe: ['wide', 'none'], nicopolis: ['deep', 'valley'], zela: ['deep', 'funnel'],
+  ruspina: ['wide', 'none'], uzitta: ['std', 'flankL'], thapsus: ['std', 'none'], ategua: ['deep', 'bowl'], munda: ['deep', 'flankR']
+};
+const WET = ['Gaul', 'Germania', 'Britannia'];
+// The ground in a sentence, for the briefing.
+export function fieldText(scn) {
+  const f = scn && scn.field; if (!f) return '';
+  const size = { std: 'An open field', wide: 'A wide, shallow plain: room to go round a flank', deep: 'A long, deep field: a long approach', small: 'Cramped ground: little room to manoeuvre', big: 'A great field' }[f.size] || 'An open field';
+  const k = f.kind === 'marsh' ? 'marsh' : 'woods', K = k === 'marsh' ? 'Marsh' : 'Woods';
+  const edge = !f.kind ? '' : { valley: k === 'marsh' ? ' Marsh lines both sides.' : ' Woods run down both sides.', funnel: ` Halfway, the field narrows between ${k} on either hand.`, flankL: ` ${K} close your left flank.`, flankR: ` ${K} close your right flank.`, bowl: ` ${K} fill the corners.` }[f.edge] || '';
+  return `${size}.${edge}${f.kind ? (k === 'marsh' ? ' Marsh slows men to a crawl and breaks formations.' : ' Woods slow men and break formations.') : ''}`;
+}
+function edgeTerrain(scn, profile, seedId) {
+  if (!profile || profile === 'none') return [];
+  const W = scn.world.w, H = scn.world.h, sc = scn.scale || 2.5;
+  let h = 7; for (const ch of seedId) h = (h * 31 + ch.charCodeAt(0)) >>> 0; const rnd = () => { h = (h * 1103515245 + 12345) >>> 0; return (h >>> 8) / 16777216; };
+  const kind = scn.id === 'thapsus' || scn.id === 'avaricum' ? 'marsh' : WET.includes(scn.theater) ? (rnd() < 0.5 ? 'marsh' : 'forest') : 'forest';
+  // places the edge ground must leave clear: your deployment, where the enemy starts, objectives, siege works, rivers and fords
+  const d = scn.deploy || { cx: W / 2, cy: H * 0.85 }, keep = [{ x0: d.cx - 1050, x1: d.cx + 1050, y0: d.cy - 420, y1: d.cy + 520 }];
+  for (const e of scn.enemy || []) keep.push({ x0: e.x - 260, x1: e.x + 260, y0: e.y - 220, y1: e.y + 220 });
+  for (const o of scn.objectives || []) keep.push({ x0: o.x - o.r - 120, x1: o.x + o.r + 120, y0: o.y - o.r - 120, y1: o.y + o.r + 120 });
+  for (const w of scn.works || []) keep.push({ x0: w.x - (w.len || 300), x1: w.x + (w.len || 300), y0: w.y - 200, y1: w.y + 200 });
+  for (const f of scn.terrain) if (f.kind === 'water' || f.kind === 'ford') keep.push({ x0: f.x - 60, x1: f.x + f.w + 60, y0: f.y - 140, y1: f.y + f.h + 140 });
+  const clear = (cx, cy, rx, ry) => keep.every(b => cx + rx * 1.25 < b.x0 || cx - rx * 1.25 > b.x1 || cy + ry * 1.25 < b.y0 || cy - ry * 1.25 > b.y1);
+  const out = [], put = (cx, cy, rx, ry) => {
+    for (let t = 0; t < 4; t++) {                                 // too close to something that must stay clear: shrink toward the edge and try again
+      if (clear(cx, cy, rx, ry)) { out.push({ kind, cx: Math.round(cx), cy: Math.round(cy), rx: Math.round(rx), ry: Math.round(ry), sc, edge: true }); return; }
+      const toL = cx < W / 2; rx *= 0.72; ry *= 0.85; cx = toL ? Math.max(rx * 0.3, cx - rx * 0.4) : Math.min(W - rx * 0.3, cx + rx * 0.4);
+    }
+  };
+  const band = (side, y0, y1, reach) => {                      // a chain of overlapping blobs down one side of the field
+    const n = Math.max(2, Math.round((y1 - y0) / (H * 0.2)));
+    for (let i = 0; i < n; i++) { const cy = y0 + (i + 0.5) * (y1 - y0) / n, rx = W * reach * (0.8 + 0.4 * rnd()), ry = (y1 - y0) / n * (0.75 + 0.3 * rnd()); put(side < 0 ? rx * 0.35 : W - rx * 0.35, cy + (rnd() - 0.5) * ry * 0.3, rx, ry); }
+  };
+  if (profile === 'valley') { band(-1, 0, H, 0.16); band(1, 0, H, 0.16); }
+  else if (profile === 'funnel') { band(-1, H * 0.25, H * 0.7, 0.27); band(1, H * 0.25, H * 0.7, 0.27); band(-1, 0, H * 0.22, 0.12); band(1, 0, H * 0.22, 0.12); }
+  else if (profile === 'flankL') band(-1, 0, H, 0.22);
+  else if (profile === 'flankR') band(1, 0, H, 0.22);
+  else if (profile === 'bowl') { for (const [x, y] of [[0, 0], [W, 0], [0, H], [W, H]]) put(x + (x ? -1 : 1) * W * 0.06, y + (y ? -1 : 1) * H * 0.08, W * (0.16 + 0.05 * rnd()), H * (0.22 + 0.06 * rnd())); }
+  return out;
+}
+export function shapeScenario(scn, id) {
+  const [size, edge] = FIELDS[id] || ['std', 'none'], [kx, ky] = FIELD_SIZES[size];
+  scaleScenario(scn, kx, ky);
+  const extra = edgeTerrain(scn, edge, id + (scn.phaseName || ''));
+  scn.terrain = [...extra, ...scn.terrain];                     // first, so the scenario's own rivers and hills are painted over them
+  scn.field = { size, edge, kind: extra[0] ? extra[0].kind : null };
+}
 scaleScenario(PROLOGUE, PROLOGUE_SCALE);
-for (const scn of SCENARIOS) { scaleScenario(scn, MAP_SCALE); for (const ph of scn.phases || []) scaleScenario(ph, MAP_SCALE); }
+for (const scn of SCENARIOS) { const ph0 = scn.phases || []; shapeScenario(scn, scn.id); for (const ph of ph0) { if (!ph.theater) ph.theater = scn.theater; if (!ph.id) ph.id = scn.id; shapeScenario(ph, scn.id); } }
 // A battle fought in stages: the scenario as it stands for one stage (same battle, its own ground, enemy and objective). Rewards come with the last.
 export function phaseScn(scn, i) {
   if (!scn || !scn.phases) return scn;

@@ -487,6 +487,12 @@ The uploaded cohort picture is the legionary unit card (`unit_legionary.webp`) f
   and it won all 3. On the field the strength label shows it: a dark red label and "!" for no leader, a hollow diamond for green,
   and one to three gold diamonds (with a gold border) for seasoned, veteran and elite. The unit panel and the Officers' tent name the grade.
 
+## The shape of the field
+Battlefields differ in size and proportion: wide, shallow plains where there is room to go round a flank; long, deep fields with a long
+approach; cramped ground for ambushes; a great field for the set pieces. Many are not open rectangles: woods or marsh down both sides make
+a valley, close one flank, narrow the field halfway into a pass, or fill the corners. Marsh slows men to a crawl, blunts charges and
+breaks formations, as woods do; enemy wings sent round a flank have to go through it or round it. The briefing describes the ground.
+
 ## Enemy plans, bonus goals and surprises
 Before each battle the enemy commander picks a plan that suits his habits: a head-on assault, a double envelopment, a feigned flight
 into his reserve, a hammer blow at your weakest point, wearing you down with missiles, or a strike at your baggage. The same battle
