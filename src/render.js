@@ -432,7 +432,7 @@ export class Renderer {
     const p = this.toScreen(u.x, u.y - u.w / 2 - 4), z = this.cam.zoom;
     const yy = this.toScreen(u.x, u.y).y - Math.max(u.w, u.d) * z / 2 - 8;
     const rome = u.side === 'rome', fs = Math.max(10, Math.min(14, 11 * z + 3));
-    const text = String(u.men) + (u.side === 'rome' && u.stance === 'hold' && u.active ? ' H' : '') + (u.side === 'rome' && u.rotate ? ' rot' : '') + (u.side === 'rome' && u.cycle ? ' hit' : '') + (u.side === 'rome' && u.prio ? ' >' + u.prio : ''), w = Math.max(30, 24 + text.length * 6);
+    const text = String(u.men) + (u.side === 'rome' && u.stance === 'hold' && u.active ? ' H' : '') + (u.side === 'rome' && u.autoOff ? ' man' : '') + (u.side === 'rome' && u.cycle ? ' hit' : '') + (u.side === 'rome' && u.prio ? ' >' + u.prio : ''), w = Math.max(30, 24 + text.length * 6);
     const x = p.x; let y = yy;
     const box = (yy2) => ({ x0: x - w / 2 - 2, x1: x + w / 2 + 2, y0: yy2 - 26, y1: yy2 + 7 });
     const clash = (b1) => placed.some(o => o.x0 < b1.x1 && o.x1 > b1.x0 && o.y0 < b1.y1 && o.y1 > b1.y0);

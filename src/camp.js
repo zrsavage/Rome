@@ -14,6 +14,7 @@ import { OFFICER_POOL, addOfficer } from './rewards.js';
 import { inform, keepScroll } from './ui.js';
 import { DOCTRINES, winsOf } from './doctrine.js';
 import { icon } from './icons.js';
+import { nameNewUnit } from './names.js';
 import { BUILDINGS, sceneSvg, advice, unlockedBuildings } from './campscene.js';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -296,8 +297,8 @@ export class Camp {
     c.gold -= price; c.supplies -= r.supplies * k;
     for (let q = 0; q < k; q++) {
     const id = Math.max(0, ...c.cohorts.map(x => x.id)) + 1, n = c.cohorts.filter(x => x.type === type).length + 1;
-    const name = { legionary: `${roman(c.cohorts.filter(x => x.type === 'legionary').length + 1)} Cohort`, slinger: `Slingers ${n}`, archer: `Archers ${n}`, equites: `Equites ${n}`, aux_cav: `Allied Horse ${n}`, aux_inf: `Allied Infantry ${n}`, galatian: `Galatians ${n}`, medici: `Medici ${n}`, evocati: `Evocati ${n}`, ballista: `Ballistae ${n}`, caetrati: `Caetrati ${n}`, moor_cav: `Moorish Horse ${n}`, scorpion: `Scorpiones ${n}` }[type];
-    c.cohorts.push({ id, name, type, men: r.men, maxMen: r.max, xp: r.xp || 0, drill: r.drill || 10, condition: 100, officerId: null });
+    const h = { id, name: '', type, men: r.men, maxMen: r.max, xp: r.xp || 0, drill: r.drill || 10, condition: 100, officerId: null };
+    c.cohorts.push(h); const name = nameNewUnit(c, h);          // its own name: a place in a legion, or the people it was raised from
     this.sel = id; if (q === k - 1) this.note(k > 1 ? `${k} new units are raised: ${name} and its sisters.` : `${name} is raised (${r.men} men).`, 'good');
     }
     this.done();
@@ -417,7 +418,7 @@ export class Camp {
     const free = c.officers.filter(o => o.alive), rows = [];
     for (let k = 1; k <= lg.count; k++) { const n = c.cohorts.filter(h => lg.of[h.id] === k).length, cur = legateOf(c, k);
       const tr = (o) => legateTraits(o).map(t => LEGATE_TRAITS[t].name).join(', ');
-      rows.push(`<div class="row small" style="margin-top:4px"><b>Legio ${ROMAN[k] || k}</b><span class="muted">${n} units</span><span class="muted">legate</span><select data-legate="${k}"><option value="">- you, from the general's ring -</option>${free.map(o => `<option value="${o.id}" ${cur && cur.id === o.id ? 'selected' : ''}>${esc(o.name)} (${esc(tr(o))}; tactics ${o.tactics})</option>`).join('')}</select></div>`
+      rows.push(`<div class="row small" style="margin-top:4px"><b>Legio ${lg.names[k] || k}</b><span class="muted">${n} units</span><span class="muted">legate</span><select data-legate="${k}"><option value="">- you, from the general's ring -</option>${free.map(o => `<option value="${o.id}" ${cur && cur.id === o.id ? 'selected' : ''}>${esc(o.name)} (${esc(tr(o))}; tactics ${o.tactics})</option>`).join('')}</select></div>`
         + (cur ? `<div class="small" style="margin:2px 0 6px 12px">${legateTraits(cur).map(t => `<span class="pill" title="${esc(LEGATE_TRAITS[t].text)}">${esc(LEGATE_TRAITS[t].name)}</span> <span class="muted">${esc(LEGATE_TRAITS[t].text)}</span>`).join('<br>')}<br><span class="muted">Command ring ${Math.round(85 + 6 * (cur.tactics || 0))}% of yours (tactics ${cur.tactics}).</span></div>` : '')); }
     return `<h4 class="sect">Legions</h4><div class="small muted">Each legate gives his trait to his legion's units inside his ring. Alt+1, Alt+2... select a legion in battle.</div>${rows.join('')}`;
   }
@@ -551,7 +552,7 @@ export class Camp {
         const rows = c.officers.map(o => { const kind = officerKind(o), track = officerTrack(o), got = track.map(r => r.find(k => (o.perks || []).includes(k.id))).filter(Boolean), nx = o.alive ? track.findIndex(r => !r.some(k => (o.perks || []).includes(k.id))) : -1;
           return `<tr class="${o.alive ? '' : 'dead'}"><td><div class="cellflex"><img class="portrait" alt="" src="${artSrc('officer', o.id, 80, 100, { title: o.name, rank: o.rank })}"><div>${esc(rankFor(o))} ${esc(o.name)} <span class="muted small">- ${esc(OFFICER_KINDS[kind])}, level ${o.level}</span>${o.alive ? ` <span class="pill" title="How well his unit fights and holds">${LEAD[leadGrade(o)].name} leader</span>` : ''}${officerTags(c, o)}
             <div class="small" style="margin-top:3px">${got.length ? got.map(k => `<span class="pill" title="${esc(k.text)}">${esc(k.name)}</span>`).join(' ') : '<span class="muted">No advancements yet.</span>'}${o.alive && nx >= 0 && !officerPending(o) ? ` <span class="muted">Next choice at level ${nx + 1}: ${track[nx].map(k => esc(k.name)).join(' or ')}.</span>` : ''}</div></div></div></td>
-            <td class="ocmd">${!o.alive ? '<span class="muted small">fallen</span>' : legionOfLegate(c, o.id) ? `<span class="small">Legate of Legio ${ROMAN[legionOfLegate(c, o.id)] || legionOfLegate(c, o.id)}</span>` : `<label class="small muted">Commands<br><select data-oassign="${o.id}">${cmdOpts(o)}</select></label>`}</td></tr>`; }).join('');
+            <td class="ocmd">${!o.alive ? '<span class="muted small">fallen</span>' : legionOfLegate(c, o.id) ? `<span class="small">Legate of Legio ${legionsOf(c).names[legionOfLegate(c, o.id)] || legionOfLegate(c, o.id)}</span>` : `<label class="small muted">Commands<br><select data-oassign="${o.id}">${cmdOpts(o)}</select></label>`}</td></tr>`; }).join('');
         const led = c.cohorts.filter(x => x.officerId != null && offs.some(o => o.id === x.officerId)).length, idle = offs.filter(o => !legionOfLegate(c, o.id) && !c.cohorts.some(x => x.officerId === o.id));
         return `${decision}<h4 class="sect">Your officers <span class="pill">${led} of ${c.cohorts.length} units led</span></h4>
           <div class="small muted">Choose the unit each officer commands. Centurions suit foot, prefects horse; staff officers help the whole army even without a unit.${idle.length ? ` <b>Without a command:</b> ${idle.map(o => esc(o.name)).join(', ')}.` : ''}</div>

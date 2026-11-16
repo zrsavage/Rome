@@ -2,6 +2,7 @@
 // prisoners, and the commanders you face. No DOM here; the screens call these.
 import { SCENARIOS, UNIT_TYPES, phaseScn } from './data.js';
 import { temperOf } from './officers.js';
+import { LEGIONS } from './names.js';
 
 export const realWin = (h) => h.outcome === 'victory' || h.outcome === 'draw';       // a fight passed by is neither a win nor a defeat
 export const currentScn = (c) => { const s = SCENARIOS[c.scenario]; return s && s.phases ? phaseScn(s, c.phase || 0) : s; };
@@ -51,10 +52,18 @@ export function chooseRoute(c, id) {
 // ---------------- legions and legates ----------------
 // Legionary cohorts are grouped in tens; the other units are shared out among the legions. A legate (any officer not leading a unit) may lead each.
 export function legionsOf(c) {
-  const live = c.cohorts.filter(h => h.men > 0), leg = live.filter(h => h.type === 'legionary'), n = Math.max(1, Math.ceil(leg.length / 10)), map = {};
-  leg.forEach((h, i) => { map[h.id] = Math.floor(i / 10) + 1; });
-  live.filter(h => h.type !== 'legionary').forEach((h, i) => { map[h.id] = (i % n) + 1; });
-  return { count: n, of: map };
+  const live = c.cohorts.filter(h => h.men > 0), leg = live.filter(h => h.type === 'legionary'), map = {};
+  const tagged = LEGIONS.filter(L => leg.some(h => h.leg === L));            // the legions that have cohorts, most senior first
+  if (!tagged.length) {                                                      // an army not yet sorted into legions: ten cohorts to a legion
+    const n = Math.max(1, Math.ceil(leg.length / 10)); leg.forEach((h, i) => { map[h.id] = Math.floor(i / 10) + 1; });
+    live.filter(h => h.type !== 'legionary').forEach((h, i) => { map[h.id] = (i % n) + 1; });
+    return { count: n, of: map, names: ['', ...LEGIONS.slice(0, n)] };
+  }
+  const size = tagged.map(() => 0);
+  for (const h of leg) if (h.leg) { const k = tagged.indexOf(h.leg); map[h.id] = k + 1; size[k]++; }
+  for (const h of leg) if (!h.leg) { let k = size.findIndex(s => s < 10); if (k < 0) k = size.length - 1; map[h.id] = k + 1; size[k]++; }   // the Tenth's cohort serves beside the first legion with room
+  live.filter(h => h.type !== 'legionary').forEach((h, i) => { map[h.id] = (i % tagged.length) + 1; });
+  return { count: tagged.length, of: map, names: ['', ...tagged] };
 }
 export const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
 // A legate's temperament sets how his legion fights while inside his command ring; a good drill officer adds a second trait.
