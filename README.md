@@ -459,3 +459,10 @@ Dispatches are no longer a tab.
   a colour-blind palette (blue and orange in place of green and red, also on the battlefield's facing arcs), music and volume, and
   delayed orders. The game has no sound effects, only music.
 - **Credits and sources:** the ancient sources, Natural Earth, the typefaces, the pictures and the music.
+
+## New terrain tiles (v0.18)
+Four photographic tiles (`assets/art/terrain_*.webp`, converted from the uploaded PNGs and listed in the art manifest):
+**meadow** is mixed with the grass for more varied open ground; **hill** (rugged grass) is laid over every hill with a soft edge,
+under the hillshade; **river** (a rocky stream) paints rivers as a band laid along their winding course, mirrored copy by copy so
+it never shows a seam, with its phase tied to the map so neighbouring stretches join up; **ford** carries its track across the
+water and fades into the river on either side. Africa's dry tint applies to all of them; frozen rivers keep the drawn ice.

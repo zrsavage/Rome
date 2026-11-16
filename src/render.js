@@ -34,7 +34,7 @@ const mkCanvas = (w, h) => { const c = document.createElement('canvas'); c.width
 const GRASS_UNITS = 1300;                                         // one copy of the grass photo covers this many battlefield units
 // The grass photo with feathered edges, and its average colour (laid down first so no gap ever shows).
 function featheredGrass(img) {
-  const key = 'grassF'; if (texCache.has(key)) return texCache.get(key);
+  const key = img; if (texCache.has(key)) return texCache.get(key);
   const [c, g] = mkCanvas(img.width, img.height), fx = img.width * 0.14, fy = img.height * 0.14;
   g.drawImage(img, 0, 0);
   g.globalCompositeOperation = 'destination-in';
@@ -46,12 +46,12 @@ function featheredGrass(img) {
   const out = { c, avg: `rgb(${d[0]},${d[1]},${d[2]})` }; texCache.set(key, out); return out;
 }
 // Overlapping, randomly flipped copies of the feathered photo: no seams, and no mirror-symmetry for the eye to catch.
-function paintGrassTexture(g, img, dry, rnd) {
-  const { c: F, avg } = featheredGrass(img), sc = GRASS_UNITS / img.width, w = img.width * sc, h = img.height * sc, stepX = w * 0.72, stepY = h * 0.72;
+function paintGrassTexture(g, img, dry, rnd, img2 = null) {
+  const { c: F1, avg } = featheredGrass(img), F2 = img2 ? featheredGrass(img2).c : null, sc = GRASS_UNITS / img.width, w = img.width * sc, h = img.height * sc, stepX = w * 0.72, stepY = h * 0.72;
   g.fillStyle = avg; g.fillRect(0, 0, WORLD.w, WORLD.h);
   for (let y = -h * 0.4; y < WORLD.h + h * 0.2; y += stepY) for (let x = -w * 0.4; x < WORLD.w + w * 0.2; x += stepX) {
     const jx = (rnd() - 0.5) * stepX * 0.35, jy = (rnd() - 0.5) * stepY * 0.35;
-    g.save(); g.translate(x + jx + w / 2, y + jy + h / 2); g.scale(rnd() < 0.5 ? -1 : 1, rnd() < 0.5 ? -1 : 1); g.drawImage(F, -w / 2, -h / 2, w, h); g.restore();
+    g.save(); g.translate(x + jx + w / 2, y + jy + h / 2); g.scale(rnd() < 0.5 ? -1 : 1, rnd() < 0.5 ? -1 : 1); g.drawImage(F2 && rnd() < 0.45 ? F2 : F1, -w / 2, -h / 2, w, h); g.restore();   // grass and meadow mixed
   }
   // large, soft light and shadow patches
   for (let i = 0; i < Math.round(WORLD.w * WORLD.h / 9e5); i++) {
@@ -64,6 +64,43 @@ function paintGrassTexture(g, img, dry, rnd) {
     g.globalCompositeOperation = 'saturation'; g.fillStyle = 'rgba(128,128,128,0.35)'; g.fillRect(0, 0, WORLD.w, WORLD.h);
     g.globalCompositeOperation = 'soft-light'; g.fillStyle = 'rgba(235,220,190,0.45)'; g.fillRect(0, 0, WORLD.w, WORLD.h); g.restore();
   }
+}
+// A hill: the rugged-ground photo laid over the hill's ellipse with a soft edge, under the hillshade that gives it its height.
+function paintHillTexture(g, f, img, dry) {
+  const pad = 1.25, x0 = f.cx - f.rx * pad, y0 = f.cy - f.ry * pad, w = f.rx * 2 * pad, h = f.ry * 2 * pad, k = Math.min(1, 1400 / Math.max(w, h));
+  const [c, cg] = mkCanvas(w * k, h * k), tw = 900 * k;                     // one copy of the photo covers 900 battlefield units
+  for (let y = 0; y < c.height; y += tw) for (let x = 0; x < c.width; x += tw) cg.drawImage(img, x, y, tw, tw);
+  if (dry) { cg.save(); cg.globalCompositeOperation = 'color'; cg.fillStyle = 'rgba(176,156,118,0.7)'; cg.fillRect(0, 0, c.width, c.height); cg.restore(); }   /* tint first, then cut the soft edge */
+  const r = c.width / 2, gr = cg.createRadialGradient(r, r, 0, r, r, r);          /* a circle, squashed to the hill's ellipse by the transform */
+  gr.addColorStop(0, 'rgba(0,0,0,0.85)'); gr.addColorStop(0.62, 'rgba(0,0,0,0.6)'); gr.addColorStop(0.8, 'rgba(0,0,0,0)');
+  cg.save(); cg.globalCompositeOperation = 'destination-in'; cg.setTransform(1, 0, 0, c.height / c.width, 0, 0); cg.fillStyle = gr; cg.fillRect(0, 0, c.width, c.width); cg.restore();
+  g.drawImage(c, x0, y0, w, h);
+}
+// A river or a ford: a horizontal band of the photo (the water and its rocky banks) laid along the wandering strip in short slices, each
+// shifted with the river's course, then cut to the strip's outline. The ford photo carries its track across the water.
+function paintWaterTexture(g, f, img, strip, ford, riverImg = null) {
+  const pad = 12, h = f.h + pad * 2, seg = 24;
+  const slices = (im, isFord, alpha) => {
+    const b0 = im.height * (isFord ? 0.33 : 0.34), bh = im.height * (isFord ? 0.62 : 0.64) - b0, upp = h / bh;
+    for (let x = f.x; x < f.x + f.w; x += seg) {
+      let sx, sw, flip = false;
+      if (isFord) { sx = (x - f.x) / f.w * im.width; sw = seg / f.w * im.width; }          /* one copy of the ford photo, stretched across the crossing */
+      else {                                                       /* repeats along the river, every other copy mirrored so the joins match; phase from the map position */
+        const tw = im.width * upp, u = ((x % (tw * 2)) + tw * 2) % (tw * 2); flip = u >= tw; sw = Math.max(1, seg / upp);
+        sx = flip ? Math.max(0, (tw * 2 - u) / upp - sw) : Math.min(im.width - sw, u / upp);
+      }
+      const a = alpha ? alpha((x + seg / 2 - f.x) / f.w) : 1; if (a <= 0) continue;
+      const y = f.y + riverShift(f, x) - pad;
+      g.globalAlpha = a;
+      if (flip) { g.save(); g.translate(x + seg + 1, 0); g.scale(-1, 1); g.drawImage(im, sx, b0, sw, bh, 0, y, seg + 1, h); g.restore(); }
+      else g.drawImage(im, sx, b0, sw, bh, x, y, seg + 1, h);
+    }
+    g.globalAlpha = 1;
+  };
+  g.save(); strip(f, 9); g.clip();
+  if (ford && riverImg) { slices(riverImg, false); slices(img, true, (u) => Math.max(0, Math.min(1, (0.5 - Math.abs(u - 0.5)) / 0.22))); }   // river beneath, the crossing faded in towards its middle
+  else slices(img, ford);
+  g.restore();
 }
 const CANOPY_SCALE = 0.42;                                        // battlefield units per pixel of the forest photo (a crown about 30-45 units across)
 // A wood: the canopy photo stamped over the wood's shape (random flips, overlapping), cut to the same ragged outline the rules use, with a soft
@@ -98,9 +135,9 @@ function loneTrees(img) {
 export function paintTerrain(g, scn) {
   const rnd = mulberry32(7), A = WORLD.w * WORLD.h / 1.6e6;          // everything below scales with the size of the battlefield
   const dry = !!scn.dry;                                          // Africa: sun-bleached scrub, not the green fields of Gaul
-  const grassTex = terrainTexture('grass'), forestTex = terrainTexture('forest');
+  const grassTex = terrainTexture('grass'), forestTex = terrainTexture('forest'), meadowTex = terrainTexture('meadow'), hillTex = terrainTexture('hill'), riverTex = terrainTexture('river'), fordTex = terrainTexture('ford');
   g.fillStyle = dry ? '#a99a63' : '#6f9150'; g.fillRect(0, 0, WORLD.w, WORLD.h);
-  if (grassTex) paintGrassTexture(g, grassTex, dry, rnd);
+  if (grassTex) paintGrassTexture(g, grassTex, dry, rnd, meadowTex);
   else {
   // soft colour variation, dry patches, then grass tufts, flowers and stones
   for (let i = 0; i < Math.round(2600 * A); i++) {
@@ -127,6 +164,14 @@ export function paintTerrain(g, scn) {
       for (let x = f.x; x <= f.x + f.w + 0.1; x += 10) { const sh = riverShift(f, x), wob = (vnoise(x / 55 + f.y, f.y) - 0.5) * 6; top.push([x, f.y + sh - pad + wob]); bot.push([x, f.y + f.h + sh + pad - wob * 0.7]); }
       g.beginPath(); g.moveTo(top[0][0], top[0][1]); for (const q of top) g.lineTo(q[0], q[1]); for (let i = bot.length - 1; i >= 0; i--) g.lineTo(bot[i][0], bot[i][1]); g.closePath();
     };
+    if (f.kind === 'hill' && hillTex) { paintHillTexture(g, f, hillTex, dry); continue; }
+    const frozen = scn._wx === 'frost';
+    if ((f.kind === 'water' && riverTex || f.kind === 'ford' && fordTex) && !frozen && f.w > f.h) {   // photographic water (rivers run across the field)
+      g.fillStyle = 'rgba(112,92,52,0.55)'; strip(f, 9); g.fill();
+      paintWaterTexture(g, f, f.kind === 'ford' ? fordTex : riverTex, strip, f.kind === 'ford', riverTex);
+      if (dry) { g.save(); strip(f, 9); g.clip(); g.globalCompositeOperation = 'color'; g.fillStyle = 'rgba(170,150,110,0.35)'; g.fillRect(f.x, f.y - 60, f.w, f.h + 120); g.restore(); }
+      continue;
+    }
     if (f.kind === 'water') {
       const gr = g.createLinearGradient(0, f.y - 30, 0, f.y + f.h + 30); const ice = scn._wx === 'frost'; if (ice) { gr.addColorStop(0, '#9fc0d0'); gr.addColorStop(0.5, '#cfe3ec'); gr.addColorStop(1, '#9fc0d0'); } else { gr.addColorStop(0, '#4d7f9e'); gr.addColorStop(0.5, '#2f6288'); gr.addColorStop(1, '#4d7f9e'); }
       g.fillStyle = 'rgba(112,92,52,0.55)'; strip(f, 7); g.fill();          // muddy banks
