@@ -75,17 +75,32 @@ class MusicPlayer {
 export const music = new MusicPlayer();
 // Game options kept beside the music settings.
 const OKEY = 'legio_opts_v1';
-export const gameOpts = { get messengers() { try { return !!JSON.parse(localStorage.getItem(OKEY)).messengers; } catch { return false; } }, set messengers(v) { try { localStorage.setItem(OKEY, JSON.stringify({ messengers: !!v })); } catch { /* storage unavailable */ } } };
+const readOpts = () => { try { return JSON.parse(localStorage.getItem(OKEY)) || {}; } catch { return {}; } };
+const writeOpt = (k, v) => { const o = readOpts(); o[k] = v; try { localStorage.setItem(OKEY, JSON.stringify(o)); } catch { /* storage unavailable */ } };
+export const gameOpts = {
+  get messengers() { return !!readOpts().messengers; }, set messengers(v) { writeOpt('messengers', !!v); },
+  get textSize() { return readOpts().textSize || 'm'; }, set textSize(v) { writeOpt('textSize', v); applyDisplay(); },
+  get colourBlind() { return !!readOpts().colourBlind; }, set colourBlind(v) { writeOpt('colourBlind', !!v); applyDisplay(); }
+};
+// Text size scales every screen and dialog except the battlefield itself; the colour-blind palette swaps green and red for blue and orange.
+export function applyDisplay() {
+  const z = { s: 0.9, m: 1, l: 1.15, xl: 1.3 }[gameOpts.textSize] || 1;
+  document.documentElement.style.setProperty('--uiz', z);
+  document.body.classList.toggle('cb', gameOpts.colourBlind);
+}
+applyDisplay();
 
 // The speaker button(s) and the little panel they open.
 export function mountMusicUI(buttons) {
   const panel = document.createElement('div'); panel.id = 'musicpanel'; panel.className = 'hidden';
-  panel.innerHTML = `<div class="mp-head"><b>Music and options</b><button id="mp-close" aria-label="Close">x</button></div>
+  panel.innerHTML = `<div class="mp-head"><b>Settings</b><button id="mp-close" aria-label="Close">x</button></div>
+    <label class="mp-row">Text size <select id="mp-ts"><option value="s">Small</option><option value="m">Normal</option><option value="l">Large</option><option value="xl">Largest</option></select></label>
+    <label class="mp-row"><input type="checkbox" id="mp-cb"> Colour-blind palette (blue and orange for green and red)</label>
     <label class="mp-row"><input type="checkbox" id="mp-on"> Play background music</label>
     <label class="mp-row">Volume <input type="range" id="mp-vol" min="0" max="100"></label>
     <div class="mp-now" id="mp-now"></div>
     <label class="mp-row" title="Orders reach a cohort outside the general's command ring after a delay that grows with distance. Takes effect from the next battle."><input type="checkbox" id="mp-msg"> Orders take time to arrive (messengers)</label>
-    <div class="row"><button id="mp-next">Next piece</button><button id="mp-credits">Credits</button></div>`;
+    <div class="row"><button id="mp-next">Next piece</button><button id="mp-credits">Credits and sources</button></div>`;
   document.body.appendChild(panel);
   const $ = (s) => panel.querySelector(s), icon = (on) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/>${on ? '<path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>' : '<path d="M17 9l5 6M22 9l-5 6"/>'}</svg>`;
   let shown = null;
@@ -97,6 +112,8 @@ export function mountMusicUI(buttons) {
   music.onChange(draw); draw(music.state());
   buttons.forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); const r = b.getBoundingClientRect(); panel.classList.toggle('hidden'); panel.style.top = r.top < innerHeight / 2 ? r.bottom + 8 + 'px' : 'auto'; panel.style.bottom = r.top < innerHeight / 2 ? 'auto' : innerHeight - r.top + 8 + 'px'; panel.style.right = r.left > innerWidth / 2 ? innerWidth - r.right + 'px' : 'auto'; panel.style.left = r.left > innerWidth / 2 ? 'auto' : r.left + 'px'; }));
   $('#mp-close').onclick = () => panel.classList.add('hidden');
+  $('#mp-ts').value = gameOpts.textSize; $('#mp-ts').onchange = (e) => { gameOpts.textSize = e.target.value; };
+  $('#mp-cb').checked = gameOpts.colourBlind; $('#mp-cb').onchange = (e) => { gameOpts.colourBlind = e.target.checked; };
   $('#mp-msg').checked = gameOpts.messengers; $('#mp-msg').onchange = (e) => { gameOpts.messengers = e.target.checked; };
   $('#mp-on').onchange = (e) => music.setOn(e.target.checked);
   $('#mp-vol').oninput = (e) => music.setVolume(e.target.value / 100);
@@ -111,7 +128,17 @@ export function musicCredits() {
   const rows = (l) => l.map(t => `<li>${t.title} &mdash; ${t.by}</li>`).join('');
   const el = document.getElementById('confirm'); if (!el) return;
   el.classList.remove('hidden');
-  el.innerHTML = `<div class="box" style="text-align:left;max-width:600px;max-height:80vh;overflow:auto"><h3 style="color:var(--gold);margin:0 0 6px">Music credits</h3>
+  el.innerHTML = `<div class="box" style="text-align:left;max-width:600px;max-height:80vh;overflow:auto"><h3 style="color:var(--gold);margin:0 0 6px">Credits and sources</h3>
+    <h4 class="sect">The history</h4><ul class="small">
+      <li>Caesar, <i>The Gallic War</i> and <i>The Civil War</i>: most battles, places and numbers in the game.</li>
+      <li>The <i>Alexandrian</i>, <i>African</i> and <i>Spanish War</i>, written by Caesar's officers: Pontus, Ruspina, Thapsus, Munda.</li>
+      <li>Plutarch, <i>Lives</i> of Caesar and Pompey; Suetonius, <i>Julius</i>; Cassius Dio, <i>Roman History</i>; Polybius, <i>Histories</i> book 6.</li>
+      <li>Ancient figures are often exaggerated; where sources disagree the game follows Caesar. Some sites (Munda, the cavalry battle) are disputed.</li></ul>
+    <h4 class="sect">Map, type and pictures</h4><ul class="small">
+      <li>Coastlines, rivers and lakes: <b>Natural Earth</b> (public domain).</li>
+      <li>Typefaces: <b>Cinzel</b> and <b>Cardo</b> (SIL Open Font License), via Google Fonts.</li>
+      <li>Camp painting and battlefield ground textures supplied for the game; other pictures are drawn by the game itself.</li></ul>
+    <h4 class="sect">Music</h4>
     <p class="small">Recordings by <b>Kevin MacLeod</b> (<a href="https://incompetech.com" target="_blank" rel="noopener" style="color:var(--gold)">incompetech.com</a>), licensed under Creative Commons: By Attribution 4.0 (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" style="color:var(--gold)">creativecommons.org/licenses/by/4.0</a>). Re-encoded and volume-matched for this game. The Egmont Overture is built from MusOpen source recordings.</p>
     <h4 class="sect">Camp, map and menu</h4><ul class="small">${rows(TRACKS.calm)}</ul><h4 class="sect">Battle</h4><ul class="small">${rows(TRACKS.battle)}</ul>
     <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="primary" id="mc-close">Close</button></div></div>`;

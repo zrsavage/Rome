@@ -447,3 +447,15 @@ Spending it lowers what high standing gives by itself (funds after each battle a
 What the battle brought now comes first: a **Spoils and news** card straight under the outcome lists the spoils and every
 dispatch in one line each, gains in green first and costs (pay, losses, desertion) in red last. The battle report (chart, analysis, advice and key moments) is its own tab, not the default; "Your units" opens first.
 Dispatches are no longer a tab.
+
+## The ending, tips, settings and credits (v0.17)
+- **The Triumph:** after Munda, a full account of your war: a title earned by your record and standing (from "A Survivor of the
+  Wars" to "Pater Patriae"), the totals (battles, enemies fallen, your men lost, prisoners, standing), your best and most decorated
+  cohorts, the officers who marched with you and those who fell, your career, Commentarii entries, every battle by act with its
+  outcome, and what came after (the Ides of March). Totals are kept from this version on.
+- **First-time tips:** one short line the first time each newer mechanic becomes yours (pay, half command slots, captured stores,
+  fieldworks, Veteran specialisation, medici, Letters to Rome, evocati, ballistae, the Commentarii), on the campaign map, one at a time.
+- **Settings** (the speaker button): text size (small, normal, large, largest; scales every screen and dialog, not the battlefield),
+  a colour-blind palette (blue and orange in place of green and red, also on the battlefield's facing arcs), music and volume, and
+  delayed orders. The game has no sound effects, only music.
+- **Credits and sources:** the ancient sources, Natural Earth, the typefaces, the pictures and the music.

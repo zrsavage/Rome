@@ -543,7 +543,8 @@ export class Renderer {
   drawArcs(ctx, u) {
     const R = Math.max(u.w, u.d) / 2 + 26, a1 = Math.acos(0.6), a2 = Math.acos(-0.35);
     const sector = (from, to, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(u.x, u.y); ctx.arc(u.x, u.y, R, u.f + from, u.f + to); ctx.closePath(); ctx.fill(); };
-    sector(-a1, a1, 'rgba(90,210,90,0.17)'); sector(a1, a2, 'rgba(235,205,70,0.2)'); sector(-a2, -a1, 'rgba(235,205,70,0.2)'); sector(a2, Math.PI * 2 - a2, 'rgba(225,70,60,0.22)');
+    const cb = document.body.classList.contains('cb');                // colour-blind palette: blue front, orange rear
+    sector(-a1, a1, cb ? 'rgba(90,160,255,0.22)' : 'rgba(90,210,90,0.17)'); sector(a1, a2, 'rgba(235,205,70,0.2)'); sector(-a2, -a1, 'rgba(235,205,70,0.2)'); sector(a2, Math.PI * 2 - a2, cb ? 'rgba(255,150,40,0.26)' : 'rgba(225,70,60,0.22)');
   }
   // The figures of one unit, kept between frames: removed from the side the last blows came from, added at the rear, and each frame
   // given the formation's places front rank first (within a rank, left to right, so nobody crosses), then eased towards them.
