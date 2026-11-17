@@ -1,5 +1,5 @@
 // Canvas renderer for the battle: terrain, soldier dots, effects, order lines.
-import { WORLD, elevAt, terrainAt, forestIn, marshIn, riverShift, vnoise } from './data.js';
+import { WORLD, elevAt, terrainAt, forestIn, marshIn, cliffIn, coastAt, riverShift, vnoise } from './data.js';
 import { soldierSprite, specialSprite, shieldTile } from './sprites.js';
 import { terrainTexture } from './textures.js';
 import { dragLayout, compass } from './orders.js';
@@ -114,6 +114,48 @@ function paintWaterTexture(g, f, img, strip, ford, riverImg = null) {
 const CANOPY_SCALE = 0.42;                                        // battlefield units per pixel of the forest photo (a crown about 30-45 units across)
 // A wood: the canopy photo stamped over the wood's shape (random flips, overlapping), cut to the same ragged outline the rules use, with a soft
 // edge and a shadow on the ground beneath it.
+// Cliffs: a crag of bare rock, lit from the north-west, with a dark drop on its far side and scree at its foot.
+function paintCliff(g, f, rnd, dry) {
+  const k = 0.5, x0 = f.cx - f.rx * 1.3, y0 = f.cy - f.ry * 1.3, w = f.rx * 2.6, h = f.ry * 2.6, [c, cg] = mkCanvas(w * k, h * k);
+  cg.scale(k, k); cg.translate(-x0, -y0);
+  const base = cg.createLinearGradient(f.cx - f.rx, f.cy - f.ry, f.cx + f.rx, f.cy + f.ry);
+  base.addColorStop(0, dry ? '#cdb892' : '#a9a294'); base.addColorStop(0.55, dry ? '#a48a62' : '#7d776b'); base.addColorStop(1, dry ? '#6e5a3e' : '#4f4a42');
+  cg.fillStyle = base; cg.fillRect(x0, y0, w, h);
+  for (let i = 0; i < f.rx * f.ry / 1500; i++) {                         // facets and ledges
+    const px = f.cx + (rnd() * 2 - 1) * f.rx, py = f.cy + (rnd() * 2 - 1) * f.ry, r = 14 + rnd() * 46, a = rnd() * 3;
+    cg.fillStyle = rnd() < 0.5 ? 'rgba(255,248,230,0.10)' : 'rgba(30,24,18,0.16)'; cg.beginPath(); cg.moveTo(px, py);
+    for (let j = 1; j <= 5; j++) { const t = a + j * 1.25 + rnd() * 0.4, rr = r * (0.6 + rnd() * 0.6); cg.lineTo(px + Math.cos(t) * rr, py + Math.sin(t) * rr * 0.7); } cg.closePath(); cg.fill();
+  }
+  cg.strokeStyle = 'rgba(25,20,15,0.45)'; cg.lineWidth = 2;
+  for (let i = 0; i < f.rx * f.ry / 6000; i++) { let px = f.cx + (rnd() * 2 - 1) * f.rx * 0.9, py = f.cy + (rnd() * 2 - 1) * f.ry * 0.9; cg.beginPath(); cg.moveTo(px, py); for (let j = 0; j < 4; j++) { px += (rnd() - 0.3) * 30; py += (rnd() - 0.2) * 22; cg.lineTo(px, py); } cg.stroke(); }   // cracks
+  const [m, mg] = mkCanvas(c.width, c.height), step = 9;
+  mg.fillStyle = '#fff';
+  for (let yy = 0; yy < m.height; yy += step / 2) for (let xx = 0; xx < m.width; xx += step / 2) if (cliffIn(f, x0 + xx / k, y0 + yy / k)) mg.fillRect(xx - step * 0.4, yy - step * 0.4, step * 0.8, step * 0.8);
+  cg.setTransform(1, 0, 0, 1, 0, 0); cg.globalCompositeOperation = 'destination-in'; cg.filter = 'blur(1.5px)'; cg.drawImage(m, 0, 0); cg.filter = 'none'; cg.globalCompositeOperation = 'source-over';
+  g.save(); g.globalAlpha = 0.55; g.drawImage(silhouette(c), x0 + 22, y0 + 30, w, h); g.restore();         // the drop: a long shadow to the south-east
+  for (let i = 0; i < f.rx * f.ry / 2500; i++) {                         // scree along the foot
+    const a = rnd() * Math.PI * 2, px = f.cx + Math.cos(a) * f.rx * (1.0 + rnd() * 0.15), py = f.cy + Math.sin(a) * f.ry * (1.0 + rnd() * 0.15), r = 2 + rnd() * 5;
+    g.fillStyle = dry ? 'rgba(170,150,115,0.8)' : 'rgba(120,115,105,0.8)'; g.beginPath(); g.ellipse(px, py, r, r * 0.7, rnd() * 3, 0, 7); g.fill();
+  }
+  g.drawImage(c, x0, y0, w, h);
+  g.strokeStyle = 'rgba(20,16,12,0.55)'; g.lineWidth = 2.5;                // a hard edge, so it reads as a drop and not a hill
+  g.beginPath(); let first = true;
+  for (let a = 0; a <= Math.PI * 2 + 0.01; a += 0.05) { let r = 1.25; while (r > 0.2 && !cliffIn(f, f.cx + Math.cos(a) * f.rx * r, f.cy + Math.sin(a) * f.ry * r)) r -= 0.02; const px = f.cx + Math.cos(a) * f.rx * r, py = f.cy + Math.sin(a) * f.ry * r; if (first) { g.moveTo(px, py); first = false; } else g.lineTo(px, py); }
+  g.closePath(); g.stroke();
+}
+// The sea along one side of the field: deep water, a band of surf at the shore and a strip of beach.
+function paintSea(g, f, rnd, frozen) {
+  const L = f.side === 'L', H = WORLD.h, W = WORLD.w, xs = (y, off = 0) => L ? coastAt(f, y) + off : W - coastAt(f, y) - off;
+  const shape = (off) => { g.beginPath(); g.moveTo(L ? -10 : W + 10, -10); for (let y = -10; y <= H + 10; y += 12) g.lineTo(xs(y, off), y); g.lineTo(L ? -10 : W + 10, H + 10); g.closePath(); };
+  g.fillStyle = frozen ? '#d9d2bc' : '#d6c69a'; shape(38); g.fill();                         // beach
+  const gr = g.createLinearGradient(L ? 0 : W, 0, L ? f.depth + f.amp : W - f.depth - f.amp, 0);
+  gr.addColorStop(0, frozen ? '#9db7c2' : '#1d4a5e'); gr.addColorStop(0.7, frozen ? '#b8ccd4' : '#2f6b7c'); gr.addColorStop(1, frozen ? '#c9dbe1' : '#4f8f96');
+  g.fillStyle = gr; shape(0); g.fill();
+  g.strokeStyle = 'rgba(240,248,245,0.75)'; g.lineWidth = 3;                                  // surf
+  for (const off of [-6, -20, -40]) { g.globalAlpha = off === -6 ? 0.9 : 0.35; g.beginPath(); for (let y = 0; y <= H; y += 10) { const x = xs(y, off + Math.sin(y * 0.05 + off) * 4); if (y === 0) g.moveTo(x, y); else g.lineTo(x, y); } g.stroke(); }
+  g.globalAlpha = 1; g.strokeStyle = 'rgba(200,230,235,0.25)'; g.lineWidth = 1.5;
+  for (let i = 0; i < f.depth * H / 14000; i++) { const y = rnd() * H, c = coastAt(f, y), x = L ? rnd() * (c - 30) : W - rnd() * (c - 30), l = 10 + rnd() * 26; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - 2, x + l, y); g.stroke(); }
+}
 // Marsh: dark wet ground with standing pools and clumps of reeds, its ragged outline taken from marshIn.
 function paintMarsh(g, f, rnd, frozen) {
   const k = 0.5, x0 = f.cx - f.rx * 1.3, y0 = f.cy - f.ry * 1.3, w = f.rx * 2.6, h = f.ry * 2.6, [c, cg] = mkCanvas(w * k, h * k);
@@ -218,6 +260,10 @@ export function paintTerrain(g, scn) {
       for (let i = 0; i < 70; i++) { const x = f.x + rnd() * f.w, y = f.y + riverShift(f, x) + rnd() * f.h, rx = 3.5 + rnd() * 5, ry = 2.5 + rnd() * 3; g.fillStyle = 'rgba(40,60,70,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, rx, ry, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(196,184,150,0.8)'; g.beginPath(); g.ellipse(x, y, rx * 0.8, ry * 0.8, rnd() * 3, 0, 7); g.fill(); }
     } else if (f.kind === 'marsh') {
       paintMarsh(g, f, rnd, scn._wx === 'frost');
+    } else if (f.kind === 'cliff') {
+      paintCliff(g, f, rnd, dry);
+    } else if (f.kind === 'sea') {
+      paintSea(g, f, rnd, scn._wx === 'frost');
     } else if (f.kind === 'forest' && forestTex) {
       paintForestTexture(g, f, forestTex, dry, rnd);
     } else if (f.kind === 'forest') {

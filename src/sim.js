@@ -107,7 +107,7 @@ export class Unit {
 
 export class Battle {
   constructor(scn, romeSpecs, opts = {}) {
-    this.scn = scn; setWorld(scn);
+    this.scn = scn; setWorld(scn); this.hasHard = (scn.terrain || []).some(f => f.kind === 'cliff' || f.kind === 'sea');
     this.wxKey = (opts && opts.weather && WEATHER[opts.weather]) ? opts.weather : 'clear'; this.wx = WEATHER[this.wxKey]; scn._wx = this.wxKey; scn.flood = 0;
     this.fogOn = this.wxKey === 'fog' || scn.fog === true || (!!scn.act && scn.id !== 'prologue' && scn.fog !== false);   // you must find the enemy in every real battle
     this.diff = DIFFICULTY[opts.difficulty || 'normal'];
@@ -185,6 +185,7 @@ export class Battle {
       let x = e.x + ((i % 8) - (per - 1) / 2) * 115 * (n > 1 ? 1 : 0), y = e.y - row * 110 * (n > 1 ? 1 : 0);
       if (y < 40) y = e.y + row * 110; x = Math.max(40, Math.min(WORLD.w - 40, x)); y = Math.min(WORLD.h - 40, y);
       const ai = { ...e.ai }; if (ai.delay != null) ai.delay += (i % 4) * 1.5;
+      if (this.hasHard && this.blockedAt(x, y)) { const N = this.navGrid(), c = N && this.navFree(N, Math.floor(x / N.C), Math.floor(y / N.C)); if (c) { x = c[0] * N.C + N.C / 2; y = c[1] * N.C + N.C / 2; } }
       const u = new Unit({ side: 'gaul', type: e.type, men, x, y, ai, stance: e.ai && e.ai.kind === 'idle' ? 'hold' : 'aggressive', moraleBonus: this.diff.enemyMorale + (this.style === 'stubborn' ? 5 : 0) + 5 * (this.replay || 0), xp: 40 + (this.diff.enemyMult > 1 ? 60 : 0) });
       if (u.type.cat === 'cav') u.cycle = this.aiLevel >= 2;
       if (this.fogOn) { u.spotted = false; u.seenUntil = this.t === 0 && this.scouted ? 40 : 0; if (u.seenUntil) u.spotted = true; }   // scouts have told you where they are, for a while
@@ -540,7 +541,7 @@ export class Battle {
   endDeploy() { if (!this.deploying) return; this.deploying = false; for (const u of this.units) if (u.side === 'rome') { u.post = { x: u.x, y: u.y }; u.order = { kind: 'none' }; } if (this.general) this.general.goal = null; }
   deployAt(u, x, y, f) {
     const z = this.deployZone; x = clamp(x, z.x0, z.x1); y = clamp(y, z.y0, z.y1);
-    if (this.waterAt(x, y)) return false;
+    if (this.blockedAt(x, y)) return false;
     u.x = x; u.y = y; if (f != null) u.f = f; u.post = { x, y }; u.order = { kind: 'none' }; u.updateDims(); if (this.works) this.works = this.works.filter(w => w.id !== u.id); return true;   // moved: its works stay behind, so they are filled in
   }
   setMove(u, x, y, tf = null, ignore = false, sprint = false) { if (this.deploying && u.side === 'rome') { this.deployAt(u, x, y, tf); return; } if (!u.active) return; u.queue = []; u.order = { kind: 'move', x, y, tf, ignore, sprint: sprint && (u.side === 'gaul' || this.orders.has('sprint')) }; u.post = { x, y }; }
@@ -604,7 +605,7 @@ export class Battle {
   // ---------- command ----------
   cmdNow() { return this.cmdR * (this.general && this.general.wound > 0 ? 0.5 : 1); }
   inCommand(u) { const g = this.general; return u.side !== 'rome' || !g || Math.hypot(u.x - g.x, u.y - g.y) <= this.cmdNow() || this.legates.some(l => l.legion === u.legion && Math.hypot(u.x - l.x, u.y - l.y) <= l.r); }
-  moveGeneral(x, y) { if (this.deploying && this.general) { const z = this.deployZone; if (!this.waterAt(x, y)) { this.general.x = clamp(x, z.x0, z.x1); this.general.y = clamp(y, z.y0, z.y1); this.general.goal = null; } return; } if (this.general) this.general.goal = { x: clamp(x, 15, WORLD.w - 15), y: clamp(y, 15, WORLD.h - 15) }; }
+  moveGeneral(x, y) { if (this.deploying && this.general) { const z = this.deployZone; if (!this.blockedAt(x, y)) { this.general.x = clamp(x, z.x0, z.x1); this.general.y = clamp(y, z.y0, z.y1); this.general.goal = null; } return; } if (this.general) this.general.goal = { x: clamp(x, 15, WORLD.w - 15), y: clamp(y, 15, WORLD.h - 15) }; }
   stepGeneral(dt) {
     const g = this.general; if (!g) return;
     if (this.rallyCd > 0) this.rallyCd -= dt;
@@ -1071,7 +1072,7 @@ export class Battle {
 
   // ---------- main step ----------
   update(dt) {
-    if (this.result) return;
+    if (this.result) return; this._navBudget = 8;
     this.t += dt; this.sampleReport(); this.recordFrame(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt); this.updateRotation(); this.updateAutoDrills(); this.updateTwist(); this.runPending(); this.updateSupply(dt); this.updateMedici(dt); this.watchTenth(); this.stepLegates(dt);
     for (const ev of this.events) if (!ev.done && this.t >= ev.at) { ev.done = true; this.runEvent(ev); }
     for (const r of this.reinf) if (!r.done && this.t >= r.at) {
@@ -1081,7 +1082,7 @@ export class Battle {
         const total = Math.round(r.unit.men * Math.max(1, Math.pow(this.powerScale, 0.6))), cnt = Math.min(6, Math.max(1, Math.ceil(total / 480)));
         for (let i = 0; i < cnt; i++) {
           const men = Math.round(total / cnt), u = new Unit({ ...r.unit, x: r.unit.x + (i - (cnt - 1) / 2) * 130, men, maxMen: Math.max(men, r.unit.maxMen || 0), name: cnt > 1 ? `${r.unit.name || 'Reserve'} ${i + 1}` : r.unit.name, side: 'rome', xp: r.unit.xp ?? 30, drill: 25, moraleBonus: this.romeBonus, stance: 'aggressive' });
-          this.units.push(u); this.startRome += u.men;
+          this.unstick(u); this.units.push(u); this.startRome += u.men;
           const n = this.nearestEnemy(u); if (n) this.setAttack(u, n.e);
         }
         if (r.msg) this.say(r.msg, 'good');
@@ -1257,16 +1258,28 @@ export class Battle {
     } else u.state = 'idle';
 
     if (engaged && !breakoff) {
-      // face the weighted centre of everything pressing on the unit, not whichever enemy is nearest this instant (that flips every tick)
+      // face the weighted centre of everything pressing on the unit, not whichever enemy is nearest this instant (that flips every tick).
+      // A unit locked in melee turns deliberately: the direction it wants is smoothed over about a second, it only starts to turn once that is
+      // more than ~13 degrees off, and once turning it settles fully, so a line in contact holds still instead of twitching.
       const act = u.contacts.filter(e => e.active); let sx = 0, sy = 0, sw = 0;
       for (const e of act) { const w = 1 / (Math.max(0, this.gap(u, e)) + 12), bg = Math.atan2(e.y - u.y, e.x - u.x); sx += Math.cos(bg) * w; sy += Math.sin(bg) * w; sw += w; }
-      if (sw > 0) { const mag = Math.hypot(sx, sy) / sw; if (mag > 0.35) this.faceSmooth(u, Math.atan2(sy, sx), dt, 0.8); else if (u.faceId == null || !act.some(e => e.id === u.faceId)) u.faceId = act.sort((a, b) => this.gap(u, a) - this.gap(u, b))[0].id; }
-      if (sw > 0 && Math.hypot(sx, sy) / sw <= 0.35) { const f = this.byId(u.faceId); if (f) this.faceSmooth(u, Math.atan2(f.y - u.y, f.x - u.x), dt, 0.8); }
+      if (sw > 0) {
+        const mag = Math.hypot(sx, sy) / sw; u.mWeighted = u.mWeighted ? mag > 0.25 : mag > 0.45;       // hysteresis: no flipping between the two ways of choosing
+        let want = null;
+        if (u.mWeighted) want = Math.atan2(sy, sx);
+        else { if (u.faceId == null || !act.some(e => e.id === u.faceId)) u.faceId = act.slice().sort((a, b) => this.gap(u, a) - this.gap(u, b))[0].id; const f = this.byId(u.faceId); if (f) want = Math.atan2(f.y - u.y, f.x - u.x); }
+        if (want != null) {
+          u.mF = u.mF == null ? want : norm(u.mF + norm(want - u.mF) * Math.min(1, dt * 1.2));
+          const off = Math.abs(norm(u.mF - u.f));
+          if (off > (u.mTurn ? 0.04 : 0.23)) { u.mTurn = true; const m = u.type.turn * (0.7 + u.drill / 200) * dt * 0.6; u.f = norm(u.f + clamp(norm(u.mF - u.f), -m, m)); } else u.mTurn = false;
+        }
+      }
     } else if (!engaged && u.side === 'rome' && u.order.kind === 'none' && !goal && !backing && !(t.cat === 'ranged' && u.ammo > 0 && !u.holdFire && (this.nearestEnemy(u) || { gap: 1e9 }).gap < t.range * 1.3)) {
       // idle troops dress their ranks: face the enemy as one line (or square up with the neighbours) instead of each turning on its own
       const fa = this.front && this.front.rome;
       if (fa != null) this.faceSmooth(u, fa, dt, 0.5);
     }
+    if (!engaged) { u.mF = null; u.mTurn = false; }
     u.fighting = (engaged && (!breakoff || u.blocked)) || pursuit && !breakoff;
     if (u.fighting) u.state = 'fighting';
     // fatigue
@@ -1292,7 +1305,7 @@ export class Battle {
     const h = u.f;
     const sp = this.speedOf(u) * 1.15;
     let rx = u.x + Math.cos(h) * sp * dt, ry = u.y + Math.sin(h) * sp * dt;
-    if (this.waterAt(rx, ry) && !this.waterAt(u.x, u.y)) { if (!this.waterAt(rx, u.y)) ry = u.y; else if (!this.waterAt(u.x, ry)) rx = u.x; else { rx = u.x; ry = u.y; } }   // routers cannot swim either
+    if (this.blockedAt(rx, ry) && !this.blockedAt(u.x, u.y)) { if (!this.blockedAt(rx, u.y)) ry = u.y; else if (!this.blockedAt(u.x, ry)) rx = u.x; else { rx = u.x; ry = u.y; u.fleeT = 0; } }   // routers cannot swim or climb either
     u.x = rx; u.y = ry;
     u.state = 'routing';
     u.dustCd = (u.dustCd || 0) - dt; if (u.dustCd <= 0 && this.fx.length < 450) { u.dustCd = 0.12; this.fx.push({ kind: 'dust', x: u.x + (this.rand() - 0.5) * u.w * 0.7, y: u.y + (this.rand() - 0.5) * u.d * 0.7, life: 1.3, max: 1.3, r: 4 + this.rand() * 4 }); }   // routers kick up a cloud
@@ -1348,8 +1361,92 @@ export class Battle {
     if (u.x < -80 || u.x > WORLD.w + 80 || u.y < -80 || u.y > WORLD.h + 80) { u.state = 'gone'; u.fled = true; }
   }
   waterAt(x, y) { return terrainAt(this.scn, x, y).kind === 'water'; }
+  // cliffs and the sea: nobody enters them, not even in flight
+  // a unit that would stand in a cliff, the sea or a river is set down on the nearest open ground
+  unstick(u) { if (!this.blockedAt(u.x, u.y)) return; const N = this.navGrid() || { C: 40, gw: Math.ceil(WORLD.w / 40), gh: Math.ceil(WORLD.h / 40), blk: null };
+    if (N.blk) { const c = this.navFree(N, clamp(Math.floor(u.x / N.C), 0, N.gw - 1), clamp(Math.floor(u.y / N.C), 0, N.gh - 1)); if (c) { u.x = c[0] * N.C + N.C / 2; u.y = c[1] * N.C + N.C / 2; } return; }
+    for (let r = 40; r < 800; r += 40) for (let a = 0; a < 6.28; a += 0.5) { const x = u.x + Math.cos(a) * r, y = u.y + Math.sin(a) * r; if (!this.blockedAt(x, y)) { u.x = x; u.y = y; return; } } }
+  hardAt(x, y) { if (!this.hasHard) return false; const k = terrainAt(this.scn, x, y).kind; return k === 'cliff' || k === 'sea'; }
+  blockedAt(x, y) { const k = terrainAt(this.scn, x, y).kind; return k === 'water' || k === 'cliff' || k === 'sea'; }
+  // ---- pathfinding round cliffs, the sea and rivers (only on fields that have cliffs or a coast; elsewhere the ford logic below serves) ----
+  // A grid of 40-pixel cells: blocked cells, cells too near a cliff for a cohort's width (avoided unless the start or the goal is there),
+  // and slow ground (woods, marsh) that costs more to cross. A* over it, then the path is pulled straight wherever the way is clear.
+  navGrid() {
+    if (this._nav !== undefined) return this._nav;
+    if (!this.hasHard) return (this._nav = null);
+    const C = 40, gw = Math.ceil(WORLD.w / C), gh = Math.ceil(WORLD.h / C), blk = new Uint8Array(gw * gh), near = new Uint8Array(gw * gh), cost = new Float32Array(gw * gh);
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) { const t = terrainAt(this.scn, x * C + C / 2, y * C + C / 2), i = y * gw + x; blk[i] = (t.kind === 'water' || t.kind === 'cliff' || t.kind === 'sea') ? 1 : 0; cost[i] = t.kind === 'marsh' ? 2.2 : t.kind === 'forest' ? 1.7 : t.kind === 'ford' ? 1.3 : 1; }
+    for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) if (blk[y * gw + x]) for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const xx = x + dx, yy = y + dy; if (xx >= 0 && yy >= 0 && xx < gw && yy < gh) near[yy * gw + xx] = 1; }
+    return (this._nav = { C, gw, gh, blk, near, cost });
+  }
+  // the nearest open cell to a point (a goal inside a cliff becomes the foot of it)
+  navFree(N, cx, cy) {
+    const ok = (x, y) => x >= 0 && y >= 0 && x < N.gw && y < N.gh && !N.blk[y * N.gw + x];
+    if (ok(cx, cy)) return [cx, cy];
+    for (let r = 1; r < 25; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; if (ok(cx + dx, cy + dy)) return [cx + dx, cy + dy]; }
+    return null;
+  }
+  // is the straight way clear (no blocked cell, and no cliff-side cell away from both ends)?
+  navClear(N, x0, y0, x1, y1) {
+    const d = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.ceil(d / (N.C * 0.5)));
+    const sx = Math.floor(x0 / N.C), sy = Math.floor(y0 / N.C), ex = Math.floor(x1 / N.C), ey = Math.floor(y1 / N.C);
+    for (let i = 1; i <= n; i++) {
+      const cx = Math.floor((x0 + (x1 - x0) * i / n) / N.C), cy = Math.floor((y0 + (y1 - y0) * i / n) / N.C); if (cx < 0 || cy < 0 || cx >= N.gw || cy >= N.gh) return false;
+      const k = cy * N.gw + cx; if (N.blk[k]) return false;
+      if (N.near[k] && Math.max(Math.abs(cx - sx), Math.abs(cy - sy)) > 3 && Math.max(Math.abs(cx - ex), Math.abs(cy - ey)) > 3) return false;
+    }
+    return true;
+  }
+  navPath(x0, y0, x1, y1) {
+    const N = this.navGrid(); if (!N) return null;
+    const s0 = this.navFree(N, clamp(Math.floor(x0 / N.C), 0, N.gw - 1), clamp(Math.floor(y0 / N.C), 0, N.gh - 1)), g0 = this.navFree(N, clamp(Math.floor(x1 / N.C), 0, N.gw - 1), clamp(Math.floor(y1 / N.C), 0, N.gh - 1));
+    if (!s0 || !g0) return null;
+    const W = N.gw, start = s0[1] * W + s0[0], goal = g0[1] * W + g0[0], gx = g0[0], gy = g0[1];
+    const gS = new Float32Array(W * N.gh).fill(1e9), from = new Int32Array(W * N.gh).fill(-1), shut = new Uint8Array(W * N.gh);
+    const heap = [], push = (i, f) => { heap.push([f, i]); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top[1]; };
+    const h = (i) => { const x = i % W, y = (i / W) | 0; return Math.hypot(x - gx, y - gy); };
+    gS[start] = 0; push(start, h(start)); let found = false, steps = 0;
+    while (heap.length && steps++ < 40000) {
+      const i = pop(); if (shut[i]) continue; shut[i] = 1; if (i === goal) { found = true; break; }
+      const x = i % W, y = (i / W) | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue; const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= N.gh) continue;
+        const j = yy * W + xx; if (N.blk[j] || shut[j]) continue;
+        if (dx && dy && (N.blk[y * W + xx] || N.blk[yy * W + x])) continue;            // no cutting a corner of a cliff
+        const nearPen = N.near[j] && Math.max(Math.abs(xx - gx), Math.abs(yy - gy)) > 3 && Math.max(Math.abs(xx - s0[0]), Math.abs(yy - s0[1])) > 3 ? 3 : 0;
+        const c = gS[i] + (dx && dy ? 1.414 : 1) * (N.cost[j] + nearPen);
+        if (c < gS[j]) { gS[j] = c; from[j] = i; push(j, c + h(j)); }
+      }
+    }
+    if (!found) return null;
+    const cells = []; for (let i = goal; i !== -1; i = from[i]) cells.push(i); cells.reverse();
+    const pts = cells.map(i => ({ x: (i % W) * N.C + N.C / 2, y: ((i / W) | 0) * N.C + N.C / 2 }));
+    pts[pts.length - 1] = this.blockedAt(x1, y1) ? pts[pts.length - 1] : { x: x1, y: y1 };
+    const out = []; let a = { x: x0, y: y0 }, k = 0;                                        // pull the string: keep only the corners
+    while (k < pts.length - 1) { let far = k + 1; for (let j = pts.length - 1; j > k + 1; j--) if (this.navClear(N, a.x, a.y, pts[j].x, pts[j].y)) { far = j; break; } out.push(pts[far]); a = pts[far]; k = far; }
+    if (!out.length) out.push(pts[pts.length - 1]);
+    return out;
+  }
+  // the next point to walk to on the way to g, round whatever is in the way
+  navGoal(u, g) {
+    const N = this.navGrid(); if (!N) return g;
+    if (Math.hypot(g.x - u.x, g.y - u.y) < 30) return g;
+    let P = u.nav;
+    if (P && (Math.hypot(P.gx - g.x, P.gy - g.y) > 60 || this.t > P.until)) P = u.nav = null;
+    if (!P) {
+      if (this.navClear(N, u.x, u.y, g.x, g.y) && !this.blockedAt(g.x, g.y)) return g;
+      if ((this._navBudget = (this._navBudget ?? 8)) <= 0) return g;                // a few new routes a tick; the rest next tick
+      this._navBudget--;
+      const pts = this.navPath(u.x, u.y, g.x, g.y); if (!pts) return g;
+      P = u.nav = { gx: g.x, gy: g.y, pts, i: 0, until: this.t + 6 };
+    }
+    while (P.i < P.pts.length - 1 && (Math.hypot(P.pts[P.i].x - u.x, P.pts[P.i].y - u.y) < 40 || this.navClear(N, u.x, u.y, P.pts[P.i + 1].x, P.pts[P.i + 1].y))) P.i++;
+    return P.pts[P.i];
+  }
   // Where a unit should actually head: straight for its goal, unless a river lies between, in which case via the nearest ford.
   pathGoal(u, g) {
+    if (this.hasHard) return this.navGoal(u, g);
     const fords = this._fords || (this._fords = this.scn.terrain.filter(f => f.kind === 'ford'));
     if (!fords.length) return g;
     const dx = g.x - u.x, dy = g.y - u.y, d = Math.hypot(dx, dy); if (d < 60) return g;
@@ -1460,14 +1557,15 @@ export class Battle {
         let found = false;
         for (const sd of [side, -side]) { for (const a of [0.45, 0.9, 1.35]) {                                 // the preferred side first, then the other
           const ah = h + a * sd, tx = u.x + Math.cos(ah) * stepF, ty = u.y + Math.sin(ah) * stepF;
-          if (!blocker(tx, ty) && !this.waterAt(tx, ty)) { nx = tx; ny = ty; hh0 = ah; u.steerSign = sd; u.steerUntil = this.t + 1.2; u.passing = false; found = true; break; }
+          if (!blocker(tx, ty) && !this.blockedAt(tx, ty)) { nx = tx; ny = ty; hh0 = ah; u.steerSign = sd; u.steerUntil = this.t + 1.2; u.passing = false; found = true; break; }
         } if (found) break; }
         if (!found && u.order.kind === 'attack' && u.side !== 'rome') { u.blocked = true; u.blockedAtt = this.t; u.runT = 0; return 0; }   // hemmed in by friends: wait, do not climb over them
       }
     }
-    if (u.order.kind !== 'retreat' && this.waterAt(nx, ny) && !this.waterAt(u.x, u.y)) {   // deep water cannot be crossed: slide along the bank
+    const bad = (x, y) => this.hardAt(x, y) || (u.order.kind !== 'retreat' && this.waterAt(x, y));
+    if (bad(nx, ny) && !(this.hardAt(u.x, u.y) || this.waterAt(u.x, u.y))) {   // deep water, cliffs and the sea cannot be crossed: slide along the edge
       let ok = false; const sg = u.slideSign || 1;
-      for (const a of [0.6, -0.6, 1.2, -1.2, 1.8, -1.8]) { const hh = h + a * sg, tx = u.x + Math.cos(hh) * step, ty = u.y + Math.sin(hh) * step; if (!this.waterAt(tx, ty)) { nx = tx; ny = ty; ok = true; if (a < 0) u.slideSign = -sg; break; } }
+      for (const a of [0.6, -0.6, 1.2, -1.2, 1.8, -1.8]) { const hh = h + a * sg, tx = u.x + Math.cos(hh) * step, ty = u.y + Math.sin(hh) * step; if (!bad(tx, ty)) { nx = tx; ny = ty; ok = true; if (a < 0) u.slideSign = -sg; break; } }
       if (!ok) { u.blocked = true; return 0; }
     }
     for (const e of this.units) {
@@ -1492,7 +1590,7 @@ export class Battle {
       const fx = Math.cos(a.f) + Math.cos(b.f), fy = Math.sin(a.f) + Math.sin(b.f), fl = Math.hypot(fx, fy) || 1, lx = -fy / fl, ly = fx / fl;   // the shared line
       let side = (b.x - a.x) * lx + (b.y - a.y) * ly; if (Math.abs(side) < 0.5) side = a.id < b.id ? 1 : -1;
       const sgn = Math.sign(side), push = Math.min(-g, 14 * dt) / 2;
-      const ok = (u, k) => !this.waterAt(u.x + lx * k, u.y + ly * k);
+      const ok = (u, k) => !this.blockedAt(u.x + lx * k, u.y + ly * k);
       // a unit squeezed between two neighbours keeps going the way it was first pushed for a moment, instead of being jostled back and forth
       const go = (u, dir) => { const d = Math.sign(lx * dir || ly * dir); if (this.t < (u.sepT || 0) && u.sepD && u.sepD !== d) return false; u.sepD = d; u.sepT = this.t + 0.6; return true; };
       if (ok(a, -sgn * push) && go(a, -sgn)) { a.x -= lx * sgn * push; a.y -= ly * sgn * push; }

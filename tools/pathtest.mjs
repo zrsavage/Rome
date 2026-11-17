@@ -32,7 +32,7 @@ for (const [name, cs] of Object.entries(CASES)) {
   const U = {}; for (const u of b.units) U[u.name] = u;
   cs.orders(b, U);
   const movers = b.units.filter(u => u.order.kind === 'move' || (b.pending || []).some(p => p.u === u)), track = new Map();
-  const goalOf = (u) => u.goalPost && u.order.kind === 'none' ? { x: u.x, y: u.y, post: true } : u.order.kind === 'move' ? { x: u.order.x, y: u.order.y } : u.order.kind === 'attack' && u.side === 'rome' ? { att: true } : null;
+  const goalOf = (u) => u.side !== 'rome' ? null : u.goalPost && u.order.kind === 'none' ? { x: u.x, y: u.y, post: true } : u.order.kind === 'move' ? { x: u.order.x, y: u.order.y } : u.order.kind === 'attack' && u.side === 'rome' ? { att: true } : null;
   const T = 120, dt = 0.1; let t = 0;
   for (const u of b.units) track.set(u, { goal: null, arrived: null, rev: 0, lastV: null, path: 0 });
   while (t < T) {

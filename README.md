@@ -492,6 +492,10 @@ Battlefields differ in size and proportion: wide, shallow plains where there is 
 approach; cramped ground for ambushes; a great field for the set pieces. Many are not open rectangles: woods or marsh down both sides make
 a valley, close one flank, narrow the field halfway into a pass, or fill the corners. Marsh slows men to a crawl, blunts charges and
 breaks formations, as woods do; enemy wings sent round a flank have to go through it or round it. The briefing describes the ground.
+Some fields have ground no one can enter: cliffs that wall in a valley or narrow the way into a pass (Gergovia, Zela, the hill fort,
+Nicopolis, Munda), and the sea along one flank (Utica, Ruspina). Units find their way round them (A* over a 40-pixel grid, kept clear
+of the cliff foot, preferring open ground to woods and marsh), and nobody, fleeing or not, ever stands in them.
+Units locked in melee hold their facing steady: the direction they face is smoothed and they only turn once it is well off.
 
 ## Enemy plans, bonus goals and surprises
 Before each battle the enemy commander picks a plan that suits his habits: a head-on assault, a double envelopment, a feigned flight
