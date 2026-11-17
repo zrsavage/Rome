@@ -136,6 +136,7 @@ export class Camp {
   bestLeader(h, key) { let best = 'self', top = -1; for (const id of ['self', ...this.c.officers.filter(o => o.alive).map(o => o.id)]) { const p = planDrill(this.c, h, key, id); if (p.xp + p.dr > top + 0.01) { top = p.xp + p.dr; best = id; } } return best; }
   forageYield(kind) { const lg = bestOfficer(this.c, 'logistics'), fm = modsOf(this.c).forage, k = 1; return Math.round((kind === 'wide' ? 70 + 12 * lg : kind === 'requisition' ? 60 + 10 * lg : 35 + 8 * lg) * fm * k); }
   grainPrice() { return Math.round(90 * (1 + 0.25 * this.used('buy'))); }
+  sellPrice() { return Math.max(10, Math.round(45 * Math.pow(0.8, this.used('sell')))); }   // 60 supplies: half the merchants' price, 20% less each time in the same camp
   tributeYield() { return Math.round((90 + 15 * bestOfficer(this.c, 'diplomacy')) * (hasPerk(this.c, 'tribute') ? 1.3 : 1) * Math.pow(0.6, this.used('tribute'))); }
   restCost() { return dailyFood(this.c); }
   scoutCost() { return hasPerk(this.c, 'spymaster') ? 0 : 40; }
@@ -173,6 +174,12 @@ export class Camp {
   // country within reach has been searched); merchants can be paid again, but raise their price each time.
   forageDo(kind) {
     const c = this.c, lg = bestOfficer(c, 'logistics'); let got = 0, extra = '', text;
+    if (kind === 'sell') {
+      const pr = this.sellPrice(); if (c.supplies < 60) return;
+      c.supplies -= 60; c.gold += pr; this.bump('sell');
+      const left = c.supplies - rationsDue(c, currentScn(c));
+      this.note(`Sold 60 supplies to the merchants for ${pr} denarii.${left < 0 ? ' You no longer have enough for the march!' : ''}`, left < 0 ? 'bad' : 'good'); this.done(); return;
+    }
     if (kind === 'buy') { const pr = this.grainPrice(); if (c.gold < pr) return; c.gold -= pr; got = 60; this.bump('buy'); text = `Merchants sell you grain for ${pr} denarii`; }
     else {
       if (this.used('f_' + kind)) return;                               // one party of each kind between battles
@@ -542,7 +549,8 @@ export class Camp {
           ['cautious', 'Cautious sweep', 'Foragers stay close to camp.', [...sent('cautious'), [`+${this.forageYield('cautious')} supplies`, 'g'], ['no risk', '']], !this.used('f_cautious')],
           ['wide', 'Wide sweep', 'Parties range far across the countryside.', [...sent('wide'), [`+${this.forageYield('wide')} supplies`, 'g'], [`${Math.round((0.35 - 0.03 * lg) * 100)}% risk of an ambush`, 'b']], !this.used('f_wide')],
           ['requisition', 'Requisition from the villages', 'Take grain from nearby Gallic farms by order.', [...sent('requisition'), [`+${this.forageYield('requisition')} supplies`, 'g'], ['goodwill -1', 'b'], ['no ambush', '']], !this.used('f_requisition')],
-          ['buy', 'Buy grain from merchants', 'Pay traders in coin and ask no questions. They raise the price each time.', [['+60 supplies', 'g'], [`${gp} denarii`, 'b'], ['no risk', '']], c.gold >= gp]
+          ['buy', 'Buy grain from merchants', 'Pay traders in coin and ask no questions. They raise the price each time.', [['+60 supplies', 'g'], [`${gp} denarii`, 'b'], ['no risk', '']], c.gold >= gp],
+          ['sell', 'Sell grain to merchants', 'Turn spare supplies into coin. They pay half what they charge, and less each time.', [[`+${this.sellPrice()} denarii`, 'g'], ['-60 supplies', 'b'], ...(c.supplies - 60 < due ? [['leaves too little for the march', 'b']] : [])], c.supplies >= 60]
         ];
         return `<div class="advicebox"><b>The quartermaster's advice.</b> ${esc(adv)}</div><div class="sumtiles"><div><b>${c.supplies}</b><span>Supplies</span></div><div><b>${food}</b><span>Eaten per day</span></div><div><b>${due}</b><span>Rations for the march</span></div><div><b>${c.favour > 0 ? '+' : ''}${c.favour}</b><span>Goodwill</span></div></div>
           <h4 class="sect">How will you feed the army?</h4><div class="regimens two">${opts.map(([k, n, t, effs, ok]) => `<button class="regimen" data-forage="${k}" ${act && ok ? '' : 'disabled'}><b>${n}</b><span class="t">${t}</span><div class="eff">${effs.map(([x, cl]) => `<span class="${cl}">${x}</span>`).join('')}</div></button>`).join('')}</div>${note}`; }
@@ -578,7 +586,7 @@ export class Camp {
         const decision = o1 ? `<div class="decision"><div class="dhead">${flagIcon()}<div><b>${esc(rankFor(o1))} ${esc(o1.name)}</b> has earned an advancement <span class="pill">step ${pend.row + 1} of ${officerTrack(o1).length}</span><div class="small muted">${esc(OFFICER_KINDS[officerKind(o1)])}: pick one; the other is lost.${waiting.length > 1 ? ` ${waiting.length - 1} more decision${waiting.length > 2 ? 's' : ''} after this.` : ''}</div></div></div>
           <div class="choice2">${pend.options.map(k => `<button class="regimen" data-pick="officer:${o1.id}:${k.id}"><b>${esc(k.name)}</b><span class="t">${esc(k.text)}</span></button>`).join('<div class="or">or</div>')}</div></div>`
           : `<div class="advicebox">No advancement is waiting. An officer earns one step on his ladder each time he gains a level.</div>`;
-        const rows = c.officers.map(o => { const kind = officerKind(o), track = officerTrack(o), got = track.map(r => r.find(k => (o.perks || []).includes(k.id))).filter(Boolean), nx = o.alive ? track.findIndex(r => !r.some(k => (o.perks || []).includes(k.id))) : -1;
+        const rows = c.officers.filter(o => o.alive).map(o => { const kind = officerKind(o), track = officerTrack(o), got = track.map(r => r.find(k => (o.perks || []).includes(k.id))).filter(Boolean), nx = o.alive ? track.findIndex(r => !r.some(k => (o.perks || []).includes(k.id))) : -1;
           return `<tr class="${o.alive ? '' : 'dead'}"><td><div class="cellflex"><img class="portrait" alt="" src="${artSrc('officer', o.id, 80, 100, { title: o.name, rank: o.rank })}"><div>${esc(rankFor(o))} ${esc(o.name)} <span class="muted small">- ${esc(OFFICER_KINDS[kind])}, level ${o.level}</span>${o.alive ? ` <span class="pill" title="How well his unit fights and holds">${LEAD[leadGrade(o)].name} leader</span>` : ''}${officerTags(c, o)}
             <div class="small" style="margin-top:3px">${got.length ? got.map(k => `<span class="pill" title="${esc(k.text)}">${esc(k.name)}</span>`).join(' ') : '<span class="muted">No advancements yet.</span>'}${o.alive && nx >= 0 && !officerPending(o) ? ` <span class="muted">Next choice at level ${nx + 1}: ${track[nx].map(k => esc(k.name)).join(' or ')}.</span>` : ''}</div></div></div></td>
             <td class="ocmd">${!o.alive ? '<span class="muted small">fallen</span>' : legionOfLegate(c, o.id) ? `<span class="small">Legate of Legio ${legionsOf(c).names[legionOfLegate(c, o.id)] || legionOfLegate(c, o.id)}</span>` : `<label class="small muted">Commands<br><select data-oassign="${o.id}">${cmdOpts(o)}</select></label>`}</td></tr>`; }).join('');

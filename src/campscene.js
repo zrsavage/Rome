@@ -11,7 +11,7 @@ export const BUILDINGS = [
     intro: ['Your cohorts improve by <b>drilling</b>. Each drill costs supplies; nothing in camp is limited by time.', 'The best leader for each drill, you or one of your officers, takes it automatically.', 'Experienced, well-drilled units fight better and break less easily.'] },
   { id: 'barracks', name: 'Barracks', sub: 'Rest, recruit, raise units', x: 190, y: 150,
     intro: ['Rest tired units, recruit replacements and fortify the camp.', 'As you win battles your command grows: <b>raise new units</b> here.'] },
-  { id: 'depot', name: 'Supply Depot', sub: 'Forage for food', x: 810, y: 470,
+  { id: 'depot', name: 'Supply Depot', sub: 'Forage, buy and sell grain', x: 810, y: 470,
     intro: ['Your army eats on the march to every battle. Send <b>foraging parties</b> to refill your supplies.', 'A cautious sweep is safe. A wide sweep brings back more but risks an ambush.'] },
   { id: 'officers', name: "Officers' Tent", sub: 'Skills and assignments', x: 810, y: 150,
     intro: ['Each time an officer gains a level he earns <b>one advancement</b>: a choice between two improvements. A raised flag over this tent means one is waiting.', 'Attach an officer to a unit to help it in battle.'] },
