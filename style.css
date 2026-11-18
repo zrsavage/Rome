@@ -592,3 +592,23 @@ details.fold > summary:hover h3 { color: #f3d68a; }
 .card.mstrength .mrow{grid-template-columns:70px 1fr 74px;background:none !important}
 .card.mstrength .mrow>:nth-child(4),.card.mstrength .mrow>:nth-child(5){grid-column:2;font-size:12px}
 .sumtiles.mfacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:6px}
+
+/* ---- battle interface: smaller footprint (tools/uiaudit.cjs keeps it under its limits) ---- */
+#hud-sel{bottom:auto;top:auto;left:12px;flex-direction:column-reverse}
+#hud-sel .seltog{font-weight:bold}
+#hud-sel .sellist{display:flex;flex-direction:column;gap:4px;margin-bottom:4px} #hud-sel .sellist.hidden{display:none}
+#screen-battle.huge #hud-sel{bottom:auto}
+#hud-left{width:214px;padding:8px;font-size:12px;max-height:calc(100vh - 130px);overflow:auto}
+#hud-left .ubanner{height:64px;margin-bottom:5px}
+#hud-left h3{font-size:14px}
+#hud-left .kvgrid{display:grid;grid-template-columns:1fr 1fr;column-gap:10px}
+#hud-left .kv{margin:1px 0;font-size:11.5px}
+@media (max-width:1100px){
+  #hud-top .lbl{display:none}
+  #hud-top{gap:5px;padding:5px 6px} #hud-top button{padding:4px 7px}
+  #hud-goal,#hud-arrive{max-width:170px;overflow:hidden;text-overflow:ellipsis}
+  #hud-cmds.compact .cmd kbd{display:none} #hud-cmds.compact .cmd{padding:4px 6px}
+}
+#hud-left .kvgrid .kv{display:flex;flex-direction:column;gap:0}
+#hud-left .kvgrid .kv span:last-child{color:var(--ink);font-weight:bold}
+#hud-left .kvgrid .kv.wide{grid-column:1/-1}

@@ -45,7 +45,7 @@ export class BattleUI {
 
   on(fn) { this.listeners.push(fn); }
   emit(name, data = {}) { for (const fn of this.listeners) fn(name, data); }
-  setPause(p) { if (!p && this.b && this.b.deploying) { this.b.endDeploy(); this.showBanner('The battle begins', 1200); } const was = this.paused; this.paused = p; if (was !== p) this.emit('pause', { paused: p }); $('btn-pause').innerHTML = p ? `${icon('play', 15)} Resume (Space)` : `${icon('pause', 15)} Pause (Space)`; }
+  setPause(p) { if (!p && this.b && this.b.deploying) { this.b.endDeploy(); this.showBanner('The battle begins', 1200); } const was = this.paused; this.paused = p; if (was !== p) this.emit('pause', { paused: p }); $('btn-pause').innerHTML = p ? `${icon('play', 15)}<span class="lbl"> Resume (Space)</span>` : `${icon('pause', 15)}<span class="lbl"> Pause (Space)</span>`; $('btn-pause').title = p ? 'Resume (Space)' : 'Pause (Space)'; }
   stepSpeed(d) { const L = [0.5, 1, 2, 4], i = Math.max(0, Math.min(L.length - 1, L.indexOf(this.speed) + d)); this.setSpeed(L[i]); }
   callWave() { if (this.b && this.b.callNextWave()) { this.showBanner('Next wave called', 800); this.setPause(false); } }
   setSpeed(s) { this.speed = s; this.emit('speed', { speed: s }); document.querySelectorAll('.spd').forEach(b => b.classList.toggle('on', +b.dataset.s === s)); }
@@ -244,7 +244,12 @@ export class BattleUI {
     const by = (f) => () => this.select(rome.filter(u => u.active && f(u)).map(u => u.id));
     const items = [['All  (Q)', by(() => true)], ['Infantry', by(u => u.type.cat === 'inf')], ['Missile troops', by(u => u.type.cat === 'ranged')], ['Cavalry', by(u => u.type.cat === 'cav')], ['Tired units', by(u => u.fatigue > 45)], ['Wavering units', by(u => u.morale < u.maxMorale * 0.5)], ['In melee', by(u => u.fighting)]];
     const nLeg = Math.max(1, ...rome.map(u => u.legion || 1)); if (nLeg > 1) for (let k = 1; k <= nLeg; k++) items.push([`Legio ${(rome.find(u => u.legion === k && u.legionName) || {}).legionName || k}  (Alt+${k})`, by(u => u.legion === k && u.type.cat !== 'train')]);
-    for (const [label, fn] of items) { const btn = document.createElement('button'); btn.className = 'cmd'; btn.textContent = label; btn.onclick = fn; el.appendChild(btn); }
+    const tog = document.createElement('button'); tog.className = 'cmd seltog'; tog.textContent = 'Select \u25B4'; tog.title = 'Select units by kind (Q selects all)';
+    const list = document.createElement('div'); list.className = 'sellist hidden';
+    tog.onclick = (e) => { e.stopPropagation(); list.classList.toggle('hidden'); };
+    for (const [label, fn] of items) { const btn = document.createElement('button'); btn.className = 'cmd'; btn.textContent = label; btn.onclick = () => { fn(); list.classList.add('hidden'); }; list.appendChild(btn); }
+    el.appendChild(list); el.appendChild(tog);
+    if (!this._selClose) { this._selClose = true; document.addEventListener('pointerdown', (e) => { const l = document.querySelector('#hud-sel .sellist'); if (l && !e.target.closest('#hud-sel')) l.classList.add('hidden'); }); }
   }
   // One place for every unit command, used by both the keyboard and the command bar.
   cmd(name) {
@@ -340,7 +345,7 @@ export class BattleUI {
     });
   }
   refreshHud() {
-    { const hb = $('hud-bottom'), hc = $('hud-cmds'); if (hb && hc) { const shown = getComputedStyle(hb).display !== 'none'; hc.style.bottom = shown ? `${hb.offsetHeight + 6}px` : ''; } }   // the command bar sits just above the unit cards, however many rows they take
+    { const hb = $('hud-bottom'), hc = $('hud-cmds'); if (hb && hc) { const shown = getComputedStyle(hb).display !== 'none'; hc.style.bottom = shown ? `${hb.offsetHeight + 6}px` : ''; const hs = $('hud-sel'); if (hs) hs.style.bottom = `${(shown ? hb.offsetHeight : 0) + 6}px`; } }   // the command bar sits just above the unit cards, however many rows they take
     const b = this.b; if (!b) return;
     const mm = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
     const gs = Object.keys(this.groups).filter(n => (this.groups[n] || []).some(id => { const u = b.byId(id); return u && u.active; })).map(n => `[${n}]`).join(' ');
@@ -385,13 +390,13 @@ export class BattleUI {
     if (sel.length > 1) { L.innerHTML = `<h3>${sel.length} units selected</h3><div class="muted">Right-click to move in a line; right-drag to draw a battle line: it faces to the left of the way you draw it (left to right = north).</div>`; return; }
     if (!u) return;
     const t = u.type, lvl = LEVEL_NAMES[u.lvl];
-    const kv = (a, v) => `<div class="kv"><span>${a}</span><span>${v}</span></div>`;
+    const kv = (a, v, wide = false) => `<div class="kv${wide ? ' wide' : ''}"><span>${a}</span><span>${v}</span></div>`;   // short facts two to a row; long ones across
     L.innerHTML = `${hasRealArt('unit', u.typeKey) ? `<img class="ubanner" alt="" src="${artSrc('unit', u.typeKey)}">` : `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 88, 88)}">`}<h3>${u.name}</h3>${u.titleText ? `<div class="small" style="color:var(--gold)">${u.titleText}</div>` : ""}<div class="muted">${t.blurb}</div>` +
-      kv('Men', `${u.men} / ${u.maxMen}`) + kv('Morale', `${Math.round(u.morale)} / ${Math.round(u.maxMorale)}`) + kv('Fatigue', Math.round(u.fatigue) + '%') +
+      '<div class="kvgrid">' + kv('Men', `${u.men} / ${u.maxMen}`) + kv('Morale', `${Math.round(u.morale)} / ${Math.round(u.maxMorale)}`) + kv('Fatigue', Math.round(u.fatigue) + '%') +
       kv('Experience', lvl) + kv('Drill', Math.round(u.drill)) +
-      (u.lead ? kv('Leadership', `${u.lead.name}: attack ${u.lead.atk >= 1 ? '+' : ''}${Math.round((u.lead.atk - 1) * 100)}%, morale ${u.lead.mor >= 0 ? '+' : ''}${u.lead.mor}`) : '') +
-      (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics}${u.temper ? ', ' + u.temper : ''}${u.tier ? ', ' + ['', 'Pilus Prior', 'Primus Pilus'][u.tier] : ''})` : 'none') + kv('Stance', u.stance === 'hold' ? 'Hold (never leaves)' : 'Defend post') + kv('Formation', u.formation === 'close' ? 'Testudo' : u.formation === 'orb' ? 'Orbis' : u.formation === 'wedge' ? 'Wedge' : 'Normal') + kv('Line', (u.wide || 1) > 1.05 ? `Extended x${u.wide.toFixed(1)}` : 'Normal depth') + kv('Command', b.inCommand(u) ? 'in command' : 'OUT OF COMMAND') : '') +
+      (u.lead ? kv('Leadership', `${u.lead.name}: attack ${u.lead.atk >= 1 ? '+' : ''}${Math.round((u.lead.atk - 1) * 100)}%, morale ${u.lead.mor >= 0 ? '+' : ''}${u.lead.mor}`, true) : '') +
+      (u.side === 'rome' ? kv('Officer', u.officer ? `${u.officer.name} (T${u.officer.tactics}${u.temper ? ', ' + u.temper : ''}${u.tier ? ', ' + ['', 'Pilus Prior', 'Primus Pilus'][u.tier] : ''})` : 'none', true) + kv('Stance', u.stance === 'hold' ? 'Hold (never leaves)' : 'Defend post') + kv('Formation', u.formation === 'close' ? 'Testudo' : u.formation === 'orb' ? 'Orbis' : u.formation === 'wedge' ? 'Wedge' : 'Normal') + kv('Line', (u.wide || 1) > 1.05 ? `Extended x${u.wide.toFixed(1)}` : 'Normal depth') + kv('Command', b.inCommand(u) ? 'in command' : 'OUT OF COMMAND') : '') +
       (t.pilum ? kv('Pila volleys', u.pilumLeft) : '') + (t.range ? kv('Ammo', Math.max(0, Math.round(u.ammo / t.ammo * 100)) + '%') : '') +
-      kv('State', u.type.setup && b.t < (u.readyT || 0) ? `setting up (${Math.ceil(u.readyT - b.t)}s)` : u.state);
+      kv('State', u.type.setup && b.t < (u.readyT || 0) ? `setting up (${Math.ceil(u.readyT - b.t)}s)` : u.state) + '</div>';
   }
 }

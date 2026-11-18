@@ -2,7 +2,7 @@
 // Kept free of DOM and sim imports so the camp screen and the battle sim can both use it.
 export const TEMPERS = {
   bold:     { name: 'Bold',     blurb: 'Leads from the front.', text: 'Cohort attacks 5% harder and its charges hit 10% harder, but he is more likely to fall (+30%).' },
-  rash:     { name: 'Rash',     blurb: 'Cannot bear to wait.',  text: 'Now and then charges an enemy that comes close without waiting for orders (less often as he gains experience; never when ordered to hold). Attacks 5% harder, charges hit 15% harder, but casualties shake the cohort 15% more.' },
+  rash:     { name: 'Rash',     blurb: 'Cannot bear to wait.',  text: 'Sometimes charges the first enemy to come close without waiting for orders (less often as he gains experience; never when ordered to hold). Attacks 5% harder, charges hit 15% harder, but casualties shake the cohort 15% more.' },
   steady:   { name: 'Steady',   blurb: 'Cool under pressure.',  text: 'Never charges unordered. +5 morale and casualties shake the cohort 10% less.' },
   cautious: { name: 'Cautious', blurb: 'Spares his men.',       text: '+4 morale and the officer is 40% less likely to fall, but charges hit 15% softer.' }
 };
