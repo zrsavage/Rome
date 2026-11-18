@@ -1361,10 +1361,10 @@ export function scaleScenario(scn, kx, ky = kx) {
 export const FIELD_SIZES = { std: [2.5, 2.5], wide: [3.2, 2.0], deep: [2.1, 3.0], small: [2.05, 2.05], big: [3.0, 2.8] };
 const FIELDS = {
   ford: ['small', 'bowl'], arar: ['deep', 'valley'], convoy: ['wide', 'none'], oppidum: ['deep', 'funnel', 'cliff'], silva: ['small', 'bowl'], bibracte: ['std', 'flankL'],
-  parley: ['std', 'none'], supply: ['wide', 'flankR'], lessercamp: ['std', 'valley'], ariovistus: ['wide', 'none'], rhine: ['deep', 'valley'],
+  parley: ['std', 'none'], supply: ['std', 'none'], lessercamp: ['std', 'valley'], ariovistus: ['wide', 'none'], rhine: ['deep', 'valley'],
   landing: ['wide', 'none'], seventh: ['small', 'bowl'], bigbury: ['deep', 'bowl'], cassivellaunus: ['std', 'flankL'],
   avaricum: ['deep', 'valley'], gergovia: ['deep', 'funnel', 'cliff'], vingeanne: ['wide', 'flankR'], alesia: ['big', 'none'],
-  anquillaria: ['std', 'flankL'], castra: ['std', 'none'], utica: ['wide', 'seaR'], water: ['small', 'bowl'], bagradas: ['wide', 'valley'],
+  anquillaria: ['std', 'flankL'], castra: ['std', 'none'], utica: ['std', 'none'], water: ['small', 'bowl'], bagradas: ['wide', 'valley'],
   pharsalus: ['wide', 'none'], comana: ['std', 'funnel'], steppe: ['wide', 'none'], nicopolis: ['deep', 'valley', 'cliff'], zela: ['deep', 'funnel', 'cliff'],
   ruspina: ['wide', 'seaL'], uzitta: ['std', 'flankL'], thapsus: ['std', 'none'], ategua: ['deep', 'bowl'], munda: ['deep', 'flankR', 'cliff']
 };
