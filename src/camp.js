@@ -265,7 +265,7 @@ export class Camp {
   // to open it: there its strength is set with the slider, or filled at once.
   musterHtml(act) {
     const c = this.c, pool = c.manpower || 0, vets = c.vets || 0, missing = c.cohorts.reduce((a, h) => a + Math.max(0, h.maxMen - h.men), 0);
-    const rank = (x) => ({ inf: 0, ranged: 1, cav: 2 }[UNIT_TYPES[x.type].cat] ?? 3) * 10 + (x.type === 'legionary' ? 0 : 1);
+    const rank = (x) => ({ inf: 0, ranged: 1, cav: 2 }[UNIT_TYPES[x.type].cat] ?? 3) * 1000 + (x.type === 'legionary' ? 0 : 1 + Object.keys(UNIT_TYPES).indexOf(x.type));
     const all = c.cohorts.filter(h => h.men > 0 || (this.snap && this.snap.u[h.id])).sort((a, b) => rank(a) - rank(b) || a.id - b.id);
     const head = `<div class="mhead"><div><b class="poolN big2">${pool}</b> <span>recruits</span> &nbsp; <b class="vetN big2">${vets}</b> <span>veterans</span><div class="small muted">Veterans go in first and keep experience; recruits dilute it. ${missing} places empty.</div></div>
       <div class="row"><button id="m-fill" ${pool + vets > 0 && missing > 0 ? '' : 'disabled'}>Fill evenly</button><button id="m-undo" ${this.snap ? '' : 'disabled'}>Undo changes</button></div></div>`;
@@ -505,7 +505,7 @@ export class Camp {
   unitList(cols) {
     const c = this.c, bar = (v, m, cls = '') => `<div class="bar ${cls}"><i style="width:${pct(v, m)}%"></i></div>`, XP = [...XP_LEVELS, 4600];
     const head = { str: 'Strength', exp: 'Experience', drill: 'Drill', cond: 'Condition', gear: 'Equipment' };
-    const big = c.cohorts.length > 8, rank = (x) => ({ inf: 0, ranged: 1, cav: 2 }[UNIT_TYPES[x.type].cat] ?? 3) * 10 + (x.type === 'legionary' ? 0 : 1);
+    const big = c.cohorts.length > 8, rank = (x) => ({ inf: 0, ranged: 1, cav: 2 }[UNIT_TYPES[x.type].cat] ?? 3) * 1000 + (x.type === 'legionary' ? 0 : 1 + Object.keys(UNIT_TYPES).indexOf(x.type));
     const ordered = big ? [...c.cohorts].sort((a, b) => rank(a) - rank(b) || a.id - b.id) : c.cohorts; let lastType = null;
     const hdr = (x) => { if (!big || x.type === lastType) return ''; lastType = x.type; return `<tr class="ugrp"><td colspan="${cols.length + 1}">${esc(UNIT_TYPES[x.type].name)} (${c.cohorts.filter(y => y.type === x.type).length})</td></tr>`; };
     return `<div class="ulist ${big ? 'scrolls' : ''}"><table><tr><th>Unit</th>${cols.map(k => `<th>${head[k]}</th>`).join('')}</tr>${ordered.map(x => {
@@ -673,7 +673,7 @@ export class Camp {
     R.querySelectorAll('[data-mtile]').forEach(b => b.onclick = () => { this.musterSel = +b.dataset.mtile; this.render(); });
     R.querySelectorAll('[data-mfilter]').forEach(b => b.onclick = () => { this.musterFilter = b.dataset.mfilter; this.render(); });
     if (q('#m-back')) q('#m-back').onclick = () => { this.musterSel = null; this.render(); };
-    const step = (d) => { const c = this.c, rank = (x) => ({ inf: 0, ranged: 1, cav: 2 }[UNIT_TYPES[x.type].cat] ?? 3) * 10 + (x.type === 'legionary' ? 0 : 1), all = c.cohorts.filter(h => h.men > 0).sort((a, b) => rank(a) - rank(b) || a.id - b.id), k = all.findIndex(x => x.id === this.musterSel); if (all[k + d]) { this.musterSel = all[k + d].id; this.render(); } };
+    const step = (d) => { const c = this.c, rank = (x) => ({ inf: 0, ranged: 1, cav: 2 }[UNIT_TYPES[x.type].cat] ?? 3) * 1000 + (x.type === 'legionary' ? 0 : 1 + Object.keys(UNIT_TYPES).indexOf(x.type)), all = c.cohorts.filter(h => h.men > 0).sort((a, b) => rank(a) - rank(b) || a.id - b.id), k = all.findIndex(x => x.id === this.musterSel); if (all[k + d]) { this.musterSel = all[k + d].id; this.render(); } };
     if (q('#m-prev')) q('#m-prev').onclick = () => step(-1); if (q('#m-next')) q('#m-next').onclick = () => step(1);
     if (q('#m-fillone')) q('#m-fillone').onclick = () => { const h = this.c.cohorts.find(x => x.id === this.musterSel); if (h) { this.onSlide(h.id, h.maxMen); this.api.save(); this.render(); } };
     R.querySelectorAll('[data-legate]').forEach(sel => sel.onchange = () => { setLegate(c, +sel.dataset.legate, sel.value ? +sel.value : null); this.api.save(); this.render(); });
