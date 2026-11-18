@@ -132,12 +132,17 @@ function paintCliff(g, f, rnd, dry) {
   mg.fillStyle = '#fff';
   for (let yy = 0; yy < m.height; yy += step / 2) for (let xx = 0; xx < m.width; xx += step / 2) if (cliffIn(f, x0 + xx / k, y0 + yy / k)) mg.fillRect(xx - step * 0.4, yy - step * 0.4, step * 0.8, step * 0.8);
   cg.setTransform(1, 0, 0, 1, 0, 0); cg.globalCompositeOperation = 'destination-in'; cg.filter = 'blur(1.5px)'; cg.drawImage(m, 0, 0); cg.filter = 'none'; cg.globalCompositeOperation = 'source-over';
-  g.save(); g.globalAlpha = 0.55; g.drawImage(silhouette(c), x0 + 22, y0 + 30, w, h); g.restore();         // the drop: a long shadow to the south-east
+  // height: a long cast shadow to the south-east, then the dark rock face showing below the lit top, then the top itself
+  g.save(); g.globalAlpha = 0.5; g.drawImage(silhouette(c), x0 + 46, y0 + 60, w, h); g.globalAlpha = 0.35; g.drawImage(silhouette(c), x0 + 26, y0 + 34, w, h); g.restore();
+  { const [fc, fg] = mkCanvas(c.width, c.height); fg.drawImage(c, 0, 0); fg.globalCompositeOperation = 'source-in'; fg.fillStyle = dry ? '#5e4a30' : '#3b3631'; fg.fillRect(0, 0, fc.width, fc.height);
+    for (let k = 1; k <= 4; k++) g.drawImage(fc, x0 + 4 * k, y0 + 5 * k, w, h); }
   for (let i = 0; i < f.rx * f.ry / 2500; i++) {                         // scree along the foot
     const a = rnd() * Math.PI * 2, px = f.cx + Math.cos(a) * f.rx * (1.0 + rnd() * 0.15), py = f.cy + Math.sin(a) * f.ry * (1.0 + rnd() * 0.15), r = 2 + rnd() * 5;
     g.fillStyle = dry ? 'rgba(170,150,115,0.8)' : 'rgba(120,115,105,0.8)'; g.beginPath(); g.ellipse(px, py, r, r * 0.7, rnd() * 3, 0, 7); g.fill();
   }
   g.drawImage(c, x0, y0, w, h);
+  { const gl = g.createLinearGradient(f.cx - f.rx, f.cy - f.ry, f.cx + f.rx * 0.3, f.cy + f.ry * 0.3); gl.addColorStop(0, 'rgba(255,250,235,0.28)'); gl.addColorStop(1, 'rgba(255,250,235,0)');   // sun on the top, from the north-west
+    const [hc, hg] = mkCanvas(c.width, c.height); hg.drawImage(c, 0, 0); hg.globalCompositeOperation = 'source-in'; hg.setTransform(0.5, 0, 0, 0.5, -x0 * 0.5, -y0 * 0.5); hg.fillStyle = gl; hg.fillRect(x0, y0, w, h); g.drawImage(hc, x0, y0, w, h); }
   g.strokeStyle = 'rgba(20,16,12,0.55)'; g.lineWidth = 2.5;                // a hard edge, so it reads as a drop and not a hill
   g.beginPath(); let first = true;
   for (let a = 0; a <= Math.PI * 2 + 0.01; a += 0.05) { let r = 1.25; while (r > 0.2 && !cliffIn(f, f.cx + Math.cos(a) * f.rx * r, f.cy + Math.sin(a) * f.ry * r)) r -= 0.02; const px = f.cx + Math.cos(a) * f.rx * r, py = f.cy + Math.sin(a) * f.ry * r; if (first) { g.moveTo(px, py); first = false; } else g.lineTo(px, py); }
@@ -231,7 +236,7 @@ export function paintTerrain(g, scn) {
   for (let i = 0; i < Math.round(70 * A); i++) { const x = rnd() * WORLD.w, y = rnd() * WORLD.h, r = 2 + rnd() * 3.5; g.fillStyle = 'rgba(40,38,30,0.25)'; g.beginPath(); g.ellipse(x + 1, y + 1.5, r, r * 0.6, 0, 0, 7); g.fill(); g.fillStyle = '#a7a396'; g.beginPath(); g.ellipse(x, y, r, r * 0.65, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.ellipse(x - 0.8, y - 0.8, r * 0.5, r * 0.3, 0, 0, 7); g.fill(); }
   }
   const trees = [];
-  for (const f of scn.terrain) {
+  for (const f of [...scn.terrain].sort((a, b) => (["cliff", "sea"].includes(a.kind) ? 1 : 0) - (["cliff", "sea"].includes(b.kind) ? 1 : 0))) {   // cliffs and the sea last: nothing is painted over them
     // a river is a wandering strip: its banks follow riverShift, the same function the sim uses to decide where the water is
     const strip = (f, pad) => {
       const top = [], bot = [];
