@@ -435,9 +435,16 @@ export class Battle {
         if (u.rivalNear && !was && !u.rivalSaid) { u.rivalSaid = true; const r = this.units.find(f => f.officer && f.officer.id === u.rivalId); this.say(`${u.officer.name} will not be outdone by ${r ? r.officer.name : 'his rival'} - ${u.name} fights harder.`, 'info'); this.mark('rival', `${u.officer.name} and ${r ? r.officer.name : 'his rival'} compete for glory`, 'rome'); }
       }
       u.rashCd -= 1;
-      if (u.temper === 'rash' && u.rashCd <= 0 && (u.type.cat === 'inf' || u.type.cat === 'cav') && u.order.kind !== 'move' && u.order.kind !== 'attack' && u.order.kind !== 'guard' && !u.contacts.some(e => e.active) && !this.retreating) {
-        const n = this.nearestEnemy(u, (e) => e.active && e.spotted !== false);
-        if (n && n.gap < 170) { this.setAttack(u, n.e); u.stance = 'aggressive'; u.rashCd = 45; this.say(`${u.officer.name} cannot hold back - ${u.name} charges without orders!`, 'warn'); this.mark('rash', `${u.officer.name} charges ${u.name} unordered`, 'rome'); }
+      // A rash officer may lose patience when the enemy first comes close: a single roll each time they come within reach, about one
+      // chance in four for a new officer (less as he gains levels, and in a well-drilled cohort), at most once a battle, and never when
+      // you have ordered the cohort to hold its position.
+      if (u.temper === 'rash' && !u.rashDone && (u.type.cat === 'inf' || u.type.cat === 'cav') && u.stance !== 'hold' && u.order.kind !== 'move' && u.order.kind !== 'attack' && u.order.kind !== 'guard' && !u.contacts.some(e => e.active) && !this.retreating) {
+        const n = this.nearestEnemy(u, (e) => e.active && e.spotted !== false), near = !!(n && n.gap < 170);
+        if (near && !u.rashNear) {
+          const p = Math.max(0.06, 0.25 - 0.03 * ((u.officer.level || 1) - 1)) * (1 - Math.min(0.6, (u.drill || 0) / 150));
+          if (this.rand() < p) { u.rashDone = true; this.setAttack(u, n.e); u.stance = 'aggressive'; this.say(`${u.officer.name} cannot hold back - ${u.name} charges without orders!`, 'warn'); this.mark('rash', `${u.officer.name} charges ${u.name} unordered`, 'rome'); }
+        }
+        u.rashNear = near;
       }
     }
   }
