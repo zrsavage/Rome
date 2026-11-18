@@ -207,7 +207,7 @@ export class BattleUI {
       if (k === ',' && !e.ctrlKey && !e.metaKey) this.cmd('detach');
       if (k === '.' && !e.ctrlKey && !e.metaKey) this.cmd('lanes');
       if (k === ';' && !e.ctrlKey && !e.metaKey) this.cmd('digin');
-      if (/^[1-9]$/.test(k) && e.altKey) { e.preventDefault(); const ids = this.b.units.filter(u => u.side === 'rome' && u.active && u.legion === +k && u.type.cat !== 'train').map(u => u.id); if (ids.length) { this.select(ids); this.showBanner(`Legio ${this.b.units.find(u => u.id === ids[0]).legionName || k}`, 700); } }
+      if (/^[1-9]$/.test(k) && e.altKey) { e.preventDefault(); const ids = this.b.units.filter(u => u.side === 'rome' && u.active && u.legion === +k && u.type.cat !== 'train').map(u => u.id); if (ids.length) { this.select(ids); this.showBanner(`Legio ${(this.b.units.find(u => ids.includes(u.id) && u.legionName) || {}).legionName || k}`, 700); } }
       if (k === 'b' && !e.metaKey) { e.preventDefault(); this.cmd(e.ctrlKey ? 'saveform' : e.altKey ? 'recallform' : 'array'); }
       if (k === '/') { e.preventDefault(); this.cmd('auto'); }
       if (k === 'e') { const now = performance.now(); this.selectGeneral(this.genSel || now - (this.lastE || 0) < 450); this.lastE = now; }   // E selects him; again (or double-tap) centres the camera on him
@@ -243,7 +243,7 @@ export class BattleUI {
     const rome = b.units.filter(u => u.side === 'rome'); if (rome.length < 9) return;
     const by = (f) => () => this.select(rome.filter(u => u.active && f(u)).map(u => u.id));
     const items = [['All  (Q)', by(() => true)], ['Infantry', by(u => u.type.cat === 'inf')], ['Missile troops', by(u => u.type.cat === 'ranged')], ['Cavalry', by(u => u.type.cat === 'cav')], ['Tired units', by(u => u.fatigue > 45)], ['Wavering units', by(u => u.morale < u.maxMorale * 0.5)], ['In melee', by(u => u.fighting)]];
-    const nLeg = Math.max(1, ...rome.map(u => u.legion || 1)); if (nLeg > 1) for (let k = 1; k <= nLeg; k++) items.push([`Legio ${(rome.find(u => u.legion === k) || {}).legionName || k}  (Alt+${k})`, by(u => u.legion === k && u.type.cat !== 'train')]);
+    const nLeg = Math.max(1, ...rome.map(u => u.legion || 1)); if (nLeg > 1) for (let k = 1; k <= nLeg; k++) items.push([`Legio ${(rome.find(u => u.legion === k && u.legionName) || {}).legionName || k}  (Alt+${k})`, by(u => u.legion === k && u.type.cat !== 'train')]);
     for (const [label, fn] of items) { const btn = document.createElement('button'); btn.className = 'cmd'; btn.textContent = label; btn.onclick = fn; el.appendChild(btn); }
   }
   // One place for every unit command, used by both the keyboard and the command bar.
@@ -349,6 +349,7 @@ export class BattleUI {
       objTxt = `   |  ${o.name}: ${o.contested ? 'CONTESTED' : o.owner === 'rome' ? 'Roman' : 'enemy'}` + (att ? ` - ${att === 'rome' ? 'you hold' : 'enemy holds'} ${Math.floor(b.hold[att])}/${b.rule.holdSecs}s` : '');
     }
     const wl = b.withdrawLeft ? b.withdrawLeft() : null, waveTxt = wl != null ? `   |  Withdrawing: ${Math.ceil(wl)}s` : '';
+    { const el = $('hud-arrive'), w = b.nextWave && b.nextWave(); if (el) { el.classList.toggle('hidden', !w); if (w) { const left = Math.max(0, w.at - b.t), t = `\u2691 ${w.name} in ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`; if (el.textContent !== t) el.textContent = t; } } }
     { const g = b.goalState(); const el = $('hud-goal'); if (el) { el.classList.toggle('hidden', !g); if (g) { const t = `${g.fail ? '\u2717' : g.ok && g.key === 'chief' ? '\u2713' : '\u2605'} ${g.name}: ${g.live}`; if (el.textContent !== t) { el.textContent = t; el.className = 'hudgoal' + (g.fail ? ' fail' : g.ok && g.key === 'chief' ? ' ok' : ''); el.title = GOALS[g.key].text(this.scn); } } } }
     $('hud-time').textContent = `${mm(b.t)} / ${mm(this.scn.timeLimit)}   Rome ${Math.round(b.activeMen('rome'))}   Foe ${b.fogOn && b.units.some(u => u.side === 'gaul' && u.active && !u.spotted) ? '?' : Math.round(b.activeMen('gaul'))}   ${gs}`;
     $('hud-sub').textContent = (objTxt + waveTxt).replace(/^\s*\|\s*/, '').replace(/\s+\|\s+/g, '   |   ').trim();

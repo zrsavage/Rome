@@ -497,6 +497,12 @@ Nicopolis, Munda), and the sea along one flank (Utica, Ruspina). Units find thei
 of the cliff foot, preferring open ground to woods and marsh), and nobody, fleeing or not, ever stands in them.
 Units locked in melee hold their facing steady: the direction they face is smoothed and they only turn once it is well off.
 
+## A big army comes up in stages
+On the defensive, an army of more than 20 units does not stand ready at once (src/arrivals.js). You deploy your first legion and its
+supports (up to 20 units); the other legions march onto the field from behind your line one at a time, the first after 1:50 and then
+every 80 seconds, each heading for its place in the line. Hold until they come. The briefing gives the order of march, and the battle
+screen counts down to the next legion.
+
 ## Enemy plans, bonus goals and surprises
 Before each battle the enemy commander picks a plan that suits his habits: a head-on assault, a double envelopment, a feigned flight
 into his reserve, a hammer blow at your weakest point, wearing you down with missiles, or a strike at your baggage. The same battle
