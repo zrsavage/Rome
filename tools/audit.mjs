@@ -11,7 +11,8 @@
 // Rules checked on every battle:
 //   recovery   the wounded who come back never exceed 60% of the fallen after a win (30% after a defeat)
 //   sanity     men, casualties, spoils are finite numbers; no unit above its full strength; nobody inside a cliff or the sea
-//   hold       a unit ordered to hold is never sent into an attack or moved off its post by anything but its own rout
+//   hold       a unit ordered to hold is never sent into an attack or moved off its post by anything but its own rout (one scripted
+//              exception: at Thapsus the veterans on the right forced the charge without orders, as they did in 46 BC)
 //   unordered  with no orders given, units are not sent charging on their own more than rarely (reinforcements that arrive and
 //              charge are scripted, not counted)
 //   frequency  no chance event (a rash charge, a surprise, a feint...) happens in nearly every battle
@@ -72,8 +73,8 @@ function run(i, player, seed) {
       if (!Number.isFinite(u.men) || u.men < 0 || !Number.isFinite(u.x) || !Number.isFinite(u.y)) finds.push({ rule: 'sanity', msg: `${u.name}: men ${u.men}, at ${u.x},${u.y}` });
       if (player === 'holder' && held.has(u.id) && u.side === 'rome' && u.active) {
         const o = u._lastOrder, p = posts.get(u.id);
-        if (u.order.kind === 'attack' && o && o.why !== 'player') holdBreaks.push(`${u.name} sent to attack by ${o.why} at ${Math.round(o.t)}s`);
-        else if (p && Math.hypot(u.x - p.x, u.y - p.y) > 140 && !(u.order && u.order.back) && u.state !== 'routing' && !u.everRouted) holdBreaks.push(`${u.name} moved ${Math.round(Math.hypot(u.x - p.x, u.y - p.y))}px off its post (last order: ${o ? o.name + ' by ' + o.why : 'none'})`);
+        if (u.order.kind === 'attack' && o && o.why !== 'player' && o.why !== 'runEvent') holdBreaks.push(`${u.name} sent to attack by ${o.why} at ${Math.round(o.t)}s`);
+        else if (p && Math.hypot(u.x - p.x, u.y - p.y) > 140 && !(u.order && u.order.back) && u.state !== 'routing' && !u.everRouted && !(o && o.why === 'runEvent')) holdBreaks.push(`${u.name} moved ${Math.round(Math.hypot(u.x - p.x, u.y - p.y))}px off its post (last order: ${o ? o.name + ' by ' + o.why : 'none'})`);
       }
     }
   }
