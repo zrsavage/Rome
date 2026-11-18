@@ -330,7 +330,7 @@ export class Battle {
   updateRotation() {
     if (!this.orders.has('rotate') || this.t < (this._rotT || 0)) return; this._rotT = this.t + 2;
     for (const u of this.units) {
-      if (u.side !== 'rome' || !u.rotate || !u.active || u.type.cat !== 'inf' || this.t < (u.rotCd || 0)) continue;
+      if (u.side !== 'rome' || !u.rotate || !u.active || u.type.cat !== 'inf' || u.stance === 'hold' || this.t < (u.rotCd || 0)) continue;   // a cohort ordered to hold stays
       if (u.order.back || !u.contacts.some(e => e.active)) continue;
       if (u.fatigue > 62 || u.morale < u.maxMorale * 0.45) u.rotCd = this.t + (this.relieve(u, true) ? 30 : 8);
     }
@@ -440,7 +440,7 @@ export class Battle {
       // you have ordered the cohort to hold its position.
       if (u.temper === 'rash' && !u.rashDone && (u.type.cat === 'inf' || u.type.cat === 'cav') && u.stance !== 'hold' && u.order.kind !== 'move' && u.order.kind !== 'attack' && u.order.kind !== 'guard' && !u.contacts.some(e => e.active) && !this.retreating) {
         const n = this.nearestEnemy(u, (e) => e.active && e.spotted !== false), near = !!(n && n.gap < 170);
-        if (near && !u.rashNear) {
+        if (near && !u.rashNear && !u.rashRolled) { u.rashRolled = true;                 // one roll a battle, the first time the enemy comes close
           const p = Math.max(0.06, 0.25 - 0.03 * ((u.officer.level || 1) - 1)) * (1 - Math.min(0.6, (u.drill || 0) / 150));
           if (this.rand() < p) { u.rashDone = true; this.setAttack(u, n.e); u.stance = 'aggressive'; this.say(`${u.officer.name} cannot hold back - ${u.name} charges without orders!`, 'warn'); this.mark('rash', `${u.officer.name} charges ${u.name} unordered`, 'rome'); }
         }
@@ -653,6 +653,7 @@ export class Battle {
     const fx = Math.cos(u.f), fy = Math.sin(u.f); let best = null, bs = -1e9;
     for (const f of this.units) {
       if (f === u || f.side !== u.side || !f.active || f.type.cat !== 'inf' || f.contacts.some(e => e.active)) continue;
+      if (auto && f.stance === 'hold') continue;                                   // rotation never moves a cohort you ordered to hold
       const dx = f.x - u.x, dy = f.y - u.y, d = Math.hypot(dx, dy) || 1;
       if (d > 260 || (dx * fx + dy * fy) / d > -0.2 || f.fatigue > u.fatigue - 10) continue;
       const sc = (u.fatigue - f.fatigue) + 20 * f.morale / f.maxMorale - d * 0.05;
