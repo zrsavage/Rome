@@ -4,6 +4,7 @@ import { Battle } from '../src/sim.js';
 import { SCENARIOS, phaseScn } from '../src/data.js';
 import { newCampaign, romeSpecs, modsOf, forceScale } from '../src/state.js';
 import { triplexLayout } from '../src/orders.js';
+import { stageArmy } from '../src/arrivals.js';
 
 const RUNS = +process.argv[2] || 20;
 const SEL = process.argv[3] && process.argv[3] !== 'all' ? [+process.argv[3]] : SCENARIOS.map((_, i) => i);
@@ -72,11 +73,13 @@ export function play(strategy, i, difficulty, seed, mutate = null, phase = null)
   const scn = phase == null ? SCENARIOS[i] : phaseScn(SCENARIOS[i], phase), c = campaignAt(i, difficulty);
   if (mutate) mutate(c, seed);   // camp decisions applied before the battle (used by tools/campbalance.mjs)
   const m = modsOf(c);
-  const b = new Battle(scn, romeSpecs(c, scn), { difficulty, seed, fort: c.fort, recovery: m.recovery, moraleBonus: m.morale, forceScale: process.env.AUTHORED ? undefined : forceScale(c, scn) });   // the host is sized to the army as in the game (AUTHORED=1 for the written sizes)
-  const rome = b.units.filter(u => u.side === 'rome' && !u.type.medic);   // the medici look after themselves
+  const army = process.env.NOSTAGE ? { now: romeSpecs(c, scn), waves: [] } : stageArmy(romeSpecs(c, scn), scn);   // as the game deploys it: a big army on the defensive in waves
+  const b = new Battle(scn, army.now, { arrivals: army.waves, difficulty, seed, fort: c.fort, recovery: m.recovery, moraleBonus: m.morale, forceScale: process.env.AUTHORED ? undefined : forceScale(c, scn) });   // the host is sized to the army as in the game (AUTHORED=1 for the written sizes)
+  let rome = b.units.filter(u => u.side === 'rome' && !u.type.medic), nU = b.units.length;   // the medici look after themselves
   const dt = 0.1;
   let guard = 0;
   while (!b.result && guard++ < 20000) {
+    if (b.units.length !== nU) { nU = b.units.length; const keep = new Set(rome); for (const u of b.units) if (u.side === 'rome' && !u.type.medic && !keep.has(u)) rome.push(u); }   // legions that arrive join the fight
     if (b.general && Math.abs(b.t % 3) < dt) { const live = rome.filter(u => u.active && u.type.cat === 'inf'); if (live.length) b.moveGeneral(live.reduce((a, u) => a + u.x, 0) / live.length, live.reduce((a, u) => a + u.y, 0) / live.length + 70); }   // the general trails the line
     if (strategy === 'charge' && b.t < 0.2) rome.forEach(u => { const n = b.nearestEnemy(u); if (n) b.setAttack(u, n.e); });
     if (strategy === 'objective' && b.t < 0.2) {

@@ -147,6 +147,9 @@ export class Battle {
     const rb = this.diff.romeMorale + Math.min(12, this.fortLevel * 4) + (opts.suppliesLow ? -8 : 0) + (opts.moraleBonus || 0);
     this.romeBonus = rb;
     for (const s of romeSpecs) this.units.push(new Unit({ ...s, side: 'rome', moraleBonus: rb + (s.moraleBonus || 0) }));
+    // the rest of a big army on the march (arrivals.js): each wave comes up from behind your line at its time
+    this.arrivals = (opts.arrivals || []).map(w => ({ ...w, done: false }));
+    { const rs = romeSpecs.length ? romeSpecs : [{ x: WORLD.w / 2, y: WORLD.h * 0.85 }]; this.home0 = { x: rs.reduce((a, q) => a + q.x, 0) / rs.length, y: rs.reduce((a, q) => a + q.y, 0) / rs.length }; }
     this.orders = new Set(opts.orders || ALL_ORDERS);          // formation orders the army has learned in camp
     this.cmdR = CMD_R + (opts.cmdBonus || 0); this.rallyCd = 0; this.general = null;
     const rs = this.units.filter(u => u.side === 'rome');
@@ -1071,8 +1074,28 @@ export class Battle {
   }
 
   // ---------- main step ----------
+  // A wave of the army arrives: it marches in from the map edge behind your line, in column, and heads for its place in the battle line.
+  bringWave(w) {
+    const foes = this.units.filter(u => u.side === 'gaul' && u.active), h = this.home0;
+    const fc = foes.length ? { x: foes.reduce((a, u) => a + u.x, 0) / foes.length, y: foes.reduce((a, u) => a + u.y, 0) / foes.length } : { x: h.x, y: 0 };
+    let dx = h.x - fc.x, dy = h.y - fc.y; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;            // away from the enemy
+    const reach = Math.min(dx > 0.01 ? (WORLD.w - 50 - h.x) / dx : dx < -0.01 ? (50 - h.x) / dx : 1e9, dy > 0.01 ? (WORLD.h - 50 - h.y) / dy : dy < -0.01 ? (50 - h.y) / dy : 1e9);
+    const ex = h.x + dx * reach, ey = h.y + dy * reach, px = -dy, py = dx, f = Math.atan2(-dy, -dx);
+    let n = 0, men = 0;
+    w.specs.forEach((sp, i) => {                                                            // in line along the edge, then each to its place
+      const off = (i - (w.specs.length - 1) / 2) * 115;
+      const u = new Unit({ ...sp, side: 'rome', moraleBonus: this.romeBonus + (sp.moraleBonus || 0), x: clamp(ex + px * off, 30, WORLD.w - 30), y: clamp(ey + py * off, 30, WORLD.h - 30), f });
+      this.unstick(u); this.units.push(u); this.startRome += u.men; n++; men += u.men;
+      const t = { x: sp.x, y: sp.y }; this.unstick(t);
+      this.setMove(u, t.x, t.y, sp.f ?? f); u.post = { x: t.x, y: t.y };
+    });
+    this.say(`${w.name} arrives: ${n} units (${men.toLocaleString()} men) march up from the rear.`, 'good'); this.mark('commit', `${w.name} arrives on the field`, 'rome');
+    this.lastWave = { name: w.name, t: this.t };
+  }
+  nextWave() { return this.arrivals.find(w => !w.done) || null; }
   update(dt) {
     if (this.result) return; this._navBudget = 8;
+    if (!this.deploying) for (const w of this.arrivals) if (!w.done && this.t >= w.at) { w.done = true; this.bringWave(w); }
     this.t += dt; this.sampleReport(); this.recordFrame(); this.updateOfficers(dt); this.updateWeather(); this.updateLaager(dt); this.updateRotation(); this.updateAutoDrills(); this.updateTwist(); this.runPending(); this.updateSupply(dt); this.updateMedici(dt); this.watchTenth(); this.stepLegates(dt);
     for (const ev of this.events) if (!ev.done && this.t >= ev.at) { ev.done = true; this.runEvent(ev); }
     for (const r of this.reinf) if (!r.done && this.t >= r.at) {
