@@ -545,3 +545,8 @@ details.fold > summary:hover h3 { color: #f3d68a; }
   .mrow>:nth-child(5){grid-column:3;text-align:right;font-size:12px}
 }
 @media (max-width:900px){ .bbar{ padding-left:52px; } }   /* clear of the speaker button in the corner */
+
+/* unit art: a banner over the selected unit in battle, a portrait on the unit record in camp */
+.ubanner{display:block;width:100%;height:118px;object-fit:cover;object-position:center 28%;border-radius:6px;margin:-2px 0 8px;border:1px solid var(--line)}
+.recportrait{width:96px;height:96px;object-fit:cover;border-radius:6px;border:1px solid var(--line);flex:none}
+@media (max-width:700px){.recportrait{width:64px;height:64px}}
