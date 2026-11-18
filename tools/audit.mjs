@@ -11,7 +11,7 @@
 // Rules checked on every battle:
 //   recovery   the wounded who come back never exceed 60% of the fallen after a win (30% after a defeat)
 //   sanity     men, casualties, spoils are finite numbers; no unit above its full strength; nobody inside a cliff or the sea
-//   hold       a unit ordered to hold is never sent into an attack or moved off its post except by a drill that steps it back
+//   hold       a unit ordered to hold is never sent into an attack or moved off its post by anything but its own rout
 //   unordered  with no orders given, units are not sent charging on their own more than rarely (reinforcements that arrive and
 //              charge are scripted, not counted)
 //   frequency  no chance event (a rash charge, a surprise, a feint...) happens in nearly every battle

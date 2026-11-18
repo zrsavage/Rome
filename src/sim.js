@@ -376,7 +376,7 @@ export class Battle {
         else if (u.autoLanes && u.lanes && bg > 300) { u.lanes = false; u.autoLanes = false; }
       }
       // an orderly step back: a cohort about to break pulls out of the fight before it runs, while friends are near to take its place
-      if (O.has('fallback') && O.has('relieve') && melee && !u.surrounded && !u.order.back && u.morale < u.maxMorale * 0.22 && this.t > (u.autoBackCd || 0)
+      if (O.has('fallback') && O.has('relieve') && melee && !u.surrounded && u.stance !== 'hold' && !u.order.back && u.morale < u.maxMorale * 0.22 && this.t > (u.autoBackCd || 0)
         && this.units.some(f => f !== u && f.side === u.side && f.active && f.type.cat === 'inf' && Math.hypot(f.x - u.x, f.y - u.y) < 220)) {
         if (u.autoForm) this.undoAuto(u); this.fallBack(u); u.autoBackCd = this.t + 30; this.stats.autoBack = (this.stats.autoBack || 0) + 1; tell('back', `${u.name} is shaken: it steps back in order before it breaks.`);
       }
