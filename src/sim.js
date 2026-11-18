@@ -1271,7 +1271,7 @@ export class Battle {
         if (want != null) {
           u.mF = u.mF == null ? want : norm(u.mF + norm(want - u.mF) * Math.min(1, dt * 1.2));
           const off = Math.abs(norm(u.mF - u.f));
-          if (off > (u.mTurn ? 0.04 : 0.23)) { u.mTurn = true; const m = u.type.turn * (0.7 + u.drill / 200) * dt * 0.6; u.f = norm(u.f + clamp(norm(u.mF - u.f), -m, m)); } else u.mTurn = false;
+          if (off > (u.mTurn ? 0.04 : 0.16)) { u.mTurn = true; const m = u.type.turn * (0.7 + u.drill / 200) * dt * 0.8; u.f = norm(u.f + clamp(norm(u.mF - u.f), -m, m)); } else u.mTurn = false;
         }
       }
     } else if (!engaged && u.side === 'rome' && u.order.kind === 'none' && !goal && !backing && !(t.cat === 'ranged' && u.ammo > 0 && !u.holdFire && (this.nearestEnemy(u) || { gap: 1e9 }).gap < t.range * 1.3)) {

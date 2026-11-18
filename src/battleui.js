@@ -2,7 +2,7 @@
 import { Battle, levelFor } from './sim.js';
 import { Renderer } from './render.js';
 import { WORLD, LEVEL_NAMES } from './data.js';
-import { artSrc } from './art.js';
+import { artSrc, hasRealArt } from './art.js';
 import { ask } from './ui.js';
 import { icon } from './icons.js';
 import { dragLayout, compass, triplexLayout, saveFormation, recallFormation } from './orders.js';
@@ -384,7 +384,7 @@ export class BattleUI {
     if (!u) return;
     const t = u.type, lvl = LEVEL_NAMES[u.lvl];
     const kv = (a, v) => `<div class="kv"><span>${a}</span><span>${v}</span></div>`;
-    L.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 88, 88)}"><h3>${u.name}</h3>${u.titleText ? `<div class="small" style="color:var(--gold)">${u.titleText}</div>` : ""}<div class="muted">${t.blurb}</div>` +
+    L.innerHTML = `${hasRealArt('unit', u.typeKey) ? `<img class="ubanner" alt="" src="${artSrc('unit', u.typeKey)}">` : `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 88, 88)}">`}<h3>${u.name}</h3>${u.titleText ? `<div class="small" style="color:var(--gold)">${u.titleText}</div>` : ""}<div class="muted">${t.blurb}</div>` +
       kv('Men', `${u.men} / ${u.maxMen}`) + kv('Morale', `${Math.round(u.morale)} / ${Math.round(u.maxMorale)}`) + kv('Fatigue', Math.round(u.fatigue) + '%') +
       kv('Experience', lvl) + kv('Drill', Math.round(u.drill)) +
       (u.lead ? kv('Leadership', `${u.lead.name}: attack ${u.lead.atk >= 1 ? '+' : ''}${Math.round((u.lead.atk - 1) * 100)}%, morale ${u.lead.mor >= 0 ? '+' : ''}${u.lead.mor}`) : '') +
