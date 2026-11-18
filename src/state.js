@@ -15,6 +15,8 @@ import { awardHonours, promoteFromRanks, decoMorale } from './heroes.js';
 export const HOSP_MAX = 5, HOSP_COST = [250, 500, 800, 1200, 1700], HOSP_SUP = [20, 30, 40, 60, 80];
 export const HOSP_NAMES = ['Field dressing station', 'Hospital tents', 'Field hospital', "Surgeons' school", 'Valetudinarium'];
 export const hospRecovery = (l) => 1 + 0.3 * Math.min(l, 3) + 0.15 * Math.max(0, l - 3);
+// The share of the fallen who walk back into the ranks after a battle, for a recovery multiplier (same formula as the battle uses).
+export function woundedBack(mult, defeat = false) { const cap = defeat ? 0.25 : 0.5, base = defeat ? 0.1 : 0.22; return cap * (1 - Math.exp(Math.log(1 - base / cap) * mult)); }
 export const DEFAULT_MODS = { recovery: 1, supplyUse: 1, spoils: 1, forage: 1, levy: 1, morale: 0, xp: 1 };
 // Effective campaign modifiers: origins, plus officer perks and the field hospital.
 export function modsOf(c) {

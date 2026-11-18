@@ -325,11 +325,12 @@ export class BattleUI {
 
   // ----- HUD -----
   refreshBottom() {
+    { const hb = $('hud-bottom'); if (hb && !hb._wheel) { hb._wheel = true; hb.addEventListener('wheel', (e) => { if (hb.scrollWidth > hb.clientWidth + 2) { e.preventDefault(); e.stopPropagation(); hb.scrollLeft += (Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX); } }, { passive: false }); } }   // the wheel scrolls a long row of cards sideways
     const el = $('hud-bottom'); el.innerHTML = '';
     const nRome = this.b.units.filter(u => u.side === 'rome').length;
     this.manyCards = nRome > 9; el.classList.toggle('many', nRome > 9); $('screen-battle').classList.toggle('huge', nRome > 24);   // past two dozen units the cards give way to the selection buttons
     this.buildSelectors();
-    if (this.b.general) { const d = document.createElement('div'); d.className = 'ucard'; d.dataset.gen = '1'; d.innerHTML = `${icon('general', 14)} <b>General (E)</b><div class="muted" style="font-size:12px">click to find him</div>`; d.onclick = () => this.selectGeneral(true); d.title = 'Select the general and centre the view on him (E; press E again to centre)'; el.appendChild(d); }
+    if (this.b.general) { const d = document.createElement('div'); d.className = 'ucard'; d.dataset.gen = '1'; d.title = 'Your general: click to select him (E), again to find him'; d.innerHTML = `${icon('general', 14)} <b>General (E)</b><div class="muted" style="font-size:12px">click to find him</div>`; d.onclick = () => this.selectGeneral(true); d.title = 'Select the general and centre the view on him (E; press E again to centre)'; el.appendChild(d); }
     this.b.units.filter(u => u.side === 'rome').forEach(u => {
       const d = document.createElement('div'); d.className = 'ucard'; d.dataset.id = u.id;
       d.innerHTML = `<img class="uicon" alt="" src="${artSrc('unit', u.typeKey, 52, 52)}"><b></b><div class="bar x"><i></i></div><div class="bar m" style="margin-top:3px"><i></i></div>`;
@@ -356,7 +357,7 @@ export class BattleUI {
     document.querySelectorAll('.ucard').forEach(d => {
       if (d.dataset.gen) { d.classList.toggle('sel', this.genSel); return; }
       const u = b.byId(+d.dataset.id); if (!u) return;
-      d.dataset.stance = u.stance; d.classList.toggle('sel', this.r.selection.has(u.id)); d.classList.toggle('gone', !u.present || u.state === 'surrendered');
+      d.dataset.stance = u.stance; { const was = d.classList.contains('sel'), now = this.r.selection.has(u.id); d.classList.toggle('sel', now); if (now && !was && this.r.selection.size === 1) { const hb = d.parentElement, L = d.offsetLeft, R2 = L + d.offsetWidth; if (hb && (L < hb.scrollLeft || R2 > hb.scrollLeft + hb.clientWidth)) hb.scrollLeft = L - hb.clientWidth / 2 + d.offsetWidth / 2; } }   // a unit selected on the field: its card scrolls into view d.classList.toggle('gone', !u.present || u.state === 'surrendered');
       d.querySelector('.x i').style.width = Math.max(0, u.men / u.maxMen * 100) + '%';
       d.querySelector('.m i').style.width = Math.max(0, Math.min(100, u.morale / u.maxMorale * 100)) + '%';
       d.title = (u.titleText ? u.titleText + '. ' : '') + `${u.men} men` + (u.state === 'routing' ? ' (routing)' : u.state === 'surrendered' ? ' (surrendered: reach them while no enemy is close to free them)' : u.state === 'gone' ? ' (withdrawn)' : '');

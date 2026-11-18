@@ -1897,8 +1897,12 @@ export class Battle {
       let survivors = u.men;
       if (u.state === 'routing' || (u.state === 'gone' && !u.exited)) survivors = Math.round(u.men * 0.5);
       const casualties = u.startMen - survivors;
-      const recovered = Math.round(Math.max(0, casualties - (u.captured || 0)) * (outcome === 'defeat' ? 0.1 : 0.22) * this.recoveryMult);   // men led away as prisoners do not come back
-      const healed = Math.round(Math.min(u.tended || 0, Math.max(0, casualties - (u.captured || 0) - recovered)) * this.healRate * (outcome === 'defeat' ? 0.45 : 1));   // men hit near the medici
+      // The wounded who walk back into the ranks. Every bonus (hospital, surgeons, career, origin) helps, but with diminishing returns: the
+      // share approaches a ceiling (half the casualties after a victory, a quarter after a defeat) and never reaches it. Without bonuses it is
+      // 22% (10% in defeat). Men led away as prisoners do not come back.
+      const cap = outcome === 'defeat' ? 0.25 : 0.5, base = outcome === 'defeat' ? 0.1 : 0.22, k = -Math.log(1 - base / cap);
+      const lost = Math.max(0, casualties - (u.captured || 0)), recovered = Math.round(lost * cap * (1 - Math.exp(-k * this.recoveryMult)));
+      const healed = Math.max(0, Math.min(Math.round(Math.min(u.tended || 0, Math.max(0, lost - recovered)) * this.healRate * (outcome === 'defeat' ? 0.45 : 1)), Math.round(lost * (outcome === 'defeat' ? 0.3 : 0.6)) - recovered));   // men hit near the medici; with the walking wounded, never more than 60% of the fallen (30% in defeat)
       if (healed) this.stats.healed = (this.stats.healed || 0) + healed;
       const endMen = Math.min(u.maxMen, survivors + recovered + healed);
       const xpMult = outcome === 'victory' ? 1 : outcome === 'draw' ? 0.75 : 0.5;
