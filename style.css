@@ -553,3 +553,37 @@ details.fold > summary:hover h3 { color: #f3d68a; }
 
 .card.bwaves { border-color: #6a7a9a; background: rgba(40,56,90,0.22); }
 #hud-arrive { color: #bcd0f0; border-color: rgba(160,190,240,0.5); }
+/* ---- battle cards: one slim row along the bottom, never more; with many units it scrolls sideways (wheel or drag) ---- */
+#hud-bottom{padding:4px 8px 6px;gap:4px;align-items:flex-end}
+#hud-bottom.many{flex-wrap:nowrap;max-height:none;overflow-x:auto;overflow-y:hidden;justify-content:flex-start;align-content:normal;scrollbar-width:thin}
+#hud-bottom.many > :first-child{margin-left:auto} #hud-bottom.many > :last-child{margin-right:auto}   /* centred while it fits */
+.ucard{width:118px;padding:3px 6px;font-size:12px;flex:none}
+.ucard .uicon{width:20px;height:20px;margin-right:5px}
+.ucard .bar{height:4px;min-width:0}
+.ucard .bar.m{margin-top:2px !important}
+#hud-bottom.many .ucard{width:68px;padding:2px 4px}
+#hud-bottom.many .ucard b{font-size:10.5px;line-height:1.25}
+#hud-bottom.many .ucard .bar{height:3px}
+#hud-bottom .ucard[data-gen]{width:auto;max-width:96px}
+#screen-battle.huge #hud-bottom{display:flex}
+#screen-battle.huge #hud-cmds, #screen-battle.huge #hud-sel{bottom:auto}
+#hud-bottom .ucard[data-gen] .muted{display:none}   /* the hint is in its tooltip */
+
+/* ---- the muster roll as a grid ---- */
+.mfilter{gap:6px;align-items:center;margin:8px 0 2px;flex-wrap:wrap}
+.mgrp{margin-top:10px}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;margin-top:6px}
+.mtile{position:relative;display:flex;flex-direction:column;gap:3px;text-align:left;padding:5px;background:#241d13;border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--ink);font:inherit}
+.mtile:hover{border-color:var(--gold)} .mtile.chg{outline:1px solid var(--gold)}
+.mtile img{width:100%;aspect-ratio:1.45;object-fit:cover;object-position:center 25%;border-radius:4px;display:block}
+.mtile b{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mtile .bar{height:4px;min-width:0}
+.mtile .small{font-size:11px;color:var(--muted)}
+.mshort{position:absolute;top:8px;right:8px;background:#7a2a1c;color:#ffd9cc;font-size:11px;font-weight:bold;padding:1px 6px;border-radius:9px}
+.mnav{display:flex;justify-content:space-between;align-items:center;margin:8px 0;gap:8px;flex-wrap:wrap}
+.mdet{display:flex;gap:14px;align-items:flex-start}
+.mdetimg{width:170px;height:170px;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:none}
+.mdetbody{flex:1;min-width:0} .mdetbody h3{margin:0 0 2px}
+.mdet .mrow{grid-template-columns:70px 1fr 74px;background:none !important}
+.mdet .mrow>:nth-child(4),.mdet .mrow>:nth-child(5){grid-column:2;font-size:12px}
+@media (max-width:700px){.mdet{flex-direction:column}.mdetimg{width:100%;height:160px}}
