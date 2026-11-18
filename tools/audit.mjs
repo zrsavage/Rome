@@ -88,7 +88,7 @@ function run(i, player, seed) {
     if (fallen >= 20 && back > lim) finds.push({ rule: 'recovery', msg: `${row.name}: ${back} of ${fallen} fallen came back (${Math.round(100 * back / fallen)}%, limit ${r.outcome === 'defeat' ? 30 : 60}%)` });
   }
   const seen = [...new Set((b.rep.events || []).map(e => e.kind))];
-  const unordered = player === 'patient' ? issued.filter(x => x.name === 'setAttack' && x.why !== 'player' && x.why !== 'update').map(x => `${x.unit} by ${x.why}`) : [];
+  const unordered = player === 'patient' ? issued.filter(x => x.name === 'setAttack' && x.why !== 'player' && x.why !== 'update' && x.why !== 'runEvent').map(x => `${x.unit} by ${x.why}`) : [];
   const totalFallen = r.rows.reduce((a, x) => a + x.casualties, 0), totalBack = r.rows.reduce((a, x) => a + Math.max(0, x.endMen - (x.startMen - x.casualties)), 0);
   return { i, id: base.id, player, seed, outcome: r.outcome, time: Math.round(r.time), ms, kinds: seen, twist: r.twist || null, plan: r.plan && r.plan.key, goal: r.goal && r.goal.key,
     holdBreaks: [...new Set(holdBreaks)].slice(0, 5), unordered, fallen: totalFallen, back: totalBack, finds };
