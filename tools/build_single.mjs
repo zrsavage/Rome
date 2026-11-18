@@ -14,9 +14,11 @@ const body = html.match(/<body>([\s\S]*?)<script type="module"/)[1];
 
 const manifest = existsSync('assets/art/manifest.json') ? JSON.parse(readFileSync('assets/art/manifest.json', 'utf8')) : {};
 const mime = { '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
-const art = {};
-for (const [kind, map] of Object.entries(manifest)) { art[kind] = {}; for (const [id, f] of Object.entries(map)) { const p = `assets/art/${f}`; if (existsSync(p)) art[kind][id] = `data:${mime[extname(f)] || 'image/webp'};base64,${readFileSync(p).toString('base64')}`; } }
-const artScript = `<script>window.__LEGIO_ART__=${JSON.stringify(art)};</script>`;
+const art = {}, files = [], fileIx = {};                       // each picture once: units that share a card point at the same entry
+for (const [kind, map] of Object.entries(manifest)) { art[kind] = {}; for (const [id, f] of Object.entries(map)) { const p = `assets/art/${f}`; if (!existsSync(p)) continue;
+  if (fileIx[f] == null) { fileIx[f] = files.length; files.push(`data:${mime[extname(f)] || 'image/webp'};base64,${readFileSync(p).toString('base64')}`); }
+  art[kind][id] = fileIx[f]; } }
+const artScript = `<script>(function(){var F=${JSON.stringify(files)},A=${JSON.stringify(art)};for(var k in A)for(var i in A[k])A[k][i]=F[A[k][i]];window.__LEGIO_ART__=A;})();</script>`;
 
 mkdirSync('dist', { recursive: true });
 if (existsSync('audio')) cpSync('audio', 'dist/audio', { recursive: true });   // the music files sit beside the page
