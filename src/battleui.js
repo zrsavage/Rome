@@ -17,6 +17,9 @@ export function shortName(n) {
   const m = /^([IVX]+) Cohort of the ([IVX]+)(.*)$/.exec(n); if (m) return `${m[1]}/${m[2]}${m[3]}`;
   return n.replace(/^First Cohort of the Tenth/, 'I/X').replace(/^Equites of the /, 'Equites ').replace(/^Evocati of the /, 'Evocati ');
 }
+// The pace of battle: at "1x" the battle clock runs at 80% of real time, so there is time to see what is happening and answer it.
+// Everything slows together (marching, fighting, morale, the battle clock and its time limit), so the balance is unchanged.
+export const GAME_PACE = 0.8;
 export class BattleUI {
   constructor() {
     this.canvas = $('canvas'); this.r = new Renderer(this.canvas);
@@ -55,7 +58,7 @@ export class BattleUI {
     if (!this.running) { this.raf = null; return; }
     const real = Math.min(0.1, (now - this.last) / 1000); this.last = now;
     if (!this.paused && !this.b.result) {
-      this.acc += real * this.speed;
+      this.acc += real * this.speed * GAME_PACE;
       let n = 0;
       const st = this.b.units.length > 150 ? 0.1 : 0.05;              // a great pitched battle steps in tenths of a second (as the balance tests do), halving the work
       while (this.acc >= st && n++ < 24) { this.b.update(st); this.acc -= st; }
